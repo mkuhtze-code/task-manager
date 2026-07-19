@@ -42,6 +42,17 @@ function fmtMins(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export default function Home() {
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
@@ -55,12 +66,58 @@ export default function Home() {
   const [taskTime, setTaskTime] = useState('');
   const [taskSource, setTaskSource] = useState<'planned' | 'came_up'>('planned');
   const [error, setError] = useState('');
+  const [notifStatus, setNotifStatus] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
+  async function enableNotifications() {
+    setNotifStatus('Requesting permission...');
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setNotifStatus('Permission was not granted.');
+        return;
+      }
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string),
+      });
+      await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: session.user.id, subscription }),
+      });
+      setNotifStatus('Notifications enabled.');
+    } catch (e: any) {
+      setNotifStatus('Something went wrong: ' + e.message);
+    }
+  }
+
+  async function sendTestNotification() {
+    setNotifStatus('Sending test notification...');
+    const res = await fetch('/api/send-test-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: session.user.id }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setNotifStatus('Sent — check your phone.');
+    } else {
+      setNotifStatus('Failed: ' + (data.error || 'unknown error'));
+    }
+  }
 
   useEffect(() => {
     if (session) loadEverything();
@@ -180,7 +237,14 @@ export default function Home() {
     <div style={{ maxWidth: 600, margin: '40px auto', fontFamily: 'sans-serif', padding: '0 16px' }}>
       <h1 style={{ fontSize: 20, marginBottom: 16 }}>Today</h1>
 
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
+        <button onClick={enableNotifications} style={{ padding: '6px 10px', fontSize: 13 }}>Enable notifications</button>
+        <button onClick={sendTestNotification} style={{ padding: '6px 10px', fontSize: 13 }}>Send test notification</button>
+        {notifStatus && <span style={{ fontSize: 12, color: '#666' }}>{notifStatus}</span>}
+      </div>
+
       <div style={{ background: '#f4f4f4', borderRadius: 8, padding: 12, marginBottom: 24 }}>
+
         <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
           {fmtMins(meetingMins)} meetings + {fmtMins(taskMins)} tasks = {fmtMins(combined)} / {fmtMins(dayLengthMins)}
         </div>
@@ -243,4 +307,3 @@ export default function Home() {
     </div>
   );
 }
-
