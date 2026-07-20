@@ -9,6 +9,8 @@ type Task = {
   status: 'pending' | 'active' | 'done';
   source: 'planned' | 'came_up';
   estimate_mins: number;
+  logged_mins: number;
+  started_at: string | null;
   due_today: boolean;
   order_index: number;
 };
@@ -42,6 +44,13 @@ function fmtMins(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+function timeStringToMinutes(t: string): number {
+  const parts = t.split(':');
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  return h * 60 + m;
+}
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -60,13 +69,15 @@ export default function Home() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [dayLengthMins, setDayLengthMins] = useState(480);
+  const [workStart, setWorkStart] = useState('08:00');
+  const [workEnd, setWorkEnd] = useState('16:00');
 
   const [taskText, setTaskText] = useState('');
   const [taskTime, setTaskTime] = useState('');
   const [taskSource, setTaskSource] = useState<'planned' | 'came_up'>('planned');
   const [error, setError] = useState('');
   const [notifStatus, setNotifStatus] = useState('');
+  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -79,6 +90,54 @@ export default function Home() {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (session) loadEverything();
+  }, [session]);
+
+  async function loadEverything() {
+    const userId = session.user.id;
+
+    const { data: settings } = await supabase
+      .from('user_settings')
+      .select('work_start, work_end')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (settings) {
+      setWorkStart(settings.work_start || '08:00');
+      setWorkEnd(settings.work_end || '16:00');
+    } else {
+      await supabase.from('user_settings').insert({ user_id: userId, work_start: '08:00', work_end: '16:00' });
+    }
+
+    const { data: taskRows } = await supabase
+      .from('tasks')
+      .select('*')
+      .neq('status', 'done')
+      .order('order_index', { ascending: true });
+    setTasks(taskRows || []);
+
+    const { data: meetingRows } = await supabase.from('meetings').select('*');
+    setMeetings(meetingRows || []);
+  }
+
+  async function saveWorkHours() {
+    await supabase
+      .from('user_settings')
+      .update({ work_start: workStart, work_end: workEnd })
+      .eq('user_id', session.user.id);
+  }
+
+  async function signIn(e: React.FormEvent) {
+    e.preventDefault();
+    await supabase.auth.signInWithOtp({ email });
+    setMagicLinkSent(true);
+  }
 
   async function enableNotifications() {
     setNotifStatus('Requesting permission...');
@@ -112,46 +171,7 @@ export default function Home() {
       body: JSON.stringify({ userId: session.user.id }),
     });
     const data = await res.json();
-    if (res.ok) {
-      setNotifStatus('Sent — check your phone.');
-    } else {
-      setNotifStatus('Failed: ' + (data.error || 'unknown error'));
-    }
-  }
-
-  useEffect(() => {
-    if (session) loadEverything();
-  }, [session]);
-
-  async function loadEverything() {
-    const userId = session.user.id;
-
-    const { data: settings } = await supabase
-      .from('user_settings')
-      .select('day_length_mins')
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (settings) {
-      setDayLengthMins(settings.day_length_mins);
-    } else {
-      await supabase.from('user_settings').insert({ user_id: userId, day_length_mins: 480 });
-    }
-
-    const { data: taskRows } = await supabase
-      .from('tasks')
-      .select('*')
-      .neq('status', 'done')
-      .order('order_index', { ascending: true });
-    setTasks(taskRows || []);
-
-    const { data: meetingRows } = await supabase.from('meetings').select('*');
-    setMeetings(meetingRows || []);
-  }
-
-  async function signIn(e: React.FormEvent) {
-    e.preventDefault();
-    await supabase.auth.signInWithOtp({ email });
-    setMagicLinkSent(true);
+    setNotifStatus(res.ok ? 'Sent — check your phone.' : 'Failed: ' + (data.error || 'unknown error'));
   }
 
   async function addTask() {
@@ -186,8 +206,33 @@ export default function Home() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due_today: !current } : t)));
   }
 
+  async function startTask(id: string) {
+    const alreadyActive = tasks.find((t) => t.status === 'active');
+    if (alreadyActive) return;
+    const startedAt = new Date().toISOString();
+    await supabase.from('tasks').update({ status: 'active', started_at: startedAt }).eq('id', id);
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'active', started_at: startedAt } : t)));
+  }
+
+  async function stopTask(id: string) {
+    const task = tasks.find((t) => t.id === id);
+    if (!task || !task.started_at) return;
+    const sessionMins = (Date.now() - new Date(task.started_at).getTime()) / 60000;
+    const newLogged = task.logged_mins + sessionMins;
+    await supabase.from('tasks').update({ status: 'pending', started_at: null, logged_mins: newLogged }).eq('id', id);
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'pending', started_at: null, logged_mins: newLogged } : t)));
+  }
+
   async function completeTask(id: string) {
-    await supabase.from('tasks').update({ status: 'done', completed_at: new Date().toISOString() }).eq('id', id);
+    const task = tasks.find((t) => t.id === id);
+    let finalLogged = task ? task.logged_mins : 0;
+    if (task && task.status === 'active' && task.started_at) {
+      finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
+    }
+    await supabase
+      .from('tasks')
+      .update({ status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: Math.round(finalLogged), completed_at: new Date().toISOString() })
+      .eq('id', id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }
 
@@ -226,36 +271,51 @@ export default function Home() {
   });
 
   const meetingMins = meetings.reduce((sum, m) => sum + m.duration_mins, 0);
-  const taskMins = ordered.reduce((sum, t) => sum + t.estimate_mins, 0);
-  const combined = meetingMins + taskMins;
-  const over = combined > dayLengthMins;
-  const taskCapacity = dayLengthMins - meetingMins;
+
+  const remainingTaskMins = ordered.reduce((sum, t) => {
+    let logged = t.logged_mins;
+    if (t.status === 'active' && t.started_at) {
+      logged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
+    }
+    return sum + Math.max(t.estimate_mins - logged, 0);
+  }, 0);
+
+  const remainingWorkMins = meetingMins + remainingTaskMins;
+
+  const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
+  const workEndMinutes = timeStringToMinutes(workEnd);
+  const minutesLeftToday = Math.max(workEndMinutes - nowMinutesOfDay, 0);
+
+  const overloaded = remainingWorkMins > minutesLeftToday;
 
   let cumulative = 0;
+  const taskCapacity = minutesLeftToday - meetingMins;
 
   return (
     <div style={{ maxWidth: 600, margin: '40px auto', fontFamily: 'sans-serif', padding: '0 16px' }}>
       <h1 style={{ fontSize: 20, marginBottom: 16 }}>Today</h1>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
         <button onClick={enableNotifications} style={{ padding: '6px 10px', fontSize: 13 }}>Enable notifications</button>
         <button onClick={sendTestNotification} style={{ padding: '6px 10px', fontSize: 13 }}>Send test notification</button>
         {notifStatus && <span style={{ fontSize: 12, color: '#666' }}>{notifStatus}</span>}
       </div>
 
-      <div style={{ background: '#f4f4f4', borderRadius: 8, padding: 12, marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, fontSize: 13 }}>
+        <span>Work hours</span>
+        <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} style={{ padding: 4 }} />
+        <span>to</span>
+        <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} style={{ padding: 4 }} />
+        <button onClick={saveWorkHours} style={{ padding: '4px 8px', fontSize: 12 }}>save</button>
+      </div>
 
-        <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
-          {fmtMins(meetingMins)} meetings + {fmtMins(taskMins)} tasks = {fmtMins(combined)} / {fmtMins(dayLengthMins)}
+      <div style={{ background: overloaded ? '#fbe9e7' : '#f4f4f4', borderRadius: 8, padding: 12, marginBottom: 24 }}>
+        <div style={{ fontSize: 13, color: overloaded ? '#a33' : '#555' }}>
+          It is {now.getHours().toString().padStart(2, '0')}:{now.getMinutes().toString().padStart(2, '0')} — {fmtMins(minutesLeftToday)} left in your work day.
         </div>
-        <div style={{ height: 8, borderRadius: 4, background: '#e0e0e0', overflow: 'hidden', display: 'flex' }}>
-          <div style={{ width: `${Math.min((meetingMins / Math.max(combined, dayLengthMins)) * 100, 100)}%`, background: '#999' }} />
-          <div
-            style={{
-              width: `${Math.min((taskMins / Math.max(combined, dayLengthMins)) * 100, 100)}%`,
-              background: over ? '#d9534f' : combined / dayLengthMins > 0.8 ? '#e8a33d' : '#4a90d9',
-            }}
-          />
+        <div style={{ fontSize: 13, color: overloaded ? '#a33' : '#555', marginTop: 4, fontWeight: overloaded ? 600 : 400 }}>
+          {fmtMins(remainingWorkMins)} of work remaining ({fmtMins(meetingMins)} meetings + {fmtMins(remainingTaskMins)} tasks)
+          {overloaded && ` — ${fmtMins(remainingWorkMins - minutesLeftToday)} more than time left today`}
         </div>
       </div>
 
@@ -285,19 +345,38 @@ export default function Home() {
       <div style={{ marginTop: 24 }}>
         {ordered.length === 0 && <p style={{ color: '#999', fontSize: 13 }}>Nothing on your plate yet.</p>}
         {ordered.map((t) => {
-          cumulative += t.estimate_mins;
+          let liveLogged = t.logged_mins;
+          if (t.status === 'active' && t.started_at) {
+            liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
+          }
+          const remainingForThis = Math.max(t.estimate_mins - liveLogged, 0);
+          cumulative += remainingForThis;
           const overCap = cumulative > taskCapacity;
+          const anyActive = tasks.some((x) => x.status === 'active');
           return (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 4px', borderBottom: '1px solid #eee', opacity: overCap ? 0.55 : 1 }}>
-              <button onClick={() => completeTask(t.id)} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #999', background: 'none', cursor: 'pointer' }} />
+              <button onClick={() => completeTask(t.id)} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #999', background: 'none', cursor: 'pointer', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14 }}>{t.text}</div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                  <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#eee' }}>{fmtMins(t.estimate_mins)}</span>
+                <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#eee' }}>est {fmtMins(t.estimate_mins)}</span>
+                  {t.status === 'active' && (
+                    <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#dbe9fb', color: '#2a5fa0' }}>
+                      elapsed {fmtMins(liveLogged)}
+                    </span>
+                  )}
+                  {t.logged_mins > 0 && t.status !== 'active' && (
+                    <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#eee' }}>logged {fmtMins(t.logged_mins)}</span>
+                  )}
                   {t.due_today && <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#fbdcd9', color: '#a33' }}>due today</span>}
                   {overCap && <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#f5d6b8', color: '#a06' }}>no room today</span>}
                 </div>
               </div>
+              {t.status === 'active' ? (
+                <button onClick={() => stopTask(t.id)} style={{ fontSize: 12, padding: '4px 8px' }}>stop</button>
+              ) : (
+                <button onClick={() => startTask(t.id)} disabled={anyActive} style={{ fontSize: 12, padding: '4px 8px', opacity: anyActive ? 0.4 : 1 }}>start</button>
+              )}
               <button onClick={() => toggleDueToday(t.id, t.due_today)} style={{ fontSize: 12, padding: '4px 8px', color: t.due_today ? '#a33' : '#999', background: 'none', border: 'none', cursor: 'pointer' }}>due</button>
               <button onClick={() => deleteTask(t.id)} style={{ fontSize: 14, background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}>×</button>
             </div>
