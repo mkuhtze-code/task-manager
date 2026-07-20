@@ -15,6 +15,14 @@ type Task = {
   order_index: number;
 };
 
+type Subtask = {
+  id: string;
+  task_id: string;
+  text: string;
+  mins: number;
+  done: boolean;
+};
+
 type Meeting = {
   id: string;
   text: string;
@@ -68,6 +76,11 @@ export default function Home() {
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
+  const [expandedTaskIds, setExpandedTaskIds] = useState<Record<string, boolean>>({});
+  const [subDraftText, setSubDraftText] = useState<Record<string, string>>({});
+  const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
+
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
@@ -126,6 +139,17 @@ export default function Home() {
 
     const { data: meetingRows } = await supabase.from('meetings').select('*');
     setMeetings(meetingRows || []);
+
+    if (taskRows && taskRows.length > 0) {
+      const ids = taskRows.map((t: Task) => t.id);
+      const { data: subRows } = await supabase.from('subtasks').select('*').in('task_id', ids).order('order_index', { ascending: true });
+      const grouped: Record<string, Subtask[]> = {};
+      (subRows || []).forEach((s: Subtask) => {
+        if (!grouped[s.task_id]) grouped[s.task_id] = [];
+        grouped[s.task_id].push(s);
+      });
+      setSubtasksByTask(grouped);
+    }
   }
 
   async function saveWorkHours() {
@@ -244,6 +268,45 @@ export default function Home() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }
 
+  function toggleExpand(taskId: string) {
+    setExpandedTaskIds((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
+  }
+
+  async function addSubtask(taskId: string) {
+    const text = (subDraftText[taskId] || '').trim();
+    if (text.length === 0) return;
+    const mins = parseMins(subDraftTime[taskId] || '') || 0;
+    const userId = session.user.id;
+    const existing = subtasksByTask[taskId] || [];
+    const maxOrder = existing.reduce((m, s) => Math.max(m, 0), 0);
+    const { data } = await supabase
+      .from('subtasks')
+      .insert({ user_id: userId, task_id: taskId, text, mins, order_index: existing.length })
+      .select()
+      .single();
+    if (data) {
+      setSubtasksByTask((prev) => ({ ...prev, [taskId]: [...(prev[taskId] || []), data] }));
+    }
+    setSubDraftText((prev) => ({ ...prev, [taskId]: '' }));
+    setSubDraftTime((prev) => ({ ...prev, [taskId]: '' }));
+  }
+
+  async function toggleSubtaskDone(subtaskId: string, taskId: string, current: boolean) {
+    await supabase.from('subtasks').update({ done: !current }).eq('id', subtaskId);
+    setSubtasksByTask((prev) => ({
+      ...prev,
+      [taskId]: (prev[taskId] || []).map((s) => (s.id === subtaskId ? { ...s, done: !current } : s)),
+    }));
+  }
+
+  async function deleteSubtask(subtaskId: string, taskId: string) {
+    await supabase.from('subtasks').delete().eq('id', subtaskId);
+    setSubtasksByTask((prev) => ({
+      ...prev,
+      [taskId]: (prev[taskId] || []).filter((s) => s.id !== subtaskId),
+    }));
+  }
+
   if (!session) {
     return (
       <div className="sign-in-shell">
@@ -273,16 +336,20 @@ export default function Home() {
     return a.order_index - b.order_index;
   });
 
-  const meetingMins = meetings.reduce((sum, m) => sum + m.duration_mins, 0);
+  function completedSubtaskMins(taskId: string): number {
+    return (subtasksByTask[taskId] || []).filter((s) => s.done).reduce((sum, s) => sum + s.mins, 0);
+  }
 
-  const remainingTaskMins = ordered.reduce((sum, t) => {
+  function remainingForTask(t: Task): number {
     let logged = t.logged_mins;
     if (t.status === 'active' && t.started_at) {
       logged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
     }
-    return sum + Math.max(t.estimate_mins - logged, 0);
-  }, 0);
+    return Math.max(t.estimate_mins - logged - completedSubtaskMins(t.id), 0);
+  }
 
+  const meetingMins = meetings.reduce((sum, m) => sum + m.duration_mins, 0);
+  const remainingTaskMins = ordered.reduce((sum, t) => sum + remainingForTask(t), 0);
   const remainingWorkMins = meetingMins + remainingTaskMins;
 
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
@@ -346,27 +413,62 @@ export default function Home() {
       <div className="task-list">
         {ordered.length === 0 && <p style={{ color: 'var(--ink-soft)', fontSize: 14 }}>Nothing on your plate yet. Tap + to add something.</p>}
         {ordered.map((t) => {
-          let liveLogged = t.logged_mins;
-          if (t.status === 'active' && t.started_at) {
-            liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
-          }
-          const remainingForThis = Math.max(t.estimate_mins - liveLogged, 0);
+          const remainingForThis = remainingForTask(t);
           cumulative += remainingForThis;
           const overCap = cumulative > taskCapacity;
           const anyActive = tasks.some((x) => x.status === 'active');
           const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', overCap ? 'over-cap' : ''].join(' ').trim();
+          const subs = subtasksByTask[t.id] || [];
+          const expanded = !!expandedTaskIds[t.id];
+          let liveLogged = t.logged_mins;
+          if (t.status === 'active' && t.started_at) {
+            liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
+          }
           return (
             <div key={t.id} className={rowClass}>
               <button className="task-check" onClick={() => completeTask(t.id)} aria-label="Complete task" />
               <div className="task-body">
                 <div className="task-text">{t.text}</div>
                 <div className="task-tags">
-                  <span className="tag mono">est {fmtMins(t.estimate_mins)}</span>
+                  <span className="tag mono">{fmtMins(remainingForThis)} left of {fmtMins(t.estimate_mins)}</span>
                   {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
-                  {t.logged_mins > 0 && t.status !== 'active' && <span className="tag mono">logged {fmtMins(t.logged_mins)}</span>}
+                  {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
                   {t.due_today && <span className="tag tag-due">due today</span>}
                   {overCap && <span className="tag tag-warn">no room today</span>}
                 </div>
+
+                {expanded && (
+                  <div className="subtask-panel">
+                    {subs.map((s) => (
+                      <div key={s.id} className="subtask-row">
+                        <button
+                          className={s.done ? 'subtask-check done' : 'subtask-check'}
+                          onClick={() => toggleSubtaskDone(s.id, t.id, s.done)}
+                          aria-label="Complete sub-task"
+                        />
+                        <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
+                        <span className="tag mono">{fmtMins(s.mins)}</span>
+                        <button className="icon-btn" onClick={() => deleteSubtask(s.id, t.id)} aria-label="Delete sub-task">×</button>
+                      </div>
+                    ))}
+                    <div className="subtask-add-row">
+                      <input
+                        type="text"
+                        placeholder="Sub-task"
+                        value={subDraftText[t.id] || ''}
+                        onChange={(e) => setSubDraftText((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                      />
+                      <input
+                        type="text"
+                        placeholder="15m"
+                        style={{ width: 60 }}
+                        value={subDraftTime[t.id] || ''}
+                        onChange={(e) => setSubDraftTime((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                      />
+                      <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => addSubtask(t.id)}>add</button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="task-actions">
                 {t.status === 'active' ? (
@@ -375,6 +477,7 @@ export default function Home() {
                   <button className="btn btn-ghost" style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }} disabled={anyActive} onClick={() => startTask(t.id)}>start</button>
                 )}
                 <div style={{ display: 'flex', gap: 4 }}>
+                  <button className="expand-btn" onClick={() => toggleExpand(t.id)} aria-label="Show sub-tasks">⋯</button>
                   <button className="icon-btn" style={{ color: t.due_today ? 'var(--hazard)' : 'var(--ink-soft)', fontSize: 12 }} onClick={() => toggleDueToday(t.id, t.due_today)}>due</button>
                   <button className="icon-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
                 </div>
