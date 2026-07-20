@@ -71,6 +71,8 @@ export default function Home() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
 
   const [taskText, setTaskText] = useState('');
   const [taskTime, setTaskTime] = useState('');
@@ -199,6 +201,7 @@ export default function Home() {
     if (data) setTasks((prev) => [...prev, data]);
     setTaskText('');
     setTaskTime('');
+    setCaptureOpen(false);
   }
 
   async function toggleDueToday(id: string, current: boolean) {
@@ -243,20 +246,20 @@ export default function Home() {
 
   if (!session) {
     return (
-      <div style={{ maxWidth: 360, margin: '80px auto', fontFamily: 'sans-serif' }}>
-        <h1 style={{ fontSize: 20, marginBottom: 16 }}>Sign in</h1>
+      <div className="sign-in-shell">
+        <h1 style={{ fontSize: 20, marginBottom: 20 }}>Sign in</h1>
         {magicLinkSent ? (
-          <p>Check your email for a sign-in link.</p>
+          <p style={{ color: 'var(--ink-soft)', fontSize: 14 }}>Check your email for a sign-in link.</p>
         ) : (
-          <form onSubmit={signIn}>
+          <form onSubmit={signIn} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              style={{ width: '100%', padding: 8, marginBottom: 8 }}
+              style={{ padding: 12, borderRadius: 8, border: '1px solid var(--line)', fontSize: 15 }}
             />
-            <button type="submit" style={{ width: '100%', padding: 8 }}>Send magic link</button>
+            <button type="submit" className="btn btn-steel">Send magic link</button>
           </form>
         )}
       </div>
@@ -287,63 +290,61 @@ export default function Home() {
   const minutesLeftToday = Math.max(workEndMinutes - nowMinutesOfDay, 0);
 
   const overloaded = remainingWorkMins > minutesLeftToday;
+  const denom = Math.max(remainingWorkMins, minutesLeftToday, 1);
 
   let cumulative = 0;
   const taskCapacity = minutesLeftToday - meetingMins;
 
+  const dateLabel = now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+
   return (
-    <div style={{ maxWidth: 600, margin: '40px auto', fontFamily: 'sans-serif', padding: '0 16px' }}>
-      <h1 style={{ fontSize: 20, marginBottom: 16 }}>Today</h1>
-
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <button onClick={enableNotifications} style={{ padding: '6px 10px', fontSize: 13 }}>Enable notifications</button>
-        <button onClick={sendTestNotification} style={{ padding: '6px 10px', fontSize: 13 }}>Send test notification</button>
-        {notifStatus && <span style={{ fontSize: 12, color: '#666' }}>{notifStatus}</span>}
+    <div className="app-shell">
+      <div className="app-header">
+        <h1 className="app-title">Today</h1>
+        <div className="app-date">{dateLabel}</div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, fontSize: 13 }}>
-        <span>Work hours</span>
-        <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} style={{ padding: 4 }} />
-        <span>to</span>
-        <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} style={{ padding: 4 }} />
-        <button onClick={saveWorkHours} style={{ padding: '4px 8px', fontSize: 12 }}>save</button>
-      </div>
-
-      <div style={{ background: overloaded ? '#fbe9e7' : '#f4f4f4', borderRadius: 8, padding: 12, marginBottom: 24 }}>
-        <div style={{ fontSize: 13, color: overloaded ? '#a33' : '#555' }}>
-          It is {now.getHours().toString().padStart(2, '0')}:{now.getMinutes().toString().padStart(2, '0')} — {fmtMins(minutesLeftToday)} left in your work day.
+      <div className="perforation" />
+      <div className={overloaded ? 'capacity-card overloaded' : 'capacity-card'}>
+        <div className={overloaded ? 'capacity-line warn' : 'capacity-line'}>
+          It&apos;s {now.getHours().toString().padStart(2, '0')}:{now.getMinutes().toString().padStart(2, '0')}
+          {' — '}
+          <span className="mono">{fmtMins(minutesLeftToday)}</span> left in your work day
         </div>
-        <div style={{ fontSize: 13, color: overloaded ? '#a33' : '#555', marginTop: 4, fontWeight: overloaded ? 600 : 400 }}>
-          {fmtMins(remainingWorkMins)} of work remaining ({fmtMins(meetingMins)} meetings + {fmtMins(remainingTaskMins)} tasks)
-          {overloaded && ` — ${fmtMins(remainingWorkMins - minutesLeftToday)} more than time left today`}
+        <div className={overloaded ? 'capacity-line warn' : 'capacity-line'} style={{ marginTop: 2, fontWeight: overloaded ? 600 : 400 }}>
+          <span className="mono">{fmtMins(remainingWorkMins)}</span> of work remaining
+          {' '}({fmtMins(meetingMins)} meetings + {fmtMins(remainingTaskMins)} tasks)
+          {overloaded && <> — {fmtMins(remainingWorkMins - minutesLeftToday)} more than time left today</>}
+        </div>
+        <div className="capacity-track">
+          <div className="capacity-fill-meetings" style={{ width: `${Math.min((meetingMins / denom) * 100, 100)}%` }} />
+          <div className={overloaded ? 'capacity-fill-tasks warn' : 'capacity-fill-tasks'} style={{ width: `${Math.min((remainingTaskMins / denom) * 100, 100)}%` }} />
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-        <input
-          value={taskText}
-          onChange={(e) => setTaskText(e.target.value)}
-          placeholder="What needs doing?"
-          style={{ flex: 1, padding: 8 }}
-        />
-        <input
-          value={taskTime}
-          onChange={(e) => setTaskTime(e.target.value)}
-          placeholder="15m"
-          style={{ width: 70, padding: 8 }}
-        />
-        <button
-          onClick={() => setTaskSource(taskSource === 'planned' ? 'came_up' : 'planned')}
-          style={{ width: 110, padding: 8 }}
-        >
-          {taskSource === 'planned' ? 'planned' : 'came up'}
-        </button>
-        <button onClick={addTask} style={{ width: 44, padding: 8 }}>+</button>
-      </div>
-      {error && <p style={{ color: '#d9534f', fontSize: 12, marginBottom: 16 }}>{error}</p>}
+      <button className="settings-toggle" onClick={() => setSettingsOpen(!settingsOpen)}>
+        {settingsOpen ? '▾' : '▸'} Settings
+      </button>
 
-      <div style={{ marginTop: 24 }}>
-        {ordered.length === 0 && <p style={{ color: '#999', fontSize: 13 }}>Nothing on your plate yet.</p>}
+      {settingsOpen && (
+        <div className="settings-panel">
+          <div className="settings-row">
+            <span>Work hours</span>
+            <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
+            <span>to</span>
+            <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
+            <button className="btn btn-ghost" onClick={saveWorkHours}>Save</button>
+          </div>
+          <div className="settings-row">
+            <button className="btn btn-ghost" onClick={enableNotifications}>Enable notifications</button>
+            <button className="btn btn-ghost" onClick={sendTestNotification}>Send test</button>
+          </div>
+          {notifStatus && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{notifStatus}</div>}
+        </div>
+      )}
+
+      <div className="task-list">
+        {ordered.length === 0 && <p style={{ color: 'var(--ink-soft)', fontSize: 14 }}>Nothing on your plate yet. Tap + to add something.</p>}
         {ordered.map((t) => {
           let liveLogged = t.logged_mins;
           if (t.status === 'active' && t.started_at) {
@@ -353,36 +354,70 @@ export default function Home() {
           cumulative += remainingForThis;
           const overCap = cumulative > taskCapacity;
           const anyActive = tasks.some((x) => x.status === 'active');
+          const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', overCap ? 'over-cap' : ''].join(' ').trim();
           return (
-            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 4px', borderBottom: '1px solid #eee', opacity: overCap ? 0.55 : 1 }}>
-              <button onClick={() => completeTask(t.id)} style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #999', background: 'none', cursor: 'pointer', flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14 }}>{t.text}</div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#eee' }}>est {fmtMins(t.estimate_mins)}</span>
-                  {t.status === 'active' && (
-                    <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#dbe9fb', color: '#2a5fa0' }}>
-                      elapsed {fmtMins(liveLogged)}
-                    </span>
-                  )}
-                  {t.logged_mins > 0 && t.status !== 'active' && (
-                    <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#eee' }}>logged {fmtMins(t.logged_mins)}</span>
-                  )}
-                  {t.due_today && <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#fbdcd9', color: '#a33' }}>due today</span>}
-                  {overCap && <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, background: '#f5d6b8', color: '#a06' }}>no room today</span>}
+            <div key={t.id} className={rowClass}>
+              <button className="task-check" onClick={() => completeTask(t.id)} aria-label="Complete task" />
+              <div className="task-body">
+                <div className="task-text">{t.text}</div>
+                <div className="task-tags">
+                  <span className="tag mono">est {fmtMins(t.estimate_mins)}</span>
+                  {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
+                  {t.logged_mins > 0 && t.status !== 'active' && <span className="tag mono">logged {fmtMins(t.logged_mins)}</span>}
+                  {t.due_today && <span className="tag tag-due">due today</span>}
+                  {overCap && <span className="tag tag-warn">no room today</span>}
                 </div>
               </div>
-              {t.status === 'active' ? (
-                <button onClick={() => stopTask(t.id)} style={{ fontSize: 12, padding: '4px 8px' }}>stop</button>
-              ) : (
-                <button onClick={() => startTask(t.id)} disabled={anyActive} style={{ fontSize: 12, padding: '4px 8px', opacity: anyActive ? 0.4 : 1 }}>start</button>
-              )}
-              <button onClick={() => toggleDueToday(t.id, t.due_today)} style={{ fontSize: 12, padding: '4px 8px', color: t.due_today ? '#a33' : '#999', background: 'none', border: 'none', cursor: 'pointer' }}>due</button>
-              <button onClick={() => deleteTask(t.id)} style={{ fontSize: 14, background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}>×</button>
+              <div className="task-actions">
+                {t.status === 'active' ? (
+                  <button className="btn btn-steel" style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }} onClick={() => stopTask(t.id)}>stop</button>
+                ) : (
+                  <button className="btn btn-ghost" style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }} disabled={anyActive} onClick={() => startTask(t.id)}>start</button>
+                )}
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button className="icon-btn" style={{ color: t.due_today ? 'var(--hazard)' : 'var(--ink-soft)', fontSize: 12 }} onClick={() => toggleDueToday(t.id, t.due_today)}>due</button>
+                  <button className="icon-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
+                </div>
+              </div>
             </div>
           );
         })}
       </div>
+
+      {captureOpen && (
+        <div className="capture-sheet">
+          <input
+            type="text"
+            value={taskText}
+            onChange={(e) => setTaskText(e.target.value)}
+            placeholder="What needs doing?"
+            autoFocus
+          />
+          <div className="capture-row">
+            <input
+              type="text"
+              value={taskTime}
+              onChange={(e) => setTaskTime(e.target.value)}
+              placeholder="15m"
+              style={{ width: 80 }}
+            />
+            <button
+              className="btn btn-ghost"
+              style={{ flex: 1 }}
+              onClick={() => setTaskSource(taskSource === 'planned' ? 'came_up' : 'planned')}
+            >
+              {taskSource === 'planned' ? 'planned' : 'came up'}
+            </button>
+            <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
+          </div>
+          {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+          <button className="btn-text" onClick={() => setCaptureOpen(false)}>Cancel</button>
+        </div>
+      )}
+
+      {!captureOpen && (
+        <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Add task">+</button>
+      )}
     </div>
   );
 }
