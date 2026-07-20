@@ -353,3 +353,71 @@ button:focus-visible, input:focus-visible {
   padding: 0 20px;
   text-align: center;
 }
+
+.expand-btn {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 16px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  letter-spacing: 1px;
+}
+
+.subtask-panel {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subtask-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subtask-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: none;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.subtask-check.done {
+  background: var(--moss);
+  border-color: var(--moss);
+}
+
+.subtask-text {
+  flex: 1;
+  font-size: 13px;
+}
+
+.subtask-text.done {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+}
+
+.subtask-add-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.subtask-add-row input[type="text"] {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: var(--paper);
+  color: var(--ink);
+  min-width: 0;
+}
