@@ -70,6 +70,38 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+function CheckIcon({ done }: { done: boolean }) {
+  return (
+    <svg width="26" height="26" viewBox="0 0 26 26">
+      <circle cx="13" cy="13" r="11" fill={done ? 'var(--moss)' : 'none'} stroke={done ? 'var(--moss)' : 'var(--line-strong)'} strokeWidth="2" />
+      <path
+        d="M7.5 13.2 L11 17 L18.5 8.5"
+        fill="none"
+        stroke="white"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray="16"
+        strokeDashoffset={done ? 0 : 16}
+      />
+    </svg>
+  );
+}
+
+function FlagIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16">
+      <path
+        d="M3 1.5v13M3 2h8l-2 2.5L11 7H3"
+        fill={active ? 'var(--hazard)' : 'none'}
+        stroke={active ? 'var(--hazard)' : 'var(--ink-faint)'}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
@@ -278,7 +310,6 @@ export default function Home() {
     const mins = parseMins(subDraftTime[taskId] || '') || 0;
     const userId = session.user.id;
     const existing = subtasksByTask[taskId] || [];
-    const maxOrder = existing.reduce((m, s) => Math.max(m, 0), 0);
     const { data } = await supabase
       .from('subtasks')
       .insert({ user_id: userId, task_id: taskId, text, mins, order_index: existing.length })
@@ -320,7 +351,7 @@ export default function Home() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              style={{ padding: 12, borderRadius: 8, border: '1px solid var(--line)', fontSize: 15 }}
+              style={{ padding: 12, borderRadius: 8, border: '1px solid var(--line-strong)', fontSize: 15 }}
             />
             <button type="submit" className="btn btn-steel">Send magic link</button>
           </form>
@@ -373,15 +404,16 @@ export default function Home() {
 
       <div className="perforation" />
       <div className={overloaded ? 'capacity-card overloaded' : 'capacity-card'}>
-        <div className={overloaded ? 'capacity-line warn' : 'capacity-line'}>
-          It&apos;s {now.getHours().toString().padStart(2, '0')}:{now.getMinutes().toString().padStart(2, '0')}
-          {' — '}
-          <span className="mono">{fmtMins(minutesLeftToday)}</span> left in your work day
-        </div>
-        <div className={overloaded ? 'capacity-line warn' : 'capacity-line'} style={{ marginTop: 2, fontWeight: overloaded ? 600 : 400 }}>
-          <span className="mono">{fmtMins(remainingWorkMins)}</span> of work remaining
-          {' '}({fmtMins(meetingMins)} meetings + {fmtMins(remainingTaskMins)} tasks)
-          {overloaded && <> — {fmtMins(remainingWorkMins - minutesLeftToday)} more than time left today</>}
+        <div className="capacity-top">
+          <div>
+            <div className="capacity-hero-number mono">{fmtMins(minutesLeftToday)}</div>
+            <div className="capacity-hero-label">left in your work day</div>
+          </div>
+          <div className="capacity-detail">
+            <span className="mono">{fmtMins(remainingWorkMins)}</span> of work remaining<br />
+            {fmtMins(meetingMins)} meetings + {fmtMins(remainingTaskMins)} tasks
+            {overloaded && <><br /><span className="warn-text">{fmtMins(remainingWorkMins - minutesLeftToday)} more than time left</span></>}
+          </div>
         </div>
         <div className="capacity-track">
           <div className="capacity-fill-meetings" style={{ width: `${Math.min((meetingMins / denom) * 100, 100)}%` }} />
@@ -411,7 +443,9 @@ export default function Home() {
       )}
 
       <div className="task-list">
-        {ordered.length === 0 && <p style={{ color: 'var(--ink-soft)', fontSize: 14 }}>Nothing on your plate yet. Tap + to add something.</p>}
+        {ordered.length === 0 && (
+          <div className="empty-state">Nothing on your plate yet.<br />Tap + to add something.</div>
+        )}
         {ordered.map((t) => {
           const remainingForThis = remainingForTask(t);
           cumulative += remainingForThis;
@@ -426,7 +460,9 @@ export default function Home() {
           }
           return (
             <div key={t.id} className={rowClass}>
-              <button className="task-check" onClick={() => completeTask(t.id)} aria-label="Complete task" />
+              <button className="check-btn" onClick={() => completeTask(t.id)} aria-label="Complete task">
+                <CheckIcon done={false} />
+              </button>
               <div className="task-body">
                 <div className="task-text">{t.text}</div>
                 <div className="task-tags">
@@ -476,9 +512,11 @@ export default function Home() {
                 ) : (
                   <button className="btn btn-ghost" style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }} disabled={anyActive} onClick={() => startTask(t.id)}>start</button>
                 )}
-                <div style={{ display: 'flex', gap: 4 }}>
+                <div className="action-row">
                   <button className="expand-btn" onClick={() => toggleExpand(t.id)} aria-label="Show sub-tasks">⋯</button>
-                  <button className="icon-btn" style={{ color: t.due_today ? 'var(--hazard)' : 'var(--ink-soft)', fontSize: 12 }} onClick={() => toggleDueToday(t.id, t.due_today)}>due</button>
+                  <button className="icon-btn flag-btn" onClick={() => toggleDueToday(t.id, t.due_today)} aria-label="Mark due today">
+                    <FlagIcon active={t.due_today} />
+                  </button>
                   <button className="icon-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
                 </div>
               </div>
