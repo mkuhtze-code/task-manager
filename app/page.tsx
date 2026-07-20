@@ -102,6 +102,21 @@ function FlagIcon({ active }: { active: boolean }) {
   );
 }
 
+function EditIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16">
+      <path
+        d="M11.5 1.5l3 3-8 8-3.5 0.5 0.5-3.5z"
+        fill="none"
+        stroke="var(--ink-faint)"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
@@ -125,6 +140,10 @@ export default function Home() {
   const [error, setError] = useState('');
   const [notifStatus, setNotifStatus] = useState('');
   const [now, setNow] = useState(new Date());
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editError, setEditError] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -304,6 +323,35 @@ export default function Home() {
     setExpandedTaskIds((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
   }
 
+  function startEdit(t: Task) {
+    setEditingTaskId(t.id);
+    setEditText(t.text);
+    setEditTime(fmtMins(t.estimate_mins));
+    setEditError('');
+  }
+
+  function cancelEdit() {
+    setEditingTaskId(null);
+    setEditError('');
+  }
+
+  async function saveEdit(id: string) {
+    const text = editText.trim();
+    if (text.length === 0) {
+      setEditError('Name cannot be empty');
+      return;
+    }
+    const mins = parseMins(editTime);
+    if (mins === null || mins <= 0) {
+      setEditError('Could not read that time, try 15m or 1.5h');
+      return;
+    }
+    await supabase.from('tasks').update({ text, estimate_mins: mins }).eq('id', id);
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins } : t)));
+    setEditingTaskId(null);
+    setEditError('');
+  }
+
   async function addSubtask(taskId: string) {
     const text = (subDraftText[taskId] || '').trim();
     if (text.length === 0) return;
@@ -464,14 +512,38 @@ export default function Home() {
                 <CheckIcon done={false} />
               </button>
               <div className="task-body">
-                <div className="task-text">{t.text}</div>
-                <div className="task-tags">
-                  <span className="tag mono">{fmtMins(remainingForThis)} left of {fmtMins(t.estimate_mins)}</span>
-                  {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
-                  {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
-                  {t.due_today && <span className="tag tag-due">due today</span>}
-                  {overCap && <span className="tag tag-warn">no room today</span>}
-                </div>
+                {editingTaskId === t.id ? (
+                  <div className="edit-form">
+                    <input
+                      type="text"
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      autoFocus
+                    />
+                    <div className="capture-row">
+                      <input
+                        type="text"
+                        value={editTime}
+                        onChange={(e) => setEditTime(e.target.value)}
+                        style={{ width: 70 }}
+                      />
+                      <button className="btn btn-steel" style={{ flex: 1 }} onClick={() => saveEdit(t.id)}>Save</button>
+                      <button className="btn btn-ghost" onClick={cancelEdit}>Cancel</button>
+                    </div>
+                    {editError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{editError}</p>}
+                  </div>
+                ) : (
+                  <>
+                    <div className="task-text">{t.text}</div>
+                    <div className="task-tags">
+                      <span className="tag mono">{fmtMins(remainingForThis)} left of {fmtMins(t.estimate_mins)}</span>
+                      {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
+                      {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
+                      {t.due_today && <span className="tag tag-due">due today</span>}
+                      {overCap && <span className="tag tag-warn">no room today</span>}
+                    </div>
+                  </>
+                )}
 
                 {expanded && (
                   <div className="subtask-panel">
@@ -513,6 +585,9 @@ export default function Home() {
                   <button className="btn btn-ghost" style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }} disabled={anyActive} onClick={() => startTask(t.id)}>start</button>
                 )}
                 <div className="action-row">
+                  <button className="icon-btn" onClick={() => startEdit(t)} aria-label="Edit task">
+                    <EditIcon />
+                  </button>
                   <button className="expand-btn" onClick={() => toggleExpand(t.id)} aria-label="Show sub-tasks">⋯</button>
                   <button className="icon-btn flag-btn" onClick={() => toggleDueToday(t.id, t.due_today)} aria-label="Mark due today">
                     <FlagIcon active={t.due_today} />
