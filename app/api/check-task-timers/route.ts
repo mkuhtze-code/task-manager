@@ -50,7 +50,13 @@ export async function GET(req: NextRequest) {
       .eq('user_id', task.user_id);
 
     if (subs && subs.length > 0) {
-      const payload = JSON.stringify({ title, body });
+      const { data: settings } = await supabaseAdmin
+        .from('user_settings')
+        .select('notification_style')
+        .eq('user_id', task.user_id)
+        .maybeSingle();
+      const silent = settings?.notification_style === 'silent';
+      const payload = JSON.stringify({ title, body, silent });
       await Promise.allSettled(
         subs.map((sub) =>
           webpush.sendNotification(
@@ -67,4 +73,3 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ok: true, checked: (activeTasks || []).length, sent });
 }
-
