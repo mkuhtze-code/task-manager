@@ -288,7 +288,7 @@ export default function Home() {
     const alreadyActive = tasks.find((t) => t.status === 'active');
     if (alreadyActive) return;
     const startedAt = new Date().toISOString();
-    await supabase.from('tasks').update({ status: 'active', started_at: startedAt }).eq('id', id);
+    await supabase.from('tasks').update({ status: 'active', started_at: startedAt, near_notified: false, over_notified: false }).eq('id', id);
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'active', started_at: startedAt } : t)));
   }
 
