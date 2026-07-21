@@ -131,6 +131,7 @@ export default function Home() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
+  const [notificationStyle, setNotificationStyle] = useState<'default' | 'silent'>('default');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
 
@@ -171,12 +172,13 @@ export default function Home() {
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end')
+      .select('work_start, work_end, notification_style')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
+      setNotificationStyle(settings.notification_style || 'default');
     } else {
       await supabase.from('user_settings').insert({ user_id: userId, work_start: '08:00', work_end: '16:00' });
     }
@@ -208,6 +210,11 @@ export default function Home() {
       .from('user_settings')
       .update({ work_start: workStart, work_end: workEnd })
       .eq('user_id', session.user.id);
+  }
+
+  async function saveNotificationStyle(style: 'default' | 'silent') {
+    setNotificationStyle(style);
+    await supabase.from('user_settings').update({ notification_style: style }).eq('user_id', session.user.id);
   }
 
   async function signIn(e: React.FormEvent) {
@@ -485,6 +492,23 @@ export default function Home() {
           <div className="settings-row">
             <button className="btn btn-ghost" onClick={enableNotifications}>Enable notifications</button>
             <button className="btn btn-ghost" onClick={sendTestNotification}>Send test</button>
+          </div>
+          <div className="settings-row">
+            <span>Notification style</span>
+            <button
+              className={notificationStyle === 'default' ? 'btn btn-steel' : 'btn btn-ghost'}
+              style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }}
+              onClick={() => saveNotificationStyle('default')}
+            >
+              Default
+            </button>
+            <button
+              className={notificationStyle === 'silent' ? 'btn btn-steel' : 'btn btn-ghost'}
+              style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }}
+              onClick={() => saveNotificationStyle('silent')}
+            >
+              Silent
+            </button>
           </div>
           {notifStatus && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{notifStatus}</div>}
         </div>
