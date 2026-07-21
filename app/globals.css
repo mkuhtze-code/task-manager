@@ -13,6 +13,8 @@
   --hazard-bg: #fbead9;
   --moss: #4f7a56;
   --moss-bg: #e7efe8;
+  --overflow: #4a5b8c;
+  --overflow-bg: #eaedf6;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -131,18 +133,33 @@ button:focus-visible, input:focus-visible {
   background: var(--hazard-bg);
 }
 
-.capacity-top {
+.capacity-row {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.capacity-ring-wrap {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+.capacity-ring-wrap svg {
+  transform: rotate(-90deg);
+}
+
+.capacity-number-block {
+  flex: 1;
+  min-width: 0;
 }
 
 .capacity-hero-number {
-  font-size: 30px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1;
+  line-height: 1.1;
   color: var(--ink);
 }
 
@@ -153,44 +170,13 @@ button:focus-visible, input:focus-visible {
 .capacity-hero-label {
   font-size: 12px;
   color: var(--ink-soft);
-  margin-top: 3px;
 }
 
-.capacity-detail {
-  font-size: 13px;
-  color: var(--ink-soft);
-  text-align: right;
-  line-height: 1.5;
-}
-
-.capacity-detail .warn-text {
+.capacity-warn-line {
+  font-size: 12px;
   color: var(--hazard);
   font-weight: 600;
-}
-
-.capacity-track {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--line);
-  overflow: hidden;
-  display: flex;
-  margin-top: var(--space-3);
-}
-
-.capacity-fill-meetings {
-  height: 100%;
-  background: var(--ink-faint);
-  transition: width 0.5s var(--ease);
-}
-
-.capacity-fill-tasks {
-  height: 100%;
-  background: var(--steel);
-  transition: width 0.5s var(--ease), background 0.3s var(--ease);
-}
-
-.capacity-fill-tasks.warn {
-  background: var(--hazard);
+  margin-top: 2px;
 }
 
 .settings-toggle {
@@ -320,7 +306,11 @@ button:focus-visible, input:focus-visible {
 }
 
 .task-row.over-cap {
-  opacity: 0.5;
+  background: var(--overflow-bg);
+}
+
+.task-row.over-cap::before {
+  background: var(--overflow) !important;
 }
 
 .check-btn {
@@ -384,8 +374,8 @@ button:focus-visible, input:focus-visible {
 }
 
 .tag-warn {
-  background: var(--hazard-bg);
-  color: var(--hazard);
+  background: var(--overflow-bg);
+  color: var(--overflow);
 }
 
 .task-actions {
