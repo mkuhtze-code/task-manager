@@ -1,5 +1,5 @@
 self.addEventListener('push', function(event) {
-  var data = { title: 'Task Manager', body: 'You have a notification.' };
+  var data = { title: 'Docket', body: 'You have a notification.', silent: false };
   if (event.data) {
     try {
       data = event.data.json();
@@ -11,12 +11,21 @@ self.addEventListener('push', function(event) {
     body: data.body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
+    silent: !!data.silent,
   };
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(data.title, options),
+      self.registration.setAppBadge ? self.registration.setAppBadge(1).catch(function() {}) : Promise.resolve(),
+    ])
+  );
 });
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
+  if (self.registration.clearAppBadge) {
+    self.registration.clearAppBadge().catch(function() {});
+  }
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then(function(clientList) {
       for (var i = 0; i < clientList.length; i++) {
