@@ -111,6 +111,7 @@ export default function Home() {
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [signInError, setSignInError] = useState('');
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
@@ -193,7 +194,12 @@ export default function Home() {
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
-    await supabase.auth.signInWithOtp({ email });
+    setSignInError('');
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    if (error) {
+      setSignInError('This app is private — that email is not recognized.');
+      return;
+    }
     setMagicLinkSent(true);
   }
 
@@ -348,6 +354,7 @@ export default function Home() {
               style={{ padding: 12, borderRadius: 8, border: '1px solid var(--line-strong)', fontSize: 15 }}
             />
             <button type="submit" className="btn btn-steel">Send magic link</button>
+            {signInError && <p style={{ color: 'var(--hazard)', fontSize: 13, margin: 0 }}>{signInError}</p>}
           </form>
         )}
       </div>
@@ -382,7 +389,6 @@ export default function Home() {
   const minutesLeftToday = Math.max(workEndMinutes - nowMinutesOfDay, 0);
 
   const overloaded = remainingWorkMins > minutesLeftToday;
-  const denom = Math.max(remainingWorkMins, minutesLeftToday, 1);
 
   let cumulative = 0;
   const taskCapacity = minutesLeftToday - meetingMins;
@@ -398,22 +404,34 @@ export default function Home() {
 
       <div className="perforation" />
       <div className={overloaded ? 'capacity-card overloaded' : 'capacity-card'}>
-        <div className="capacity-top">
-          <div>
+        <div className="capacity-row">
+          <div className="capacity-ring-wrap">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <circle cx="30" cy="30" r="25" fill="none" stroke="var(--line)" strokeWidth="6" />
+              <circle
+                cx="30"
+                cy="30"
+                r="25"
+                fill="none"
+                stroke={overloaded ? 'var(--hazard)' : 'var(--steel)'}
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 25}
+                strokeDashoffset={2 * Math.PI * 25 * (1 - Math.min(remainingWorkMins / Math.max(minutesLeftToday, 1), 1))}
+                style={{ transition: 'stroke-dashoffset 0.5s var(--ease), stroke 0.3s var(--ease)' }}
+              />
+            </svg>
+          </div>
+          <div className="capacity-number-block">
             <div className="capacity-hero-number mono">{fmtMins(minutesLeftToday)}</div>
-            <div className="capacity-hero-label">left in your work day</div>
+            <div className="capacity-hero-label">left today · {fmtMins(remainingWorkMins)} planned</div>
+            {overloaded && (
+              <div className="capacity-warn-line">{fmtMins(remainingWorkMins - minutesLeftToday)} more than time left</div>
+            )}
           </div>
-          <div className="capacity-detail">
-            <span className="mono">{fmtMins(remainingWorkMins)}</span> of work remaining<br />
-            {fmtMins(meetingMins)} meetings + {fmtMins(remainingTaskMins)} tasks
-            {overloaded && <><br /><span className="warn-text">{fmtMins(remainingWorkMins - minutesLeftToday)} more than time left</span></>}
-          </div>
-        </div>
-        <div className="capacity-track">
-          <div className="capacity-fill-meetings" style={{ width: `${Math.min((meetingMins / denom) * 100, 100)}%` }} />
-          <div className={overloaded ? 'capacity-fill-tasks warn' : 'capacity-fill-tasks'} style={{ width: `${Math.min((remainingTaskMins / denom) * 100, 100)}%` }} />
         </div>
       </div>
+
 
       <Link href="/preferences" className="settings-toggle" style={{ textDecoration: 'none', display: 'inline-block' }}>
         ⚙ Preferences
