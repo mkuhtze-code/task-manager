@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 
 type Task = {
@@ -57,17 +58,6 @@ function timeStringToMinutes(t: string): number {
   const h = parseInt(parts[0], 10);
   const m = parseInt(parts[1], 10);
   return h * 60 + m;
-}
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i++) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
 }
 
 function CheckIcon({ done }: { done: boolean }) {
@@ -131,15 +121,12 @@ export default function Home() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
-  const [notificationStyle, setNotificationStyle] = useState<'default' | 'silent'>('default');
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
 
   const [taskText, setTaskText] = useState('');
   const [taskTime, setTaskTime] = useState('');
   const [taskSource, setTaskSource] = useState<'planned' | 'came_up'>('planned');
   const [error, setError] = useState('');
-  const [notifStatus, setNotifStatus] = useState('');
   const [now, setNow] = useState(new Date());
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
@@ -172,13 +159,12 @@ export default function Home() {
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, notification_style')
+      .select('work_start, work_end')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
-      setNotificationStyle(settings.notification_style || 'default');
     } else {
       await supabase.from('user_settings').insert({ user_id: userId, work_start: '08:00', work_end: '16:00' });
     }
@@ -205,57 +191,10 @@ export default function Home() {
     }
   }
 
-  async function saveWorkHours() {
-    await supabase
-      .from('user_settings')
-      .update({ work_start: workStart, work_end: workEnd })
-      .eq('user_id', session.user.id);
-  }
-
-  async function saveNotificationStyle(style: 'default' | 'silent') {
-    setNotificationStyle(style);
-    await supabase.from('user_settings').update({ notification_style: style }).eq('user_id', session.user.id);
-  }
-
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
     await supabase.auth.signInWithOtp({ email });
     setMagicLinkSent(true);
-  }
-
-  async function enableNotifications() {
-    setNotifStatus('Requesting permission...');
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        setNotifStatus('Permission was not granted.');
-        return;
-      }
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string) as BufferSource,
-      });
-      await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: session.user.id, subscription }),
-      });
-      setNotifStatus('Notifications enabled.');
-    } catch (e: any) {
-      setNotifStatus('Something went wrong: ' + e.message);
-    }
-  }
-
-  async function sendTestNotification() {
-    setNotifStatus('Sending test notification...');
-    const res = await fetch('/api/send-test-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: session.user.id }),
-    });
-    const data = await res.json();
-    setNotifStatus(res.ok ? 'Sent — check your phone.' : 'Failed: ' + (data.error || 'unknown error'));
   }
 
   async function addTask() {
@@ -476,43 +415,9 @@ export default function Home() {
         </div>
       </div>
 
-      <button className="settings-toggle" onClick={() => setSettingsOpen(!settingsOpen)}>
-        {settingsOpen ? '▾' : '▸'} Settings
-      </button>
-
-      {settingsOpen && (
-        <div className="settings-panel">
-          <div className="settings-row">
-            <span>Work hours</span>
-            <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
-            <span>to</span>
-            <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
-            <button className="btn btn-ghost" onClick={saveWorkHours}>Save</button>
-          </div>
-          <div className="settings-row">
-            <button className="btn btn-ghost" onClick={enableNotifications}>Enable notifications</button>
-            <button className="btn btn-ghost" onClick={sendTestNotification}>Send test</button>
-          </div>
-          <div className="settings-row">
-            <span>Notification style</span>
-            <button
-              className={notificationStyle === 'default' ? 'btn btn-steel' : 'btn btn-ghost'}
-              style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }}
-              onClick={() => saveNotificationStyle('default')}
-            >
-              Default
-            </button>
-            <button
-              className={notificationStyle === 'silent' ? 'btn btn-steel' : 'btn btn-ghost'}
-              style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }}
-              onClick={() => saveNotificationStyle('silent')}
-            >
-              Silent
-            </button>
-          </div>
-          {notifStatus && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{notifStatus}</div>}
-        </div>
-      )}
+      <Link href="/preferences" className="settings-toggle" style={{ textDecoration: 'none', display: 'inline-block' }}>
+        ⚙ Preferences
+      </Link>
 
       <div className="task-list">
         {ordered.length === 0 && (
