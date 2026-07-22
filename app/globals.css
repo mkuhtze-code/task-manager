@@ -1,20 +1,20 @@
 :root {
-  --ink: #1c2b33;
-  --ink-soft: #64747c;
-  --ink-faint: #93a0a6;
-  --paper: #f6f4ef;
+  --ink: #1a2933;
+  --ink-soft: #5c6d76;
+  --ink-faint: #93a3ab;
+  --paper: #f1efe6;
   --paper-raised: #ffffff;
-  --line: #e4e0d5;
-  --line-strong: #cfc9b8;
-  --steel: #3d6e8c;
-  --steel-dark: #2c526b;
-  --steel-wash: #e8f0f5;
-  --hazard: #c9601f;
-  --hazard-bg: #fbead9;
-  --moss: #4f7a56;
-  --moss-bg: #e7efe8;
-  --overflow: #4a5b8c;
-  --overflow-bg: #eaedf6;
+  --line: #ddd7c6;
+  --line-strong: #c4bca5;
+  --steel: #2f6fa3;
+  --steel-dark: #1f4f78;
+  --steel-wash: #e2eef8;
+  --hazard: #dd6a1a;
+  --hazard-bg: #fdead6;
+  --moss: #3f8049;
+  --moss-bg: #e2f0e4;
+  --overflow: #3d4f8f;
+  --overflow-bg: #e5e9f7;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -125,7 +125,7 @@ button:focus-visible, input:focus-visible {
   border-radius: 0 0 var(--radius-md) var(--radius-md);
   padding: var(--space-4);
   margin-bottom: var(--space-6);
-  box-shadow: 0 1px 3px rgba(28, 43, 51, 0.08);
+  box-shadow: 0 2px 6px rgba(26, 41, 51, 0.1);
   transition: background 0.3s var(--ease);
 }
 
@@ -141,8 +141,8 @@ button:focus-visible, input:focus-visible {
 
 .capacity-ring-wrap {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 64px;
+  height: 64px;
   flex-shrink: 0;
 }
 
@@ -156,8 +156,8 @@ button:focus-visible, input:focus-visible {
 }
 
 .capacity-hero-number {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.1;
   color: var(--ink);
@@ -170,12 +170,13 @@ button:focus-visible, input:focus-visible {
 .capacity-hero-label {
   font-size: 12px;
   color: var(--ink-soft);
+  font-weight: 500;
 }
 
 .capacity-warn-line {
   font-size: 12px;
   color: var(--hazard);
-  font-weight: 600;
+  font-weight: 700;
   margin-top: 2px;
 }
 
@@ -268,7 +269,7 @@ button:focus-visible, input:focus-visible {
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .empty-state {
@@ -280,15 +281,10 @@ button:focus-visible, input:focus-visible {
 
 .task-row {
   position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  background: var(--paper-raised);
-  border-radius: var(--radius-sm);
-  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
-  box-shadow: 0 1px 2px rgba(28, 43, 51, 0.05);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px rgba(26, 41, 51, 0.07);
   overflow: hidden;
-  transition: opacity 0.3s var(--ease), box-shadow 0.15s var(--ease);
+  transition: background 0.2s var(--ease);
 }
 
 .task-row::before {
@@ -297,20 +293,92 @@ button:focus-visible, input:focus-visible {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 3px;
+  width: 4px;
   background: var(--steel);
+  z-index: 3;
 }
 
 .task-row.came-up::before {
   background: var(--hazard);
 }
 
-.task-row.over-cap {
+.task-row.over-cap::before {
+  background: var(--overflow) !important;
+}
+
+.swipe-reveal-left {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 96px;
+  display: flex;
+  z-index: 1;
+}
+
+.swipe-reveal-btn {
+  flex: 1;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.swipe-reveal-btn.edit-btn {
+  background: var(--steel-wash);
+  color: var(--steel-dark);
+}
+
+.swipe-reveal-btn.delete-btn {
+  background: var(--hazard-bg);
+  color: var(--hazard);
+}
+
+.swipe-reveal-right {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 96px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.swipe-foreground {
+  position: relative;
+  z-index: 2;
+  background: var(--paper-raised);
+  padding: var(--space-3) var(--space-4);
+  touch-action: pan-y;
+}
+
+.task-row.over-cap .swipe-foreground {
   background: var(--overflow-bg);
 }
 
-.task-row.over-cap::before {
-  background: var(--overflow) !important;
+.task-row.came-up .swipe-flag-hint,
+.due-pulse {
+  animation: pulse-flag 0.3s var(--ease);
+}
+
+@keyframes pulse-flag {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+.task-main {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
 }
 
 .check-btn {
@@ -327,10 +395,6 @@ button:focus-visible, input:focus-visible {
   justify-content: center;
 }
 
-.check-btn svg circle {
-  transition: stroke 0.15s var(--ease);
-}
-
 .check-btn svg path {
   transition: stroke-dashoffset 0.25s var(--ease);
 }
@@ -343,7 +407,40 @@ button:focus-visible, input:focus-visible {
 .task-text {
   font-size: 15px;
   line-height: 1.4;
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.task-progress-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.task-progress-track {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.task-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--steel);
+  transition: width 0.4s var(--ease);
+}
+
+.task-row.over-cap .task-progress-fill {
+  background: var(--overflow);
+}
+
+.task-progress-label {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .task-tags {
@@ -356,7 +453,7 @@ button:focus-visible, input:focus-visible {
 
 .tag {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 3px 8px;
   border-radius: 20px;
   background: var(--paper);
@@ -371,65 +468,6 @@ button:focus-visible, input:focus-visible {
 .tag-elapsed {
   background: var(--steel-wash);
   color: var(--steel-dark);
-}
-
-.tag-warn {
-  background: var(--overflow-bg);
-  color: var(--overflow);
-}
-
-.task-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  align-items: flex-end;
-  flex-shrink: 0;
-}
-
-.action-row {
-  display: flex;
-  gap: 2px;
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  color: var(--ink-faint);
-  font-size: 16px;
-  min-width: 30px;
-  min-height: 30px;
-  padding: 0;
-  border-radius: var(--radius-sm);
-}
-
-.icon-btn:hover {
-  background: var(--paper);
-  color: var(--ink-soft);
-}
-
-.icon-btn.active {
-  color: var(--hazard);
-}
-
-.flag-btn svg path {
-  transition: fill 0.15s var(--ease);
-}
-
-.expand-btn {
-  background: none;
-  border: none;
-  color: var(--ink-faint);
-  font-size: 16px;
-  min-width: 30px;
-  min-height: 30px;
-  padding: 0;
-  letter-spacing: 1px;
-  border-radius: var(--radius-sm);
-}
-
-.expand-btn:hover {
-  background: var(--paper);
-  color: var(--ink-soft);
 }
 
 .subtask-panel {
@@ -490,6 +528,22 @@ button:focus-visible, input:focus-visible {
   min-width: 0;
 }
 
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+}
+
+.icon-btn:hover {
+  background: var(--paper);
+  color: var(--ink-soft);
+}
+
 .edit-form {
   display: flex;
   flex-direction: column;
@@ -517,7 +571,7 @@ button:focus-visible, input:focus-visible {
   border: none;
   font-size: 26px;
   font-weight: 300;
-  box-shadow: 0 4px 14px rgba(28, 43, 51, 0.28);
+  box-shadow: 0 4px 14px rgba(26, 41, 51, 0.3);
   z-index: 20;
   transition: transform 0.15s var(--ease), background 0.15s var(--ease);
 }
@@ -534,7 +588,7 @@ button:focus-visible, input:focus-visible {
   background: var(--paper-raised);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--space-4);
-  box-shadow: 0 -6px 20px rgba(28, 43, 51, 0.18);
+  box-shadow: 0 -6px 20px rgba(26, 41, 51, 0.2);
   z-index: 30;
   display: flex;
   flex-direction: column;
