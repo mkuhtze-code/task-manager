@@ -210,7 +210,12 @@ function TaskCard(props: {
           movedRef.current.v = true;
           clearTimeout(longPressTimer.current.id);
         } else {
+          // Vertical scroll: mark as "moved" too, so pointerUp doesn't
+          // mistake this for a tap (which would toggle sub-task expand)
+          // and so a long-press can't fire mid-scroll.
           axisRef.current.v = 'y';
+          movedRef.current.v = true;
+          clearTimeout(longPressTimer.current.id);
         }
       }
     }
