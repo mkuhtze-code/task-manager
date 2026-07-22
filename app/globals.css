@@ -6,15 +6,15 @@
   --paper-raised: #ffffff;
   --line: #ddd7c6;
   --line-strong: #c4bca5;
-  --steel: #2f6fa3;
-  --steel-dark: #1f4f78;
-  --steel-wash: #e2eef8;
-  --hazard: #dd6a1a;
-  --hazard-bg: #fdead6;
-  --moss: #3f8049;
-  --moss-bg: #e2f0e4;
-  --overflow: #3d4f8f;
-  --overflow-bg: #e5e9f7;
+  --steel: #007aff;
+  --steel-dark: #0060cc;
+  --steel-wash: #e5f1ff;
+  --hazard: #ff9500;
+  --hazard-bg: #fff2e0;
+  --moss: #34c759;
+  --moss-bg: #e3f8e8;
+  --overflow: #5856d6;
+  --overflow-bg: #ecebfb;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -24,11 +24,12 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
 
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 * {
@@ -91,7 +92,9 @@ button:focus-visible, input:focus-visible {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--paper);
+  background: rgba(241, 239, 230, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   padding: var(--space-5) 0 var(--space-3);
   display: flex;
   align-items: baseline;
@@ -99,10 +102,10 @@ button:focus-visible, input:focus-visible {
 }
 
 .app-title {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .app-date {
@@ -156,9 +159,9 @@ button:focus-visible, input:focus-visible {
 }
 
 .capacity-hero-number {
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   line-height: 1.1;
   color: var(--ink);
 }
@@ -200,7 +203,7 @@ button:focus-visible, input:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  animation: expand-in 0.2s var(--ease);
+  animation: expand-in 0.35s var(--spring);
 }
 
 @keyframes expand-in {
@@ -226,11 +229,11 @@ button:focus-visible, input:focus-visible {
 
 .btn {
   border: none;
-  border-radius: var(--radius-sm);
-  padding: 8px 14px;
-  font-size: 13px;
+  border-radius: 100px;
+  padding: 9px 16px;
+  font-size: 14px;
   font-weight: 600;
-  min-height: 40px;
+  min-height: 42px;
 }
 
 .btn-steel {
@@ -281,10 +284,9 @@ button:focus-visible, input:focus-visible {
 
 .task-row {
   position: relative;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: 0 1px 3px rgba(26, 41, 51, 0.07);
   overflow: hidden;
-  transition: background 0.2s var(--ease);
 }
 
 .task-row::before {
@@ -306,12 +308,17 @@ button:focus-visible, input:focus-visible {
   background: var(--overflow) !important;
 }
 
+.swipe-zone {
+  position: relative;
+  overflow: hidden;
+}
+
 .swipe-reveal-left {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  width: 96px;
+  width: 92px;
   display: flex;
   z-index: 1;
 }
@@ -340,7 +347,7 @@ button:focus-visible, input:focus-visible {
   top: 0;
   left: 0;
   bottom: 0;
-  width: 96px;
+  width: 92px;
   z-index: 1;
   display: flex;
   align-items: center;
@@ -477,7 +484,7 @@ button:focus-visible, input:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  animation: expand-in 0.2s var(--ease);
+  animation: expand-in 0.3s var(--spring);
 }
 
 .subtask-row {
@@ -585,15 +592,17 @@ button:focus-visible, input:focus-visible {
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--paper-raised);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--space-4);
-  box-shadow: 0 -6px 20px rgba(26, 41, 51, 0.2);
+  box-shadow: 0 -6px 24px rgba(26, 41, 51, 0.22);
   z-index: 30;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  animation: slide-up 0.25s var(--ease);
+  animation: slide-up 0.35s var(--spring);
 }
 
 @keyframes slide-up {
@@ -612,6 +621,32 @@ button:focus-visible, input:focus-visible {
 .capture-row {
   display: flex;
   gap: var(--space-2);
+}
+
+.segmented {
+  display: flex;
+  background: var(--paper);
+  border-radius: 10px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.segmented-btn {
+  flex: 1;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  transition: background 0.2s var(--ease), color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.segmented-btn.active {
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(26, 41, 51, 0.15);
 }
 
 .sign-in-shell {
