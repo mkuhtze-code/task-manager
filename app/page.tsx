@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -62,31 +62,17 @@ function timeStringToMinutes(t: string): number {
 
 function CheckIcon({ done }: { done: boolean }) {
   return (
-    <svg width="26" height="26" viewBox="0 0 26 26">
-      <circle cx="13" cy="13" r="11" fill={done ? 'var(--moss)' : 'none'} stroke={done ? 'var(--moss)' : 'var(--line-strong)'} strokeWidth="2" />
+    <svg width="26" height="26" viewBox="0 0 18 18">
+      <circle cx="9" cy="9" r="7.6" fill={done ? 'var(--moss)' : 'none'} stroke={done ? 'var(--moss)' : 'var(--line-strong)'} strokeWidth="1.6" />
       <path
-        d="M7.5 13.2 L11 17 L18.5 8.5"
+        d="M5.3 9.3 L7.7 11.8 L12.7 6"
         fill="none"
         stroke="white"
-        strokeWidth="2.2"
+        strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeDasharray="16"
-        strokeDashoffset={done ? 0 : 16}
-      />
-    </svg>
-  );
-}
-
-function FlagIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16">
-      <path
-        d="M3 1.5v13M3 2h8l-2 2.5L11 7H3"
-        fill={active ? 'var(--hazard)' : 'none'}
-        stroke={active ? 'var(--hazard)' : 'var(--ink-faint)'}
-        strokeWidth="1.4"
-        strokeLinejoin="round"
+        strokeDasharray="12"
+        strokeDashoffset={done ? 0 : 12}
       />
     </svg>
   );
@@ -94,16 +80,304 @@ function FlagIcon({ active }: { active: boolean }) {
 
 function EditIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 16 16">
+    <svg width="18" height="18" viewBox="0 0 18 18">
       <path
-        d="M11.5 1.5l3 3-8 8-3.5 0.5 0.5-3.5z"
+        d="M12.8 1.8l3.4 3.4-9 9-4 0.9 0.9-4z"
         fill="none"
-        stroke="var(--ink-faint)"
-        strokeWidth="1.3"
+        stroke="currentColor"
+        strokeWidth="1.6"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
     </svg>
+  );
+}
+
+function DeleteIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18">
+      <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 18 18">
+      <path d="M5.5 3.2v11.6l9.5-5.8z" fill="white" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 18 18">
+      <rect x="4.5" y="4.5" width="9" height="9" rx="1.5" fill="white" />
+    </svg>
+  );
+}
+
+const REVEAL_LEFT = 92;
+const TRIGGER_RIGHT = 90;
+const OPEN_THRESHOLD = 45;
+const TRIGGER_THRESHOLD = 60;
+const MOVE_TOLERANCE = 6;
+const LONG_PRESS_MS = 500;
+
+function TaskCard(props: {
+  task: Task;
+  remainingForThis: number;
+  liveLogged: number;
+  overCap: boolean;
+  anyActive: boolean;
+  subs: Subtask[];
+  expanded: boolean;
+  editing: boolean;
+  editText: string;
+  editTime: string;
+  editError: string;
+  subDraftText: string;
+  subDraftTime: string;
+  openSwipeId: string | null;
+  setOpenSwipeId: (id: string | null) => void;
+  onComplete: (id: string) => void;
+  onStart: (id: string) => void;
+  onStop: (id: string) => void;
+  onStartEdit: (t: Task) => void;
+  onSaveEdit: (id: string) => void;
+  onCancelEdit: () => void;
+  onDelete: (id: string) => void;
+  onToggleDue: (id: string, current: boolean) => void;
+  onToggleExpand: (id: string) => void;
+  setEditText: (v: string) => void;
+  setEditTime: (v: string) => void;
+  setSubDraftText: (id: string, v: string) => void;
+  setSubDraftTime: (id: string, v: string) => void;
+  onAddSubtask: (id: string) => void;
+  onToggleSubtaskDone: (subId: string, taskId: string, current: boolean) => void;
+  onDeleteSubtask: (subId: string, taskId: string) => void;
+}) {
+  const {
+    task: t, remainingForThis, liveLogged, overCap, anyActive, subs, expanded, editing,
+    editText, editTime, editError, subDraftText, subDraftTime, openSwipeId, setOpenSwipeId,
+    onComplete, onStart, onStop, onStartEdit, onSaveEdit, onCancelEdit, onDelete, onToggleDue,
+    onToggleExpand, setEditText, setEditTime, setSubDraftText, setSubDraftTime, onAddSubtask,
+    onToggleSubtaskDone, onDeleteSubtask,
+  } = props;
+
+  const [dragX, setDragX] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  const startXRef = useRef({ x: 0, y: 0, t: 0 });
+  const movedRef = useRef({ v: false });
+  const axisRef = useRef<{ v: 'none' | 'x' | 'y' }>({ v: 'none' });
+  const longPressFiredRef = useRef({ v: false });
+  const longPressTimer = useRef<{ id: any }>({ id: null });
+
+  useEffect(() => {
+    if (openSwipeId !== t.id && isOpen) {
+      setIsOpen(false);
+      setDragX(0);
+    }
+  }, [openSwipeId]);
+
+  const startDisabled = anyActive && t.status !== 'active';
+
+  function handlePointerDown(e: React.PointerEvent) {
+    startXRef.current.x = e.clientX;
+    startXRef.current.y = e.clientY;
+    startXRef.current.t = Date.now();
+    movedRef.current.v = false;
+    axisRef.current.v = 'none';
+    longPressFiredRef.current.v = false;
+    setDragging(true);
+    longPressTimer.current.id = setTimeout(() => {
+      if (!movedRef.current.v) {
+        longPressFiredRef.current.v = true;
+        onToggleDue(t.id, t.due_today);
+      }
+    }, LONG_PRESS_MS);
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    const dx = e.clientX - startXRef.current.x;
+    const dy = e.clientY - startXRef.current.y;
+    if (axisRef.current.v === 'none') {
+      if (Math.abs(dx) > MOVE_TOLERANCE || Math.abs(dy) > MOVE_TOLERANCE) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+          axisRef.current.v = 'x';
+          movedRef.current.v = true;
+          clearTimeout(longPressTimer.current.id);
+        } else {
+          axisRef.current.v = 'y';
+        }
+      }
+    }
+    if (axisRef.current.v === 'x') {
+      movedRef.current.v = true;
+      clearTimeout(longPressTimer.current.id);
+      const base = isOpen ? -REVEAL_LEFT : 0;
+      const next = Math.max(Math.min(base + dx, TRIGGER_RIGHT), -REVEAL_LEFT);
+      setDragX(next);
+    }
+  }
+
+  function handlePointerUp() {
+    clearTimeout(longPressTimer.current.id);
+    setDragging(false);
+    if (longPressFiredRef.current.v) {
+      setDragX(isOpen ? -REVEAL_LEFT : 0);
+      return;
+    }
+    if (axisRef.current.v !== 'x') {
+      if (!movedRef.current.v) {
+        if (isOpen) {
+          setIsOpen(false);
+          setDragX(0);
+          if (openSwipeId === t.id) setOpenSwipeId(null);
+        } else {
+          onToggleExpand(t.id);
+        }
+      }
+      return;
+    }
+    if (dragX <= -OPEN_THRESHOLD) {
+      setIsOpen(true);
+      setDragX(-REVEAL_LEFT);
+      setOpenSwipeId(t.id);
+    } else if (dragX >= TRIGGER_THRESHOLD) {
+      if (t.status === 'active') onStop(t.id);
+      else if (!startDisabled) onStart(t.id);
+      setDragX(0);
+      setIsOpen(false);
+    } else {
+      setDragX(0);
+      setIsOpen(false);
+      if (openSwipeId === t.id) setOpenSwipeId(null);
+    }
+  }
+
+  function closeAnd(action: () => void) {
+    return (e: React.PointerEvent | React.MouseEvent) => {
+      e.stopPropagation();
+      action();
+      setDragX(0);
+      setIsOpen(false);
+      if (openSwipeId === t.id) setOpenSwipeId(null);
+    };
+  }
+
+  const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', overCap ? 'over-cap' : ''].join(' ').trim();
+
+  return (
+    <div className={rowClass}>
+      {!editing && (
+        <div className="swipe-reveal-left">
+          <button className="swipe-reveal-btn edit-btn" onPointerUp={closeAnd(() => onStartEdit(t))} aria-label="Edit task">
+            <EditIcon />
+          </button>
+          <button className="swipe-reveal-btn delete-btn" onPointerUp={closeAnd(() => onDelete(t.id))} aria-label="Delete task">
+            <DeleteIcon />
+          </button>
+        </div>
+      )}
+      {!editing && (
+        <div className="swipe-reveal-right" style={{ background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)', opacity: startDisabled && t.status !== 'active' ? 0.4 : 1 }}>
+          {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
+          <span>{t.status === 'active' ? 'stop' : 'start'}</span>
+        </div>
+      )}
+
+      {editing ? (
+        <div className="edit-surface" style={{ padding: 'var(--space-3) var(--space-4)', position: 'relative', zIndex: 2, background: 'var(--paper-raised)' }}>
+          <div className="edit-form">
+            <input type="text" value={editText} onChange={(e) => setEditText(e.target.value)} autoFocus />
+            <div className="capture-row">
+              <input type="text" value={editTime} onChange={(e) => setEditTime(e.target.value)} style={{ width: 70 }} />
+              <button className="btn btn-steel" style={{ flex: 1 }} onClick={() => onSaveEdit(t.id)}>Save</button>
+              <button className="btn btn-ghost" onClick={onCancelEdit}>Cancel</button>
+            </div>
+            {editError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{editError}</p>}
+          </div>
+        </div>
+      ) : (
+        <div
+          className="swipe-foreground"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.25s var(--ease)' }}
+        >
+          <div className="task-main">
+            <button
+              className="check-btn"
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
+              onClick={() => onComplete(t.id)}
+              aria-label="Complete task"
+            >
+              <CheckIcon done={false} />
+            </button>
+            <div className="task-body">
+              <div className="task-text">{t.text}</div>
+              <div className="task-progress-row">
+                <div className="task-progress-track">
+                  <div
+                    className="task-progress-fill"
+                    style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
+                  />
+                </div>
+                <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
+              </div>
+              {(t.status === 'active' || subs.length > 0 || t.due_today) && (
+                <div className="task-tags">
+                  {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
+                  {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
+                  {t.due_today && <span className="tag tag-due">due today</span>}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!editing && expanded && (
+        <div style={{ position: 'relative', zIndex: 2, background: overCap ? 'var(--overflow-bg)' : 'var(--paper-raised)', padding: '0 var(--space-4) var(--space-3)' }}>
+          <div className="subtask-panel">
+            {subs.map((s) => (
+              <div key={s.id} className="subtask-row">
+                <button
+                  className={s.done ? 'subtask-check done' : 'subtask-check'}
+                  onClick={() => onToggleSubtaskDone(s.id, t.id, s.done)}
+                  aria-label="Complete sub-task"
+                />
+                <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
+                <span className="tag mono">{fmtMins(s.mins)}</span>
+                <button className="icon-btn" onClick={() => onDeleteSubtask(s.id, t.id)} aria-label="Delete sub-task">×</button>
+              </div>
+            ))}
+            <div className="subtask-add-row">
+              <input
+                type="text"
+                placeholder="Sub-task"
+                value={subDraftText}
+                onChange={(e) => setSubDraftText(t.id, e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="15m"
+                style={{ width: 60 }}
+                value={subDraftTime}
+                onChange={(e) => setSubDraftTime(t.id, e.target.value)}
+              />
+              <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => onAddSubtask(t.id)}>add</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -118,6 +392,7 @@ export default function Home() {
   const [expandedTaskIds, setExpandedTaskIds] = useState<Record<string, boolean>>({});
   const [subDraftText, setSubDraftText] = useState<Record<string, string>>({});
   const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [workStart, setWorkStart] = useState('08:00');
@@ -446,7 +721,6 @@ export default function Home() {
           cumulative += remainingForThis;
           const overCap = cumulative > taskCapacity;
           const anyActive = tasks.some((x) => x.status === 'active');
-          const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', overCap ? 'over-cap' : ''].join(' ').trim();
           const subs = subtasksByTask[t.id] || [];
           const expanded = !!expandedTaskIds[t.id];
           let liveLogged = t.logged_mins;
@@ -454,95 +728,40 @@ export default function Home() {
             liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
           }
           return (
-            <div key={t.id} className={rowClass}>
-              <button className="check-btn" onClick={() => completeTask(t.id)} aria-label="Complete task">
-                <CheckIcon done={false} />
-              </button>
-              <div className="task-body">
-                {editingTaskId === t.id ? (
-                  <div className="edit-form">
-                    <input
-                      type="text"
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      autoFocus
-                    />
-                    <div className="capture-row">
-                      <input
-                        type="text"
-                        value={editTime}
-                        onChange={(e) => setEditTime(e.target.value)}
-                        style={{ width: 70 }}
-                      />
-                      <button className="btn btn-steel" style={{ flex: 1 }} onClick={() => saveEdit(t.id)}>Save</button>
-                      <button className="btn btn-ghost" onClick={cancelEdit}>Cancel</button>
-                    </div>
-                    {editError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{editError}</p>}
-                  </div>
-                ) : (
-                  <>
-                    <div className="task-text">{t.text}</div>
-                    <div className="task-tags">
-                      <span className="tag mono">{fmtMins(remainingForThis)} left of {fmtMins(t.estimate_mins)}</span>
-                      {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
-                      {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
-                      {t.due_today && <span className="tag tag-due">due today</span>}
-                      {overCap && <span className="tag tag-warn">no room today</span>}
-                    </div>
-                  </>
-                )}
-
-                {expanded && (
-                  <div className="subtask-panel">
-                    {subs.map((s) => (
-                      <div key={s.id} className="subtask-row">
-                        <button
-                          className={s.done ? 'subtask-check done' : 'subtask-check'}
-                          onClick={() => toggleSubtaskDone(s.id, t.id, s.done)}
-                          aria-label="Complete sub-task"
-                        />
-                        <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
-                        <span className="tag mono">{fmtMins(s.mins)}</span>
-                        <button className="icon-btn" onClick={() => deleteSubtask(s.id, t.id)} aria-label="Delete sub-task">×</button>
-                      </div>
-                    ))}
-                    <div className="subtask-add-row">
-                      <input
-                        type="text"
-                        placeholder="Sub-task"
-                        value={subDraftText[t.id] || ''}
-                        onChange={(e) => setSubDraftText((prev) => ({ ...prev, [t.id]: e.target.value }))}
-                      />
-                      <input
-                        type="text"
-                        placeholder="15m"
-                        style={{ width: 60 }}
-                        value={subDraftTime[t.id] || ''}
-                        onChange={(e) => setSubDraftTime((prev) => ({ ...prev, [t.id]: e.target.value }))}
-                      />
-                      <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => addSubtask(t.id)}>add</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="task-actions">
-                {t.status === 'active' ? (
-                  <button className="btn btn-steel" style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }} onClick={() => stopTask(t.id)}>stop</button>
-                ) : (
-                  <button className="btn btn-ghost" style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }} disabled={anyActive} onClick={() => startTask(t.id)}>start</button>
-                )}
-                <div className="action-row">
-                  <button className="icon-btn" onClick={() => startEdit(t)} aria-label="Edit task">
-                    <EditIcon />
-                  </button>
-                  <button className="expand-btn" onClick={() => toggleExpand(t.id)} aria-label="Show sub-tasks">⋯</button>
-                  <button className="icon-btn flag-btn" onClick={() => toggleDueToday(t.id, t.due_today)} aria-label="Mark due today">
-                    <FlagIcon active={t.due_today} />
-                  </button>
-                  <button className="icon-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
-                </div>
-              </div>
-            </div>
+            <TaskCard
+              key={t.id}
+              task={t}
+              remainingForThis={remainingForThis}
+              liveLogged={liveLogged}
+              overCap={overCap}
+              anyActive={anyActive}
+              subs={subs}
+              expanded={expanded}
+              editing={editingTaskId === t.id}
+              editText={editText}
+              editTime={editTime}
+              editError={editError}
+              subDraftText={subDraftText[t.id] || ''}
+              subDraftTime={subDraftTime[t.id] || ''}
+              openSwipeId={openSwipeId}
+              setOpenSwipeId={setOpenSwipeId}
+              onComplete={completeTask}
+              onStart={startTask}
+              onStop={stopTask}
+              onStartEdit={startEdit}
+              onSaveEdit={saveEdit}
+              onCancelEdit={cancelEdit}
+              onDelete={deleteTask}
+              onToggleDue={toggleDueToday}
+              onToggleExpand={toggleExpand}
+              setEditText={setEditText}
+              setEditTime={setEditTime}
+              setSubDraftText={(id, v) => setSubDraftText((prev) => ({ ...prev, [id]: v }))}
+              setSubDraftTime={(id, v) => setSubDraftTime((prev) => ({ ...prev, [id]: v }))}
+              onAddSubtask={addSubtask}
+              onToggleSubtaskDone={toggleSubtaskDone}
+              onDeleteSubtask={deleteSubtask}
+            />
           );
         })}
       </div>
