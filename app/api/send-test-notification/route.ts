@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
   }
 
   const payload = JSON.stringify({
-    title: 'Task Manager',
-    body: 'This is a test notification — if you see this, push is working.',
+    title: 'Docket',
+    body: 'This is a test notification — if you see this, you are all set.',
   });
 
   const results = await Promise.allSettled(
