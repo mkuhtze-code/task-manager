@@ -272,23 +272,6 @@ function TaskCard(props: {
 
   return (
     <div className={rowClass}>
-      {!editing && (
-        <div className="swipe-reveal-left">
-          <button className="swipe-reveal-btn edit-btn" onPointerUp={closeAnd(() => onStartEdit(t))} aria-label="Edit task">
-            <EditIcon />
-          </button>
-          <button className="swipe-reveal-btn delete-btn" onPointerUp={closeAnd(() => onDelete(t.id))} aria-label="Delete task">
-            <DeleteIcon />
-          </button>
-        </div>
-      )}
-      {!editing && (
-        <div className="swipe-reveal-right" style={{ background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)', opacity: startDisabled && t.status !== 'active' ? 0.4 : 1 }}>
-          {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
-          <span>{t.status === 'active' ? 'stop' : 'start'}</span>
-        </div>
-      )}
-
       {editing ? (
         <div className="edit-surface" style={{ padding: 'var(--space-3) var(--space-4)', position: 'relative', zIndex: 2, background: 'var(--paper-raised)' }}>
           <div className="edit-form">
@@ -302,42 +285,56 @@ function TaskCard(props: {
           </div>
         </div>
       ) : (
-        <div
-          className="swipe-foreground"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.25s var(--ease)' }}
-        >
-          <div className="task-main">
-            <button
-              className="check-btn"
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
-              onClick={() => onComplete(t.id)}
-              aria-label="Complete task"
-            >
-              <CheckIcon done={false} />
+        <div className="swipe-zone">
+          <div className="swipe-reveal-left">
+            <button className="swipe-reveal-btn edit-btn" onPointerUp={closeAnd(() => onStartEdit(t))} aria-label="Edit task">
+              <EditIcon />
             </button>
-            <div className="task-body">
-              <div className="task-text">{t.text}</div>
-              <div className="task-progress-row">
-                <div className="task-progress-track">
-                  <div
-                    className="task-progress-fill"
-                    style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
-                  />
+            <button className="swipe-reveal-btn delete-btn" onPointerUp={closeAnd(() => onDelete(t.id))} aria-label="Delete task">
+              <DeleteIcon />
+            </button>
+          </div>
+          <div className="swipe-reveal-right" style={{ background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)', opacity: startDisabled && t.status !== 'active' ? 0.4 : 1 }}>
+            {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
+            <span>{t.status === 'active' ? 'stop' : 'start'}</span>
+          </div>
+          <div
+            className="swipe-foreground"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.3s var(--spring)' }}
+          >
+            <div className="task-main">
+              <button
+                className="check-btn"
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                onClick={() => onComplete(t.id)}
+                aria-label="Complete task"
+              >
+                <CheckIcon done={false} />
+              </button>
+              <div className="task-body">
+                <div className="task-text">{t.text}</div>
+                <div className="task-progress-row">
+                  <div className="task-progress-track">
+                    <div
+                      className="task-progress-fill"
+                      style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
                 </div>
-                <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
+                {(t.status === 'active' || subs.length > 0 || t.due_today) && (
+                  <div className="task-tags">
+                    {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
+                    {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
+                    {t.due_today && <span className="tag tag-due">due today</span>}
+                  </div>
+                )}
               </div>
-              {(t.status === 'active' || subs.length > 0 || t.due_today) && (
-                <div className="task-tags">
-                  {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
-                  {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
-                  {t.due_today && <span className="tag tag-due">due today</span>}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -775,6 +772,20 @@ export default function Home() {
             placeholder="What needs doing?"
             autoFocus
           />
+          <div className="segmented">
+            <button
+              className={taskSource === 'planned' ? 'segmented-btn active' : 'segmented-btn'}
+              onClick={() => setTaskSource('planned')}
+            >
+              planned
+            </button>
+            <button
+              className={taskSource === 'came_up' ? 'segmented-btn active' : 'segmented-btn'}
+              onClick={() => setTaskSource('came_up')}
+            >
+              came up
+            </button>
+          </div>
           <div className="capture-row">
             <input
               type="text"
@@ -783,13 +794,6 @@ export default function Home() {
               placeholder="15m"
               style={{ width: 80 }}
             />
-            <button
-              className="btn btn-ghost"
-              style={{ flex: 1 }}
-              onClick={() => setTaskSource(taskSource === 'planned' ? 'came_up' : 'planned')}
-            >
-              {taskSource === 'planned' ? 'planned' : 'came up'}
-            </button>
             <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
           </div>
           {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
