@@ -118,9 +118,8 @@ function StopIcon() {
 }
 
 const REVEAL_LEFT = 92;
-const TRIGGER_RIGHT = 90;
+const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
-const TRIGGER_THRESHOLD = 60;
 const MOVE_TOLERANCE = 6;
 const LONG_PRESS_MS = 500;
 
@@ -166,7 +165,7 @@ function TaskCard(props: {
   } = props;
 
   const [dragX, setDragX] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState<'none' | 'left' | 'right'>('none');
   const [dragging, setDragging] = useState(false);
 
   const startXRef = useRef({ x: 0, y: 0, t: 0 });
@@ -176,8 +175,8 @@ function TaskCard(props: {
   const longPressTimer = useRef<{ id: any }>({ id: null });
 
   useEffect(() => {
-    if (openSwipeId !== t.id && isOpen) {
-      setIsOpen(false);
+    if (openSwipeId !== t.id && isOpen !== 'none') {
+      setIsOpen('none');
       setDragX(0);
     }
   }, [openSwipeId]);
@@ -222,8 +221,8 @@ function TaskCard(props: {
     if (axisRef.current.v === 'x') {
       movedRef.current.v = true;
       clearTimeout(longPressTimer.current.id);
-      const base = isOpen ? -REVEAL_LEFT : 0;
-      const next = Math.max(Math.min(base + dx, TRIGGER_RIGHT), -REVEAL_LEFT);
+      const base = isOpen === 'left' ? -REVEAL_LEFT : isOpen === 'right' ? REVEAL_RIGHT : 0;
+      const next = Math.max(Math.min(base + dx, REVEAL_RIGHT), -REVEAL_LEFT);
       setDragX(next);
     }
   }
@@ -232,13 +231,13 @@ function TaskCard(props: {
     clearTimeout(longPressTimer.current.id);
     setDragging(false);
     if (longPressFiredRef.current.v) {
-      setDragX(isOpen ? -REVEAL_LEFT : 0);
+      setDragX(isOpen === 'left' ? -REVEAL_LEFT : isOpen === 'right' ? REVEAL_RIGHT : 0);
       return;
     }
     if (axisRef.current.v !== 'x') {
       if (!movedRef.current.v) {
-        if (isOpen) {
-          setIsOpen(false);
+        if (isOpen !== 'none') {
+          setIsOpen('none');
           setDragX(0);
           if (openSwipeId === t.id) setOpenSwipeId(null);
         } else {
@@ -248,17 +247,16 @@ function TaskCard(props: {
       return;
     }
     if (dragX <= -OPEN_THRESHOLD) {
-      setIsOpen(true);
+      setIsOpen('left');
       setDragX(-REVEAL_LEFT);
       setOpenSwipeId(t.id);
-    } else if (dragX >= TRIGGER_THRESHOLD) {
-      if (t.status === 'active') onStop(t.id);
-      else if (!startDisabled) onStart(t.id);
-      setDragX(0);
-      setIsOpen(false);
+    } else if (dragX >= OPEN_THRESHOLD) {
+      setIsOpen('right');
+      setDragX(REVEAL_RIGHT);
+      setOpenSwipeId(t.id);
     } else {
       setDragX(0);
-      setIsOpen(false);
+      setIsOpen('none');
       if (openSwipeId === t.id) setOpenSwipeId(null);
     }
   }
@@ -268,7 +266,7 @@ function TaskCard(props: {
       e.stopPropagation();
       action();
       setDragX(0);
-      setIsOpen(false);
+      setIsOpen('none');
       if (openSwipeId === t.id) setOpenSwipeId(null);
     };
   }
@@ -299,10 +297,23 @@ function TaskCard(props: {
               <DeleteIcon />
             </button>
           </div>
-          <div className="swipe-reveal-right" style={{ background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)', opacity: startDisabled && t.status !== 'active' ? 0.4 : 1 }}>
+          <button
+            className="swipe-reveal-right"
+            onPointerUp={closeAnd(() => {
+              if (t.status === 'active') onStop(t.id);
+              else if (!startDisabled) onStart(t.id);
+            })}
+            disabled={startDisabled && t.status !== 'active'}
+            aria-label={t.status === 'active' ? 'Stop task' : 'Start task'}
+            style={{
+              border: 'none',
+              background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)',
+              opacity: startDisabled && t.status !== 'active' ? 0.4 : 1,
+            }}
+          >
             {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
             <span>{t.status === 'active' ? 'stop' : 'start'}</span>
-          </div>
+          </button>
           <div
             className="swipe-foreground"
             onPointerDown={handlePointerDown}
