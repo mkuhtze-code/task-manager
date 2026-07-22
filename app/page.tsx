@@ -802,7 +802,7 @@ export default function Home() {
       )}
 
       {!captureOpen && (
-        <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Add task">+</button>
+        <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Dock it">+</button>
       )}
     </div>
   );
