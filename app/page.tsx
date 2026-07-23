@@ -236,7 +236,8 @@ function TaskCard(props: {
       return;
     }
 
-    onOpenDetail(t.id);
+    console.log("OPEN TASK", t.id);
+onOpenDetail(t.id);
 
     return;
   }
