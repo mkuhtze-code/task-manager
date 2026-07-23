@@ -122,7 +122,7 @@ const REVEAL_LEFT = 92;
 const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
 const TAP_TOLERANCE = 5;
-const LONG_PRESS_MS = 500;
+const LONG_PRESS_MS = 800;
 
 function TaskCard(props: {
   task: Task;
