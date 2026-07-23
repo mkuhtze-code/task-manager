@@ -1,13 +1,25 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Task Manager',
-  description: 'Daily task and workload manager',
+  title: 'Dokkit',
+  description: 'A personal thinking tool that understands time',
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/icons/favicon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/android-chrome-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/android-chrome-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: ['/favicon.ico'],
+  },
 };
 
 export const viewport = {
-  themeColor: '#3d6e8c',
+  themeColor: '#1E6BE6',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
