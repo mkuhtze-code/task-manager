@@ -210,17 +210,20 @@ function TaskCard(props: {
     }
   }
 
-function handlePointerUp() {
-  clearTimeout(longPressTimer.current.id);
-  setDragging(false);
+  function handlePointerUp() {
+    clearTimeout(longPressTimer.current.id);
+    setDragging(false);
 
-  if (longPressFiredRef.current.v) {
-    setDragX(isOpen === 'left' ? -REVEAL_LEFT : isOpen === 'right' ? REVEAL_RIGHT : 0);
-    return;
-  }
+    if (longPressFiredRef.current.v) {
+      setDragX(isOpen === 'left' ? -REVEAL_LEFT : isOpen === 'right' ? REVEAL_RIGHT : 0);
+      return;
+    }
 
-  if (axisRef.current.v !== 'x') {
-    if (!movedRef.current.v) {
+    if (axisRef.current.v !== 'x') {
+      const isTap = !movedRef.current.v;
+
+      if (!isTap) return;
+
       if (isOpen !== 'none') {
         setIsOpen('none');
         setDragX(0);
@@ -228,31 +231,31 @@ function handlePointerUp() {
         if (openSwipeId === t.id) {
           setOpenSwipeId(null);
         }
-      } else {
-        onOpenDetail(t.id);
+
+        return;
+      }
+
+      onOpenDetail(t.id);
+      return;
+    }
+
+    if (dragX <= -OPEN_THRESHOLD) {
+      setIsOpen('left');
+      setDragX(-REVEAL_LEFT);
+      setOpenSwipeId(t.id);
+    } else if (dragX >= OPEN_THRESHOLD) {
+      setIsOpen('right');
+      setDragX(REVEAL_RIGHT);
+      setOpenSwipeId(t.id);
+    } else {
+      setDragX(0);
+      setIsOpen('none');
+
+      if (openSwipeId === t.id) {
+        setOpenSwipeId(null);
       }
     }
-
-    return;
   }
-
-  if (dragX <= -OPEN_THRESHOLD) {
-    setIsOpen('left');
-    setDragX(-REVEAL_LEFT);
-    setOpenSwipeId(t.id);
-  } else if (dragX >= OPEN_THRESHOLD) {
-    setIsOpen('right');
-    setDragX(REVEAL_RIGHT);
-    setOpenSwipeId(t.id);
-  } else {
-    setDragX(0);
-    setIsOpen('none');
-
-    if (openSwipeId === t.id) {
-      setOpenSwipeId(null);
-    }
-  }
-}
 function closeAnd(action: () => void) {
     return (e: React.PointerEvent | React.MouseEvent) => {
       e.stopPropagation();
