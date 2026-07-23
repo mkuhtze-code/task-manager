@@ -628,7 +628,7 @@ export default function Home() {
     setSignInError('');
     const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
     if (error) {
-      setSignInError('This app is private — that email is not recognized.');
+      setSignInError(`DEBUG: ${error.message}`);
       return;
     }
     setMagicLinkSent(true);
