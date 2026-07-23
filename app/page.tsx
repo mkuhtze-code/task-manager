@@ -14,6 +14,7 @@ type Task = {
   started_at: string | null;
   due_today: boolean;
   order_index: number;
+  notes: string | null;
 };
 
 type Subtask = {
@@ -130,38 +131,18 @@ function TaskCard(props: {
   overCap: boolean;
   anyActive: boolean;
   subs: Subtask[];
-  expanded: boolean;
-  editing: boolean;
-  editText: string;
-  editTime: string;
-  editError: string;
-  subDraftText: string;
-  subDraftTime: string;
   openSwipeId: string | null;
   setOpenSwipeId: (id: string | null) => void;
   onComplete: (id: string) => void;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
-  onStartEdit: (t: Task) => void;
-  onSaveEdit: (id: string) => void;
-  onCancelEdit: () => void;
+  onOpenDetail: (id: string) => void;
   onDelete: (id: string) => void;
   onToggleDue: (id: string, current: boolean) => void;
-  onToggleExpand: (id: string) => void;
-  setEditText: (v: string) => void;
-  setEditTime: (v: string) => void;
-  setSubDraftText: (id: string, v: string) => void;
-  setSubDraftTime: (id: string, v: string) => void;
-  onAddSubtask: (id: string) => void;
-  onToggleSubtaskDone: (subId: string, taskId: string, current: boolean) => void;
-  onDeleteSubtask: (subId: string, taskId: string) => void;
 }) {
   const {
-    task: t, remainingForThis, liveLogged, overCap, anyActive, subs, expanded, editing,
-    editText, editTime, editError, subDraftText, subDraftTime, openSwipeId, setOpenSwipeId,
-    onComplete, onStart, onStop, onStartEdit, onSaveEdit, onCancelEdit, onDelete, onToggleDue,
-    onToggleExpand, setEditText, setEditTime, setSubDraftText, setSubDraftTime, onAddSubtask,
-    onToggleSubtaskDone, onDeleteSubtask,
+    task: t, remainingForThis, liveLogged, overCap, anyActive, subs, openSwipeId, setOpenSwipeId,
+    onComplete, onStart, onStop, onOpenDetail, onDelete, onToggleDue,
   } = props;
 
   const [dragX, setDragX] = useState(0);
@@ -241,7 +222,7 @@ function TaskCard(props: {
           setDragX(0);
           if (openSwipeId === t.id) setOpenSwipeId(null);
         } else {
-          onToggleExpand(t.id);
+          onOpenDetail(t.id);
         }
       }
       return;
@@ -275,90 +256,243 @@ function TaskCard(props: {
 
   return (
     <div className={rowClass}>
-      {editing ? (
-        <div className="edit-surface" style={{ padding: 'var(--space-3) var(--space-4)', position: 'relative', zIndex: 2, background: 'var(--paper-raised)' }}>
-          <div className="edit-form">
-            <input type="text" value={editText} onChange={(e) => setEditText(e.target.value)} autoFocus />
-            <div className="capture-row">
-              <input type="text" value={editTime} onChange={(e) => setEditTime(e.target.value)} style={{ width: 70 }} />
-              <button className="btn btn-steel" style={{ flex: 1 }} onClick={() => onSaveEdit(t.id)}>Save</button>
-              <button className="btn btn-ghost" onClick={onCancelEdit}>Cancel</button>
-            </div>
-            {editError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{editError}</p>}
-          </div>
-        </div>
-      ) : (
-        <div className="swipe-zone">
-          <div className="swipe-reveal-left">
-            <button className="swipe-reveal-btn edit-btn" onPointerUp={closeAnd(() => onStartEdit(t))} aria-label="Edit task">
-              <EditIcon />
-            </button>
-            <button className="swipe-reveal-btn delete-btn" onPointerUp={closeAnd(() => onDelete(t.id))} aria-label="Delete task">
-              <DeleteIcon />
-            </button>
-          </div>
-          <button
-            className="swipe-reveal-right"
-            onPointerUp={closeAnd(() => {
-              if (t.status === 'active') onStop(t.id);
-              else if (!startDisabled) onStart(t.id);
-            })}
-            disabled={startDisabled && t.status !== 'active'}
-            aria-label={t.status === 'active' ? 'Stop task' : 'Start task'}
-            style={{
-              border: 'none',
-              background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)',
-              opacity: startDisabled && t.status !== 'active' ? 0.4 : 1,
-            }}
-          >
-            {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
-            <span>{t.status === 'active' ? 'stop' : 'start'}</span>
+      <div className="swipe-zone">
+        <div className="swipe-reveal-left">
+          <button className="swipe-reveal-btn edit-btn" onPointerUp={closeAnd(() => onOpenDetail(t.id))} aria-label="Open task">
+            <EditIcon />
           </button>
-          <div
-            className="swipe-foreground"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.3s var(--spring)' }}
-          >
-            <div className="task-main">
-              <button
-                className="check-btn"
-                onPointerDown={(e) => e.stopPropagation()}
-                onPointerUp={(e) => e.stopPropagation()}
-                onClick={() => onComplete(t.id)}
-                aria-label="Complete task"
-              >
-                <CheckIcon done={false} />
-              </button>
-              <div className="task-body">
-                <div className="task-text">{t.text}</div>
-                <div className="task-progress-row">
-                  <div className="task-progress-track">
-                    <div
-                      className="task-progress-fill"
-                      style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
-                    />
-                  </div>
-                  <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
+          <button className="swipe-reveal-btn delete-btn" onPointerUp={closeAnd(() => onDelete(t.id))} aria-label="Delete task">
+            <DeleteIcon />
+          </button>
+        </div>
+        <button
+          className="swipe-reveal-right"
+          onPointerUp={closeAnd(() => {
+            if (t.status === 'active') onStop(t.id);
+            else if (!startDisabled) onStart(t.id);
+          })}
+          disabled={startDisabled && t.status !== 'active'}
+          aria-label={t.status === 'active' ? 'Stop task' : 'Start task'}
+          style={{
+            border: 'none',
+            background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)',
+            opacity: startDisabled && t.status !== 'active' ? 0.4 : 1,
+          }}
+        >
+          {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
+          <span>{t.status === 'active' ? 'stop' : 'start'}</span>
+        </button>
+        <div
+          id={`task-${t.id}`}
+          tabIndex={-1}
+          className="swipe-foreground"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.3s var(--spring)', outline: 'none' }}
+        >
+          <div className="task-main">
+            <button
+              className="check-btn"
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
+              onClick={() => onComplete(t.id)}
+              aria-label="Complete task"
+            >
+              <CheckIcon done={false} />
+            </button>
+            <div className="task-body">
+              <div className="task-text">{t.text}</div>
+              <div className="task-progress-row">
+                <div className="task-progress-track">
+                  <div
+                    className="task-progress-fill"
+                    style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
+                  />
                 </div>
-                {(t.status === 'active' || subs.length > 0 || t.due_today) && (
-                  <div className="task-tags">
-                    {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
-                    {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
-                    {t.due_today && <span className="tag tag-due">due today</span>}
-                  </div>
-                )}
+                <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
               </div>
+              {(t.status === 'active' || subs.length > 0 || t.due_today) && (
+                <div className="task-tags">
+                  {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
+                  {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
+                  {t.due_today && <span className="tag tag-due">due today</span>}
+                </div>
+              )}
             </div>
           </div>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
 
-      {!editing && expanded && (
-        <div style={{ position: 'relative', zIndex: 2, background: overCap ? 'var(--overflow-bg)' : 'var(--paper-raised)', padding: '0 var(--space-4) var(--space-3)' }}>
-          <div className="subtask-panel">
+function TaskDetailPanel(props: {
+  task: Task;
+  subs: Subtask[];
+  onClose: () => void;
+  onUpdateTask: (id: string, fields: Partial<Task>) => void;
+  onDelete: (id: string) => void;
+  subDraftText: string;
+  subDraftTime: string;
+  setSubDraftText: (id: string, v: string) => void;
+  setSubDraftTime: (id: string, v: string) => void;
+  onAddSubtask: (id: string) => void;
+  onToggleSubtaskDone: (subId: string, taskId: string, current: boolean) => void;
+  onDeleteSubtask: (subId: string, taskId: string) => void;
+}) {
+  const {
+    task: t, subs, onClose, onUpdateTask, onDelete, subDraftText, subDraftTime,
+    setSubDraftText, setSubDraftTime, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
+  } = props;
+
+  const [titleDraft, setTitleDraft] = useState(t.text);
+  const [timeDraft, setTimeDraft] = useState(fmtMins(t.estimate_mins));
+  const [timeError, setTimeError] = useState('');
+  const [notesDraft, setNotesDraft] = useState(t.notes || '');
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const startYRef = useRef(0);
+  const titleSaveTimer = useRef<{ id: any }>({ id: null });
+  const notesSaveTimer = useRef<{ id: any }>({ id: null });
+
+  useEffect(() => {
+    const el = titleRef.current;
+    if (el) {
+      el.focus();
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    }
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
+  function saveTitle(value: string) {
+    const text = value.trim();
+    if (text.length === 0) return;
+    onUpdateTask(t.id, { text });
+  }
+
+  function handleTitleChange(v: string) {
+    setTitleDraft(v);
+    clearTimeout(titleSaveTimer.current.id);
+    titleSaveTimer.current.id = setTimeout(() => saveTitle(v), 600);
+  }
+
+  function commitTime(v: string) {
+    const mins = parseMins(v);
+    if (mins === null || mins <= 0) {
+      setTimeError('Could not read that time, try 15m or 1.5h');
+      return;
+    }
+    setTimeError('');
+    onUpdateTask(t.id, { estimate_mins: mins });
+  }
+
+  function handleNotesChange(v: string) {
+    setNotesDraft(v);
+    clearTimeout(notesSaveTimer.current.id);
+    notesSaveTimer.current.id = setTimeout(() => onUpdateTask(t.id, { notes: v }), 600);
+  }
+
+  function flushAndClose() {
+    clearTimeout(titleSaveTimer.current.id);
+    clearTimeout(notesSaveTimer.current.id);
+    saveTitle(titleDraft);
+    onUpdateTask(t.id, { notes: notesDraft });
+    onClose();
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') flushAndClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  function handleGrabberDown(e: React.PointerEvent) {
+    startYRef.current = e.clientY;
+    setDragging(true);
+  }
+  function handleGrabberMove(e: React.PointerEvent) {
+    const dy = Math.max(e.clientY - startYRef.current, 0);
+    setDragY(dy);
+  }
+  function handleGrabberUp() {
+    setDragging(false);
+    if (dragY > 100) {
+      flushAndClose();
+    } else {
+      setDragY(0);
+    }
+  }
+
+  return (
+    <>
+      <div className="sheet-backdrop" onClick={flushAndClose} />
+      <div
+        className="detail-sheet"
+        role="dialog"
+        aria-modal="true"
+        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 0.22s var(--spring)' }}
+      >
+        <div
+          className="sheet-grabber"
+          onPointerDown={handleGrabberDown}
+          onPointerMove={dragging ? handleGrabberMove : undefined}
+          onPointerUp={handleGrabberUp}
+          onPointerCancel={handleGrabberUp}
+        >
+          <div className="sheet-grabber-bar" />
+        </div>
+
+        <textarea
+          ref={titleRef}
+          className="detail-title-input"
+          value={titleDraft}
+          onChange={(e) => handleTitleChange(e.target.value)}
+          onBlur={() => saveTitle(titleDraft)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              (e.target as HTMLTextAreaElement).blur();
+            }
+          }}
+          rows={1}
+        />
+
+        <div className="detail-row">
+          <span className="detail-label">Estimate</span>
+          <input
+            type="text"
+            className="detail-time-input mono"
+            value={timeDraft}
+            onChange={(e) => setTimeDraft(e.target.value)}
+            onBlur={() => commitTime(timeDraft)}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          />
+        </div>
+        {timeError && <p className="detail-error">{timeError}</p>}
+
+        <textarea
+          className="detail-notes-input"
+          placeholder="Notes"
+          value={notesDraft}
+          onChange={(e) => handleNotesChange(e.target.value)}
+          onBlur={() => onUpdateTask(t.id, { notes: notesDraft })}
+          rows={3}
+        />
+
+        <div className="detail-section">
+          <span className="detail-label">Sub-tasks</span>
+          <div className="subtask-panel" style={{ borderTop: 'none', paddingTop: 0, marginTop: 'var(--space-2)' }}>
             {subs.map((s) => (
               <div key={s.id} className="subtask-row">
                 <button
@@ -389,8 +523,21 @@ function TaskCard(props: {
             </div>
           </div>
         </div>
-      )}
-    </div>
+
+        <div className="detail-section detail-future">
+          <span className="detail-label">Waiting on</span>
+          <div className="detail-future-placeholder">Not tracked yet</div>
+        </div>
+        <div className="detail-section detail-future">
+          <span className="detail-label">Scheduled for</span>
+          <div className="detail-future-placeholder">Not scheduled</div>
+        </div>
+
+        <button className="btn-text detail-delete" onClick={() => { onDelete(t.id); onClose(); }}>
+          Delete task
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -402,7 +549,7 @@ export default function Home() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
-  const [expandedTaskIds, setExpandedTaskIds] = useState<Record<string, boolean>>({});
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [subDraftText, setSubDraftText] = useState<Record<string, string>>({});
   const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
@@ -417,10 +564,6 @@ export default function Home() {
   const [taskSource, setTaskSource] = useState<'planned' | 'came_up'>('planned');
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
-  const [editTime, setEditTime] = useState('');
-  const [editError, setEditError] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -559,37 +702,23 @@ export default function Home() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }
 
-  function toggleExpand(taskId: string) {
-    setExpandedTaskIds((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
+  function openDetail(taskId: string) {
+    setOpenTaskId(taskId);
   }
 
-  function startEdit(t: Task) {
-    setEditingTaskId(t.id);
-    setEditText(t.text);
-    setEditTime(fmtMins(t.estimate_mins));
-    setEditError('');
-  }
-
-  function cancelEdit() {
-    setEditingTaskId(null);
-    setEditError('');
-  }
-
-  async function saveEdit(id: string) {
-    const text = editText.trim();
-    if (text.length === 0) {
-      setEditError('Name cannot be empty');
-      return;
+  function closeDetail() {
+    const id = openTaskId;
+    setOpenTaskId(null);
+    if (id) {
+      requestAnimationFrame(() => {
+        document.getElementById(`task-${id}`)?.focus();
+      });
     }
-    const mins = parseMins(editTime);
-    if (mins === null || mins <= 0) {
-      setEditError('Could not read that time, try 15m or 1.5h');
-      return;
-    }
-    await supabase.from('tasks').update({ text, estimate_mins: mins }).eq('id', id);
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins } : t)));
-    setEditingTaskId(null);
-    setEditError('');
+  }
+
+  async function updateTask(id: string, fields: Partial<Task>) {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...fields } : t)));
+    await supabase.from('tasks').update(fields).eq('id', id);
   }
 
   async function addSubtask(taskId: string) {
@@ -746,7 +875,6 @@ export default function Home() {
           const overCap = cumulative > taskCapacity;
           const anyActive = tasks.some((x) => x.status === 'active');
           const subs = subtasksByTask[t.id] || [];
-          const expanded = !!expandedTaskIds[t.id];
           let liveLogged = t.logged_mins;
           if (t.status === 'active' && t.started_at) {
             liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
@@ -760,35 +888,35 @@ export default function Home() {
               overCap={overCap}
               anyActive={anyActive}
               subs={subs}
-              expanded={expanded}
-              editing={editingTaskId === t.id}
-              editText={editText}
-              editTime={editTime}
-              editError={editError}
-              subDraftText={subDraftText[t.id] || ''}
-              subDraftTime={subDraftTime[t.id] || ''}
               openSwipeId={openSwipeId}
               setOpenSwipeId={setOpenSwipeId}
               onComplete={completeTask}
               onStart={startTask}
               onStop={stopTask}
-              onStartEdit={startEdit}
-              onSaveEdit={saveEdit}
-              onCancelEdit={cancelEdit}
+              onOpenDetail={openDetail}
               onDelete={deleteTask}
               onToggleDue={toggleDueToday}
-              onToggleExpand={toggleExpand}
-              setEditText={setEditText}
-              setEditTime={setEditTime}
-              setSubDraftText={(id, v) => setSubDraftText((prev) => ({ ...prev, [id]: v }))}
-              setSubDraftTime={(id, v) => setSubDraftTime((prev) => ({ ...prev, [id]: v }))}
-              onAddSubtask={addSubtask}
-              onToggleSubtaskDone={toggleSubtaskDone}
-              onDeleteSubtask={deleteSubtask}
             />
           );
         })}
       </div>
+
+      {openTaskId && tasks.find((t) => t.id === openTaskId) && (
+        <TaskDetailPanel
+          task={tasks.find((t) => t.id === openTaskId) as Task}
+          subs={subtasksByTask[openTaskId] || []}
+          onClose={closeDetail}
+          onUpdateTask={updateTask}
+          onDelete={deleteTask}
+          subDraftText={subDraftText[openTaskId] || ''}
+          subDraftTime={subDraftTime[openTaskId] || ''}
+          setSubDraftText={(id, v) => setSubDraftText((prev) => ({ ...prev, [id]: v }))}
+          setSubDraftTime={(id, v) => setSubDraftTime((prev) => ({ ...prev, [id]: v }))}
+          onAddSubtask={addSubtask}
+          onToggleSubtaskDone={toggleSubtaskDone}
+          onDeleteSubtask={deleteSubtask}
+        />
+      )}
 
       {captureOpen && (
         <div className="capture-sheet">
