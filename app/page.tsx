@@ -296,7 +296,6 @@ function closeAnd(action: () => void) {
           {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
           <span>{t.status === 'active' ? 'stop' : 'start'}</span>
         </button>
-        <div
          <div
   id={`task-${t.id}`}
   tabIndex={-1}
