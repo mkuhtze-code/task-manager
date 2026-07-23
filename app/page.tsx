@@ -121,7 +121,7 @@ function StopIcon() {
 const REVEAL_LEFT = 92;
 const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
-const MOVE_TOLERANCE = 6;
+const MOVE_TOLERANCE = 10;
 const LONG_PRESS_MS = 500;
 
 function TaskCard(props: {
@@ -628,7 +628,11 @@ export default function Home() {
     setSignInError('');
     const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
     if (error) {
-      setSignInError(`DEBUG: ${error.message}`);
+      if (error.message.toLowerCase().includes('rate limit')) {
+        setSignInError('Too many sign-in attempts — please wait a bit and try again.');
+      } else {
+        setSignInError('This app is private — that email is not recognized.');
+      }
       return;
     }
     setMagicLinkSent(true);
