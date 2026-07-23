@@ -810,7 +810,7 @@ export default function Home() {
               placeholder="15m"
               style={{ width: 80 }}
             />
-            <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
+            <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Dock It</button>
           </div>
           {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
           <button className="btn-text" onClick={() => setCaptureOpen(false)}>Cancel</button>
