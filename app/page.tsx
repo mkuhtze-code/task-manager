@@ -238,7 +238,7 @@ function TaskCard(props: {
 
   return;
 }
-    }
+    
     if (dragX <= -OPEN_THRESHOLD) {
       setIsOpen('left');
       setDragX(-REVEAL_LEFT);
@@ -252,6 +252,7 @@ function TaskCard(props: {
       setIsOpen('none');
       if (openSwipeId === t.id) setOpenSwipeId(null);
     }
+  }
   }
 
   function closeAnd(action: () => void) {
