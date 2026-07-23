@@ -79,21 +79,6 @@ function CheckIcon({ done }: { done: boolean }) {
   );
 }
 
-function EditIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18">
-      <path
-        d="M12.8 1.8l3.4 3.4-9 9-4 0.9 0.9-4z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 function DeleteIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18">
@@ -256,9 +241,6 @@ function TaskCard(props: {
     <div className={rowClass}>
       <div className="swipe-zone">
         <div className="swipe-reveal-left">
-          <button className="swipe-reveal-btn edit-btn" onPointerUp={closeAnd(() => onOpenDetail(t.id))} aria-label="Open task">
-            <EditIcon />
-          </button>
           <button className="swipe-reveal-btn delete-btn" onPointerUp={closeAnd(() => onDelete(t.id))} aria-label="Delete task">
             <DeleteIcon />
           </button>
