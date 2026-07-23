@@ -1082,7 +1082,6 @@ export default function Home() {
             value={taskText}
             onChange={(e) => setTaskText(e.target.value)}
             placeholder="What needs doing?"
-            autoFocus
           />
           <div className="segmented">
             <button
