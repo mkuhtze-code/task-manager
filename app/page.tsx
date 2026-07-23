@@ -176,7 +176,7 @@ function TaskCard(props: {
   clearTimeout(longPressTimer.current.id);
     longPressTimer.current.id = setTimeout(() => {
       if (!movedRef.current.v) {
-        longPressFiredRef.current.v = null;
+        longPressFiredRef.current.v = true;
         onToggleDue(t.id, t.due_today);
       }
     }, LONG_PRESS_MS);
