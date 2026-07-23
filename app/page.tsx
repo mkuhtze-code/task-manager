@@ -211,17 +211,17 @@ function TaskCard(props: {
   }
 
   function handlePointerUp() {
-  clearTimeout(longPressTimer.current.id);
-  setDragging(false);
+   clearTimeout(longPressTimer.current.id);
+   setDragging(false);
 
-  if (longPressFiredRef.current.v) {
+   if (longPressFiredRef.current.v) {
     setDragX(isOpen === 'left' ? -REVEAL_LEFT : isOpen === 'right' ? REVEAL_RIGHT : 0);
     return;
-  }
+   }
 
-  if (axisRef.current.v !== 'x') {
+   if (axisRef.current.v !== 'x') {
 
-    const isTap = !movedRef.current.v;
+     const isTap = !movedRef.current.v;
 
     if (!isTap) return;
 
@@ -237,7 +237,7 @@ function TaskCard(props: {
     }
 
     console.log("OPEN TASK", t.id);
-onOpenDetail(t.id);
+    onOpenDetail(t.id);
 
     return;
   }
@@ -259,6 +259,7 @@ onOpenDetail(t.id);
     }
   }
 }
+  
 function closeAnd(action: () => void) {
     return (e: React.PointerEvent | React.MouseEvent) => {
       e.stopPropagation();
