@@ -121,7 +121,7 @@ function StopIcon() {
 const REVEAL_LEFT = 92;
 const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
-const MOVE_TOLERANCE = 7;
+const MOVE_TOLERANCE = 5;
 const LONG_PRESS_MS = 500;
 
 function TaskCard(props: {
