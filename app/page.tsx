@@ -981,6 +981,17 @@ export default function Home() {
 
   const dateLabel = now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 
+  // Segmented capacity ring: the ring's full circumference is whichever is
+  // larger — planned work or the time actually left today. The portion
+  // that fits is blue; anything beyond what's left gets its own orange
+  // arc immediately after it. Under capacity, there's simply no orange.
+  const ringTotal = Math.max(remainingWorkMins, minutesLeftToday, 1);
+  const fitMins = Math.min(remainingWorkMins, minutesLeftToday);
+  const overflowMins = Math.max(remainingWorkMins - minutesLeftToday, 0);
+  const ringCircumference = 2 * Math.PI * 25;
+  const fitArcLen = (fitMins / ringTotal) * ringCircumference;
+  const overflowArcLen = (overflowMins / ringTotal) * ringCircumference;
+
   return (
     <div className="app-shell">
       <div className="app-header">
@@ -989,7 +1000,7 @@ export default function Home() {
       </div>
 
       <div className="perforation" />
-      <div className={overloaded ? 'capacity-card overloaded' : 'capacity-card'}>
+      <div className="capacity-card">
         <div className="capacity-row">
           <div className="capacity-ring-wrap">
             <svg width="60" height="60" viewBox="0 0 60 60">
@@ -999,20 +1010,34 @@ export default function Home() {
                 cy="30"
                 r="25"
                 fill="none"
-                stroke={overloaded ? 'var(--hazard)' : 'var(--steel)'}
+                stroke="var(--steel)"
                 strokeWidth="6"
                 strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 25}
-                strokeDashoffset={2 * Math.PI * 25 * (1 - Math.min(remainingWorkMins / Math.max(minutesLeftToday, 1), 1))}
-                style={{ transition: 'stroke-dashoffset 0.5s var(--ease), stroke 0.3s var(--ease)' }}
+                strokeDasharray={`${fitArcLen} ${ringCircumference - fitArcLen}`}
+                strokeDashoffset={0}
+                style={{ transition: 'stroke-dasharray 0.5s var(--ease)' }}
               />
+              {overflowMins > 0 && (
+                <circle
+                  cx="30"
+                  cy="30"
+                  r="25"
+                  fill="none"
+                  stroke="var(--hazard)"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={`${overflowArcLen} ${ringCircumference - overflowArcLen}`}
+                  strokeDashoffset={-fitArcLen}
+                  style={{ transition: 'stroke-dasharray 0.5s var(--ease), stroke-dashoffset 0.5s var(--ease)' }}
+                />
+              )}
             </svg>
           </div>
           <div className="capacity-number-block">
             <div className="capacity-hero-number mono">{fmtMins(minutesLeftToday)}</div>
             <div className="capacity-hero-label">left today · {fmtMins(remainingWorkMins)} planned</div>
             {overloaded && (
-              <div className="capacity-warn-line">{fmtMins(remainingWorkMins - minutesLeftToday)} more than time left</div>
+              <div className="capacity-warn-line">{fmtMins(overflowMins)} carries past today</div>
             )}
           </div>
         </div>
