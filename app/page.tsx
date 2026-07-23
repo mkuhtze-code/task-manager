@@ -118,11 +118,24 @@ function StopIcon() {
   );
 }
 
+function DokkitMark({ size = 48 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dokkit">
+      <path
+        fill="var(--steel)"
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M14 6h11.5l1.6 2.4a2 2 0 0 0 1.664.89h6.472a2 2 0 0 0 1.664-.89L38.5 6H50a8 8 0 0 1 8 8v36a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V14a8 8 0 0 1 8-8Zm4 18a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h28a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3H18Z"
+      />
+    </svg>
+  );
+}
+
 const REVEAL_LEFT = 92;
 const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
-const TAP_TOLERANCE = 5;
-const LONG_PRESS_MS = 800;
+const MOVE_TOLERANCE = 10;
+const LONG_PRESS_MS = 500;
 
 function TaskCard(props: {
   task: Task;
@@ -172,8 +185,6 @@ function TaskCard(props: {
     axisRef.current.v = 'none';
     longPressFiredRef.current.v = false;
     setDragging(true);
-      // Ensure any previous timer is cleared
-  clearTimeout(longPressTimer.current.id);
     longPressTimer.current.id = setTimeout(() => {
       if (!movedRef.current.v) {
         longPressFiredRef.current.v = true;
@@ -186,7 +197,7 @@ function TaskCard(props: {
     const dx = e.clientX - startXRef.current.x;
     const dy = e.clientY - startXRef.current.y;
     if (axisRef.current.v === 'none') {
-      if (Math.abs(dx) > TAP_TOLERANCE || Math.abs(dy) > TAP_TOLERANCE) {
+      if (Math.abs(dx) > MOVE_TOLERANCE || Math.abs(dy) > MOVE_TOLERANCE) {
         if (Math.abs(dx) > Math.abs(dy)) {
           axisRef.current.v = 'x';
           movedRef.current.v = true;
@@ -213,32 +224,22 @@ function TaskCard(props: {
   function handlePointerUp() {
     clearTimeout(longPressTimer.current.id);
     setDragging(false);
-
     if (longPressFiredRef.current.v) {
       setDragX(isOpen === 'left' ? -REVEAL_LEFT : isOpen === 'right' ? REVEAL_RIGHT : 0);
       return;
     }
-
     if (axisRef.current.v !== 'x') {
-      const isTap = !movedRef.current.v;
-
-      if (!isTap) return;
-
-      if (isOpen !== 'none') {
-        setIsOpen('none');
-        setDragX(0);
-
-        if (openSwipeId === t.id) {
-          setOpenSwipeId(null);
+      if (!movedRef.current.v) {
+        if (isOpen !== 'none') {
+          setIsOpen('none');
+          setDragX(0);
+          if (openSwipeId === t.id) setOpenSwipeId(null);
+        } else {
+          onOpenDetail(t.id);
         }
-
-        return;
       }
-
-      onOpenDetail(t.id);
       return;
     }
-
     if (dragX <= -OPEN_THRESHOLD) {
       setIsOpen('left');
       setDragX(-REVEAL_LEFT);
@@ -250,13 +251,11 @@ function TaskCard(props: {
     } else {
       setDragX(0);
       setIsOpen('none');
-
-      if (openSwipeId === t.id) {
-        setOpenSwipeId(null);
-      }
+      if (openSwipeId === t.id) setOpenSwipeId(null);
     }
   }
-function closeAnd(action: () => void) {
+
+  function closeAnd(action: () => void) {
     return (e: React.PointerEvent | React.MouseEvent) => {
       e.stopPropagation();
       action();
@@ -296,20 +295,15 @@ function closeAnd(action: () => void) {
           {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
           <span>{t.status === 'active' ? 'stop' : 'start'}</span>
         </button>
-         <div
-  id={`task-${t.id}`}
-  tabIndex={-1}
-  className="swipe-foreground"
-  style={{
-    touchAction: 'pan-y',
-    transform: `translateX(${dragX}px)`,
-    transition: dragging ? 'none' : 'transform 0.3s var(--spring)',
-    outline: 'none'
-  }}
+        <div
+          id={`task-${t.id}`}
+          tabIndex={-1}
+          className="swipe-foreground"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
+          style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.3s var(--spring)', outline: 'none' }}
         >
           <div className="task-main">
             <button
@@ -321,7 +315,7 @@ function closeAnd(action: () => void) {
             >
               <CheckIcon done={false} />
             </button>
-           <div className="task-body" style={{pointerEvents:'none'}}>
+            <div className="task-body">
               <div className="task-text">{t.text}</div>
               <div className="task-progress-row">
                 <div className="task-progress-track">
@@ -560,11 +554,143 @@ function TaskDetailPanel(props: {
   );
 }
 
+const ONBOARDING_STEPS = ['welcome', 'hours', 'notifications', 'ready'] as const;
+type OnboardingStep = typeof ONBOARDING_STEPS[number];
+
+function OnboardingFlow(props: {
+  userId: string;
+  onComplete: (fields: { work_start: string; work_end: string; notification_style: 'default' | 'silent' }) => void;
+}) {
+  const { userId, onComplete } = props;
+  const [stepIndex, setStepIndex] = useState(0);
+  const [workStart, setWorkStart] = useState('08:00');
+  const [workEnd, setWorkEnd] = useState('16:00');
+  const [notificationStyle, setNotificationStyle] = useState<'default' | 'silent'>('default');
+  const [saving, setSaving] = useState(false);
+
+  const step: OnboardingStep = ONBOARDING_STEPS[stepIndex];
+
+  function next() {
+    if (stepIndex < ONBOARDING_STEPS.length - 1) setStepIndex(stepIndex + 1);
+  }
+  function back() {
+    if (stepIndex > 0) setStepIndex(stepIndex - 1);
+  }
+
+  async function finish() {
+    setSaving(true);
+    await supabase.from('user_settings').upsert(
+      {
+        user_id: userId,
+        work_start: workStart,
+        work_end: workEnd,
+        notification_style: notificationStyle,
+        onboarding_complete: true,
+      },
+      { onConflict: 'user_id' }
+    );
+    setSaving(false);
+    onComplete({ work_start: workStart, work_end: workEnd, notification_style: notificationStyle });
+  }
+
+  return (
+    <div className="onboarding-shell">
+      <div className="onboarding-dots">
+        {ONBOARDING_STEPS.map((s, i) => (
+          <span
+            key={s}
+            className={i === stepIndex ? 'onboarding-dot active' : i < stepIndex ? 'onboarding-dot done' : 'onboarding-dot'}
+          />
+        ))}
+      </div>
+
+      {step === 'welcome' && (
+        <div className="onboarding-step">
+          <DokkitMark size={56} />
+          <h1 className="onboarding-title">Welcome to Dokkit</h1>
+          <p className="onboarding-body">
+            A digital sticky note that understands time. Two quick things and you're set.
+          </p>
+        </div>
+      )}
+
+      {step === 'hours' && (
+        <div className="onboarding-step">
+          <h1 className="onboarding-title">When's your work day?</h1>
+          <p className="onboarding-body">
+            Dokkit uses this to show what actually fits before you're done for the day — not an idealized 8 hours.
+          </p>
+          <div className="onboarding-time-row">
+            <div className="onboarding-time-field">
+              <span className="detail-label">Starts</span>
+              <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
+            </div>
+            <div className="onboarding-time-field">
+              <span className="detail-label">Ends</span>
+              <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === 'notifications' && (
+        <div className="onboarding-step">
+          <h1 className="onboarding-title">Nudges, not noise</h1>
+          <p className="onboarding-body">
+            Dokkit only reaches out to reconnect you with something you captured — never to guilt you about it.
+          </p>
+          <div className="segmented" style={{ marginTop: 'var(--space-4)', maxWidth: 220 }}>
+            <button
+              className={notificationStyle === 'default' ? 'segmented-btn active' : 'segmented-btn'}
+              onClick={() => setNotificationStyle('default')}
+            >
+              Default
+            </button>
+            <button
+              className={notificationStyle === 'silent' ? 'segmented-btn active' : 'segmented-btn'}
+              onClick={() => setNotificationStyle('silent')}
+            >
+              Silent
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 'ready' && (
+        <div className="onboarding-step">
+          <DokkitMark size={56} />
+          <h1 className="onboarding-title">You're set</h1>
+          <p className="onboarding-body">
+            Tap the + to capture the first thing on your mind. Everything else can wait.
+          </p>
+        </div>
+      )}
+
+      <div className="onboarding-nav">
+        {stepIndex > 0 ? (
+          <button className="btn-text" onClick={back} disabled={saving}>Back</button>
+        ) : (
+          <span />
+        )}
+        {step === 'ready' ? (
+          <button className="btn btn-steel" onClick={finish} disabled={saving}>
+            {saving ? 'Setting up…' : 'Start using Dokkit'}
+          </button>
+        ) : (
+          <button className="btn btn-steel" onClick={next}>Continue</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [signInError, setSignInError] = useState('');
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
@@ -602,7 +728,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (session) loadEverything();
+    if (session) {
+      setCheckingOnboarding(true);
+      loadEverything();
+    }
   }, [session]);
 
   async function loadEverything() {
@@ -610,15 +739,18 @@ export default function Home() {
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end')
+      .select('work_start, work_end, onboarding_complete')
       .eq('user_id', userId)
       .maybeSingle();
-    if (settings) {
+
+    if (settings && settings.onboarding_complete) {
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
+      setNeedsOnboarding(false);
     } else {
-      await supabase.from('user_settings').insert({ user_id: userId, work_start: '08:00', work_end: '16:00' });
+      setNeedsOnboarding(true);
     }
+    setCheckingOnboarding(false);
 
     const { data: taskRows } = await supabase
       .from('tasks')
@@ -725,10 +857,9 @@ export default function Home() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }
 
-    function openDetail(taskId: string) {
- console.log("DETAIL OPEN", taskId);
- setOpenTaskId(taskId);
-}
+  function openDetail(taskId: string) {
+    setOpenTaskId(taskId);
+  }
 
   function closeDetail() {
     const id = openTaskId;
@@ -783,14 +914,7 @@ export default function Home() {
     return (
       <div className="sign-in-shell">
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-          <svg width="48" height="48" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dokkit">
-            <path
-              fill="var(--steel)"
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M14 6h11.5l1.6 2.4a2 2 0 0 0 1.664.89h6.472a2 2 0 0 0 1.664-.89L38.5 6H50a8 8 0 0 1 8 8v36a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V14a8 8 0 0 1 8-8Zm4 18a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h28a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3H18Z"
-            />
-          </svg>
+          <DokkitMark size={48} />
           <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>Dokkit</span>
         </div>
         <h1 style={{ fontSize: 20, marginBottom: 20 }}>Sign in</h1>
@@ -810,6 +934,23 @@ export default function Home() {
           </form>
         )}
       </div>
+    );
+  }
+
+  if (checkingOnboarding) {
+    return <div className="app-shell" />;
+  }
+
+  if (needsOnboarding) {
+    return (
+      <OnboardingFlow
+        userId={session.user.id}
+        onComplete={({ work_start, work_end }) => {
+          setWorkStart(work_start);
+          setWorkEnd(work_end);
+          setNeedsOnboarding(false);
+        }}
+      />
     );
   }
 
