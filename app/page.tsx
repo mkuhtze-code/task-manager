@@ -259,7 +259,7 @@ onOpenDetail(t.id);
     }
   }
 }
-  function closeAnd(action: () => void) {
+function closeAnd(action: () => void) {
     return (e: React.PointerEvent | React.MouseEvent) => {
       e.stopPropagation();
       action();
