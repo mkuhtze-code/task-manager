@@ -310,7 +310,6 @@ function closeAnd(action: () => void) {
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.3s var(--spring)', outline: 'none' }}
         >
           <div className="task-main">
             <button
