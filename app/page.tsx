@@ -629,6 +629,17 @@ export default function Home() {
   if (!session) {
     return (
       <div className="sign-in-shell">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 28 }}>
+          <svg width="48" height="48" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dokkit">
+            <path
+              fill="var(--steel)"
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M14 6h11.5l1.6 2.4a2 2 0 0 0 1.664.89h6.472a2 2 0 0 0 1.664-.89L38.5 6H50a8 8 0 0 1 8 8v36a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V14a8 8 0 0 1 8-8Zm4 18a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h28a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3H18Z"
+            />
+          </svg>
+          <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>Dokkit</span>
+        </div>
         <h1 style={{ fontSize: 20, marginBottom: 20 }}>Sign in</h1>
         {magicLinkSent ? (
           <p style={{ color: 'var(--ink-soft)', fontSize: 14 }}>Check your email for a sign-in link.</p>
@@ -810,7 +821,7 @@ export default function Home() {
               placeholder="15m"
               style={{ width: 80 }}
             />
-            <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Dock It</button>
+            <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
           </div>
           {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
           <button className="btn-text" onClick={() => setCaptureOpen(false)}>Cancel</button>
