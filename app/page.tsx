@@ -121,7 +121,7 @@ function StopIcon() {
 const REVEAL_LEFT = 92;
 const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
-const MOVE_TOLERANCE = 5;
+const TAP_TOLERANCE = 5;
 const LONG_PRESS_MS = 500;
 
 function TaskCard(props: {
@@ -172,6 +172,8 @@ function TaskCard(props: {
     axisRef.current.v = 'none';
     longPressFiredRef.current.v = false;
     setDragging(true);
+      // Ensure any previous timer is cleared
+  clearTimeout(longPressTimer.current.id);
     longPressTimer.current.id = setTimeout(() => {
       if (!movedRef.current.v) {
         longPressFiredRef.current.v = true;
@@ -184,7 +186,7 @@ function TaskCard(props: {
     const dx = e.clientX - startXRef.current.x;
     const dy = e.clientY - startXRef.current.y;
     if (axisRef.current.v === 'none') {
-      if (Math.abs(dx) > MOVE_TOLERANCE || Math.abs(dy) > MOVE_TOLERANCE) {
+      if (Math.abs(dx) > TAP_TOLERANCE || Math.abs(dy) > TAP_TOLERANCE) {
         if (Math.abs(dx) > Math.abs(dy)) {
           axisRef.current.v = 'x';
           movedRef.current.v = true;
@@ -215,17 +217,27 @@ function TaskCard(props: {
       setDragX(isOpen === 'left' ? -REVEAL_LEFT : isOpen === 'right' ? REVEAL_RIGHT : 0);
       return;
     }
-    if (axisRef.current.v !== 'x') {
-      if (!movedRef.current.v) {
-        if (isOpen !== 'none') {
-          setIsOpen('none');
-          setDragX(0);
-          if (openSwipeId === t.id) setOpenSwipeId(null);
-        } else {
-          onOpenDetail(t.id);
-        }
-      }
-      return;
+   if (axisRef.current.v !== 'x') {
+
+  const isTap = !movedRef.current.v;
+
+  if (!isTap) return;
+
+  if (isOpen !== 'none') {
+    setIsOpen('none');
+    setDragX(0);
+
+    if (openSwipeId === t.id) {
+      setOpenSwipeId(null);
+    }
+
+    return;
+  }
+
+  onOpenDetail(t.id);
+
+  return;
+}
     }
     if (dragX <= -OPEN_THRESHOLD) {
       setIsOpen('left');
