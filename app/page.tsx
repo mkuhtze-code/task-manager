@@ -135,7 +135,6 @@ const REVEAL_LEFT = 92;
 const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
 const MOVE_TOLERANCE = 10;
-const LONG_PRESS_MS = 500;
 
 function TaskCard(props: {
   task: Task;
@@ -151,11 +150,10 @@ function TaskCard(props: {
   onStop: (id: string) => void;
   onOpenDetail: (id: string) => void;
   onDelete: (id: string) => void;
-  onToggleDue: (id: string, current: boolean) => void;
 }) {
   const {
     task: t, remainingForThis, liveLogged, overCap, anyActive, subs, openSwipeId, setOpenSwipeId,
-    onComplete, onStart, onStop, onOpenDetail, onDelete, onToggleDue,
+    onComplete, onStart, onStop, onOpenDetail, onDelete,
   } = props;
 
   const [dragX, setDragX] = useState(0);
@@ -165,8 +163,6 @@ function TaskCard(props: {
   const startXRef = useRef({ x: 0, y: 0, t: 0 });
   const movedRef = useRef({ v: false });
   const axisRef = useRef<{ v: 'none' | 'x' | 'y' }>({ v: 'none' });
-  const longPressFiredRef = useRef({ v: false });
-  const longPressTimer = useRef<{ id: any }>({ id: null });
 
   useEffect(() => {
     if (openSwipeId !== t.id && isOpen !== 'none') {
@@ -183,14 +179,7 @@ function TaskCard(props: {
     startXRef.current.t = Date.now();
     movedRef.current.v = false;
     axisRef.current.v = 'none';
-    longPressFiredRef.current.v = false;
     setDragging(true);
-    longPressTimer.current.id = setTimeout(() => {
-      if (!movedRef.current.v) {
-        longPressFiredRef.current.v = true;
-        onToggleDue(t.id, t.due_today);
-      }
-    }, LONG_PRESS_MS);
   }
 
   function handlePointerMove(e: React.PointerEvent) {
@@ -201,20 +190,16 @@ function TaskCard(props: {
         if (Math.abs(dx) > Math.abs(dy)) {
           axisRef.current.v = 'x';
           movedRef.current.v = true;
-          clearTimeout(longPressTimer.current.id);
         } else {
           // Vertical scroll: mark as "moved" too, so pointerUp doesn't
-          // mistake this for a tap (which would toggle sub-task expand)
-          // and so a long-press can't fire mid-scroll.
+          // mistake this for a tap (which would open the detail panel).
           axisRef.current.v = 'y';
           movedRef.current.v = true;
-          clearTimeout(longPressTimer.current.id);
         }
       }
     }
     if (axisRef.current.v === 'x') {
       movedRef.current.v = true;
-      clearTimeout(longPressTimer.current.id);
       const base = isOpen === 'left' ? -REVEAL_LEFT : isOpen === 'right' ? REVEAL_RIGHT : 0;
       const next = Math.max(Math.min(base + dx, REVEAL_RIGHT), -REVEAL_LEFT);
       setDragX(next);
@@ -222,12 +207,7 @@ function TaskCard(props: {
   }
 
   function handlePointerUp() {
-    clearTimeout(longPressTimer.current.id);
     setDragging(false);
-    if (longPressFiredRef.current.v) {
-      setDragX(isOpen === 'left' ? -REVEAL_LEFT : isOpen === 'right' ? REVEAL_RIGHT : 0);
-      return;
-    }
     if (axisRef.current.v !== 'x') {
       if (!movedRef.current.v) {
         if (isOpen !== 'none') {
@@ -373,12 +353,6 @@ function TaskDetailPanel(props: {
   const notesSaveTimer = useRef<{ id: any }>({ id: null });
 
   useEffect(() => {
-    const el = titleRef.current;
-    if (el) {
-      el.focus();
-      const len = el.value.length;
-      el.setSelectionRange(len, len);
-    }
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
@@ -480,6 +454,24 @@ function TaskDetailPanel(props: {
           }}
           rows={1}
         />
+
+        <div className="detail-row">
+          <span className="detail-label">Due today</span>
+        </div>
+        <div className="segmented" style={{ maxWidth: 240, marginBottom: 'var(--space-4)' }}>
+          <button
+            className={!t.due_today ? 'segmented-btn active' : 'segmented-btn'}
+            onClick={() => onUpdateTask(t.id, { due_today: false })}
+          >
+            Not today
+          </button>
+          <button
+            className={t.due_today ? 'segmented-btn active' : 'segmented-btn'}
+            onClick={() => onUpdateTask(t.id, { due_today: true })}
+          >
+            Due today
+          </button>
+        </div>
 
         <div className="detail-row">
           <span className="detail-label">Estimate</span>
@@ -817,11 +809,6 @@ export default function Home() {
     setCaptureOpen(false);
   }
 
-  async function toggleDueToday(id: string, current: boolean) {
-    await supabase.from('tasks').update({ due_today: !current }).eq('id', id);
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due_today: !current } : t)));
-  }
-
   async function startTask(id: string) {
     const alreadyActive = tasks.find((t) => t.status === 'active');
     if (alreadyActive) return;
@@ -1060,7 +1047,6 @@ export default function Home() {
               onStop={stopTask}
               onOpenDetail={openDetail}
               onDelete={deleteTask}
-              onToggleDue={toggleDueToday}
             />
           );
         })}
