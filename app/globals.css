@@ -323,11 +323,6 @@ button:focus-visible, input:focus-visible {
   padding: 0;
 }
 
-.swipe-reveal-btn.edit-btn {
-  background: var(--steel-wash);
-  color: var(--steel-dark);
-}
-
 .swipe-reveal-btn.delete-btn {
   background: var(--hazard-bg);
   color: var(--hazard);
