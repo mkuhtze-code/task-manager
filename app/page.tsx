@@ -176,7 +176,7 @@ function TaskCard(props: {
   clearTimeout(longPressTimer.current.id);
     longPressTimer.current.id = setTimeout(() => {
       if (!movedRef.current.v) {
-        longPressFiredRef.current.v = true;
+        longPressFiredRef.current.v = null;
         onToggleDue(t.id, t.due_today);
       }
     }, LONG_PRESS_MS);
@@ -326,7 +326,7 @@ onOpenDetail(t.id);
             >
               <CheckIcon done={false} />
             </button>
-            <div className="task-body">
+           <div className="task-body" style={{pointerEvents:'none'}}>
               <div className="task-text">{t.text}</div>
               <div className="task-progress-row">
                 <div className="task-progress-track">
@@ -730,9 +730,10 @@ export default function Home() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }
 
-  function openDetail(taskId: string) {
-    setOpenTaskId(taskId);
-  }
+    function openDetail(taskId: string) {
+ console.log("DETAIL OPEN", taskId);
+ setOpenTaskId(taskId);
+}
 
   function closeDetail() {
     const id = openTaskId;
