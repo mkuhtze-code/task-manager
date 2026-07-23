@@ -300,9 +300,16 @@ onOpenDetail(t.id);
           <span>{t.status === 'active' ? 'stop' : 'start'}</span>
         </button>
         <div
-          id={`task-${t.id}`}
-          tabIndex={-1}
-          className="swipe-foreground"
+         <div
+  id={`task-${t.id}`}
+  tabIndex={-1}
+  className="swipe-foreground"
+  style={{
+    touchAction: 'pan-y',
+    transform: `translateX(${dragX}px)`,
+    transition: dragging ? 'none' : 'transform 0.3s var(--spring)',
+    outline: 'none'
+  }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
