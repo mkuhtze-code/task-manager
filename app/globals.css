@@ -773,3 +773,90 @@ button:focus-visible, input:focus-visible {
   color: var(--hazard);
   padding-left: 0;
 }
+
+.onboarding-shell {
+  max-width: 400px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-5);
+  display: flex;
+  flex-direction: column;
+}
+
+.onboarding-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: var(--space-8);
+}
+
+.onboarding-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  transition: background 0.2s var(--ease), width 0.2s var(--ease);
+}
+
+.onboarding-dot.active {
+  background: var(--steel);
+  width: 18px;
+  border-radius: 3px;
+}
+
+.onboarding-dot.done {
+  background: var(--steel-wash);
+}
+
+.onboarding-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  padding-top: var(--space-6);
+  animation: expand-in 0.3s var(--spring);
+}
+
+.onboarding-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: var(--space-2) 0 0;
+}
+
+.onboarding-body {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 300px;
+}
+
+.onboarding-time-row {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.onboarding-time-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.onboarding-time-field input[type="time"] {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 16px;
+  background: var(--paper);
+}
+
+.onboarding-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-6);
+}
