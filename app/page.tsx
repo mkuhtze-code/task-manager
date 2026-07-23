@@ -160,9 +160,8 @@ function TaskCard(props: {
   const [isOpen, setIsOpen] = useState<'none' | 'left' | 'right'>('none');
   const [dragging, setDragging] = useState(false);
 
-  const startXRef = useRef({ x: 0, y: 0, t: 0 });
-  const movedRef = useRef({ v: false });
-  const axisRef = useRef<{ v: 'none' | 'x' | 'y' }>({ v: 'none' });
+  const startXRef = useRef({ x: 0, y: 0 });
+  const axisRef = useRef<{ v: 'none' | 'x' }>({ v: 'none' });
 
   useEffect(() => {
     if (openSwipeId !== t.id && isOpen !== 'none') {
@@ -176,8 +175,6 @@ function TaskCard(props: {
   function handlePointerDown(e: React.PointerEvent) {
     startXRef.current.x = e.clientX;
     startXRef.current.y = e.clientY;
-    startXRef.current.t = Date.now();
-    movedRef.current.v = false;
     axisRef.current.v = 'none';
     setDragging(true);
   }
@@ -185,21 +182,14 @@ function TaskCard(props: {
   function handlePointerMove(e: React.PointerEvent) {
     const dx = e.clientX - startXRef.current.x;
     const dy = e.clientY - startXRef.current.y;
-    if (axisRef.current.v === 'none') {
-      if (Math.abs(dx) > MOVE_TOLERANCE || Math.abs(dy) > MOVE_TOLERANCE) {
-        if (Math.abs(dx) > Math.abs(dy)) {
-          axisRef.current.v = 'x';
-          movedRef.current.v = true;
-        } else {
-          // Vertical scroll: mark as "moved" too, so pointerUp doesn't
-          // mistake this for a tap (which would open the detail panel).
-          axisRef.current.v = 'y';
-          movedRef.current.v = true;
-        }
-      }
+    // Only ever claim the gesture for horizontal swipe. Vertical movement
+    // is left alone entirely so the browser's native scroll (touch-action:
+    // pan-y) handles it — and so its native tap-vs-scroll detection can
+    // correctly drive the click event below, instead of us re-guessing it.
+    if (axisRef.current.v === 'none' && Math.abs(dx) > MOVE_TOLERANCE && Math.abs(dx) > Math.abs(dy)) {
+      axisRef.current.v = 'x';
     }
     if (axisRef.current.v === 'x') {
-      movedRef.current.v = true;
       const base = isOpen === 'left' ? -REVEAL_LEFT : isOpen === 'right' ? REVEAL_RIGHT : 0;
       const next = Math.max(Math.min(base + dx, REVEAL_RIGHT), -REVEAL_LEFT);
       setDragX(next);
@@ -209,15 +199,8 @@ function TaskCard(props: {
   function handlePointerUp() {
     setDragging(false);
     if (axisRef.current.v !== 'x') {
-      if (!movedRef.current.v) {
-        if (isOpen !== 'none') {
-          setIsOpen('none');
-          setDragX(0);
-          if (openSwipeId === t.id) setOpenSwipeId(null);
-        } else {
-          onOpenDetail(t.id);
-        }
-      }
+      // No horizontal drag happened — leave it to the click event to
+      // decide whether this was a tap (open) or a scroll (nothing).
       return;
     }
     if (dragX <= -OPEN_THRESHOLD) {
@@ -233,6 +216,28 @@ function TaskCard(props: {
       setIsOpen('none');
       if (openSwipeId === t.id) setOpenSwipeId(null);
     }
+  }
+
+  function handlePointerCancel() {
+    setDragging(false);
+    if (axisRef.current.v === 'x') {
+      setDragX(0);
+      setIsOpen('none');
+      if (openSwipeId === t.id) setOpenSwipeId(null);
+    }
+  }
+
+  function handleForegroundClick() {
+    // A click immediately following a horizontal drag is suppressed by the
+    // browser in practice, but guard anyway in case it still fires.
+    if (axisRef.current.v === 'x') return;
+    if (isOpen !== 'none') {
+      setIsOpen('none');
+      setDragX(0);
+      if (openSwipeId === t.id) setOpenSwipeId(null);
+      return;
+    }
+    onOpenDetail(t.id);
   }
 
   function closeAnd(action: () => void) {
@@ -282,7 +287,8 @@ function TaskCard(props: {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          onClick={handleForegroundClick}
           style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.3s var(--spring)', outline: 'none' }}
         >
           <div className="task-main">
@@ -290,7 +296,7 @@ function TaskCard(props: {
               className="check-btn"
               onPointerDown={(e) => e.stopPropagation()}
               onPointerUp={(e) => e.stopPropagation()}
-              onClick={() => onComplete(t.id)}
+              onClick={(e) => { e.stopPropagation(); onComplete(t.id); }}
               aria-label="Complete task"
             >
               <CheckIcon done={false} />
