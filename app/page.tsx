@@ -63,7 +63,7 @@ function timeStringToMinutes(t: string): number {
 
 function CheckIcon({ done }: { done: boolean }) {
   return (
-    <svg width="26" height="26" viewBox="0 0 18 18">
+    <svg width="22" height="22" viewBox="0 0 18 18">
       <circle cx="9" cy="9" r="7.6" fill={done ? 'var(--moss)' : 'none'} stroke={done ? 'var(--moss)' : 'var(--line-strong)'} strokeWidth="1.6" />
       <path
         d="M5.3 9.3 L7.7 11.8 L12.7 6"
@@ -235,7 +235,7 @@ function TaskCard(props: {
     };
   }
 
-  const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', overCap ? 'over-cap' : ''].join(' ').trim();
+  const rowClass = ['task-row', t.due_today ? 'due-today' : '', overCap ? 'over-cap' : ''].join(' ').trim();
 
   return (
     <div className={rowClass}>
@@ -294,11 +294,10 @@ function TaskCard(props: {
                 </div>
                 <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
               </div>
-              {(t.status === 'active' || subs.length > 0 || t.due_today) && (
+              {(t.status === 'active' || subs.length > 0) && (
                 <div className="task-tags">
                   {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
                   {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
-                  {t.due_today && <span className="tag tag-due">due today</span>}
                 </div>
               )}
             </div>
@@ -334,6 +333,7 @@ function TaskDetailPanel(props: {
   const [notesDraft, setNotesDraft] = useState(t.notes || '');
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const startYRef = useRef(0);
@@ -376,12 +376,20 @@ function TaskDetailPanel(props: {
     notesSaveTimer.current.id = setTimeout(() => onUpdateTask(t.id, { notes: v }), 600);
   }
 
+  function requestClose() {
+    if (closing) return;
+    setClosing(true);
+    setDragging(false);
+    setDragY(typeof window !== 'undefined' ? window.innerHeight : 900);
+    setTimeout(onClose, SHEET_CLOSE_MS);
+  }
+
   function flushAndClose() {
     clearTimeout(titleSaveTimer.current.id);
     clearTimeout(notesSaveTimer.current.id);
     saveTitle(titleDraft);
     onUpdateTask(t.id, { notes: notesDraft });
-    onClose();
+    requestClose();
   }
 
   useEffect(() => {
@@ -411,12 +419,16 @@ function TaskDetailPanel(props: {
 
   return (
     <>
-      <div className="sheet-backdrop" onClick={flushAndClose} />
+      <div
+        className="sheet-backdrop"
+        style={{ opacity: closing ? 0 : undefined, transition: `opacity ${SHEET_CLOSE_MS}ms var(--ease)` }}
+        onClick={flushAndClose}
+      />
       <div
         className="detail-sheet"
         role="dialog"
         aria-modal="true"
-        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 0.22s var(--spring)' }}
+        style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : `transform ${SHEET_CLOSE_MS}ms var(--spring)` }}
       >
         <div
           className="sheet-grabber"
@@ -526,7 +538,7 @@ function TaskDetailPanel(props: {
           <div className="detail-future-placeholder">Not scheduled</div>
         </div>
 
-        <button className="btn-text detail-delete" onClick={() => { onDelete(t.id); onClose(); }}>
+        <button className="btn-text detail-delete" onClick={() => { onDelete(t.id); requestClose(); }}>
           Delete task
         </button>
       </div>
@@ -664,6 +676,133 @@ function OnboardingFlow(props: {
   );
 }
 
+function KebabIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18">
+      <circle cx="9" cy="3.5" r="1.6" fill="currentColor" />
+      <circle cx="9" cy="9" r="1.6" fill="currentColor" />
+      <circle cx="9" cy="14.5" r="1.6" fill="currentColor" />
+    </svg>
+  );
+}
+
+const SHEET_CLOSE_MS = 250;
+
+function CaptureSheet(props: {
+  taskText: string;
+  setTaskText: (v: string) => void;
+  taskTime: string;
+  setTaskTime: (v: string) => void;
+  taskSource: 'planned' | 'came_up';
+  setTaskSource: (v: 'planned' | 'came_up') => void;
+  error: string;
+  onAddTask: () => Promise<boolean>;
+  onClose: () => void;
+}) {
+  const { taskText, setTaskText, taskTime, setTaskTime, taskSource, setTaskSource, error, onAddTask, onClose } = props;
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const startYRef = useRef(0);
+
+  function requestClose() {
+    if (closing) return;
+    setClosing(true);
+    setDragging(false);
+    setDragY(typeof window !== 'undefined' ? window.innerHeight : 900);
+    setTimeout(onClose, SHEET_CLOSE_MS);
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') requestClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  async function handleAdd() {
+    const success = await onAddTask();
+    if (success) requestClose();
+  }
+
+  function handleGrabberDown(e: React.PointerEvent) {
+    startYRef.current = e.clientY;
+    setDragging(true);
+  }
+  function handleGrabberMove(e: React.PointerEvent) {
+    const dy = Math.max(e.clientY - startYRef.current, 0);
+    setDragY(dy);
+  }
+  function handleGrabberUp() {
+    setDragging(false);
+    if (dragY > 100) {
+      requestClose();
+    } else {
+      setDragY(0);
+    }
+  }
+
+  return (
+    <>
+      <div
+        className="sheet-backdrop"
+        style={{ opacity: closing ? 0 : undefined, transition: `opacity ${SHEET_CLOSE_MS}ms var(--ease)` }}
+        onClick={requestClose}
+      />
+      <div
+        className="capture-sheet"
+        style={{
+          transform: `translateY(${dragY}px)`,
+          transition: dragging ? 'none' : `transform ${SHEET_CLOSE_MS}ms var(--spring)`,
+        }}
+      >
+        <div
+          className="sheet-grabber"
+          onPointerDown={handleGrabberDown}
+          onPointerMove={dragging ? handleGrabberMove : undefined}
+          onPointerUp={handleGrabberUp}
+          onPointerCancel={handleGrabberUp}
+        >
+          <div className="sheet-grabber-bar" />
+        </div>
+        <input
+          type="text"
+          value={taskText}
+          onChange={(e) => setTaskText(e.target.value)}
+          placeholder="What needs doing?"
+        />
+        <div className="segmented">
+          <button
+            className={taskSource === 'planned' ? 'segmented-btn active' : 'segmented-btn'}
+            onClick={() => setTaskSource('planned')}
+          >
+            planned
+          </button>
+          <button
+            className={taskSource === 'came_up' ? 'segmented-btn active' : 'segmented-btn'}
+            onClick={() => setTaskSource('came_up')}
+          >
+            came up
+          </button>
+        </div>
+        <div className="capture-row">
+          <input
+            type="text"
+            value={taskTime}
+            onChange={(e) => setTaskTime(e.target.value)}
+            placeholder="15m"
+            style={{ width: 80 }}
+          />
+          <button className="btn btn-steel" style={{ flex: 1 }} onClick={handleAdd}>Add task</button>
+        </div>
+        {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+        <button className="btn-text" onClick={requestClose}>Cancel</button>
+      </div>
+    </>
+  );
+}
+
 export default function Home() {
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
@@ -769,13 +908,13 @@ export default function Home() {
     setMagicLinkSent(true);
   }
 
-  async function addTask() {
+  async function addTask(): Promise<boolean> {
     const text = taskText.trim();
-    if (text.length === 0) return;
+    if (text.length === 0) return false;
     const mins = parseMins(taskTime);
     if (mins === null) {
       setError('Could not read that time, try 15m or 1.5h');
-      return;
+      return false;
     }
     setError('');
     const userId = session.user.id;
@@ -794,7 +933,7 @@ export default function Home() {
     if (data) setTasks((prev) => [...prev, data]);
     setTaskText('');
     setTaskTime('');
-    setCaptureOpen(false);
+    return true;
   }
 
   async function startTask(id: string) {
@@ -977,8 +1116,10 @@ export default function Home() {
   return (
     <div className="app-shell">
       <div className="app-header">
-        <h1 className="app-title">Today</h1>
         <div className="app-date">{dateLabel}</div>
+        <Link href="/preferences" className="header-menu-btn" aria-label="Preferences">
+          <KebabIcon />
+        </Link>
       </div>
 
       <div className="perforation" />
@@ -1024,11 +1165,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-
-      <Link href="/preferences" className="settings-toggle" style={{ textDecoration: 'none', display: 'inline-block' }}>
-        ⚙ Preferences
-      </Link>
 
       <div className="task-list">
         {ordered.length === 0 && (
@@ -1083,40 +1219,17 @@ export default function Home() {
       )}
 
       {captureOpen && (
-        <div className="capture-sheet">
-          <input
-            type="text"
-            value={taskText}
-            onChange={(e) => setTaskText(e.target.value)}
-            placeholder="What needs doing?"
-          />
-          <div className="segmented">
-            <button
-              className={taskSource === 'planned' ? 'segmented-btn active' : 'segmented-btn'}
-              onClick={() => setTaskSource('planned')}
-            >
-              planned
-            </button>
-            <button
-              className={taskSource === 'came_up' ? 'segmented-btn active' : 'segmented-btn'}
-              onClick={() => setTaskSource('came_up')}
-            >
-              came up
-            </button>
-          </div>
-          <div className="capture-row">
-            <input
-              type="text"
-              value={taskTime}
-              onChange={(e) => setTaskTime(e.target.value)}
-              placeholder="15m"
-              style={{ width: 80 }}
-            />
-            <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
-          </div>
-          {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-          <button className="btn-text" onClick={() => setCaptureOpen(false)}>Cancel</button>
-        </div>
+        <CaptureSheet
+          taskText={taskText}
+          setTaskText={setTaskText}
+          taskTime={taskTime}
+          setTaskTime={setTaskTime}
+          taskSource={taskSource}
+          setTaskSource={setTaskSource}
+          error={error}
+          onAddTask={addTask}
+          onClose={() => setCaptureOpen(false)}
+        />
       )}
 
       {!captureOpen && (
