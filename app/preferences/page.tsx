@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import AppHeader from '@/components/AppHeader';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -97,58 +97,52 @@ export default function Preferences() {
   if (!session) {
     return (
       <div className="app-shell">
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 40 }}>Sign in on the main page first.</p>
+        <AppHeader title="Preferences" backHref="/" />
+        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>Sign in on the main page first.</p>
       </div>
     );
   }
 
   return (
     <div className="app-shell">
-      <div className="app-header">
-        <h1 className="app-title">Preferences</h1>
-      </div>
+      <AppHeader title="Preferences" backHref="/" />
 
-      <Link href="/" className="btn-text" style={{ display: 'inline-block', marginBottom: 20, padding: 0 }}>
-        ← Back to today
-      </Link>
-
-      <div className="settings-panel" style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>Work hours</div>
+      <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
+        <div className="settings-panel-title">Work hours</div>
         <div className="settings-row">
           <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
           <span>to</span>
           <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
           <button className="btn btn-ghost" onClick={saveWorkHours}>Save</button>
-          {savedMsg && <span style={{ fontSize: 12, color: 'var(--moss)' }}>{savedMsg}</span>}
+          {savedMsg && <span className="settings-saved">{savedMsg}</span>}
         </div>
       </div>
 
       <div className="settings-panel">
-        <div style={{ fontSize: 14, fontWeight: 600 }}>Notifications</div>
+        <div className="settings-panel-title">Notifications</div>
         <div className="settings-row">
           <button className="btn btn-ghost" onClick={enableNotifications}>Enable notifications</button>
           <button className="btn btn-ghost" onClick={sendTestNotification}>Send test</button>
         </div>
         <div className="settings-row">
-          <span>Style</span>
-          <button
-            className={notificationStyle === 'default' ? 'btn btn-steel' : 'btn btn-ghost'}
-            style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }}
-            onClick={() => saveNotificationStyle('default')}
-          >
-            Default
-          </button>
-          <button
-            className={notificationStyle === 'silent' ? 'btn btn-steel' : 'btn btn-ghost'}
-            style={{ padding: '6px 12px', minHeight: 32, fontSize: 12 }}
-            onClick={() => saveNotificationStyle('silent')}
-          >
-            Silent
-          </button>
+          <span className="settings-label">Style</span>
+          <div className="segmented" style={{ maxWidth: 160 }}>
+            <button
+              className={notificationStyle === 'default' ? 'segmented-btn active' : 'segmented-btn'}
+              onClick={() => saveNotificationStyle('default')}
+            >
+              Default
+            </button>
+            <button
+              className={notificationStyle === 'silent' ? 'segmented-btn active' : 'segmented-btn'}
+              onClick={() => saveNotificationStyle('silent')}
+            >
+              Silent
+            </button>
+          </div>
         </div>
-        {notifStatus && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{notifStatus}</div>}
+        {notifStatus && <div className="settings-status">{notifStatus}</div>}
       </div>
     </div>
   );
 }
-
