@@ -483,13 +483,15 @@ export default function Home() {
       setHasSignedInBefore(window.localStorage.getItem(HAS_SIGNED_IN_KEY) === 'true');
     }
   }, []);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
-    return () => listener.subscription.unsubscribe();
+   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).finally(() => {
+        window.history.replaceState({}, '', window.location.pathname);
+      });
+    }
   }, []);
-
   useEffect(() => {
     if (session && typeof window !== 'undefined') {
       window.localStorage.setItem(HAS_SIGNED_IN_KEY, 'true');
