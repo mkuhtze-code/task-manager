@@ -4,6 +4,16 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
 
+const DAY_OPTIONS: { label: string; value: number }[] = [
+  { label: 'M', value: 1 },
+  { label: 'T', value: 2 },
+  { label: 'W', value: 3 },
+  { label: 'T', value: 4 },
+  { label: 'F', value: 5 },
+  { label: 'S', value: 6 },
+  { label: 'S', value: 0 },
+];
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -19,6 +29,7 @@ export default function Preferences() {
   const [session, setSession] = useState<any>(null);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
+  const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [notificationStyle, setNotificationStyle] = useState<'default' | 'silent'>('default');
   const [notifStatus, setNotifStatus] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
@@ -35,20 +46,27 @@ export default function Preferences() {
     const userId = session.user.id;
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, notification_style')
+      .select('work_start, work_end, work_days, notification_style')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
+      setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : [1, 2, 3, 4, 5]);
       setNotificationStyle(settings.notification_style || 'default');
     }
+  }
+
+  function toggleDay(day: number) {
+    setWorkDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b)
+    );
   }
 
   async function saveWorkHours() {
     await supabase
       .from('user_settings')
-      .update({ work_start: workStart, work_end: workEnd })
+      .update({ work_start: workStart, work_end: workEnd, work_days: workDays })
       .eq('user_id', session.user.id);
     setSavedMsg('Work hours saved.');
     setTimeout(() => setSavedMsg(''), 2000);
@@ -113,6 +131,23 @@ export default function Preferences() {
           <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
           <span>to</span>
           <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
+        </div>
+
+        <span className="settings-label">Work days</span>
+        <div className="day-toggle-row">
+          {DAY_OPTIONS.map((d) => (
+            <button
+              key={d.value}
+              className={workDays.includes(d.value) ? 'day-toggle-btn active' : 'day-toggle-btn'}
+              onClick={() => toggleDay(d.value)}
+              aria-label={d.label}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="settings-row">
           <button className="btn btn-ghost" onClick={saveWorkHours}>Save</button>
           {savedMsg && <span className="settings-saved">{savedMsg}</span>}
         </div>
