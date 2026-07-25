@@ -220,7 +220,7 @@ button:focus-visible, input:focus-visible {
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
-  margin: var(--space-5) 0 var(--space-6);
+  margin: var(--space-5) 0 var(--space-5);
   box-shadow: 0 2px 6px rgba(26, 41, 51, 0.1);
   cursor: pointer;
   transition: background 0.3s var(--ease);
@@ -413,7 +413,7 @@ button:focus-visible, input:focus-visible {
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .empty-state {
@@ -425,7 +425,7 @@ button:focus-visible, input:focus-visible {
 
 .task-row {
   position: relative;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: 0 1px 3px rgba(26, 41, 51, 0.07);
   overflow: hidden;
 }
@@ -436,7 +436,7 @@ button:focus-visible, input:focus-visible {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 4px;
+  width: 3px;
   background: var(--steel);
   z-index: 3;
 }
@@ -494,17 +494,19 @@ button:focus-visible, input:focus-visible {
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   color: white;
   font-size: 11px;
   font-weight: 700;
+  border: none;
+  cursor: pointer;
 }
 
 .swipe-foreground {
   position: relative;
   z-index: 2;
   background: var(--paper-raised);
-  padding: var(--space-3) var(--space-4);
+  padding: 9px var(--space-4);
   touch-action: pan-y;
 }
 
@@ -512,35 +514,28 @@ button:focus-visible, input:focus-visible {
   background: var(--overflow-bg);
 }
 
-.task-row.came-up .swipe-flag-hint,
-.due-pulse {
-  animation: pulse-flag 0.3s var(--ease);
-}
-
-@keyframes pulse-flag {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.03); }
-  100% { transform: scale(1); }
-}
-
 .task-main {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .check-btn {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: none;
   background: none;
   flex-shrink: 0;
-  margin-top: 1px;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.check-btn svg {
+  width: 22px;
+  height: 22px;
 }
 
 .check-btn svg path {
@@ -554,8 +549,8 @@ button:focus-visible, input:focus-visible {
 }
 
 .task-text {
-  font-size: 15px;
-  line-height: 1.4;
+  font-size: 14px;
+  line-height: 1.3;
   font-weight: 600;
 }
 
@@ -563,20 +558,20 @@ button:focus-visible, input:focus-visible {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: var(--space-2);
+  margin-top: 4px;
 }
 
 .task-progress-track {
   flex: 1;
-  height: 5px;
-  border-radius: 3px;
+  height: 3px;
+  border-radius: 2px;
   background: var(--line);
   overflow: hidden;
 }
 
 .task-progress-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 2px;
   background: var(--steel);
   transition: width 0.4s var(--ease);
 }
@@ -586,7 +581,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .task-progress-label {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--ink-soft);
   font-weight: 600;
   flex-shrink: 0;
@@ -594,16 +589,16 @@ button:focus-visible, input:focus-visible {
 
 .task-tags {
   display: flex;
-  gap: var(--space-1);
-  margin-top: var(--space-2);
+  gap: 4px;
+  margin-top: 4px;
   flex-wrap: wrap;
   align-items: center;
 }
 
 .tag {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 2px 7px;
   border-radius: 20px;
   background: var(--paper);
   color: var(--ink-soft);
@@ -626,7 +621,6 @@ button:focus-visible, input:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  animation: expand-in 0.3s var(--spring);
 }
 
 .subtask-row {
@@ -691,21 +685,6 @@ button:focus-visible, input:focus-visible {
 .icon-btn:hover {
   background: var(--paper);
   color: var(--ink-soft);
-}
-
-.edit-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.edit-form input[type="text"] {
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-  font-size: 14px;
-  background: var(--paper);
-  width: 100%;
 }
 
 .capture-fab {
@@ -789,6 +768,60 @@ button:focus-visible, input:focus-visible {
   background: var(--paper-raised);
   color: var(--ink);
   box-shadow: 0 1px 3px rgba(26, 41, 51, 0.15);
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 41, 51, 0.32);
+  z-index: 29;
+  animation: fade-in 0.2s var(--ease);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.task-detail-sheet {
+  max-height: 82vh;
+  overflow-y: auto;
+}
+
+.task-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.task-detail-delete {
+  color: var(--hazard);
+}
+
+.task-detail-name {
+  border: none;
+  background: none;
+  font-size: 19px;
+  font-weight: 700;
+  padding: 4px 0;
+  width: 100%;
+}
+
+.task-detail-name:focus {
+  outline: none;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.task-detail-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.start-stop-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .auth-shell {
