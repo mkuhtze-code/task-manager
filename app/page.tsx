@@ -83,31 +83,6 @@ function CheckIcon({ done }: { done: boolean }) {
   );
 }
 
-function EditIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18">
-      <path
-        d="M12.8 1.8l3.4 3.4-9 9-4 0.9 0.9-4z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function DeleteIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18">
-      <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-// Sleeker, rounded play/stop glyphs — used both on the swipe-reveal button
-// and inside the task detail sheet.
 function PlayIcon() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
@@ -124,11 +99,10 @@ function StopIcon() {
   );
 }
 
-const REVEAL_LEFT = 92;
 const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
 
-type OpenSide = 'none' | 'left' | 'right';
+type OpenSide = 'none' | 'right';
 
 function TaskCard(props: {
   task: Task;
@@ -143,12 +117,11 @@ function TaskCard(props: {
   onStart: (id: string) => void;
   onStop: (id: string) => void;
   onOpen: (id: string) => void;
-  onDelete: (id: string) => void;
   onToggleDue: (id: string, current: boolean) => void;
 }) {
   const {
     task: t, remainingForThis, liveLogged, overCap, anyActive, subs,
-    openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen, onDelete, onToggleDue,
+    openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen, onToggleDue,
   } = props;
 
   const [dragX, setDragX] = useState(0);
@@ -170,11 +143,6 @@ function TaskCard(props: {
 
   const startDisabled = anyActive && t.status !== 'active';
 
-  // Pointer handling drives ONLY the swipe-drag reveal (left = edit/delete,
-  // right = start/stop) and the long-press "due today" toggle. It no longer
-  // decides taps — that's a plain onClick on the card body below, which is
-  // far more reliable across devices than inferring "tap vs drag" from
-  // pixel-movement thresholds.
   function handlePointerDown(e: React.PointerEvent) {
     startXRef.current.x = e.clientX;
     startXRef.current.y = e.clientY;
@@ -185,7 +153,6 @@ function TaskCard(props: {
     longPressTimer.current.id = setTimeout(() => {
       if (!movedRef.current.v) {
         longPressFiredRef.current.v = true;
-        onToggleDue(t.id, t.due_today);
       }
     }, LONG_PRESS_MS);
   }
@@ -207,8 +174,8 @@ function TaskCard(props: {
     if (axisRef.current.v === 'x') {
       movedRef.current.v = true;
       clearTimeout(longPressTimer.current.id);
-      const base = openSide === 'left' ? -REVEAL_LEFT : openSide === 'right' ? REVEAL_RIGHT : 0;
-      const next = Math.max(Math.min(base + dx, REVEAL_RIGHT), -REVEAL_LEFT);
+      const base = openSide === 'right' ? REVEAL_RIGHT : 0;
+      const next = Math.max(Math.min(base + dx, REVEAL_RIGHT), 0);
       setDragX(next);
     }
   }
@@ -216,16 +183,8 @@ function TaskCard(props: {
   function handlePointerUp() {
     clearTimeout(longPressTimer.current.id);
     setDragging(false);
-    if (longPressFiredRef.current.v) {
-      setDragX(openSide === 'left' ? -REVEAL_LEFT : openSide === 'right' ? REVEAL_RIGHT : 0);
-      return;
-    }
     if (axisRef.current.v === 'x') {
-      if (dragX <= -OPEN_THRESHOLD) {
-        setOpenSide('left');
-        setDragX(-REVEAL_LEFT);
-        setOpenSwipeId(t.id);
-      } else if (dragX >= OPEN_THRESHOLD) {
+      if (dragX >= OPEN_THRESHOLD) {
         setOpenSide('right');
         setDragX(REVEAL_RIGHT);
         setOpenSwipeId(t.id);
@@ -257,19 +216,19 @@ function TaskCard(props: {
     };
   }
 
-  const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', overCap ? 'over-cap' : ''].join(' ').trim();
+  // Determine task color: white (neutral), blue (due today), orange (overtime)
+  let taskColorClass = '';
+  if (overCap) {
+    taskColorClass = 'task-overtime';
+  } else if (t.due_today) {
+    taskColorClass = 'task-due-today';
+  }
+
+  const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', taskColorClass].join(' ').trim();
 
   return (
     <div className={rowClass}>
       <div className="swipe-zone">
-        <div className="swipe-reveal-left">
-          <button className="swipe-reveal-btn edit-btn" onPointerUp={closeAnd(() => onOpen(t.id))} aria-label="Edit task">
-            <EditIcon />
-          </button>
-          <button className="swipe-reveal-btn delete-btn" onPointerUp={closeAnd(() => onDelete(t.id))} aria-label="Delete task">
-            <DeleteIcon />
-          </button>
-        </div>
         <button
           className="swipe-reveal-right start-stop-btn"
           style={{ background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)', opacity: startDisabled && t.status !== 'active' ? 0.4 : 1 }}
@@ -320,6 +279,13 @@ function TaskCard(props: {
                 </div>
               )}
             </div>
+            <button
+              className="btn-due-today"
+              onClick={(e) => { e.stopPropagation(); onToggleDue(t.id, t.due_today); }}
+              title={t.due_today ? 'Remove from due today' : 'Mark as due today'}
+            >
+              {t.due_today ? '✓' : '○'}
+            </button>
           </div>
         </div>
       </div>
@@ -335,7 +301,6 @@ function TaskDetailSheet(props: {
   anyActive: boolean;
   onClose: () => void;
   onSave: (id: string, text: string, mins: number) => void;
-  onDelete: (id: string) => void;
   onComplete: (id: string) => void;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
@@ -349,8 +314,8 @@ function TaskDetailSheet(props: {
   setSubDraftTime: (v: string) => void;
 }) {
   const {
-    task, subs, remainingForThis, liveLogged, anyActive, onClose, onSave, onDelete, onComplete,
-    onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
+    task, subs, remainingForThis, liveLogged, anyActive, onClose, onSave,
+    onComplete, onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
     subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
   } = props;
 
@@ -392,10 +357,13 @@ function TaskDetailSheet(props: {
         <div className="task-detail-header">
           <button className="btn-text" onClick={handleClose}>Close</button>
           <button
-            className="btn-text task-detail-delete"
-            onClick={() => { onDelete(task.id); onClose(); }}
+            className="btn-text"
+            onClick={() => {
+              commit();
+              onClose();
+            }}
           >
-            Delete
+            Done
           </button>
         </div>
 
@@ -484,9 +452,11 @@ export default function Home() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [signInError, setSignInError] = useState('');
   const [hasSignedInBefore, setHasSignedInBefore] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
@@ -577,15 +547,14 @@ export default function Home() {
     }
   }
 
-  async function signIn(e: React.FormEvent) {
+  async function signInWithPassword(e: React.FormEvent) {
     e.preventDefault();
     setSignInError('');
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setSignInError('This app is private — that email is not recognized.');
+      setSignInError('Invalid email or password.');
       return;
     }
-    setMagicLinkSent(true);
   }
 
   async function addTask() {
@@ -700,32 +669,64 @@ export default function Home() {
       <div className="auth-shell">
         <div className="auth-card">
           <div className="auth-eyebrow">Dokkit</div>
-          {hasSignedInBefore ? (
+          {hasSignedInBefore && !isNewUser ? (
             <>
               <h1 className="auth-title">Welcome back</h1>
-              <p className="auth-sub">Sign back in to pick up where you left off.</p>
+              <p className="auth-sub">Sign in with your email and password.</p>
+              <form onSubmit={signInWithPassword} className="auth-form">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  required
+                />
+                <button type="submit" className="btn btn-steel">Sign in</button>
+                {signInError && <p className="auth-error">{signInError}</p>}
+              </form>
+              <button className="btn-text" onClick={() => setIsNewUser(true)} style={{ marginTop: 'var(--space-3)' }}>
+                New user? Sign up
+              </button>
             </>
           ) : (
             <>
-              <h1 className="auth-title">Set up Dokkit</h1>
+              <h1 className="auth-title">{isNewUser ? 'Set up Dokkit' : 'Get started'}</h1>
               <p className="auth-sub">
-                A personal thinking tool that understands time. Enter your email to get started.
+                {isNewUser ? 'Enter your email to create a new account.' : 'A personal thinking tool that understands time.'}
               </p>
+              {magicLinkSent ? (
+                <>
+                  <p className="auth-sent">Check your email for a sign-in link.</p>
+                  <button className="btn-text" onClick={() => { setMagicLinkSent(false); setEmail(''); setPassword(''); }} style={{ marginTop: 'var(--space-3)' }}>
+                    Back
+                  </button>
+                </>
+              ) : (
+                <form onSubmit={(e) => { e.preventDefault(); setMagicLinkSent(true); }} className="auth-form">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    required
+                  />
+                  <button type="submit" className="btn btn-steel">Send magic link</button>
+                  {signInError && <p className="auth-error">{signInError}</p>}
+                </form>
+              )}
+              {isNewUser && hasSignedInBefore && (
+                <button className="btn-text" onClick={() => setIsNewUser(false)} style={{ marginTop: 'var(--space-3)' }}>
+                  Already have an account?
+                </button>
+              )}
             </>
-          )}
-          {magicLinkSent ? (
-            <p className="auth-sent">Check your email for a sign-in link.</p>
-          ) : (
-            <form onSubmit={signIn} className="auth-form">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-              />
-              <button type="submit" className="btn btn-steel">Send magic link</button>
-              {signInError && <p className="auth-error">{signInError}</p>}
-            </form>
           )}
         </div>
       </div>
@@ -781,6 +782,10 @@ export default function Home() {
     }
   }
 
+  // Calculate ring proportions: blue = time left, orange = task load
+  const timeLeftPercent = Math.min(minutesLeftToday / Math.max(minutesLeftToday, 1), 1);
+  const taskLoadPercent = Math.min(remainingWorkMins / Math.max(minutesLeftToday, 1), 1);
+
   return (
     <div className="app-shell">
       <div
@@ -794,19 +799,36 @@ export default function Home() {
         <div className="capacity-row">
           <div className="capacity-ring-wrap">
             <svg width="60" height="60" viewBox="0 0 60 60">
+              {/* Background ring */}
               <circle cx="30" cy="30" r="25" fill="none" stroke="var(--line)" strokeWidth="6" />
+              {/* Blue segment: time left in day */}
               <circle
                 cx="30"
                 cy="30"
                 r="25"
                 fill="none"
-                stroke={overloaded ? 'var(--hazard)' : 'var(--steel)'}
+                stroke="var(--steel)"
                 strokeWidth="6"
                 strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 25}
-                strokeDashoffset={2 * Math.PI * 25 * (1 - Math.min(remainingWorkMins / Math.max(minutesLeftToday, 1), 1))}
-                style={{ transition: 'stroke-dashoffset 0.5s var(--ease), stroke 0.3s var(--ease)' }}
+                strokeDasharray={`${2 * Math.PI * 25 * timeLeftPercent} ${2 * Math.PI * 25}`}
+                strokeDashoffset={0}
+                style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '30px 30px', transform: 'rotate(-90deg)' }}
               />
+              {/* Orange segment: task load (appears after blue) */}
+              {taskLoadPercent > timeLeftPercent && (
+                <circle
+                  cx="30"
+                  cy="30"
+                  r="25"
+                  fill="none"
+                  stroke="var(--hazard)"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 25 * (taskLoadPercent - timeLeftPercent)} ${2 * Math.PI * 25}`}
+                  strokeDashoffset={-2 * Math.PI * 25 * timeLeftPercent}
+                  style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '30px 30px', transform: 'rotate(-90deg)' }}
+                />
+              )}
             </svg>
           </div>
           <div className="capacity-number-block">
@@ -852,7 +874,6 @@ export default function Home() {
               onStart={startTask}
               onStop={stopTask}
               onOpen={setOpenTaskId}
-              onDelete={deleteTask}
               onToggleDue={toggleDueToday}
             />
           );
@@ -895,7 +916,6 @@ export default function Home() {
           anyActive={tasks.some((x) => x.status === 'active')}
           onClose={() => setOpenTaskId(null)}
           onSave={updateTask}
-          onDelete={deleteTask}
           onComplete={completeTask}
           onStart={startTask}
           onStop={stopTask}
