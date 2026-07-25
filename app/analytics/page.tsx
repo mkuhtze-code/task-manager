@@ -147,15 +147,19 @@ export default function Analytics() {
     null as [number, { count: number; mins: number }] | null
   );
 
+  // Local-timezone-safe date key (avoids UTC boundary bugs for evening tasks)
+  const toLocalDateStr = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   // Work streak
   const now = new Date();
   let streak = 0;
   let checkDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const hasTaskOnDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(date);
     return analytics.allTasks.some(
-      (t) => t.completed_at.split('T')[0] === dateStr
+      (t) => toLocalDateStr(new Date(t.completed_at)) === dateStr
     );
   };
 
@@ -168,9 +172,9 @@ export default function Analytics() {
   const weekDates: Record<string, number> = {};
   for (let i = 0; i < 7; i++) {
     const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(date);
     weekDates[dateStr] = analytics.allTasks
-      .filter((t) => t.completed_at.split('T')[0] === dateStr)
+      .filter((t) => toLocalDateStr(new Date(t.completed_at)) === dateStr)
       .reduce((sum, t) => sum + (t.actual_mins || 0), 0);
   }
   const daysWorkedThisWeek = Object.values(weekDates).filter((m) => m > 0).length;
