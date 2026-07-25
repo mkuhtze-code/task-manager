@@ -31,6 +31,7 @@ type Meeting = {
 };
 
 const HAS_SIGNED_IN_KEY = 'dokkit-has-signed-in';
+const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
 
 function parseMins(raw: string): number | null {
   const str = raw.trim().toLowerCase();
@@ -397,6 +398,7 @@ export default function Home() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
+  const [workDays, setWorkDays] = useState<number[]>(DEFAULT_WORK_DAYS);
   const [captureOpen, setCaptureOpen] = useState(false);
 
   const [taskText, setTaskText] = useState('');
@@ -447,14 +449,15 @@ export default function Home() {
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end')
+      .select('work_start, work_end, work_days')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
+      setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : DEFAULT_WORK_DAYS);
     } else {
-      await supabase.from('user_settings').insert({ user_id: userId, work_start: '08:00', work_end: '16:00' });
+      await supabase.from('user_settings').insert({ user_id: userId, work_start: '08:00', work_end: '16:00', work_days: DEFAULT_WORK_DAYS });
     }
 
     const { data: taskRows } = await supabase
@@ -686,11 +689,14 @@ export default function Home() {
   const remainingTaskMins = ordered.reduce((sum, t) => sum + remainingForTask(t), 0);
   const remainingWorkMins = meetingMins + remainingTaskMins;
 
+  const todayDow = now.getDay();
+  const isWorkDay = workDays.includes(todayDow);
+
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
   const workEndMinutes = timeStringToMinutes(workEnd);
-  const minutesLeftToday = Math.max(workEndMinutes - nowMinutesOfDay, 0);
+  const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
 
-  const overloaded = remainingWorkMins > minutesLeftToday;
+  const overloaded = isWorkDay && remainingWorkMins > minutesLeftToday;
 
   let cumulative = 0;
   const taskCapacity = minutesLeftToday - meetingMins;
@@ -699,7 +705,7 @@ export default function Home() {
 
   return (
     <div className="app-shell">
-      <AppHeader title="Today" dateLabel={dateLabel} />
+      <AppHeader dateLabel={dateLabel} />
 
       <div className="perforation" />
       <div className={overloaded ? 'capacity-card overloaded' : 'capacity-card'}>
@@ -722,8 +728,12 @@ export default function Home() {
             </svg>
           </div>
           <div className="capacity-number-block">
-            <div className="capacity-hero-number mono">{fmtMins(minutesLeftToday)}</div>
-            <div className="capacity-hero-label">left today · {fmtMins(remainingWorkMins)} planned</div>
+            <div className="capacity-hero-number mono">{isWorkDay ? fmtMins(minutesLeftToday) : 'Off'}</div>
+            <div className="capacity-hero-label">
+              {isWorkDay
+                ? `left today · ${fmtMins(remainingWorkMins)} planned`
+                : `not a work day · ${fmtMins(remainingWorkMins)} carrying forward`}
+            </div>
             {overloaded && (
               <div className="capacity-warn-line">{fmtMins(remainingWorkMins - minutesLeftToday)} more than time left</div>
             )}
