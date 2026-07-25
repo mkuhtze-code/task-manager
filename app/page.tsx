@@ -216,7 +216,6 @@ function TaskCard(props: {
     };
   }
 
-  // Determine task color: white (neutral), blue (due today), orange (overtime)
   let taskColorClass = '';
   if (overCap) {
     taskColorClass = 'task-overtime';
@@ -454,9 +453,12 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [signInError, setSignInError] = useState('');
   const [hasSignedInBefore, setHasSignedInBefore] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [signingInWithGoogle, setSigningInWithGoogle] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
@@ -554,6 +556,34 @@ export default function Home() {
     if (error) {
       setSignInError('Invalid email or password.');
       return;
+    }
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setSignInError('');
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      setSignInError('Could not send reset email. Please check the email address.');
+      return;
+    }
+    setForgotPasswordSent(true);
+  }
+
+  async function signInWithGoogle() {
+    setSigningInWithGoogle(true);
+    setSignInError('');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}`,
+      },
+    });
+    if (error) {
+      setSignInError('Failed to sign in with Google.');
+      setSigningInWithGoogle(false);
     }
   }
 
@@ -669,10 +699,22 @@ export default function Home() {
       <div className="auth-shell">
         <div className="auth-card">
           <div className="auth-eyebrow">Dokkit</div>
-          {hasSignedInBefore && !isNewUser ? (
+          {hasSignedInBefore && !isNewUser && !showForgotPassword ? (
             <>
               <h1 className="auth-title">Welcome back</h1>
               <p className="auth-sub">Sign in with your email and password.</p>
+              
+              <button 
+                type="button" 
+                className="btn btn-google"
+                onClick={signInWithGoogle}
+                disabled={signingInWithGoogle}
+              >
+                {signingInWithGoogle ? 'Signing in...' : 'Sign in with Google'}
+              </button>
+
+              <div className="auth-divider">or</div>
+
               <form onSubmit={signInWithPassword} className="auth-form">
                 <input
                   type="email"
@@ -691,20 +733,93 @@ export default function Home() {
                 <button type="submit" className="btn btn-steel">Sign in</button>
                 {signInError && <p className="auth-error">{signInError}</p>}
               </form>
-              <button className="btn-text" onClick={() => setIsNewUser(true)} style={{ marginTop: 'var(--space-3)' }}>
+              <button 
+                className="btn-text" 
+                onClick={() => setShowForgotPassword(true)} 
+                style={{ marginTop: 'var(--space-3)' }}
+              >
+                Forgot password?
+              </button>
+              <button 
+                className="btn-text" 
+                onClick={() => setIsNewUser(true)} 
+                style={{ marginTop: 'var(--space-2)' }}
+              >
                 New user? Sign up
               </button>
+            </>
+          ) : showForgotPassword ? (
+            <>
+              <h1 className="auth-title">Reset password</h1>
+              <p className="auth-sub">Enter your email to receive a password reset link.</p>
+              {forgotPasswordSent ? (
+                <>
+                  <p className="auth-sent">Check your email for a password reset link.</p>
+                  <button 
+                    className="btn-text" 
+                    onClick={() => { 
+                      setForgotPasswordSent(false); 
+                      setShowForgotPassword(false); 
+                      setEmail(''); 
+                    }} 
+                    style={{ marginTop: 'var(--space-3)' }}
+                  >
+                    Back to sign in
+                  </button>
+                </>
+              ) : (
+                <>
+                  <form onSubmit={handleForgotPassword} className="auth-form">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      required
+                    />
+                    <button type="submit" className="btn btn-steel">Send reset link</button>
+                    {signInError && <p className="auth-error">{signInError}</p>}
+                  </form>
+                  <button 
+                    className="btn-text" 
+                    onClick={() => setShowForgotPassword(false)} 
+                    style={{ marginTop: 'var(--space-3)' }}
+                  >
+                    Back to sign in
+                  </button>
+                </>
+              )}
             </>
           ) : (
             <>
               <h1 className="auth-title">{isNewUser ? 'Set up Dokkit' : 'Get started'}</h1>
               <p className="auth-sub">
-                {isNewUser ? 'Enter your email to create a new account.' : 'A personal thinking tool that understands time.'}
+                {isNewUser ? 'Sign up with Google or create a password-protected account.' : 'A personal thinking tool that understands time.'}
               </p>
+              
+              <button 
+                type="button" 
+                className="btn btn-google"
+                onClick={signInWithGoogle}
+                disabled={signingInWithGoogle}
+              >
+                {signingInWithGoogle ? 'Signing in...' : 'Sign up with Google'}
+              </button>
+
+              <div className="auth-divider">or</div>
+
               {magicLinkSent ? (
                 <>
                   <p className="auth-sent">Check your email for a sign-in link.</p>
-                  <button className="btn-text" onClick={() => { setMagicLinkSent(false); setEmail(''); setPassword(''); }} style={{ marginTop: 'var(--space-3)' }}>
+                  <button 
+                    className="btn-text" 
+                    onClick={() => { 
+                      setMagicLinkSent(false); 
+                      setEmail(''); 
+                      setPassword(''); 
+                    }} 
+                    style={{ marginTop: 'var(--space-3)' }}
+                  >
                     Back
                   </button>
                 </>
@@ -722,7 +837,11 @@ export default function Home() {
                 </form>
               )}
               {isNewUser && hasSignedInBefore && (
-                <button className="btn-text" onClick={() => setIsNewUser(false)} style={{ marginTop: 'var(--space-3)' }}>
+                <button 
+                  className="btn-text" 
+                  onClick={() => setIsNewUser(false)} 
+                  style={{ marginTop: 'var(--space-3)' }}
+                >
                   Already have an account?
                 </button>
               )}
@@ -782,7 +901,6 @@ export default function Home() {
     }
   }
 
-  // Calculate ring proportions: blue = time left, orange = task load
   const timeLeftPercent = Math.min(minutesLeftToday / Math.max(minutesLeftToday, 1), 1);
   const taskLoadPercent = Math.min(remainingWorkMins / Math.max(minutesLeftToday, 1), 1);
 
@@ -799,9 +917,7 @@ export default function Home() {
         <div className="capacity-row">
           <div className="capacity-ring-wrap">
             <svg width="60" height="60" viewBox="0 0 60 60">
-              {/* Background ring */}
               <circle cx="30" cy="30" r="25" fill="none" stroke="var(--line)" strokeWidth="6" />
-              {/* Blue segment: time left in day */}
               <circle
                 cx="30"
                 cy="30"
@@ -814,7 +930,6 @@ export default function Home() {
                 strokeDashoffset={0}
                 style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '30px 30px', transform: 'rotate(-90deg)' }}
               />
-              {/* Orange segment: task load (appears after blue) */}
               {taskLoadPercent > timeLeftPercent && (
                 <circle
                   cx="30"
