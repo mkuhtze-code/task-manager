@@ -410,6 +410,43 @@ button:focus-visible, input:focus-visible {
   padding: 0 var(--space-2);
 }
 
+.btn-google {
+  width: 100%;
+  background: white;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-google:hover:not(:disabled) {
+  background: var(--paper);
+}
+
+.btn-google:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line-strong);
+}
+
 .task-list {
   display: flex;
   flex-direction: column;
