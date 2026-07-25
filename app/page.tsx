@@ -34,6 +34,7 @@ type Meeting = {
 const HAS_SIGNED_IN_KEY = 'dokkit-has-signed-in';
 const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
 const LONG_PRESS_MS = 500;
+const SHEET_CLOSE_MS = 300;
 
 function parseMins(raw: string): number | null {
   const str = raw.trim().toLowerCase();
@@ -298,6 +299,7 @@ function TaskDetailSheet(props: {
   remainingForThis: number;
   liveLogged: number;
   anyActive: boolean;
+  closing: boolean;
   onClose: () => void;
   onSave: (id: string, text: string, mins: number) => void;
   onComplete: (id: string) => void;
@@ -313,7 +315,7 @@ function TaskDetailSheet(props: {
   setSubDraftTime: (v: string) => void;
 }) {
   const {
-    task, subs, remainingForThis, liveLogged, anyActive, onClose, onSave,
+    task, subs, remainingForThis, liveLogged, anyActive, closing, onClose, onSave,
     onComplete, onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
     subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
   } = props;
@@ -351,8 +353,8 @@ function TaskDetailSheet(props: {
   const startDisabled = anyActive && task.status !== 'active';
 
   return (
-    <div className="sheet-backdrop" onClick={handleClose}>
-      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
+    <div className={`sheet-backdrop${closing ? ' closing' : ''}`} onClick={handleClose}>
+      <div className={`capture-sheet task-detail-sheet${closing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="task-detail-header">
           <button className="btn-text" onClick={handleClose}>Close</button>
           <button
@@ -466,12 +468,30 @@ export default function Home() {
   const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [taskDetailClosing, setTaskDetailClosing] = useState(false);
+
+  function closeTaskDetail() {
+    setTaskDetailClosing(true);
+    setTimeout(() => {
+      setOpenTaskId(null);
+      setTaskDetailClosing(false);
+    }, SHEET_CLOSE_MS);
+  }
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
   const [workDays, setWorkDays] = useState<number[]>(DEFAULT_WORK_DAYS);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [captureClosing, setCaptureClosing] = useState(false);
+
+  function closeCaptureSheet() {
+    setCaptureClosing(true);
+    setTimeout(() => {
+      setCaptureOpen(false);
+      setCaptureClosing(false);
+    }, SHEET_CLOSE_MS);
+  }
 
   const [taskText, setTaskText] = useState('');
   const [taskTime, setTaskTime] = useState('');
@@ -483,15 +503,13 @@ export default function Home() {
       setHasSignedInBefore(window.localStorage.getItem(HAS_SIGNED_IN_KEY) === 'true');
     }
   }, []);
-   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    if (code) {
-      supabase.auth.exchangeCodeForSession(code).finally(() => {
-        window.history.replaceState({}, '', window.location.pathname);
-      });
-    }
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => listener.subscription.unsubscribe();
   }, []);
+
   useEffect(() => {
     if (session && typeof window !== 'undefined') {
       window.localStorage.setItem(HAS_SIGNED_IN_KEY, 'true');
@@ -614,7 +632,7 @@ export default function Home() {
     if (data) setTasks((prev) => [...prev, data]);
     setTaskText('');
     setTaskTime('');
-    setCaptureOpen(false);
+    closeCaptureSheet();
   }
 
   async function updateTask(id: string, text: string, mins: number) {
@@ -998,25 +1016,28 @@ export default function Home() {
       </div>
 
       {captureOpen && (
-        <div className="capture-sheet">
-          <input
-            type="text"
-            value={taskText}
-            onChange={(e) => setTaskText(e.target.value)}
-            placeholder="What needs doing?"
-          />
-          <div className="capture-row">
+        <div className={`sheet-backdrop${captureClosing ? ' closing' : ''}`} onClick={closeCaptureSheet}>
+          <div className={`capture-sheet${captureClosing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
             <input
               type="text"
-              value={taskTime}
-              onChange={(e) => setTaskTime(e.target.value)}
-              placeholder="0m"
-              style={{ width: 80 }}
+              value={taskText}
+              onChange={(e) => setTaskText(e.target.value)}
+              placeholder="What needs doing?"
+              autoFocus
             />
-            <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
+            <div className="capture-row">
+              <input
+                type="text"
+                value={taskTime}
+                onChange={(e) => setTaskTime(e.target.value)}
+                placeholder="0m"
+                style={{ width: 80 }}
+              />
+              <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
+            </div>
+            {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+            <button className="btn-text" onClick={closeCaptureSheet}>Cancel</button>
           </div>
-          {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-          <button className="btn-text" onClick={() => setCaptureOpen(false)}>Cancel</button>
         </div>
       )}
 
@@ -1031,7 +1052,8 @@ export default function Home() {
           remainingForThis={openTaskRemaining}
           liveLogged={openTaskLiveLogged}
           anyActive={tasks.some((x) => x.status === 'active')}
-          onClose={() => setOpenTaskId(null)}
+          closing={taskDetailClosing}
+          onClose={closeTaskDetail}
           onSave={updateTask}
           onComplete={completeTask}
           onStart={startTask}
