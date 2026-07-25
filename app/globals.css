@@ -257,7 +257,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .capacity-ring-wrap svg {
-  transform: rotate(-90deg);
+  transform: rotate(0deg);
 }
 
 .capacity-number-block {
@@ -437,50 +437,26 @@ button:focus-visible, input:focus-visible {
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--steel);
+  background: white;
   z-index: 3;
+  transition: background 0.2s var(--ease);
 }
 
 .task-row.came-up::before {
   background: var(--hazard);
 }
 
-.task-row.over-cap::before {
-  background: var(--overflow) !important;
+.task-row.task-due-today::before {
+  background: var(--steel);
+}
+
+.task-row.task-overtime::before {
+  background: var(--hazard);
 }
 
 .swipe-zone {
   position: relative;
   overflow: hidden;
-}
-
-.swipe-reveal-left {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 92px;
-  display: flex;
-  z-index: 1;
-}
-
-.swipe-reveal-btn {
-  flex: 1;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.swipe-reveal-btn.edit-btn {
-  background: var(--steel-wash);
-  color: var(--steel-dark);
-}
-
-.swipe-reveal-btn.delete-btn {
-  background: var(--hazard-bg);
-  color: var(--hazard);
 }
 
 .swipe-reveal-right {
@@ -508,10 +484,15 @@ button:focus-visible, input:focus-visible {
   background: var(--paper-raised);
   padding: 9px var(--space-4);
   touch-action: pan-y;
+  transition: background 0.2s var(--ease);
 }
 
-.task-row.over-cap .swipe-foreground {
-  background: var(--overflow-bg);
+.task-row.task-overtime .swipe-foreground {
+  background: var(--hazard-bg);
+}
+
+.task-row.task-due-today .swipe-foreground {
+  background: var(--steel-wash);
 }
 
 .task-main {
@@ -576,8 +557,12 @@ button:focus-visible, input:focus-visible {
   transition: width 0.4s var(--ease);
 }
 
-.task-row.over-cap .task-progress-fill {
-  background: var(--overflow);
+.task-row.task-overtime .task-progress-fill {
+  background: var(--hazard);
+}
+
+.task-row.task-due-today .task-progress-fill {
+  background: var(--steel);
 }
 
 .task-progress-label {
@@ -612,6 +597,36 @@ button:focus-visible, input:focus-visible {
 .tag-elapsed {
   background: var(--steel-wash);
   color: var(--steel-dark);
+}
+
+.btn-due-today {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 16px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+  cursor: pointer;
+}
+
+.btn-due-today:hover {
+  background: var(--line);
+  color: var(--ink);
+}
+
+.task-row.task-due-today .btn-due-today {
+  color: var(--steel);
+}
+
+.task-row.task-due-today .btn-due-today:hover {
+  background: var(--steel-wash);
 }
 
 .subtask-panel {
@@ -794,10 +809,6 @@ button:focus-visible, input:focus-visible {
   justify-content: space-between;
 }
 
-.task-detail-delete {
-  color: var(--hazard);
-}
-
 .task-detail-name {
   border: none;
   background: none;
@@ -871,7 +882,8 @@ button:focus-visible, input:focus-visible {
   gap: var(--space-3);
 }
 
-.auth-form input[type="email"] {
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   padding: 12px;
