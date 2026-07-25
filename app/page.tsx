@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
 
@@ -450,7 +449,6 @@ function TaskDetailSheet(props: {
 }
 
 export default function Home() {
-  const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -926,10 +924,7 @@ export default function Home() {
 
   return (
     <div className="app-shell">
-      <div
-        className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}
-        onClick={() => router.push('/analytics')}
-      >
+      <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
         <div className="today-header-top-row">
           <div className="today-header-date">{dateLabel}</div>
           <GearMenu />
