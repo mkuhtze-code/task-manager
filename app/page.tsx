@@ -33,6 +33,7 @@ type Meeting = {
 
 const HAS_SIGNED_IN_KEY = 'dokkit-has-signed-in';
 const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
+const LONG_PRESS_MS = 500;
 
 function parseMins(raw: string): number | null {
   const str = raw.trim().toLowerCase();
@@ -66,7 +67,7 @@ function timeStringToMinutes(t: string): number {
 
 function CheckIcon({ done }: { done: boolean }) {
   return (
-    <svg width="26" height="26" viewBox="0 0 18 18">
+    <svg width="22" height="22" viewBox="0 0 18 18">
       <circle cx="9" cy="9" r="7.6" fill={done ? 'var(--moss)' : 'none'} stroke={done ? 'var(--moss)' : 'var(--line-strong)'} strokeWidth="1.6" />
       <path
         d="M5.3 9.3 L7.7 11.8 L12.7 6"
@@ -105,27 +106,29 @@ function DeleteIcon() {
   );
 }
 
+// Sleeker, rounded play/stop glyphs — used both on the swipe-reveal button
+// and inside the task detail sheet.
 function PlayIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 18 18">
-      <path d="M5.5 3.2v11.6l9.5-5.8z" fill="white" />
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+      <path d="M7 5.5c0-1.2 1.3-1.9 2.3-1.3l10 6.5c.9.6.9 2 0 2.6l-10 6.5c-1 .6-2.3-.1-2.3-1.3V5.5Z" fill="currentColor" />
     </svg>
   );
 }
 
 function StopIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 18 18">
-      <rect x="4.5" y="4.5" width="9" height="9" rx="1.5" fill="white" />
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+      <rect x="5.5" y="5.5" width="13" height="13" rx="4" fill="currentColor" />
     </svg>
   );
 }
 
 const REVEAL_LEFT = 92;
-const TRIGGER_RIGHT = 90;
+const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
-const TRIGGER_THRESHOLD = 60;
-const LONG_PRESS_MS = 500;
+
+type OpenSide = 'none' | 'left' | 'right';
 
 function TaskCard(props: {
   task: Task;
@@ -134,67 +137,47 @@ function TaskCard(props: {
   overCap: boolean;
   anyActive: boolean;
   subs: Subtask[];
-  expanded: boolean;
-  editing: boolean;
-  editText: string;
-  editTime: string;
-  editError: string;
-  subDraftText: string;
-  subDraftTime: string;
   openSwipeId: string | null;
   setOpenSwipeId: (id: string | null) => void;
   onComplete: (id: string) => void;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
-  onStartEdit: (t: Task) => void;
-  onSaveEdit: (id: string) => void;
-  onCancelEdit: () => void;
+  onOpen: (id: string) => void;
   onDelete: (id: string) => void;
   onToggleDue: (id: string, current: boolean) => void;
-  onToggleExpand: (id: string) => void;
-  setEditText: (v: string) => void;
-  setEditTime: (v: string) => void;
-  setSubDraftText: (id: string, v: string) => void;
-  setSubDraftTime: (id: string, v: string) => void;
-  onAddSubtask: (id: string) => void;
-  onToggleSubtaskDone: (subId: string, taskId: string, current: boolean) => void;
-  onDeleteSubtask: (subId: string, taskId: string) => void;
 }) {
   const {
-    task: t, remainingForThis, liveLogged, overCap, anyActive, subs, expanded, editing,
-    editText, editTime, editError, subDraftText, subDraftTime, openSwipeId, setOpenSwipeId,
-    onComplete, onStart, onStop, onStartEdit, onSaveEdit, onCancelEdit, onDelete, onToggleDue,
-    onToggleExpand, setEditText, setEditTime, setSubDraftText, setSubDraftTime, onAddSubtask,
-    onToggleSubtaskDone, onDeleteSubtask,
+    task: t, remainingForThis, liveLogged, overCap, anyActive, subs,
+    openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen, onDelete, onToggleDue,
   } = props;
 
   const [dragX, setDragX] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
+  const [openSide, setOpenSide] = useState<OpenSide>('none');
   const [dragging, setDragging] = useState(false);
 
-  const startXRef = useRef({ x: 0, y: 0, t: 0 });
+  const startXRef = useRef({ x: 0, y: 0 });
   const movedRef = useRef({ v: false });
   const axisRef = useRef<{ v: 'none' | 'x' | 'y' }>({ v: 'none' });
   const longPressFiredRef = useRef({ v: false });
   const longPressTimer = useRef<{ id: any }>({ id: null });
 
   useEffect(() => {
-    if (openSwipeId !== t.id && isOpen) {
-      setIsOpen(false);
+    if (openSwipeId !== t.id && openSide !== 'none') {
+      setOpenSide('none');
       setDragX(0);
     }
   }, [openSwipeId]);
 
   const startDisabled = anyActive && t.status !== 'active';
 
-  // Swipe-only pointer handling: purely drives the horizontal drag reveal
-  // and the start/stop trigger. Tap-to-expand is handled separately via a
-  // plain onClick on the card body (more reliable across devices than
-  // inferring "tap" from pixel-movement thresholds here).
+  // Pointer handling drives ONLY the swipe-drag reveal (left = edit/delete,
+  // right = start/stop) and the long-press "due today" toggle. It no longer
+  // decides taps — that's a plain onClick on the card body below, which is
+  // far more reliable across devices than inferring "tap vs drag" from
+  // pixel-movement thresholds.
   function handlePointerDown(e: React.PointerEvent) {
     startXRef.current.x = e.clientX;
     startXRef.current.y = e.clientY;
-    startXRef.current.t = Date.now();
     movedRef.current.v = false;
     axisRef.current.v = 'none';
     longPressFiredRef.current.v = false;
@@ -224,8 +207,8 @@ function TaskCard(props: {
     if (axisRef.current.v === 'x') {
       movedRef.current.v = true;
       clearTimeout(longPressTimer.current.id);
-      const base = isOpen ? -REVEAL_LEFT : 0;
-      const next = Math.max(Math.min(base + dx, TRIGGER_RIGHT), -REVEAL_LEFT);
+      const base = openSide === 'left' ? -REVEAL_LEFT : openSide === 'right' ? REVEAL_RIGHT : 0;
+      const next = Math.max(Math.min(base + dx, REVEAL_RIGHT), -REVEAL_LEFT);
       setDragX(next);
     }
   }
@@ -234,34 +217,33 @@ function TaskCard(props: {
     clearTimeout(longPressTimer.current.id);
     setDragging(false);
     if (longPressFiredRef.current.v) {
-      setDragX(isOpen ? -REVEAL_LEFT : 0);
+      setDragX(openSide === 'left' ? -REVEAL_LEFT : openSide === 'right' ? REVEAL_RIGHT : 0);
       return;
     }
     if (axisRef.current.v === 'x') {
       if (dragX <= -OPEN_THRESHOLD) {
-        setIsOpen(true);
+        setOpenSide('left');
         setDragX(-REVEAL_LEFT);
         setOpenSwipeId(t.id);
-      } else if (dragX >= TRIGGER_THRESHOLD) {
-        if (t.status === 'active') onStop(t.id);
-        else if (!startDisabled) onStart(t.id);
-        setDragX(0);
-        setIsOpen(false);
+      } else if (dragX >= OPEN_THRESHOLD) {
+        setOpenSide('right');
+        setDragX(REVEAL_RIGHT);
+        setOpenSwipeId(t.id);
       } else {
+        setOpenSide('none');
         setDragX(0);
-        setIsOpen(false);
         if (openSwipeId === t.id) setOpenSwipeId(null);
       }
     }
   }
 
   function handleBodyClick() {
-    if (isOpen) {
-      setIsOpen(false);
+    if (openSide !== 'none') {
+      setOpenSide('none');
       setDragX(0);
       if (openSwipeId === t.id) setOpenSwipeId(null);
     } else {
-      onToggleExpand(t.id);
+      onOpen(t.id);
     }
   }
 
@@ -270,7 +252,7 @@ function TaskCard(props: {
       e.stopPropagation();
       action();
       setDragX(0);
-      setIsOpen(false);
+      setOpenSide('none');
       if (openSwipeId === t.id) setOpenSwipeId(null);
     };
   }
@@ -279,108 +261,221 @@ function TaskCard(props: {
 
   return (
     <div className={rowClass}>
-      {editing ? (
-        <div className="edit-surface" style={{ padding: 'var(--space-3) var(--space-4)', position: 'relative', zIndex: 2, background: 'var(--paper-raised)' }}>
-          <div className="edit-form">
-            <input type="text" value={editText} onChange={(e) => setEditText(e.target.value)} autoFocus />
-            <div className="capture-row">
-              <input type="text" value={editTime} onChange={(e) => setEditTime(e.target.value)} style={{ width: 70 }} />
-              <button className="btn btn-steel" style={{ flex: 1 }} onClick={() => onSaveEdit(t.id)}>Save</button>
-              <button className="btn btn-ghost" onClick={onCancelEdit}>Cancel</button>
-            </div>
-            {editError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{editError}</p>}
-          </div>
+      <div className="swipe-zone">
+        <div className="swipe-reveal-left">
+          <button className="swipe-reveal-btn edit-btn" onPointerUp={closeAnd(() => onOpen(t.id))} aria-label="Edit task">
+            <EditIcon />
+          </button>
+          <button className="swipe-reveal-btn delete-btn" onPointerUp={closeAnd(() => onDelete(t.id))} aria-label="Delete task">
+            <DeleteIcon />
+          </button>
         </div>
-      ) : (
-        <div className="swipe-zone">
-          <div className="swipe-reveal-left">
-            <button className="swipe-reveal-btn edit-btn" onPointerUp={closeAnd(() => onStartEdit(t))} aria-label="Edit task">
-              <EditIcon />
+        <button
+          className="swipe-reveal-right start-stop-btn"
+          style={{ background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)', opacity: startDisabled && t.status !== 'active' ? 0.4 : 1 }}
+          disabled={startDisabled && t.status !== 'active'}
+          onPointerUp={closeAnd(() => {
+            if (t.status === 'active') onStop(t.id);
+            else if (!startDisabled) onStart(t.id);
+          })}
+          aria-label={t.status === 'active' ? 'Stop' : 'Start'}
+        >
+          {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
+          <span>{t.status === 'active' ? 'Stop' : 'Start'}</span>
+        </button>
+        <div
+          className="swipe-foreground"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.3s var(--spring)' }}
+        >
+          <div className="task-main">
+            <button
+              className="check-btn"
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onComplete(t.id); }}
+              aria-label="Complete task"
+            >
+              <CheckIcon done={false} />
             </button>
-            <button className="swipe-reveal-btn delete-btn" onPointerUp={closeAnd(() => onDelete(t.id))} aria-label="Delete task">
-              <DeleteIcon />
-            </button>
-          </div>
-          <div className="swipe-reveal-right" style={{ background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)', opacity: startDisabled && t.status !== 'active' ? 0.4 : 1 }}>
-            {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
-            <span>{t.status === 'active' ? 'stop' : 'start'}</span>
-          </div>
-          <div
-            className="swipe-foreground"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.3s var(--spring)' }}
-          >
-            <div className="task-main">
-              <button
-                className="check-btn"
-                onPointerDown={(e) => e.stopPropagation()}
-                onPointerUp={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); onComplete(t.id); }}
-                aria-label="Complete task"
-              >
-                <CheckIcon done={false} />
-              </button>
-              <div className="task-body" onClick={handleBodyClick}>
-                <div className="task-text">{t.text}</div>
-                <div className="task-progress-row">
-                  <div className="task-progress-track">
-                    <div
-                      className="task-progress-fill"
-                      style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
-                    />
-                  </div>
-                  <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
+            <div className="task-body" onClick={handleBodyClick}>
+              <div className="task-text">{t.text}</div>
+              <div className="task-progress-row">
+                <div className="task-progress-track">
+                  <div
+                    className="task-progress-fill"
+                    style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
+                  />
                 </div>
-                {(t.status === 'active' || subs.length > 0 || t.due_today) && (
-                  <div className="task-tags">
-                    {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
-                    {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
-                    {t.due_today && <span className="tag tag-due">due today</span>}
-                  </div>
-                )}
+                <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
               </div>
+              {(t.status === 'active' || subs.length > 0 || t.due_today) && (
+                <div className="task-tags">
+                  {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
+                  {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
+                  {t.due_today && <span className="tag tag-due">due today</span>}
+                </div>
+              )}
             </div>
           </div>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
 
-      {!editing && expanded && (
-        <div style={{ position: 'relative', zIndex: 2, background: overCap ? 'var(--overflow-bg)' : 'var(--paper-raised)', padding: '0 var(--space-4) var(--space-3)' }}>
-          <div className="subtask-panel">
-            {subs.map((s) => (
-              <div key={s.id} className="subtask-row">
-                <button
-                  className={s.done ? 'subtask-check done' : 'subtask-check'}
-                  onClick={() => onToggleSubtaskDone(s.id, t.id, s.done)}
-                  aria-label="Complete sub-task"
-                />
-                <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
-                <span className="tag mono">{fmtMins(s.mins)}</span>
-                <button className="icon-btn" onClick={() => onDeleteSubtask(s.id, t.id)} aria-label="Delete sub-task">×</button>
-              </div>
-            ))}
-            <div className="subtask-add-row">
-              <input
-                type="text"
-                placeholder="Sub-task"
-                value={subDraftText}
-                onChange={(e) => setSubDraftText(t.id, e.target.value)}
+function TaskDetailSheet(props: {
+  task: Task;
+  subs: Subtask[];
+  remainingForThis: number;
+  liveLogged: number;
+  anyActive: boolean;
+  onClose: () => void;
+  onSave: (id: string, text: string, mins: number) => void;
+  onDelete: (id: string) => void;
+  onComplete: (id: string) => void;
+  onStart: (id: string) => void;
+  onStop: (id: string) => void;
+  onToggleDue: (id: string, current: boolean) => void;
+  onAddSubtask: (id: string) => void;
+  onToggleSubtaskDone: (subId: string, taskId: string, current: boolean) => void;
+  onDeleteSubtask: (subId: string, taskId: string) => void;
+  subDraftText: string;
+  subDraftTime: string;
+  setSubDraftText: (v: string) => void;
+  setSubDraftTime: (v: string) => void;
+}) {
+  const {
+    task, subs, remainingForThis, liveLogged, anyActive, onClose, onSave, onDelete, onComplete,
+    onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
+    subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
+  } = props;
+
+  const [text, setText] = useState(task.text);
+  const [timeStr, setTimeStr] = useState(fmtMins(task.estimate_mins));
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setText(task.text);
+    setTimeStr(fmtMins(task.estimate_mins));
+    setError('');
+  }, [task.id]);
+
+  function commit() {
+    const trimmed = text.trim();
+    if (trimmed.length === 0) {
+      setError('Name cannot be empty');
+      return;
+    }
+    const mins = parseMins(timeStr);
+    if (mins === null || mins <= 0) {
+      setError('Could not read that time, try 15m or 1.5h');
+      return;
+    }
+    setError('');
+    onSave(task.id, trimmed, mins);
+  }
+
+  function handleClose() {
+    commit();
+    onClose();
+  }
+
+  const startDisabled = anyActive && task.status !== 'active';
+
+  return (
+    <div className="sheet-backdrop" onClick={handleClose}>
+      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="task-detail-header">
+          <button className="btn-text" onClick={handleClose}>Close</button>
+          <button
+            className="btn-text task-detail-delete"
+            onClick={() => { onDelete(task.id); onClose(); }}
+          >
+            Delete
+          </button>
+        </div>
+
+        <input
+          type="text"
+          className="task-detail-name"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+        />
+
+        <div className="task-progress-row" style={{ marginTop: 0 }}>
+          <div className="task-progress-track">
+            <div
+              className="task-progress-fill"
+              style={{ width: `${Math.min((1 - remainingForThis / Math.max(task.estimate_mins, 1)) * 100, 100)}%` }}
+            />
+          </div>
+          <span className="task-progress-label mono">{fmtMins(remainingForThis)} left</span>
+        </div>
+
+        <div className="capture-row">
+          <input type="text" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} onBlur={commit} style={{ width: 90 }} />
+          <button
+            className={task.due_today ? 'btn btn-steel' : 'btn btn-ghost'}
+            style={{ flex: 1 }}
+            onClick={() => onToggleDue(task.id, task.due_today)}
+          >
+            {task.due_today ? '✓ Due today' : 'Due today'}
+          </button>
+        </div>
+        {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+
+        <div className="task-detail-actions">
+          {task.status === 'active' ? (
+            <button className="btn btn-ghost start-stop-btn" style={{ flex: 1 }} onClick={() => onStop(task.id)}>
+              <StopIcon /> Stop <span className="mono" style={{ fontWeight: 600 }}>{fmtMins(liveLogged)}</span>
+            </button>
+          ) : (
+            <button className="btn btn-steel start-stop-btn" style={{ flex: 1 }} disabled={startDisabled} onClick={() => onStart(task.id)}>
+              <PlayIcon /> Start
+            </button>
+          )}
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { onComplete(task.id); onClose(); }}>
+            Complete
+          </button>
+        </div>
+
+        <div className="subtask-panel">
+          <div className="settings-panel-title">Sub-tasks</div>
+          {subs.map((s) => (
+            <div key={s.id} className="subtask-row">
+              <button
+                className={s.done ? 'subtask-check done' : 'subtask-check'}
+                onClick={() => onToggleSubtaskDone(s.id, task.id, s.done)}
+                aria-label="Complete sub-task"
               />
-              <input
-                type="text"
-                placeholder="15m"
-                style={{ width: 60 }}
-                value={subDraftTime}
-                onChange={(e) => setSubDraftTime(t.id, e.target.value)}
-              />
-              <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => onAddSubtask(t.id)}>add</button>
+              <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
+              <span className="tag mono">{fmtMins(s.mins)}</span>
+              <button className="icon-btn" onClick={() => onDeleteSubtask(s.id, task.id)} aria-label="Delete sub-task">×</button>
             </div>
+          ))}
+          <div className="subtask-add-row">
+            <input
+              type="text"
+              placeholder="Sub-task"
+              value={subDraftText}
+              onChange={(e) => setSubDraftText(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="15m"
+              style={{ width: 60 }}
+              value={subDraftTime}
+              onChange={(e) => setSubDraftTime(e.target.value)}
+            />
+            <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => onAddSubtask(task.id)}>add</button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -395,10 +490,10 @@ export default function Home() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
-  const [expandedTaskIds, setExpandedTaskIds] = useState<Record<string, boolean>>({});
   const [subDraftText, setSubDraftText] = useState<Record<string, string>>({});
   const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [workStart, setWorkStart] = useState('08:00');
@@ -408,13 +503,8 @@ export default function Home() {
 
   const [taskText, setTaskText] = useState('');
   const [taskTime, setTaskTime] = useState('');
-  const [taskSource, setTaskSource] = useState<'planned' | 'came_up'>('planned');
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
-  const [editTime, setEditTime] = useState('');
-  const [editError, setEditError] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -514,8 +604,8 @@ export default function Home() {
       .insert({
         user_id: userId,
         text,
-        estimate_mins: mins || 15,
-        source: taskSource,
+        estimate_mins: mins,
+        source: 'came_up',
         order_index: maxOrder + 1,
       })
       .select()
@@ -524,6 +614,11 @@ export default function Home() {
     setTaskText('');
     setTaskTime('');
     setCaptureOpen(false);
+  }
+
+  async function updateTask(id: string, text: string, mins: number) {
+    await supabase.from('tasks').update({ text, estimate_mins: mins }).eq('id', id);
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins } : t)));
   }
 
   async function toggleDueToday(id: string, current: boolean) {
@@ -564,39 +659,6 @@ export default function Home() {
   async function deleteTask(id: string) {
     await supabase.from('tasks').delete().eq('id', id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
-  }
-
-  function toggleExpand(taskId: string) {
-    setExpandedTaskIds((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
-  }
-
-  function startEdit(t: Task) {
-    setEditingTaskId(t.id);
-    setEditText(t.text);
-    setEditTime(fmtMins(t.estimate_mins));
-    setEditError('');
-  }
-
-  function cancelEdit() {
-    setEditingTaskId(null);
-    setEditError('');
-  }
-
-  async function saveEdit(id: string) {
-    const text = editText.trim();
-    if (text.length === 0) {
-      setEditError('Name cannot be empty');
-      return;
-    }
-    const mins = parseMins(editTime);
-    if (mins === null || mins <= 0) {
-      setEditError('Could not read that time, try 15m or 1.5h');
-      return;
-    }
-    await supabase.from('tasks').update({ text, estimate_mins: mins }).eq('id', id);
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins } : t)));
-    setEditingTaskId(null);
-    setEditError('');
   }
 
   async function addSubtask(taskId: string) {
@@ -660,7 +722,6 @@ export default function Home() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                autoFocus
               />
               <button type="submit" className="btn btn-steel">Send magic link</button>
               {signInError && <p className="auth-error">{signInError}</p>}
@@ -707,6 +768,18 @@ export default function Home() {
   const taskCapacity = minutesLeftToday - meetingMins;
 
   const dateLabel = now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+
+  const openTask = openTaskId ? tasks.find((t) => t.id === openTaskId) || null : null;
+
+  let openTaskRemaining = 0;
+  let openTaskLiveLogged = 0;
+  if (openTask) {
+    openTaskRemaining = remainingForTask(openTask);
+    openTaskLiveLogged = openTask.logged_mins;
+    if (openTask.status === 'active' && openTask.started_at) {
+      openTaskLiveLogged += (Date.now() - new Date(openTask.started_at).getTime()) / 60000;
+    }
+  }
 
   return (
     <div className="app-shell">
@@ -760,7 +833,6 @@ export default function Home() {
           const overCap = cumulative > taskCapacity;
           const anyActive = tasks.some((x) => x.status === 'active');
           const subs = subtasksByTask[t.id] || [];
-          const expanded = !!expandedTaskIds[t.id];
           let liveLogged = t.logged_mins;
           if (t.status === 'active' && t.started_at) {
             liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
@@ -774,31 +846,14 @@ export default function Home() {
               overCap={overCap}
               anyActive={anyActive}
               subs={subs}
-              expanded={expanded}
-              editing={editingTaskId === t.id}
-              editText={editText}
-              editTime={editTime}
-              editError={editError}
-              subDraftText={subDraftText[t.id] || ''}
-              subDraftTime={subDraftTime[t.id] || ''}
               openSwipeId={openSwipeId}
               setOpenSwipeId={setOpenSwipeId}
               onComplete={completeTask}
               onStart={startTask}
               onStop={stopTask}
-              onStartEdit={startEdit}
-              onSaveEdit={saveEdit}
-              onCancelEdit={cancelEdit}
+              onOpen={setOpenTaskId}
               onDelete={deleteTask}
               onToggleDue={toggleDueToday}
-              onToggleExpand={toggleExpand}
-              setEditText={setEditText}
-              setEditTime={setEditTime}
-              setSubDraftText={(id, v) => setSubDraftText((prev) => ({ ...prev, [id]: v }))}
-              setSubDraftTime={(id, v) => setSubDraftTime((prev) => ({ ...prev, [id]: v }))}
-              onAddSubtask={addSubtask}
-              onToggleSubtaskDone={toggleSubtaskDone}
-              onDeleteSubtask={deleteSubtask}
             />
           );
         })}
@@ -811,28 +866,13 @@ export default function Home() {
             value={taskText}
             onChange={(e) => setTaskText(e.target.value)}
             placeholder="What needs doing?"
-            autoFocus
           />
-          <div className="segmented">
-            <button
-              className={taskSource === 'planned' ? 'segmented-btn active' : 'segmented-btn'}
-              onClick={() => setTaskSource('planned')}
-            >
-              planned
-            </button>
-            <button
-              className={taskSource === 'came_up' ? 'segmented-btn active' : 'segmented-btn'}
-              onClick={() => setTaskSource('came_up')}
-            >
-              came up
-            </button>
-          </div>
           <div className="capture-row">
             <input
               type="text"
               value={taskTime}
               onChange={(e) => setTaskTime(e.target.value)}
-              placeholder="15m"
+              placeholder="0m"
               style={{ width: 80 }}
             />
             <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
@@ -844,6 +884,30 @@ export default function Home() {
 
       {!captureOpen && (
         <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Dock it">+</button>
+      )}
+
+      {openTask && (
+        <TaskDetailSheet
+          task={openTask}
+          subs={subtasksByTask[openTask.id] || []}
+          remainingForThis={openTaskRemaining}
+          liveLogged={openTaskLiveLogged}
+          anyActive={tasks.some((x) => x.status === 'active')}
+          onClose={() => setOpenTaskId(null)}
+          onSave={updateTask}
+          onDelete={deleteTask}
+          onComplete={completeTask}
+          onStart={startTask}
+          onStop={stopTask}
+          onToggleDue={toggleDueToday}
+          onAddSubtask={addSubtask}
+          onToggleSubtaskDone={toggleSubtaskDone}
+          onDeleteSubtask={deleteSubtask}
+          subDraftText={subDraftText[openTask.id] || ''}
+          subDraftTime={subDraftTime[openTask.id] || ''}
+          setSubDraftText={(v) => setSubDraftText((prev) => ({ ...prev, [openTask.id]: v }))}
+          setSubDraftTime={(v) => setSubDraftTime((prev) => ({ ...prev, [openTask.id]: v }))}
+        />
       )}
     </div>
   );
