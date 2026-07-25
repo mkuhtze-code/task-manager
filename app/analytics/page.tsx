@@ -142,7 +142,7 @@ export default function Analytics() {
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const mostProductiveDay = Object.entries(dayStats).reduce(
-    (best, [day, stats]) =>
+    (best, [day, stats]): [number, { count: number; mins: number }] | null =>
       stats.mins > (best?.[1]?.mins || 0) ? [Number(day), stats] : best,
     null as [number, { count: number; mins: number }] | null
   );
