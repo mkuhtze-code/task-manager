@@ -222,7 +222,6 @@ button:focus-visible, input:focus-visible {
   padding: var(--space-4);
   margin: var(--space-5) 0 var(--space-5);
   box-shadow: 0 2px 6px rgba(26, 41, 51, 0.1);
-  cursor: pointer;
   transition: background 0.3s var(--ease);
 }
 
