@@ -99,6 +99,7 @@ button:focus-visible, input:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 26px;
 }
 
 .app-header-left {
@@ -126,6 +127,7 @@ button:focus-visible, input:focus-visible {
   align-items: center;
   gap: var(--space-3);
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .app-title {
@@ -304,6 +306,29 @@ button:focus-visible, input:focus-visible {
   font-size: 13px;
   color: var(--ink-soft);
   margin-right: 2px;
+}
+
+.day-toggle-row {
+  display: flex;
+  gap: 6px;
+}
+
+.day-toggle-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.day-toggle-btn.active {
+  background: var(--steel);
+  border-color: var(--steel);
+  color: white;
 }
 
 @keyframes expand-in {
