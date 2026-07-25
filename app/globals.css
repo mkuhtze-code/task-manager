@@ -143,6 +143,12 @@ button:focus-visible, input:focus-visible {
   font-weight: 500;
 }
 
+.gear-menu-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .gear-btn {
   width: 34px;
   height: 34px;
@@ -205,26 +211,36 @@ button:focus-visible, input:focus-visible {
   margin: 4px 6px;
 }
 
-.perforation {
-  height: 10px;
-  background-image: radial-gradient(circle, var(--paper) 2.5px, transparent 2.5px);
-  background-size: 15px 15px;
-  background-position: 8px center;
-  background-color: var(--line-strong);
-  border-radius: 5px 5px 0 0;
-}
-
-.capacity-card {
-  background: var(--paper-raised);
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
+.today-header-card {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: var(--radius-lg);
   padding: var(--space-4);
-  margin-bottom: var(--space-6);
+  margin: var(--space-5) 0 var(--space-6);
   box-shadow: 0 2px 6px rgba(26, 41, 51, 0.1);
+  cursor: pointer;
   transition: background 0.3s var(--ease);
 }
 
-.capacity-card.overloaded {
-  background: var(--hazard-bg);
+.today-header-card.overloaded {
+  background: rgba(255, 242, 224, 0.92);
+}
+
+.today-header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.today-header-date {
+  font-size: 13px;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .capacity-row {
@@ -257,7 +273,7 @@ button:focus-visible, input:focus-visible {
   color: var(--ink);
 }
 
-.capacity-card.overloaded .capacity-hero-number {
+.today-header-card.overloaded .capacity-hero-number {
   color: var(--hazard);
 }
 
@@ -534,6 +550,7 @@ button:focus-visible, input:focus-visible {
 .task-body {
   flex: 1;
   min-width: 0;
+  cursor: pointer;
 }
 
 .task-text {
