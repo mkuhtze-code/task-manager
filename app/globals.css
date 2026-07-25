@@ -783,6 +783,24 @@ button:focus-visible, input:focus-visible {
   to { transform: translateY(0); }
 }
 
+@keyframes slide-down {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.capture-sheet.closing {
+  animation: slide-down 0.3s var(--spring) forwards;
+}
+
+.sheet-backdrop.closing {
+  animation: fade-out 0.2s var(--ease) forwards;
+}
+
 .capture-sheet input[type="text"] {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
@@ -951,4 +969,175 @@ button:focus-visible, input:focus-visible {
   margin-top: var(--space-4);
   color: var(--hazard);
   border-color: var(--hazard-bg);
+}
+
+/* ── Analytics page ──────────────────────────────────────────── */
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.analytics-card {
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.analytics-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.analytics-number {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.analytics-sublabel {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.analytics-task-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.analytics-task-item:last-child {
+  border-bottom: none;
+}
+
+.analytics-task-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-task-badge {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  flex-shrink: 0;
+}
+
+.day-activity-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.day-activity-card {
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  padding: 8px 2px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: background 0.2s var(--ease);
+}
+
+.day-activity-card.highest {
+  background: var(--steel-wash);
+}
+
+.day-name {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+
+.day-count {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.day-activity-card.highest .day-count {
+  color: var(--steel-dark);
+}
+
+.day-time {
+  font-size: 9.5px;
+  color: var(--ink-faint);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.analytics-task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.analytics-task-row:last-child {
+  border-bottom: none;
+}
+
+.analytics-task-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.analytics-task-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-task-time {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.analytics-task-source {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  background: var(--paper);
+  color: var(--ink-soft);
+}
+
+.analytics-task-source.planned {
+  background: var(--steel-wash);
+  color: var(--steel-dark);
+}
+
+.analytics-task-source.came_up {
+  background: var(--hazard-bg);
+  color: var(--hazard);
 }
