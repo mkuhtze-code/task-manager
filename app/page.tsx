@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import AppHeader from '@/components/AppHeader';
+import GearMenu from '@/components/GearMenu';
 
 type Task = {
   id: string;
@@ -124,7 +125,6 @@ const REVEAL_LEFT = 92;
 const TRIGGER_RIGHT = 90;
 const OPEN_THRESHOLD = 45;
 const TRIGGER_THRESHOLD = 60;
-const MOVE_TOLERANCE = 6;
 const LONG_PRESS_MS = 500;
 
 function TaskCard(props: {
@@ -187,6 +187,10 @@ function TaskCard(props: {
 
   const startDisabled = anyActive && t.status !== 'active';
 
+  // Swipe-only pointer handling: purely drives the horizontal drag reveal
+  // and the start/stop trigger. Tap-to-expand is handled separately via a
+  // plain onClick on the card body (more reliable across devices than
+  // inferring "tap" from pixel-movement thresholds here).
   function handlePointerDown(e: React.PointerEvent) {
     startXRef.current.x = e.clientX;
     startXRef.current.y = e.clientY;
@@ -207,7 +211,7 @@ function TaskCard(props: {
     const dx = e.clientX - startXRef.current.x;
     const dy = e.clientY - startXRef.current.y;
     if (axisRef.current.v === 'none') {
-      if (Math.abs(dx) > MOVE_TOLERANCE || Math.abs(dy) > MOVE_TOLERANCE) {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
         if (Math.abs(dx) > Math.abs(dy)) {
           axisRef.current.v = 'x';
           movedRef.current.v = true;
@@ -233,31 +237,31 @@ function TaskCard(props: {
       setDragX(isOpen ? -REVEAL_LEFT : 0);
       return;
     }
-    if (axisRef.current.v !== 'x') {
-      if (!movedRef.current.v) {
-        if (isOpen) {
-          setIsOpen(false);
-          setDragX(0);
-          if (openSwipeId === t.id) setOpenSwipeId(null);
-        } else {
-          onToggleExpand(t.id);
-        }
+    if (axisRef.current.v === 'x') {
+      if (dragX <= -OPEN_THRESHOLD) {
+        setIsOpen(true);
+        setDragX(-REVEAL_LEFT);
+        setOpenSwipeId(t.id);
+      } else if (dragX >= TRIGGER_THRESHOLD) {
+        if (t.status === 'active') onStop(t.id);
+        else if (!startDisabled) onStart(t.id);
+        setDragX(0);
+        setIsOpen(false);
+      } else {
+        setDragX(0);
+        setIsOpen(false);
+        if (openSwipeId === t.id) setOpenSwipeId(null);
       }
-      return;
     }
-    if (dragX <= -OPEN_THRESHOLD) {
-      setIsOpen(true);
-      setDragX(-REVEAL_LEFT);
-      setOpenSwipeId(t.id);
-    } else if (dragX >= TRIGGER_THRESHOLD) {
-      if (t.status === 'active') onStop(t.id);
-      else if (!startDisabled) onStart(t.id);
-      setDragX(0);
+  }
+
+  function handleBodyClick() {
+    if (isOpen) {
       setIsOpen(false);
-    } else {
       setDragX(0);
-      setIsOpen(false);
       if (openSwipeId === t.id) setOpenSwipeId(null);
+    } else {
+      onToggleExpand(t.id);
     }
   }
 
@@ -314,12 +318,12 @@ function TaskCard(props: {
                 className="check-btn"
                 onPointerDown={(e) => e.stopPropagation()}
                 onPointerUp={(e) => e.stopPropagation()}
-                onClick={() => onComplete(t.id)}
+                onClick={(e) => { e.stopPropagation(); onComplete(t.id); }}
                 aria-label="Complete task"
               >
                 <CheckIcon done={false} />
               </button>
-              <div className="task-body">
+              <div className="task-body" onClick={handleBodyClick}>
                 <div className="task-text">{t.text}</div>
                 <div className="task-progress-row">
                   <div className="task-progress-track">
@@ -382,6 +386,7 @@ function TaskCard(props: {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
@@ -705,10 +710,14 @@ export default function Home() {
 
   return (
     <div className="app-shell">
-      <AppHeader dateLabel={dateLabel} />
-
-      <div className="perforation" />
-      <div className={overloaded ? 'capacity-card overloaded' : 'capacity-card'}>
+      <div
+        className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}
+        onClick={() => router.push('/analytics')}
+      >
+        <div className="today-header-top-row">
+          <div className="today-header-date">{dateLabel}</div>
+          <GearMenu />
+        </div>
         <div className="capacity-row">
           <div className="capacity-ring-wrap">
             <svg width="60" height="60" viewBox="0 0 60 60">
