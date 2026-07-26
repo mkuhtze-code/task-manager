@@ -21,6 +21,12 @@ type AnalyticsData = {
   allTasks: CompletedTask[];
 };
 
+type LearnedPattern = {
+  label: string;
+  count: number;
+  avgMins: number;
+};
+
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
   if (mins < 60) return `${mins}m`;
@@ -98,11 +104,6 @@ export default function Analytics() {
   const avgEstimate = totalCompleted > 0 ? totalEstimateMins / totalCompleted : 0;
   const avgActual = totalCompleted > 0 ? totalActualMins / totalCompleted : 0;
 
-  const plannedTasks = currentData.filter((t) => t.source === 'planned');
-  const cameUpTasks = currentData.filter((t) => t.source === 'came_up');
-  const plannedMins = plannedTasks.reduce((sum, t) => sum + (t.actual_mins || 0), 0);
-  const cameUpMins = cameUpTasks.reduce((sum, t) => sum + (t.actual_mins || 0), 0);
-
   // Tasks where the estimate and the actual time diverged meaningfully —
   // this is what actually helps: next time you write "quote reroof: 30m",
   // you have a quiet reference point instead of guessing cold.
@@ -113,10 +114,30 @@ export default function Analytics() {
   const ranShorter = taskDeltas.filter((t) => t.ratio < 0.8).sort((a, b) => a.ratio - b.ratio).slice(0, 3);
   const ranLonger = taskDeltas.filter((t) => t.ratio > 1.2).sort((a, b) => b.ratio - a.ratio).slice(0, 3);
 
+  // What Docket has learned: task names typed more than once, grouped and
+  // averaged across all-time history (not just the selected window), since
+  // this is meant to be a running memory, not a period-by-period report.
+  // This is the same signal that quietly powers the estimate suggestion
+  // chip in the capture sheet.
+  const patternMap: Record<string, LearnedPattern> = {};
+  analytics.allTasks.forEach((t) => {
+    const key = t.text.trim().toLowerCase();
+    if (!key) return;
+    if (!patternMap[key]) {
+      patternMap[key] = { label: t.text.trim(), count: 0, avgMins: 0 };
+    }
+    const entry = patternMap[key];
+    const prevTotal = entry.avgMins * entry.count;
+    entry.count += 1;
+    entry.avgMins = (prevTotal + (t.actual_mins || 0)) / entry.count;
+  });
+  const learnedPatterns = Object.values(patternMap)
+    .filter((p) => p.count >= 2)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+
   const currentTasks =
     timePeriod === 'today' ? analytics.todayTasks : timePeriod === 'week' ? analytics.weekTasks : analytics.monthTasks;
-
-  const plannedSharePercent = totalActualMins > 0 ? Math.round((plannedMins / totalActualMins) * 100) : 0;
 
   return (
     <div className="app-shell">
@@ -217,26 +238,27 @@ export default function Analytics() {
             )}
           </div>
 
-          {/* Where time came from */}
-          <div className="settings-panel">
-            <div className="settings-panel-title">Where time came from</div>
-            <div className="analytics-grid">
-              <div className="analytics-card">
-                <div className="analytics-label">Planned</div>
-                <div className="analytics-number">{fmtHours(plannedMins)}</div>
-                <div className="analytics-sublabel">{plannedTasks.length} tasks</div>
-              </div>
-              <div className="analytics-card">
-                <div className="analytics-label">Came up</div>
-                <div className="analytics-number">{fmtHours(cameUpMins)}</div>
-                <div className="analytics-sublabel">{cameUpTasks.length} tasks</div>
-              </div>
-              <div className="analytics-card">
-                <div className="analytics-label">Planned share</div>
-                <div className="analytics-number">{plannedSharePercent}%</div>
+          {/* What Docket has learned */}
+          {learnedPatterns.length > 0 && (
+            <div className="settings-panel">
+              <div className="settings-panel-title">What Docket has learned</div>
+              <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.5, margin: '-4px 0 4px' }}>
+                Tasks you've typed more than once, and what they've actually taken. This is what feeds the
+                estimate suggestion when you add something similar.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                {learnedPatterns.map((p) => (
+                  <div key={p.label} className="analytics-task-row">
+                    <div className="analytics-task-info">
+                      <div className="analytics-task-name">{p.label}</div>
+                      <div className="analytics-task-time mono">usually ~{fmtMins(p.avgMins)}</div>
+                    </div>
+                    <div className="learned-pattern-count">{p.count}×</div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Recently completed */}
           <div className="settings-panel">
