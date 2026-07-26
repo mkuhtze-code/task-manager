@@ -48,7 +48,7 @@ export default function GearMenu() {
       {menuOpen && (
         <div className="gear-dropdown">
           <Link href="/analytics" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-            Analytics
+            Patterns
           </Link>
           <Link href="/preferences" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
             Preferences
