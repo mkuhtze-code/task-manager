@@ -546,10 +546,14 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
-    return () => listener.subscription.unsubscribe();
+useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).finally(() => {
+        window.history.replaceState({}, '', window.location.pathname);
+      });
+    }
   }, []);
 
   useEffect(() => {
