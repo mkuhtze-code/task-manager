@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import webpush from '@/lib/webpush';
+import { verifyUser } from '@/lib/verifyUser';
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { userId } = body;
-
-  if (!userId) {
-    return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+  const auth = await verifyUser(req);
+  if (auth.error) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   const { data: subs, error } = await supabaseAdmin
     .from('push_subscriptions')
     .select('*')
-    .eq('user_id', userId);
+    .eq('user_id', auth.userId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -23,7 +22,7 @@ export async function POST(req: NextRequest) {
   }
 
   const payload = JSON.stringify({
-    title: 'Docket',
+    title: 'Dokkit',
     body: 'This is a test notification — if you see this, you are all set.',
   });
 
