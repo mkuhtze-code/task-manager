@@ -2,20 +2,31 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
 
-export default function Account() {
-  const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const router = useRouter();
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  border: '1px solid var(--line-strong)',
+  borderRadius: 'var(--radius-sm)',
+  padding: '8px 12px',
+  fontSize: 14,
+  background: 'var(--paper)',
+  boxSizing: 'border-box',
+};
 
-  // Password state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+export default function Account() {
+  const router = useRouter();
+  const [session, setSession] = useState<any>(null);
+
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -26,68 +37,68 @@ export default function Account() {
     router.push('/');
   }
 
-  async function handleUpdatePassword(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setMessage('');
-    setLoading(true);
+  async function exportData() {
+    if (!session) return;
+    setExporting(true);
+    setExportError('');
+    try {
+      const userId = session.user.id;
 
-    // Validate passwords
-    if (!currentPassword) {
-      setError('Current password is required');
-      setLoading(false);
+      const [tasksRes, subtasksRes, meetingsRes, settingsRes] = await Promise.all([
+        supabase.from('tasks').select('*').eq('user_id', userId),
+        supabase.from('subtasks').select('*').eq('user_id', userId),
+        supabase.from('meetings').select('*').eq('user_id', userId),
+        supabase.from('user_settings').select('*').eq('user_id', userId).maybeSingle(),
+      ]);
+
+      const exportBundle = {
+        exported_at: new Date().toISOString(),
+        account_email: session.user.email,
+        tasks: tasksRes.data || [],
+        subtasks: subtasksRes.data || [],
+        meetings: meetingsRes.data || [],
+        settings: settingsRes.data || null,
+      };
+
+      const blob = new Blob([JSON.stringify(exportBundle, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dokkit-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setExportError('Could not export data: ' + (e?.message || 'unknown error'));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== 'DELETE') {
+      setDeleteError('Type DELETE to confirm');
       return;
     }
+    setDeleting(true);
+    setDeleteError('');
 
-    if (!newPassword) {
-      setError('New password is required');
-      setLoading(false);
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters');
-      setLoading(false);
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    // First verify current password by attempting to re-authenticate
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: session.user.email,
-      password: currentPassword,
+    const res = await fetch('/api/account/delete-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: session.user.id }),
     });
+    const data = await res.json();
 
-    if (signInError) {
-      setError('Current password is incorrect');
-      setLoading(false);
+    if (!res.ok) {
+      setDeleteError(data.error || 'Could not delete account.');
+      setDeleting(false);
       return;
     }
 
-    // Update password
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (updateError) {
-      setError(updateError.message);
-      setLoading(false);
-      return;
-    }
-
-    setMessage('Password updated successfully!');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setLoading(false);
-
-    // Clear message after 3 seconds
-    setTimeout(() => setMessage(''), 3000);
+    await supabase.auth.signOut();
+    router.push('/');
   }
 
   if (!session) {
@@ -99,6 +110,15 @@ export default function Account() {
     );
   }
 
+  const providers: string[] =
+    (session.user.app_metadata?.providers as string[] | undefined) ||
+    (session.user.identities || []).map((i: any) => i.provider);
+  const hasPassword = providers.includes('email');
+  const signInMethod = providers.includes('google') ? 'Google' : 'Email & password';
+  const memberSince = session.user.created_at
+    ? new Date(session.user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    : null;
+
   return (
     <div className="app-shell">
       <AppHeader title="Account" backHref="/" />
@@ -106,84 +126,86 @@ export default function Account() {
       <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
         <div className="settings-panel-title">Account Information</div>
         <div className="account-email mono">{session.user.email}</div>
+        <div className="account-detail-row">
+          Signed in with {signInMethod}
+          {memberSince && <span> · Member since {memberSince}</span>}
+        </div>
       </div>
 
       <div className="settings-panel">
-        <div className="settings-panel-title">Change Password</div>
-        <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--ink-soft)', marginBottom: 'var(--space-1)' }}>
-              Current Password
-            </label>
+        <div className="settings-panel-title">Security</div>
+        <Link
+          href="/account/change-password"
+          className="btn btn-ghost"
+          style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
+        >
+          {hasPassword ? 'Change password' : 'Set a password'}
+        </Link>
+      </div>
+
+      <div className="settings-panel">
+        <div className="settings-panel-title">Your Data</div>
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+          Download everything Dokkit has stored for you — tasks, sub-tasks, meetings, and preferences —
+          as a single file you keep.
+        </p>
+        {exportError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{exportError}</p>}
+        <button className="btn btn-ghost" onClick={exportData} disabled={exporting}>
+          {exporting ? 'Preparing export…' : 'Export my data'}
+        </button>
+      </div>
+
+      <div className="settings-panel danger-zone">
+        <div className="settings-panel-title" style={{ color: 'var(--hazard)' }}>Danger Zone</div>
+
+        {!deleteOpen ? (
+          <>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+              Permanently delete your account and everything in it. This can't be undone.
+            </p>
+            <button className="btn btn-ghost danger-btn" onClick={() => setDeleteOpen(true)}>
+              Delete account
+            </button>
+          </>
+        ) : (
+          <>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+              This permanently deletes your account, all tasks, sub-tasks, meetings, and preferences.
+              Type <strong>DELETE</strong> to confirm.
+            </p>
             <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Enter current password"
-              style={{
-                width: '100%',
-                border: '1px solid var(--line-strong)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '8px 12px',
-                fontSize: 14,
-                background: 'var(--paper)',
-                boxSizing: 'border-box',
-              }}
-              disabled={loading}
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+              style={inputStyle}
+              disabled={deleting}
             />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--ink-soft)', marginBottom: 'var(--space-1)' }}>
-              New Password
-            </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new password"
-              style={{
-                width: '100%',
-                border: '1px solid var(--line-strong)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '8px 12px',
-                fontSize: 14,
-                background: 'var(--paper)',
-                boxSizing: 'border-box',
-              }}
-              disabled={loading}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--ink-soft)', marginBottom: 'var(--space-1)' }}>
-              Confirm Password
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
-              style={{
-                width: '100%',
-                border: '1px solid var(--line-strong)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '8px 12px',
-                fontSize: 14,
-                background: 'var(--paper)',
-                boxSizing: 'border-box',
-              }}
-              disabled={loading}
-            />
-          </div>
-
-          {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-          {message && <p style={{ color: 'var(--moss)', fontSize: 12, margin: 0 }}>{message}</p>}
-
-          <button type="submit" className="btn btn-steel" disabled={loading}>
-            {loading ? 'Updating...' : 'Update Password'}
-          </button>
-        </form>
+            {deleteError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{deleteError}</p>}
+            <div className="capture-row">
+              <button
+                className="btn btn-ghost"
+                style={{ flex: 1 }}
+                onClick={() => {
+                  setDeleteOpen(false);
+                  setDeleteConfirmText('');
+                  setDeleteError('');
+                }}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn danger-btn-solid"
+                style={{ flex: 1 }}
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting…' : 'Permanently delete'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       <button className="btn btn-ghost account-logout-btn" onClick={handleLogOut}>
