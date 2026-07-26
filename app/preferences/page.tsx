@@ -34,13 +34,35 @@ export default function Preferences() {
   const [notifStatus, setNotifStatus] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
 
+  const [calendarConnection, setCalendarConnection] = useState<{ connected_email: string | null } | null>(null);
+  const [calendarMessage, setCalendarMessage] = useState('');
+  const [disconnecting, setDisconnecting] = useState(false);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
   }, []);
 
   useEffect(() => {
-    if (session) loadSettings();
+    if (session) {
+      loadSettings();
+      loadCalendarConnection();
+    }
   }, [session]);
+
+  // Pick up the ?calendar=connected / ?calendar=error redirect from the
+  // OAuth callback and clean the URL so a refresh doesn't re-show it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('calendar') === 'connected') {
+      setCalendarMessage('Calendar connected — the first sync runs within a few minutes.');
+    } else if (params.get('calendar') === 'error') {
+      setCalendarMessage('Could not connect your calendar. Please try again.');
+    }
+    if (params.get('calendar')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   async function loadSettings() {
     const userId = session.user.id;
@@ -55,6 +77,30 @@ export default function Preferences() {
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : [1, 2, 3, 4, 5]);
       setNotificationStyle(settings.notification_style || 'default');
     }
+  }
+
+  async function loadCalendarConnection() {
+    const { data } = await supabase
+      .from('calendar_connections')
+      .select('connected_email')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    setCalendarConnection(data || null);
+  }
+
+  async function disconnectCalendar() {
+    setDisconnecting(true);
+    await fetch('/api/auth/microsoft/disconnect', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({}),
+    });
+    setCalendarConnection(null);
+    setCalendarMessage('Calendar disconnected.');
+    setDisconnecting(false);
   }
 
   function toggleDay(day: number) {
@@ -92,8 +138,11 @@ export default function Preferences() {
       });
       await fetch('/api/subscribe', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: session.user.id, subscription }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ subscription }),
       });
       setNotifStatus('Notifications enabled.');
     } catch (e: any) {
@@ -105,8 +154,11 @@ export default function Preferences() {
     setNotifStatus('Sending test notification...');
     const res = await fetch('/api/send-test-notification', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: session.user.id }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({}),
     });
     const data = await res.json();
     setNotifStatus(res.ok ? 'Sent — check your phone.' : 'Failed: ' + (data.error || 'unknown error'));
@@ -151,6 +203,37 @@ export default function Preferences() {
           <button className="btn btn-ghost" onClick={saveWorkHours}>Save</button>
           {savedMsg && <span className="settings-saved">{savedMsg}</span>}
         </div>
+      </div>
+
+      <div className="settings-panel">
+        <div className="settings-panel-title">Calendar</div>
+        {calendarMessage && <div className="settings-status">{calendarMessage}</div>}
+        {calendarConnection ? (
+          <>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+              Connected{calendarConnection.connected_email ? ` as ${calendarConnection.connected_email}` : ''}.
+              Today's meetings are pulled in automatically and drop off your workload once they end —
+              nothing to schedule or manage.
+            </p>
+            <button className="btn btn-ghost" onClick={disconnectCalendar} disabled={disconnecting}>
+              {disconnecting ? 'Disconnecting…' : 'Disconnect calendar'}
+            </button>
+          </>
+        ) : (
+          <>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+              Connect your Outlook calendar so meetings count toward today's workload automatically.
+              This only reads your calendar to account for time — nothing gets scheduled or changed.
+            </p>
+            <a
+              href={`/api/auth/microsoft/connect?userId=${session.user.id}`}
+              className="btn btn-steel"
+              style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
+            >
+              Connect Outlook Calendar
+            </a>
+          </>
+        )}
       </div>
 
       <div className="settings-panel">
