@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { verifyUser } from '@/lib/verifyUser';
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { userId, subscription } = body;
+  const auth = await verifyUser(req);
+  if (auth.error) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
 
-  if (!userId || !subscription || !subscription.endpoint) {
+  const body = await req.json();
+  const { subscription } = body;
+
+  if (!subscription || !subscription.endpoint) {
     return NextResponse.json({ error: 'Missing subscription details' }, { status: 400 });
   }
 
   const { error } = await supabaseAdmin.from('push_subscriptions').upsert(
     {
-      user_id: userId,
+      user_id: auth.userId,
       endpoint: subscription.endpoint,
       p256dh: subscription.keys.p256dh,
       auth: subscription.keys.auth,
