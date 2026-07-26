@@ -30,10 +30,53 @@ type Meeting = {
   duration_mins: number;
 };
 
+type HistoryEntry = {
+  text: string;
+  actual_mins: number;
+};
+
 const HAS_SIGNED_IN_KEY = 'dokkit-has-signed-in';
 const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
 const LONG_PRESS_MS = 500;
 const SHEET_CLOSE_MS = 300;
+
+const STOPWORDS = new Set([
+  'the', 'a', 'an', 'to', 'for', 'of', 'in', 'on', 'at', 'and', 'or',
+  'with', 'my', 'your', 'it', 'this', 'that', 'up', 'out', 'from', 'be',
+]);
+
+function normalizeWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length > 1 && !STOPWORDS.has(w));
+}
+
+// Simple word-overlap matcher: looks at your own completed-task history and
+// finds tasks that share at least half of their significant words with what
+// you're typing now. This is the seed of "learn from behavior" — no manual
+// tagging, just quietly noticing what similar work has taken before.
+function suggestEstimateMins(text: string, history: HistoryEntry[]): number | null {
+  const words = new Set(normalizeWords(text));
+  if (words.size === 0) return null;
+
+  const matches: number[] = [];
+  for (const h of history) {
+    const hWords = new Set(normalizeWords(h.text));
+    if (hWords.size === 0) continue;
+    let overlap = 0;
+    words.forEach((w) => {
+      if (hWords.has(w)) overlap += 1;
+    });
+    const smaller = Math.min(words.size, hWords.size);
+    if (overlap > 0 && overlap / smaller >= 0.5) {
+      matches.push(h.actual_mins);
+    }
+  }
+  if (matches.length === 0) return null;
+  return matches.reduce((sum, m) => sum + m, 0) / matches.length;
+}
 
 function parseMins(raw: string): number | null {
   const str = raw.trim().toLowerCase();
@@ -467,6 +510,7 @@ export default function Home() {
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [taskDetailClosing, setTaskDetailClosing] = useState(false);
+  const [taskHistory, setTaskHistory] = useState<HistoryEntry[]>([]);
 
   function closeTaskDetail() {
     setTaskDetailClosing(true);
@@ -554,6 +598,15 @@ export default function Home() {
 
     const { data: meetingRows } = await supabase.from('meetings').select('*');
     setMeetings(meetingRows || []);
+
+    // Pull completed-task history for estimate learning. Only need text +
+    // actual_mins, and only tasks that actually have a logged actual time.
+    const { data: historyRows } = await supabase
+      .from('tasks')
+      .select('text, actual_mins')
+      .eq('status', 'done')
+      .not('actual_mins', 'is', null);
+    setTaskHistory((historyRows || []).map((h: any) => ({ text: h.text, actual_mins: h.actual_mins })));
 
     if (taskRows && taskRows.length > 0) {
       const ids = taskRows.map((t: Task) => t.id);
@@ -671,6 +724,9 @@ export default function Home() {
       .update({ status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: Math.round(finalLogged), completed_at: new Date().toISOString() })
       .eq('id', id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    if (task) {
+      setTaskHistory((prev) => [...prev, { text: task.text, actual_mins: Math.round(finalLogged) }]);
+    }
   }
 
   async function deleteTask(id: string) {
@@ -922,6 +978,8 @@ export default function Home() {
   const timeLeftPercent = Math.min(minutesLeftToday / Math.max(minutesLeftToday, 1), 1);
   const taskLoadPercent = Math.min(remainingWorkMins / Math.max(minutesLeftToday, 1), 1);
 
+  const suggestedMins = taskText.trim().length > 1 ? suggestEstimateMins(taskText, taskHistory) : null;
+
   return (
     <div className="app-shell">
       <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
@@ -1018,8 +1076,16 @@ export default function Home() {
               value={taskText}
               onChange={(e) => setTaskText(e.target.value)}
               placeholder="What needs doing?"
-              autoFocus
             />
+            {suggestedMins !== null && (
+              <button
+                type="button"
+                className="estimate-suggestion-chip"
+                onClick={() => setTaskTime(fmtMins(Math.round(suggestedMins)))}
+              >
+                Similar tasks usually take ~{fmtMins(Math.round(suggestedMins))} · tap to use
+              </button>
+            )}
             <div className="capture-row">
               <input
                 type="text"
