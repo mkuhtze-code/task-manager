@@ -5,7 +5,7 @@ import { verifyUser } from '@/lib/verifyUser';
 
 export async function POST(req: NextRequest) {
   const auth = await verifyUser(req);
-  if (auth.error) {
+  if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
