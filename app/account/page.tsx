@@ -86,8 +86,11 @@ export default function Account() {
 
     const res = await fetch('/api/account/delete-account', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: session.user.id }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({}),
     });
     const data = await res.json();
 
