@@ -263,8 +263,8 @@ button:focus-visible, input:focus-visible {
 
 .capacity-ring-wrap {
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 96px;
+  height: 96px;
   flex-shrink: 0;
 }
 
