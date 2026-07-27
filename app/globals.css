@@ -28,6 +28,19 @@
   --radius-md: 14px;
   --radius-lg: 20px;
 
+  /* Type scale — 8 deliberate steps, replacing 15 ad hoc font-sizes that
+     had grown organically across the app. Each step has a clear job;
+     nothing here is "whatever looked fine at the time." */
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-display-sm: 21px;
+  --text-display-md: 28px;
+  --text-display-lg: 30px;
+
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -131,14 +144,14 @@ button:focus-visible, input:focus-visible {
 }
 
 .app-title {
-  font-size: 28px;
+  font-size: var(--text-display-md);
   font-weight: 800;
   margin: 0;
   letter-spacing: -0.03em;
 }
 
 .app-date {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ink-soft);
   font-weight: 500;
 }
@@ -191,7 +204,7 @@ button:focus-visible, input:focus-visible {
   border: none;
   border-radius: var(--radius-sm);
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--ink);
   text-decoration: none;
@@ -237,7 +250,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .today-header-date {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ink-soft);
   font-weight: 600;
 }
@@ -265,7 +278,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .capacity-hero-number {
-  font-size: 30px;
+  font-size: var(--text-display-lg);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.1;
@@ -277,13 +290,13 @@ button:focus-visible, input:focus-visible {
 }
 
 .capacity-hero-label {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-soft);
   font-weight: 500;
 }
 
 .capacity-warn-line {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--hazard);
   font-weight: 700;
   margin-top: 2px;
@@ -301,24 +314,24 @@ button:focus-visible, input:focus-visible {
 }
 
 .settings-panel-title {
-  font-size: 14px;
+  font-size: var(--text-base);
   font-weight: 700;
   color: var(--ink);
 }
 
 .settings-saved {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--moss);
   font-weight: 600;
 }
 
 .settings-status {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-soft);
 }
 
 .settings-label {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ink-soft);
   margin-right: 2px;
 }
@@ -335,7 +348,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--line-strong);
   background: var(--paper);
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 700;
   padding: 0;
 }
@@ -355,7 +368,7 @@ button:focus-visible, input:focus-visible {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 13px;
+  font-size: var(--text-sm);
   flex-wrap: wrap;
 }
 
@@ -363,7 +376,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   padding: 6px 8px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   background: var(--paper);
 }
 
@@ -371,7 +384,7 @@ button:focus-visible, input:focus-visible {
   border: none;
   border-radius: 100px;
   padding: 9px 16px;
-  font-size: 14px;
+  font-size: var(--text-base);
   font-weight: 600;
   min-height: 42px;
 }
@@ -404,7 +417,7 @@ button:focus-visible, input:focus-visible {
   background: none;
   border: none;
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: var(--text-sm);
   min-height: 40px;
   padding: 0 var(--space-2);
 }
@@ -434,7 +447,7 @@ button:focus-visible, input:focus-visible {
   align-items: center;
   gap: var(--space-3);
   margin: var(--space-4) 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-soft);
 }
 
@@ -456,7 +469,7 @@ button:focus-visible, input:focus-visible {
   text-align: center;
   padding: var(--space-8) var(--space-4);
   color: var(--ink-soft);
-  font-size: 14px;
+  font-size: var(--text-base);
 }
 
 .task-row {
@@ -508,7 +521,7 @@ button:focus-visible, input:focus-visible {
   flex-direction: column;
   gap: 3px;
   color: white;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 700;
   border: none;
   cursor: pointer;
@@ -566,7 +579,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .task-text {
-  font-size: 14px;
+  font-size: var(--text-base);
   line-height: 1.3;
   font-weight: 600;
 }
@@ -602,7 +615,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .task-progress-label {
-  font-size: 10.5px;
+  font-size: var(--text-2xs);
   color: var(--ink-soft);
   font-weight: 600;
   flex-shrink: 0;
@@ -617,7 +630,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .tag {
-  font-size: 10.5px;
+  font-size: var(--text-2xs);
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 20px;
@@ -698,7 +711,7 @@ button:focus-visible, input:focus-visible {
 
 .subtask-text {
   flex: 1;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .subtask-text.done {
@@ -717,7 +730,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   padding: 6px 8px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   background: var(--paper);
   min-width: 0;
 }
@@ -730,7 +743,7 @@ button:focus-visible, input:focus-visible {
   min-height: 28px;
   padding: 0;
   border-radius: var(--radius-sm);
-  font-size: 15px;
+  font-size: var(--text-base);
 }
 
 .icon-btn:hover {
@@ -804,7 +817,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   padding: 12px;
-  font-size: 15px;
+  font-size: var(--text-base);
   background: var(--paper);
 }
 
@@ -820,7 +833,7 @@ button:focus-visible, input:focus-visible {
   border: none;
   border-radius: 20px;
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   min-height: 0;
 }
@@ -843,7 +856,7 @@ button:focus-visible, input:focus-visible {
   background: none;
   border-radius: 8px;
   padding: 8px 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--ink-soft);
   transition: background 0.2s var(--ease), color 0.2s var(--ease), box-shadow 0.2s var(--ease);
@@ -882,7 +895,7 @@ button:focus-visible, input:focus-visible {
 .task-detail-name {
   border: none;
   background: none;
-  font-size: 19px;
+  font-size: var(--text-md);
   font-weight: 700;
   padding: 4px 0;
   width: 100%;
@@ -924,7 +937,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .auth-eyebrow {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -933,14 +946,14 @@ button:focus-visible, input:focus-visible {
 }
 
 .auth-title {
-  font-size: 22px;
+  font-size: var(--text-lg);
   font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0 0 6px;
 }
 
 .auth-sub {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ink-soft);
   line-height: 1.5;
   margin: 0 0 var(--space-5);
@@ -957,25 +970,25 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   padding: 12px;
-  font-size: 15px;
+  font-size: var(--text-base);
   background: var(--paper);
   width: 100%;
 }
 
 .auth-sent {
-  font-size: 14px;
+  font-size: var(--text-base);
   color: var(--ink-soft);
   margin: 0;
 }
 
 .auth-error {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--hazard);
   margin: 0;
 }
 
 .account-email {
-  font-size: 14px;
+  font-size: var(--text-base);
   color: var(--ink-soft);
 }
 
@@ -987,7 +1000,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .account-detail-row {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-soft);
 }
 
@@ -1030,7 +1043,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .analytics-label {
-  font-size: 10.5px;
+  font-size: var(--text-2xs);
   font-weight: 700;
   color: var(--ink-soft);
   text-transform: uppercase;
@@ -1040,14 +1053,14 @@ button:focus-visible, input:focus-visible {
 .analytics-number {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 21px;
+  font-size: var(--text-display-sm);
   font-weight: 800;
   color: var(--ink);
   letter-spacing: -0.02em;
 }
 
 .analytics-sublabel {
-  font-size: 11px;
+  font-size: var(--text-2xs);
   color: var(--ink-faint);
   font-weight: 500;
 }
@@ -1066,7 +1079,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .analytics-task-text {
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--ink);
   flex: 1;
@@ -1077,7 +1090,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .analytics-task-badge {
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   flex-shrink: 0;
@@ -1102,7 +1115,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .analytics-task-name {
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--ink);
   overflow: hidden;
@@ -1111,13 +1124,13 @@ button:focus-visible, input:focus-visible {
 }
 
 .analytics-task-time {
-  font-size: 11px;
+  font-size: var(--text-2xs);
   color: var(--ink-soft);
   margin-top: 2px;
 }
 
 .analytics-task-source {
-  font-size: 10px;
+  font-size: var(--text-2xs);
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 20px;
@@ -1137,7 +1150,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .learned-pattern-count {
-  font-size: 10px;
+  font-size: var(--text-2xs);
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 20px;
@@ -1151,7 +1164,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   padding: 12px;
-  font-size: 14px;
+  font-size: var(--text-base);
   font-family: inherit;
   background: var(--paper);
   resize: vertical;
@@ -1163,7 +1176,7 @@ button:focus-visible, input:focus-visible {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ink-soft);
   cursor: pointer;
 }
@@ -1183,7 +1196,7 @@ button:focus-visible, input:focus-visible {
 .feedback-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   color: var(--ink-faint);
   font-weight: 600;
 }
