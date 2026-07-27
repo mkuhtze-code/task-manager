@@ -852,6 +852,7 @@ useEffect(() => {
               <form onSubmit={signInWithPassword} className="auth-form">
                 <input
                   type="email"
+                  autocomplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
@@ -859,6 +860,7 @@ useEffect(() => {
                 />
                 <input
                   type="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Password"
