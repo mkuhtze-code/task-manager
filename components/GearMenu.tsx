@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
 function GearIcon() {
@@ -16,8 +15,28 @@ function GearIcon() {
 
 export default function GearMenu() {
   const router = useRouter();
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    checkAdmin();
+  }, []);
+
+  async function checkAdmin() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
+    if (!session) return;
+
+    const { data } = await supabase
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+
+    setIsAdmin(!!data);
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -34,6 +53,8 @@ export default function GearMenu() {
     await supabase.auth.signOut();
     router.push('/');
   }
+
+  const feedbackHref = `/feedback?from=${encodeURIComponent(pathname || '/')}`;
 
   return (
     <div className="gear-menu-wrap" ref={menuRef} onClick={(e) => e.stopPropagation()}>
@@ -56,6 +77,14 @@ export default function GearMenu() {
           <Link href="/account" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
             Account
           </Link>
+          <Link href={feedbackHref} className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+            Send Feedback
+          </Link>
+          {isAdmin && (
+            <Link href="/admin/feedback" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+              Feedback Inbox
+            </Link>
+          )}
           <div className="gear-dropdown-divider" />
           <button className="gear-dropdown-item destructive" onClick={handleLogOut}>
             Log out
