@@ -547,14 +547,70 @@ export default function Home() {
   }, []);
 
 useEffect(() => {
+  async function handleAuthCallback() {
+    // Check if Supabase already restored a session
+    const { data } = await supabase.auth.getSession();
+
+    if (data.session) {
+      setSession(data.session);
+      return;
+    }
+
+    // Handle OAuth hash redirect (#access_token=...)
+    if (window.location.hash) {
+      const { data: sessionData, error } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error('Session restore error:', error);
+      }
+
+      if (sessionData.session) {
+        setSession(sessionData.session);
+      }
+
+      window.history.replaceState(
+        {},
+        '',
+        window.location.pathname
+      );
+    }
+
+    // Handle PKCE code redirect (?code=...)
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
+
     if (code) {
-      supabase.auth.exchangeCodeForSession(code).finally(() => {
-        window.history.replaceState({}, '', window.location.pathname);
-      });
+      const { data: codeSession, error } =
+        await supabase.auth.exchangeCodeForSession(code);
+
+      if (error) {
+        console.error('Code exchange error:', error);
+      }
+
+      if (codeSession.session) {
+        setSession(codeSession.session);
+      }
+
+      window.history.replaceState(
+        {},
+        '',
+        window.location.pathname
+      );
     }
-  }, []);
+  }
+
+  handleAuthCallback();
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    setSession(session);
+  });
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
 
   useEffect(() => {
     if (session && typeof window !== 'undefined') {
