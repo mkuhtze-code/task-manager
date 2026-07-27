@@ -26,10 +26,24 @@ export default function ResetPassword() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    // Supabase's client auto-detects the recovery link (hash or ?code=) on
-    // load and establishes a temporary session from it. We just wait for
-    // that — either the PASSWORD_RECOVERY event fires, or a session is
-    // already present by the time we check.
+    async function handleRecoveryLink() {
+      // Supabase's client auto-detects the older hash-based recovery link
+      // format, but the newer ?code= (PKCE) format needs an explicit
+      // exchange — same failure mode that broke Google sign-in elsewhere
+      // in this app, so hardening this page against it too.
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error('Recovery code exchange error:', error);
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+
+    handleRecoveryLink();
+
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY' || session) {
         setReady(true);
