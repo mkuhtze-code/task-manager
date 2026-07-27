@@ -222,16 +222,13 @@ export default function Preferences() {
         ) : (
           <>
             <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-              Connect your Outlook calendar so meetings count toward today's workload automatically.
-              This only reads your calendar to account for time — nothing gets scheduled or changed.
+              Outlook calendar sync is being finalized — Microsoft requires apps like this to go
+              through an app verification process before it can connect reliably. This will open up
+              in a future update.
             </p>
-            <a
-              href={`/api/auth/microsoft/connect?userId=${session.user.id}`}
-              className="btn btn-steel"
-              style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
-            >
-              Connect Outlook Calendar
-            </a>
+            <button className="btn btn-ghost" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+              Connect Outlook Calendar — coming soon
+            </button>
           </>
         )}
       </div>
