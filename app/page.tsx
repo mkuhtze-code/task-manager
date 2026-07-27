@@ -28,6 +28,8 @@ type Meeting = {
   id: string;
   text: string;
   duration_mins: number;
+  start_time: string | null;
+  source: 'manual' | 'outlook';
 };
 
 type HistoryEntry = {
@@ -106,6 +108,18 @@ function timeStringToMinutes(t: string): number {
   const h = parseInt(parts[0], 10);
   const m = parseInt(parts[1], 10);
   return h * 60 + m;
+}
+
+// A meeting counts toward today's capacity only while it's still today and
+// hasn't ended yet. Meetings without a start_time (older manual entries that
+// predate this field being used) fall back to always counting, so nothing
+// that already existed silently disappears.
+function isMeetingActive(m: Meeting, now: Date): boolean {
+  if (!m.start_time) return true;
+  const start = new Date(m.start_time);
+  const end = new Date(start.getTime() + m.duration_mins * 60000);
+  const isToday = start.toDateString() === now.toDateString();
+  return isToday && end.getTime() > now.getTime();
 }
 
 function CheckIcon({ done }: { done: boolean }) {
@@ -546,71 +560,43 @@ export default function Home() {
     }
   }, []);
 
-useEffect(() => {
-  async function handleAuthCallback() {
-    // Check if Supabase already restored a session
-    const { data } = await supabase.auth.getSession();
+  useEffect(() => {
+    async function handleAuthCallback() {
+      // Check if Supabase already restored a session (e.g. returning visit)
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        setSession(data.session);
+        return;
+      }
 
-    if (data.session) {
-      setSession(data.session);
-      return;
+      // Handle the PKCE-style redirect (?code=...) used by Google OAuth and
+      // password recovery links. Without this explicit exchange, the code
+      // sits unused in the URL and no session ever gets created — the app
+      // just falls back to showing the sign-in screen with no error.
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code) {
+        const { data: codeSession, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error('Code exchange error:', error);
+        }
+        if (codeSession.session) {
+          setSession(codeSession.session);
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     }
 
-    // Handle OAuth hash redirect (#access_token=...)
-    if (window.location.hash) {
-      const { data: sessionData, error } = await supabase.auth.getSession();
+    handleAuthCallback();
 
-      if (error) {
-        console.error('Session restore error:', error);
-      }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
 
-      if (sessionData.session) {
-        setSession(sessionData.session);
-      }
-
-      window.history.replaceState(
-        {},
-        '',
-        window.location.pathname
-      );
-    }
-
-    // Handle PKCE code redirect (?code=...)
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-
-    if (code) {
-      const { data: codeSession, error } =
-        await supabase.auth.exchangeCodeForSession(code);
-
-      if (error) {
-        console.error('Code exchange error:', error);
-      }
-
-      if (codeSession.session) {
-        setSession(codeSession.session);
-      }
-
-      window.history.replaceState(
-        {},
-        '',
-        window.location.pathname
-      );
-    }
-  }
-
-  handleAuthCallback();
-
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange((_event, session) => {
-    setSession(session);
-  });
-
-  return () => {
-    subscription.unsubscribe();
-  };
-}, []);
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (session && typeof window !== 'undefined') {
@@ -1005,7 +991,8 @@ useEffect(() => {
     return Math.max(t.estimate_mins - logged - completedSubtaskMins(t.id), 0);
   }
 
-  const meetingMins = meetings.reduce((sum, m) => sum + m.duration_mins, 0);
+  const activeMeetings = meetings.filter((m) => isMeetingActive(m, now));
+  const meetingMins = activeMeetings.reduce((sum, m) => sum + m.duration_mins, 0);
   const remainingTaskMins = ordered.reduce((sum, t) => sum + remainingForTask(t), 0);
   const remainingWorkMins = meetingMins + remainingTaskMins;
 
@@ -1035,8 +1022,16 @@ useEffect(() => {
     }
   }
 
-  const timeLeftPercent = Math.min(minutesLeftToday / Math.max(minutesLeftToday, 1), 1);
-  const taskLoadPercent = Math.min(remainingWorkMins / Math.max(minutesLeftToday, 1), 1);
+  // The ring measures workload against the time actually left today — not
+  // against itself. When there's no time baseline (off day, or already past
+  // work hours), any remaining workload reads as fully over capacity, since
+  // there's nowhere left to fit it today.
+  const hasCapacityBaseline = minutesLeftToday > 0;
+  const loadRatio = hasCapacityBaseline
+    ? remainingWorkMins / minutesLeftToday
+    : remainingWorkMins > 0 ? 2 : 0;
+  const ringFillRatio = Math.min(loadRatio, 1);
+  const ringOverflowRatio = Math.min(Math.max(loadRatio - 1, 0), 1);
 
   const suggestedMins = taskText.trim().length > 1 ? suggestEstimateMins(taskText, taskHistory) : null;
 
@@ -1049,32 +1044,41 @@ useEffect(() => {
         </div>
         <div className="capacity-row">
           <div className="capacity-ring-wrap">
-            <svg width="60" height="60" viewBox="0 0 60 60">
-              <circle cx="30" cy="30" r="25" fill="none" stroke="var(--line)" strokeWidth="6" />
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              {/* Track — the whole of today's available time */}
+              <circle cx="48" cy="48" r="34" fill="none" stroke="var(--line)" strokeWidth="8" />
+              {/* Fill — how much of today is already spoken for by planned work */}
               <circle
-                cx="30"
-                cy="30"
-                r="25"
+                cx="48"
+                cy="48"
+                r="34"
                 fill="none"
-                stroke="var(--steel)"
-                strokeWidth="6"
+                stroke={loadRatio >= 1 ? 'var(--hazard)' : 'var(--steel)'}
+                strokeWidth="8"
                 strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 25 * timeLeftPercent} ${2 * Math.PI * 25}`}
-                strokeDashoffset={0}
-                style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '30px 30px', transform: 'rotate(-90deg)' }}
+                strokeDasharray={`${2 * Math.PI * 34 * ringFillRatio} ${2 * Math.PI * 34}`}
+                style={{
+                  transition: 'stroke-dasharray 0.5s var(--ease), stroke 0.3s var(--ease)',
+                  transformOrigin: '48px 48px',
+                  transform: 'rotate(-90deg)',
+                }}
               />
-              {taskLoadPercent > timeLeftPercent && (
+              {/* Overflow — how far workload spills past what today can hold */}
+              {ringOverflowRatio > 0 && (
                 <circle
-                  cx="30"
-                  cy="30"
-                  r="25"
+                  cx="48"
+                  cy="48"
+                  r="42"
                   fill="none"
                   stroke="var(--hazard)"
-                  strokeWidth="6"
+                  strokeWidth="4"
                   strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 25 * (taskLoadPercent - timeLeftPercent)} ${2 * Math.PI * 25}`}
-                  strokeDashoffset={-2 * Math.PI * 25 * timeLeftPercent}
-                  style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '30px 30px', transform: 'rotate(-90deg)' }}
+                  strokeDasharray={`${2 * Math.PI * 42 * ringOverflowRatio} ${2 * Math.PI * 42}`}
+                  style={{
+                    transition: 'stroke-dasharray 0.5s var(--ease)',
+                    transformOrigin: '48px 48px',
+                    transform: 'rotate(-90deg)',
+                  }}
                 />
               )}
             </svg>
