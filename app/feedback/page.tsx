@@ -72,8 +72,8 @@ export default function Feedback() {
       <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
         <div className="settings-panel-title">Tell us what's not working (or what is)</div>
         <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-          This goes straight to the person building Dokkit — no survey, no waiting for a check-in.
-          Bugs, confusing moments, ideas — anything.
+          This goes straight to the team building Dokkit. As we are in Beta stage, we would love to hear your thoughts.
+          Any bugs, confusing moments, ideas — anything.
         </p>
 
         {sent ? (
