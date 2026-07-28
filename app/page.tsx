@@ -961,7 +961,7 @@ export default function Home() {
                   </button>
                 </>
               ) : (
-                <form onSubmit={(e) => { e.preventDefault(); setMagicLinkSent(true); }} className="auth-form">
+                <form onSubmit={sendMagicLink} className="auth-form">
                   <input
                     type="email"
                     value={email}
