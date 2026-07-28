@@ -688,7 +688,24 @@ export default function Home() {
     }
     setForgotPasswordSent(true);
   }
+  async function sendMagicLink(e: React.FormEvent) {
+  e.preventDefault();
+  setSignInError('');
 
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: `${window.location.origin}`,
+    },
+  });
+
+  if (error) {
+    setSignInError('Could not send sign-in link.');
+    return;
+  }
+
+  setMagicLinkSent(true);
+}
   async function signInWithGoogle() {
     setSigningInWithGoogle(true);
     setSignInError('');
