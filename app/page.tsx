@@ -14,6 +14,7 @@ type Task = {
   started_at: string | null;
   due_today: boolean;
   order_index: number;
+  created_at: string;
 };
 
 type Subtask = {
@@ -36,6 +37,8 @@ type HistoryEntry = {
   text: string;
   actual_mins: number;
 };
+
+type SortMode = 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
 
 const HAS_SIGNED_IN_KEY = 'dokkit-has-signed-in';
 const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
@@ -122,6 +125,29 @@ function isMeetingActive(m: Meeting, now: Date): boolean {
   return isToday && end.getTime() > now.getTime();
 }
 
+// The four sort modes a user can choose in Preferences. "manual" is the only
+// one that respects drag-to-reorder — the others are rule-computed, so
+// dragging in those modes would just snap back, which is why the drag
+// handle only appears when mode === 'manual'.
+function computeOrdered(taskList: Task[], mode: SortMode): Task[] {
+  const copy = [...taskList];
+  if (mode === 'due_today_first') {
+    return copy.sort((a, b) => {
+      const aKey = a.due_today ? 0 : 1;
+      const bKey = b.due_today ? 0 : 1;
+      if (aKey !== bKey) return aKey - bKey;
+      return a.order_index - b.order_index;
+    });
+  }
+  if (mode === 'manual') {
+    return copy.sort((a, b) => a.order_index - b.order_index);
+  }
+  if (mode === 'oldest_first') {
+    return copy.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }
+  return copy.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
 function CheckIcon({ done }: { done: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 18 18">
@@ -156,10 +182,23 @@ function StopIcon() {
   );
 }
 
-const REVEAL_RIGHT = 92;
+function DragHandleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <circle cx="5" cy="3" r="1.4" />
+      <circle cx="11" cy="3" r="1.4" />
+      <circle cx="5" cy="8" r="1.4" />
+      <circle cx="11" cy="8" r="1.4" />
+      <circle cx="5" cy="13" r="1.4" />
+      <circle cx="11" cy="13" r="1.4" />
+    </svg>
+  );
+}
+
+const REVEAL = 92;
 const OPEN_THRESHOLD = 45;
 
-type OpenSide = 'none' | 'right';
+type OpenSide = 'none' | 'left' | 'right';
 
 function TaskCard(props: {
   task: Task;
@@ -175,10 +214,16 @@ function TaskCard(props: {
   onStop: (id: string) => void;
   onOpen: (id: string) => void;
   onToggleDue: (id: string, current: boolean) => void;
+  sortMode: SortMode;
+  isDragging: boolean;
+  dragOffsetY: number;
+  onDragHandlePointerDown: (e: React.PointerEvent, id: string) => void;
+  registerRef: (el: HTMLDivElement | null) => void;
 }) {
   const {
     task: t, remainingForThis, liveLogged, overCap, anyActive, subs,
     openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen, onToggleDue,
+    sortMode, isDragging, dragOffsetY, onDragHandlePointerDown, registerRef,
   } = props;
 
   const [dragX, setDragX] = useState(0);
@@ -231,8 +276,8 @@ function TaskCard(props: {
     if (axisRef.current.v === 'x') {
       movedRef.current.v = true;
       clearTimeout(longPressTimer.current.id);
-      const base = openSide === 'right' ? REVEAL_RIGHT : 0;
-      const next = Math.max(Math.min(base + dx, REVEAL_RIGHT), 0);
+      const base = openSide === 'right' ? REVEAL : openSide === 'left' ? -REVEAL : 0;
+      const next = Math.max(Math.min(base + dx, REVEAL), -REVEAL);
       setDragX(next);
     }
   }
@@ -243,7 +288,11 @@ function TaskCard(props: {
     if (axisRef.current.v === 'x') {
       if (dragX >= OPEN_THRESHOLD) {
         setOpenSide('right');
-        setDragX(REVEAL_RIGHT);
+        setDragX(REVEAL);
+        setOpenSwipeId(t.id);
+      } else if (dragX <= -OPEN_THRESHOLD) {
+        setOpenSide('left');
+        setDragX(-REVEAL);
         setOpenSwipeId(t.id);
       } else {
         setOpenSide('none');
@@ -280,13 +329,20 @@ function TaskCard(props: {
     taskColorClass = 'task-due-today';
   }
 
-  const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', taskColorClass].join(' ').trim();
+  const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', taskColorClass, isDragging ? 'dragging' : '']
+    .join(' ')
+    .trim();
 
   return (
-    <div className={rowClass}>
+    <div
+      className={rowClass}
+      ref={registerRef}
+      style={isDragging ? { transform: `translateY(${dragOffsetY}px)`, zIndex: 50, position: 'relative' } : undefined}
+    >
       <div className="swipe-zone">
+        {/* Revealed by swiping the card right — start/stop the timer (unchanged from before) */}
         <button
-          className="swipe-reveal-right start-stop-btn"
+          className="swipe-reveal-right"
           style={{ background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)', opacity: startDisabled && t.status !== 'active' ? 0.4 : 1 }}
           disabled={startDisabled && t.status !== 'active'}
           onPointerUp={closeAnd(() => {
@@ -297,6 +353,16 @@ function TaskCard(props: {
         >
           {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
           <span>{t.status === 'active' ? 'Stop' : 'Start'}</span>
+        </button>
+        {/* Revealed by swiping the card left — the previously-unused side, now due-today */}
+        <button
+          className="swipe-reveal-left"
+          style={{ background: t.due_today ? 'var(--ink-soft)' : 'var(--steel)' }}
+          onPointerUp={closeAnd(() => onToggleDue(t.id, t.due_today))}
+          aria-label={t.due_today ? 'Remove from due today' : 'Mark as due today'}
+        >
+          <span style={{ fontSize: 18, lineHeight: 1 }}>{t.due_today ? '✓' : '○'}</span>
+          <span>{t.due_today ? 'Remove' : 'Due today'}</span>
         </button>
         <div
           className="swipe-foreground"
@@ -318,15 +384,17 @@ function TaskCard(props: {
             </button>
             <div className="task-body" onClick={handleBodyClick}>
               <div className="task-text">{t.text}</div>
-              <div className="task-progress-row">
-                <div className="task-progress-track">
-                  <div
-                    className="task-progress-fill"
-                    style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
-                  />
+              {t.estimate_mins > 0 && (
+                <div className="task-progress-row">
+                  <div className="task-progress-track">
+                    <div
+                      className="task-progress-fill"
+                      style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
                 </div>
-                <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
-              </div>
+              )}
               {(t.status === 'active' || subs.length > 0 || t.due_today) && (
                 <div className="task-tags">
                   {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
@@ -335,13 +403,17 @@ function TaskCard(props: {
                 </div>
               )}
             </div>
-            <button
-              className="btn-due-today"
-              onClick={(e) => { e.stopPropagation(); onToggleDue(t.id, t.due_today); }}
-              title={t.due_today ? 'Remove from due today' : 'Mark as due today'}
-            >
-              {t.due_today ? '✓' : '○'}
-            </button>
+            {sortMode === 'manual' && (
+              <button
+                className="drag-handle-btn"
+                onPointerDown={(e) => { e.stopPropagation(); onDragHandlePointerDown(e, t.id); }}
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Drag to reorder"
+                title="Drag to reorder"
+              >
+                <DragHandleIcon />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -432,15 +504,17 @@ function TaskDetailSheet(props: {
           onBlur={commit}
         />
 
-        <div className="task-progress-row" style={{ marginTop: 0 }}>
-          <div className="task-progress-track">
-            <div
-              className="task-progress-fill"
-              style={{ width: `${Math.min((1 - remainingForThis / Math.max(task.estimate_mins, 1)) * 100, 100)}%` }}
-            />
+        {task.estimate_mins > 0 && (
+          <div className="task-progress-row" style={{ marginTop: 0 }}>
+            <div className="task-progress-track">
+              <div
+                className="task-progress-fill"
+                style={{ width: `${Math.min((1 - remainingForThis / Math.max(task.estimate_mins, 1)) * 100, 100)}%` }}
+              />
+            </div>
+            <span className="task-progress-label mono">{fmtMins(remainingForThis)} left</span>
           </div>
-          <span className="task-progress-label mono">{fmtMins(remainingForThis)} left</span>
-        </div>
+        )}
 
         <div className="capture-row">
           <input type="text" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} onBlur={commit} style={{ width: 90 }} />
@@ -525,6 +599,28 @@ export default function Home() {
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [taskDetailClosing, setTaskDetailClosing] = useState(false);
   const [taskHistory, setTaskHistory] = useState<HistoryEntry[]>([]);
+  const [sortMode, setSortMode] = useState<SortMode>('due_today_first');
+
+  // Drag-to-reorder state. rowRefsMap/dragOrderRef/draggingIdRef/dragStartYRef
+  // are refs (not state) because they need to be read fresh inside global
+  // pointer listeners without triggering re-renders themselves.
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const [dragLiveOrderIds, setDragLiveOrderIds] = useState<string[] | null>(null);
+  const rowRefsMap = useRef<Record<string, HTMLDivElement | null>>({});
+  const dragOrderRef = useRef<string[]>([]);
+  const draggingIdRef = useRef<string | null>(null);
+  const dragStartYRef = useRef(0);
+
+  // Stable wrapper functions for the drag's global pointermove/pointerup
+  // listeners. These are created exactly once (via useRef) so addEventListener
+  // and removeEventListener always target the same function reference, even
+  // though state updates during the drag re-render this component and would
+  // otherwise create fresh closures that removeEventListener can't match.
+  const dragMoveImplRef = useRef<(e: PointerEvent) => void>(() => {});
+  const dragEndImplRef = useRef<() => void>(() => {});
+  const stableDragMove = useRef((e: PointerEvent) => dragMoveImplRef.current(e)).current;
+  const stableDragEnd = useRef(() => dragEndImplRef.current()).current;
 
   function closeTaskDetail() {
     setTaskDetailClosing(true);
@@ -624,13 +720,14 @@ export default function Home() {
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days')
+      .select('work_start, work_end, work_days, sort_mode')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : DEFAULT_WORK_DAYS);
+      setSortMode((settings.sort_mode as SortMode) || 'due_today_first');
     } else {
       await supabase.from('user_settings').insert({ user_id: userId, work_start: '08:00', work_end: '16:00', work_days: DEFAULT_WORK_DAYS });
     }
@@ -688,24 +785,7 @@ export default function Home() {
     }
     setForgotPasswordSent(true);
   }
-  async function sendMagicLink(e: React.FormEvent) {
-  e.preventDefault();
-  setSignInError('');
 
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${window.location.origin}`,
-    },
-  });
-
-  if (error) {
-    setSignInError('Could not send sign-in link.');
-    return;
-  }
-
-  setMagicLinkSent(true);
-}
   async function signInWithGoogle() {
     setSigningInWithGoogle(true);
     setSignInError('');
@@ -931,7 +1011,7 @@ export default function Home() {
             <>
               <h1 className="auth-title">{isNewUser ? 'Set up Dokkit' : 'Get started'}</h1>
               <p className="auth-sub">
-                {isNewUser ? 'Sign up with Google or create a password-protected account.' : 'Built to offload your brain. Not just organise it.'}
+                {isNewUser ? 'Sign up with Google or create a password-protected account.' : 'A personal thinking tool that understands time.'}
               </p>
               
               <button 
@@ -961,7 +1041,7 @@ export default function Home() {
                   </button>
                 </>
               ) : (
-                <form onSubmit={sendMagicLink} className="auth-form">
+                <form onSubmit={(e) => { e.preventDefault(); setMagicLinkSent(true); }} className="auth-form">
                   <input
                     type="email"
                     value={email}
@@ -989,12 +1069,10 @@ export default function Home() {
     );
   }
 
-  const ordered = [...tasks].sort((a, b) => {
-    const aKey = a.due_today ? 0 : 1;
-    const bKey = b.due_today ? 0 : 1;
-    if (aKey !== bKey) return aKey - bKey;
-    return a.order_index - b.order_index;
-  });
+  const computedOrder = computeOrdered(tasks, sortMode);
+  const ordered = dragLiveOrderIds
+    ? (dragLiveOrderIds.map((id) => tasks.find((t) => t.id === id)).filter(Boolean) as Task[])
+    : computedOrder;
 
   function completedSubtaskMins(taskId: string): number {
     return (subtasksByTask[taskId] || []).filter((s) => s.done).reduce((sum, s) => sum + s.mins, 0);
@@ -1051,6 +1129,97 @@ export default function Home() {
   const ringOverflowRatio = Math.min(Math.max(loadRatio - 1, 0), 1);
 
   const suggestedMins = taskText.trim().length > 1 ? suggestEstimateMins(taskText, taskHistory) : null;
+
+  // Drag-to-reorder logic. dragMoveImplRef/dragEndImplRef get reassigned every
+  // render so they always close over fresh state, while the *stable* wrapper
+  // functions (stableDragMove/stableDragEnd, created once above) are what
+  // actually get passed to addEventListener/removeEventListener, so the two
+  // calls always match regardless of re-renders during the drag.
+  dragMoveImplRef.current = (e: PointerEvent) => {
+    const draggingId = draggingIdRef.current;
+    if (!draggingId) return;
+
+    const deltaY = e.clientY - dragStartYRef.current;
+    setDragOffsetY(deltaY);
+
+    const currentIds = dragOrderRef.current;
+    const draggedIndex = currentIds.indexOf(draggingId);
+    const draggedEl = rowRefsMap.current[draggingId];
+    if (!draggedEl || draggedIndex === -1) return;
+
+    const draggedRect = draggedEl.getBoundingClientRect();
+    const draggedCenter = draggedRect.top + draggedRect.height / 2 + deltaY;
+
+    if (draggedIndex > 0) {
+      const aboveId = currentIds[draggedIndex - 1];
+      const aboveEl = rowRefsMap.current[aboveId];
+      if (aboveEl) {
+        const aboveRect = aboveEl.getBoundingClientRect();
+        const aboveMid = aboveRect.top + aboveRect.height / 2;
+        if (draggedCenter < aboveMid) {
+          const newOrder = [...currentIds];
+          [newOrder[draggedIndex - 1], newOrder[draggedIndex]] = [newOrder[draggedIndex], newOrder[draggedIndex - 1]];
+          dragOrderRef.current = newOrder;
+          setDragLiveOrderIds(newOrder);
+          dragStartYRef.current = e.clientY;
+          setDragOffsetY(0);
+          return;
+        }
+      }
+    }
+
+    if (draggedIndex < currentIds.length - 1) {
+      const belowId = currentIds[draggedIndex + 1];
+      const belowEl = rowRefsMap.current[belowId];
+      if (belowEl) {
+        const belowRect = belowEl.getBoundingClientRect();
+        const belowMid = belowRect.top + belowRect.height / 2;
+        if (draggedCenter > belowMid) {
+          const newOrder = [...currentIds];
+          [newOrder[draggedIndex + 1], newOrder[draggedIndex]] = [newOrder[draggedIndex], newOrder[draggedIndex + 1]];
+          dragOrderRef.current = newOrder;
+          setDragLiveOrderIds(newOrder);
+          dragStartYRef.current = e.clientY;
+          setDragOffsetY(0);
+          return;
+        }
+      }
+    }
+  };
+
+  dragEndImplRef.current = async () => {
+    window.removeEventListener('pointermove', stableDragMove);
+    window.removeEventListener('pointerup', stableDragEnd);
+
+    const finalIds = dragOrderRef.current;
+    draggingIdRef.current = null;
+    setDraggingTaskId(null);
+    setDragOffsetY(0);
+    setDragLiveOrderIds(null);
+
+    if (finalIds.length > 0) {
+      const updates = finalIds.map((id, idx) => ({ id, order_index: idx }));
+      setTasks((prev) =>
+        prev.map((t) => {
+          const u = updates.find((u) => u.id === t.id);
+          return u ? { ...t, order_index: u.order_index } : t;
+        })
+      );
+      await Promise.all(updates.map((u) => supabase.from('tasks').update({ order_index: u.order_index }).eq('id', u.id)));
+    }
+  };
+
+  function handleDragHandlePointerDown(e: React.PointerEvent, taskId: string) {
+    e.preventDefault();
+    draggingIdRef.current = taskId;
+    setDraggingTaskId(taskId);
+    dragStartYRef.current = e.clientY;
+    dragOrderRef.current = ordered.map((t) => t.id);
+    setDragLiveOrderIds(dragOrderRef.current);
+    setDragOffsetY(0);
+    window.addEventListener('pointermove', stableDragMove);
+    window.addEventListener('pointerup', stableDragEnd);
+  }
 
   return (
     <div className="app-shell">
@@ -1144,6 +1313,11 @@ export default function Home() {
               onStop={stopTask}
               onOpen={setOpenTaskId}
               onToggleDue={toggleDueToday}
+              sortMode={sortMode}
+              isDragging={draggingTaskId === t.id}
+              dragOffsetY={dragOffsetY}
+              onDragHandlePointerDown={handleDragHandlePointerDown}
+              registerRef={(el) => { rowRefsMap.current[t.id] = el; }}
             />
           );
         })}
