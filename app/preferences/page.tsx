@@ -34,6 +34,10 @@ export default function Preferences() {
   const [notifStatus, setNotifStatus] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
 
+  type SortMode = 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
+  const [sortMode, setSortMode] = useState<SortMode>('due_today_first');
+  const [sortSavedMsg, setSortSavedMsg] = useState('');
+
   const [calendarConnection, setCalendarConnection] = useState<{ connected_email: string | null } | null>(null);
   const [calendarMessage, setCalendarMessage] = useState('');
   const [disconnecting, setDisconnecting] = useState(false);
@@ -68,10 +72,11 @@ export default function Preferences() {
     const userId = session.user.id;
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days, notification_style')
+      .select('work_start, work_end, work_days, notification_style, sort_mode')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
+      setSortMode((settings.sort_mode as SortMode) || 'due_today_first');
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : [1, 2, 3, 4, 5]);
@@ -116,6 +121,13 @@ export default function Preferences() {
       .eq('user_id', session.user.id);
     setSavedMsg('Work hours saved.');
     setTimeout(() => setSavedMsg(''), 2000);
+  }
+
+  async function saveSortMode(mode: SortMode) {
+    setSortMode(mode);
+    await supabase.from('user_settings').update({ sort_mode: mode }).eq('user_id', session.user.id);
+    setSortSavedMsg('Saved.');
+    setTimeout(() => setSortSavedMsg(''), 1500);
   }
 
   async function saveNotificationStyle(style: 'default' | 'silent') {
@@ -203,6 +215,32 @@ export default function Preferences() {
           <button className="btn btn-ghost" onClick={saveWorkHours}>Save</button>
           {savedMsg && <span className="settings-saved">{savedMsg}</span>}
         </div>
+      </div>
+
+      <div className="settings-panel">
+        <div className="settings-panel-title">Task order</div>
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+          How your task list is arranged. Choose "Manual" to drag tasks into whatever order matters
+          to you — a drag handle appears on each task once this is selected.
+        </p>
+        <div className="sort-option-grid">
+          {([
+            { value: 'due_today_first', label: 'Due today first', desc: 'Due-today tasks float to the top' },
+            { value: 'manual', label: 'Manual', desc: 'Drag to arrange exactly how you want' },
+            { value: 'oldest_first', label: 'Oldest first', desc: 'By when each task was added' },
+            { value: 'newest_first', label: 'Newest first', desc: 'Most recently added on top' },
+          ] as { value: SortMode; label: string; desc: string }[]).map((opt) => (
+            <button
+              key={opt.value}
+              className={sortMode === opt.value ? 'sort-option-btn active' : 'sort-option-btn'}
+              onClick={() => saveSortMode(opt.value)}
+            >
+              <span className="sort-option-label">{opt.label}</span>
+              <span className="sort-option-desc">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+        {sortSavedMsg && <span className="settings-saved">{sortSavedMsg}</span>}
       </div>
 
       <div className="settings-panel">
