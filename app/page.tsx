@@ -914,7 +914,7 @@ export default function Home() {
             <>
               <h1 className="auth-title">{isNewUser ? 'Set up Dokkit' : 'Get started'}</h1>
               <p className="auth-sub">
-                {isNewUser ? 'Sign up with Google or create a password-protected account.' : 'A personal thinking tool that understands time.'}
+                {isNewUser ? 'Sign up with Google or create a password-protected account.' : 'Built to offload your brain. Not just organise it.'}
               </p>
               
               <button 
