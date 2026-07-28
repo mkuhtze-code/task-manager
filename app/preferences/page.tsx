@@ -124,8 +124,15 @@ export default function Preferences() {
   }
 
   async function saveSortMode(mode: SortMode) {
+    const previous = sortMode;
     setSortMode(mode);
-    await supabase.from('user_settings').update({ sort_mode: mode }).eq('user_id', session.user.id);
+    const { error } = await supabase.from('user_settings').update({ sort_mode: mode }).eq('user_id', session.user.id);
+    if (error) {
+      setSortMode(previous);
+      setSortSavedMsg('Could not save: ' + error.message);
+      setTimeout(() => setSortSavedMsg(''), 4000);
+      return;
+    }
     setSortSavedMsg('Saved.');
     setTimeout(() => setSortSavedMsg(''), 1500);
   }
