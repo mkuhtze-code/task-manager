@@ -406,7 +406,11 @@ function TaskCard(props: {
             {sortMode === 'manual' && (
               <button
                 className="drag-handle-btn"
-                onPointerDown={(e) => { e.stopPropagation(); onDragHandlePointerDown(e, t.id); }}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  onDragHandlePointerDown(e, t.id);
+                }}
                 onClick={(e) => e.stopPropagation()}
                 aria-label="Drag to reorder"
                 title="Drag to reorder"
