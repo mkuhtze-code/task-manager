@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import webpush from '@/lib/webpush';
-import { verifyUser } from '@/lib/verifyUser';
-import { checkRateLimit } from '@/lib/ratelimit';
 
 export async function POST(req: NextRequest) {
-  const auth = await verifyUser(req);
-  if (!auth.ok) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+  const body = await req.json();
+  const { userId } = body;
 
-  const { allowed } = await checkRateLimit(`user:${auth.userId}:test-notification`);
-  if (!allowed) {
-    return NextResponse.json({ error: 'Too many requests, try again shortly.' }, { status: 429 });
+  if (!userId) {
+    return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
   }
 
   const { data: subs, error } = await supabaseAdmin
     .from('push_subscriptions')
     .select('*')
-    .eq('user_id', auth.userId);
+    .eq('user_id', userId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
