@@ -4,6 +4,11 @@
 create table if not exists user_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
   day_length_mins int not null default 480,
+  work_start time not null default '08:00',
+  work_end time not null default '16:00',
+  work_days int[] not null default '{1,2,3,4,5}',
+  notification_style text not null default 'default' check (notification_style in ('default', 'silent')),
+  task_sort_mode text not null default 'manual' check (task_sort_mode in ('manual', 'oldest', 'newest', 'longest', 'shortest')),
   updated_at timestamptz not null default now()
 );
 
@@ -79,3 +84,10 @@ create policy "own tasks" on tasks for all using (auth.uid() = user_id) with che
 create policy "own meetings" on meetings for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own time logs" on time_logs for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own push subs" on push_subscriptions for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ── Existing installs: add task priority preferences if the settings table already exists ──
+alter table user_settings add column if not exists work_start time not null default '08:00';
+alter table user_settings add column if not exists work_end time not null default '16:00';
+alter table user_settings add column if not exists work_days int[] not null default '{1,2,3,4,5}';
+alter table user_settings add column if not exists notification_style text not null default 'default';
+alter table user_settings add column if not exists task_sort_mode text not null default 'manual';
