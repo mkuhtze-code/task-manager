@@ -217,14 +217,13 @@ function TaskCard(props: {
   sortMode: SortMode;
   isDragging: boolean;
   dragOffsetY: number;
-  dragReorderActive: boolean;
   onDragHandlePointerDown: (e: React.PointerEvent, id: string) => void;
   registerRef: (el: HTMLDivElement | null) => void;
 }) {
   const {
     task: t, remainingForThis, liveLogged, overCap, anyActive, subs,
     openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen, onToggleDue,
-    sortMode, isDragging, dragOffsetY, dragReorderActive, onDragHandlePointerDown, registerRef,
+    sortMode, isDragging, dragOffsetY, onDragHandlePointerDown, registerRef,
   } = props;
 
   const [dragX, setDragX] = useState(0);
@@ -244,18 +243,9 @@ function TaskCard(props: {
     }
   }, [openSwipeId]);
 
-  useEffect(() => {
-    if (dragReorderActive) {
-      setOpenSide('none');
-      setDragX(0);
-      setDragging(false);
-    }
-  }, [dragReorderActive]);
-
   const startDisabled = anyActive && t.status !== 'active';
 
   function handlePointerDown(e: React.PointerEvent) {
-    if (dragReorderActive) return;
     startXRef.current.x = e.clientX;
     startXRef.current.y = e.clientY;
     movedRef.current.v = false;
@@ -270,7 +260,6 @@ function TaskCard(props: {
   }
 
   function handlePointerMove(e: React.PointerEvent) {
-    if (dragReorderActive) return;
     const dx = e.clientX - startXRef.current.x;
     const dy = e.clientY - startXRef.current.y;
     if (axisRef.current.v === 'none') {
@@ -294,7 +283,6 @@ function TaskCard(props: {
   }
 
   function handlePointerUp() {
-    if (dragReorderActive) return;
     clearTimeout(longPressTimer.current.id);
     setDragging(false);
     if (axisRef.current.v === 'x') {
