@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
 
@@ -15,6 +14,7 @@ type Task = {
   started_at: string | null;
   due_today: boolean;
   order_index: number;
+  created_at: string;
 };
 
 type Subtask = {
@@ -29,11 +29,59 @@ type Meeting = {
   id: string;
   text: string;
   duration_mins: number;
+  start_time: string | null;
+  source: 'manual' | 'outlook';
+};
+
+type HistoryEntry = {
+  text: string;
+  actual_mins: number;
 };
 
 const HAS_SIGNED_IN_KEY = 'dokkit-has-signed-in';
 const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
 const LONG_PRESS_MS = 500;
+const SHEET_CLOSE_MS = 300;
+
+type TaskSortMode = 'manual' | 'oldest' | 'newest' | 'longest' | 'shortest';
+
+const STOPWORDS = new Set([
+  'the', 'a', 'an', 'to', 'for', 'of', 'in', 'on', 'at', 'and', 'or',
+  'with', 'my', 'your', 'it', 'this', 'that', 'up', 'out', 'from', 'be',
+]);
+
+function normalizeWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length > 1 && !STOPWORDS.has(w));
+}
+
+// Simple word-overlap matcher: looks at your own completed-task history and
+// finds tasks that share at least half of their significant words with what
+// you're typing now. This is the seed of "learn from behavior" — no manual
+// tagging, just quietly noticing what similar work has taken before.
+function suggestEstimateMins(text: string, history: HistoryEntry[]): number | null {
+  const words = new Set(normalizeWords(text));
+  if (words.size === 0) return null;
+
+  const matches: number[] = [];
+  for (const h of history) {
+    const hWords = new Set(normalizeWords(h.text));
+    if (hWords.size === 0) continue;
+    let overlap = 0;
+    words.forEach((w) => {
+      if (hWords.has(w)) overlap += 1;
+    });
+    const smaller = Math.min(words.size, hWords.size);
+    if (overlap > 0 && overlap / smaller >= 0.5) {
+      matches.push(h.actual_mins);
+    }
+  }
+  if (matches.length === 0) return null;
+  return matches.reduce((sum, m) => sum + m, 0) / matches.length;
+}
 
 function parseMins(raw: string): number | null {
   const str = raw.trim().toLowerCase();
@@ -63,6 +111,18 @@ function timeStringToMinutes(t: string): number {
   const h = parseInt(parts[0], 10);
   const m = parseInt(parts[1], 10);
   return h * 60 + m;
+}
+
+// A meeting counts toward today's capacity only while it's still today and
+// hasn't ended yet. Meetings without a start_time (older manual entries that
+// predate this field being used) fall back to always counting, so nothing
+// that already existed silently disappears.
+function isMeetingActive(m: Meeting, now: Date): boolean {
+  if (!m.start_time) return true;
+  const start = new Date(m.start_time);
+  const end = new Date(start.getTime() + m.duration_mins * 60000);
+  const isToday = start.toDateString() === now.toDateString();
+  return isToday && end.getTime() > now.getTime();
 }
 
 function CheckIcon({ done }: { done: boolean }) {
@@ -261,15 +321,17 @@ function TaskCard(props: {
             </button>
             <div className="task-body" onClick={handleBodyClick}>
               <div className="task-text">{t.text}</div>
-              <div className="task-progress-row">
-                <div className="task-progress-track">
-                  <div
-                    className="task-progress-fill"
-                    style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
-                  />
+              {t.estimate_mins > 0 && (
+                <div className="task-progress-row">
+                  <div className="task-progress-track">
+                    <div
+                      className="task-progress-fill"
+                      style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
                 </div>
-                <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
-              </div>
+              )}
               {(t.status === 'active' || subs.length > 0 || t.due_today) && (
                 <div className="task-tags">
                   {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
@@ -292,48 +354,13 @@ function TaskCard(props: {
   );
 }
 
-function ActiveTimerBar({
-  task,
-  liveLogged,
-  overEstimate,
-  onStop,
-  onOpen,
-}: {
-  task: Task;
-  liveLogged: number;
-  overEstimate: boolean;
-  onStop: (id: string) => void;
-  onOpen: (id: string) => void;
-}) {
-  return (
-    <div
-      className={overEstimate ? 'active-timer-bar over' : 'active-timer-bar'}
-      onClick={() => onOpen(task.id)}
-    >
-      <div className="active-timer-info">
-        <span className="active-timer-dot" />
-        <span className="active-timer-text">{task.text}</span>
-      </div>
-      <div className="active-timer-actions">
-        <span className="active-timer-elapsed mono">{fmtMins(liveLogged)}</span>
-        <button
-          className="active-timer-stop"
-          onClick={(e) => { e.stopPropagation(); onStop(task.id); }}
-          aria-label="Stop timer"
-        >
-          <StopIcon />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function TaskDetailSheet(props: {
   task: Task;
   subs: Subtask[];
   remainingForThis: number;
   liveLogged: number;
   anyActive: boolean;
+  closing: boolean;
   onClose: () => void;
   onSave: (id: string, text: string, mins: number) => void;
   onComplete: (id: string) => void;
@@ -349,7 +376,7 @@ function TaskDetailSheet(props: {
   setSubDraftTime: (v: string) => void;
 }) {
   const {
-    task, subs, remainingForThis, liveLogged, anyActive, onClose, onSave,
+    task, subs, remainingForThis, liveLogged, anyActive, closing, onClose, onSave,
     onComplete, onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
     subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
   } = props;
@@ -371,7 +398,7 @@ function TaskDetailSheet(props: {
       return;
     }
     const mins = parseMins(timeStr);
-    if (mins === null || mins <= 0) {
+    if (mins === null) {
       setError('Could not read that time, try 15m or 1.5h');
       return;
     }
@@ -387,8 +414,8 @@ function TaskDetailSheet(props: {
   const startDisabled = anyActive && task.status !== 'active';
 
   return (
-    <div className="sheet-backdrop" onClick={handleClose}>
-      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
+    <div className={`sheet-backdrop${closing ? ' closing' : ''}`} onClick={handleClose}>
+      <div className={`capture-sheet task-detail-sheet${closing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="task-detail-header">
           <button className="btn-text" onClick={handleClose}>Close</button>
           <button
@@ -410,15 +437,17 @@ function TaskDetailSheet(props: {
           onBlur={commit}
         />
 
-        <div className="task-progress-row" style={{ marginTop: 0 }}>
-          <div className="task-progress-track">
-            <div
-              className="task-progress-fill"
-              style={{ width: `${Math.min((1 - remainingForThis / Math.max(task.estimate_mins, 1)) * 100, 100)}%` }}
-            />
+        {task.estimate_mins > 0 && (
+          <div className="task-progress-row" style={{ marginTop: 0 }}>
+            <div className="task-progress-track">
+              <div
+                className="task-progress-fill"
+                style={{ width: `${Math.min((1 - remainingForThis / Math.max(task.estimate_mins, 1)) * 100, 100)}%` }}
+              />
+            </div>
+            <span className="task-progress-label mono">{fmtMins(remainingForThis)} left</span>
           </div>
-          <span className="task-progress-label mono">{fmtMins(remainingForThis)} left</span>
-        </div>
+        )}
 
         <div className="capture-row">
           <input type="text" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} onBlur={commit} style={{ width: 90 }} />
@@ -484,7 +513,6 @@ function TaskDetailSheet(props: {
 }
 
 export default function Home() {
-  const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -502,12 +530,32 @@ export default function Home() {
   const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [taskDetailClosing, setTaskDetailClosing] = useState(false);
+  const [taskHistory, setTaskHistory] = useState<HistoryEntry[]>([]);
+
+  function closeTaskDetail() {
+    setTaskDetailClosing(true);
+    setTimeout(() => {
+      setOpenTaskId(null);
+      setTaskDetailClosing(false);
+    }, SHEET_CLOSE_MS);
+  }
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
   const [workDays, setWorkDays] = useState<number[]>(DEFAULT_WORK_DAYS);
+  const [taskSortMode, setTaskSortMode] = useState<TaskSortMode>('manual');
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [captureClosing, setCaptureClosing] = useState(false);
+
+  function closeCaptureSheet() {
+    setCaptureClosing(true);
+    setTimeout(() => {
+      setCaptureOpen(false);
+      setCaptureClosing(false);
+    }, SHEET_CLOSE_MS);
+  }
 
   const [taskText, setTaskText] = useState('');
   const [taskTime, setTaskTime] = useState('');
@@ -521,9 +569,41 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
-    return () => listener.subscription.unsubscribe();
+    async function handleAuthCallback() {
+      // Check if Supabase already restored a session (e.g. returning visit)
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        setSession(data.session);
+        return;
+      }
+
+      // Handle the PKCE-style redirect (?code=...) used by Google OAuth and
+      // password recovery links. Without this explicit exchange, the code
+      // sits unused in the URL and no session ever gets created — the app
+      // just falls back to showing the sign-in screen with no error.
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code) {
+        const { data: codeSession, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error('Code exchange error:', error);
+        }
+        if (codeSession.session) {
+          setSession(codeSession.session);
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+
+    handleAuthCallback();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -552,15 +632,16 @@ export default function Home() {
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days')
+      .select('work_start, work_end, work_days, task_sort_mode')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : DEFAULT_WORK_DAYS);
+      setTaskSortMode(settings.task_sort_mode || 'manual');
     } else {
-      await supabase.from('user_settings').insert({ user_id: userId, work_start: '08:00', work_end: '16:00', work_days: DEFAULT_WORK_DAYS });
+      await supabase.from('user_settings').insert({ user_id: userId, work_start: '08:00', work_end: '16:00', work_days: DEFAULT_WORK_DAYS, task_sort_mode: 'manual' });
     }
 
     const { data: taskRows } = await supabase
@@ -572,6 +653,15 @@ export default function Home() {
 
     const { data: meetingRows } = await supabase.from('meetings').select('*');
     setMeetings(meetingRows || []);
+
+    // Pull completed-task history for estimate learning. Only need text +
+    // actual_mins, and only tasks that actually have a logged actual time.
+    const { data: historyRows } = await supabase
+      .from('tasks')
+      .select('text, actual_mins')
+      .eq('status', 'done')
+      .not('actual_mins', 'is', null);
+    setTaskHistory((historyRows || []).map((h: any) => ({ text: h.text, actual_mins: h.actual_mins })));
 
     if (taskRows && taskRows.length > 0) {
       const ids = taskRows.map((t: Task) => t.id);
@@ -607,7 +697,24 @@ export default function Home() {
     }
     setForgotPasswordSent(true);
   }
+  async function sendMagicLink(e: React.FormEvent) {
+  e.preventDefault();
+  setSignInError('');
 
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: `${window.location.origin}`,
+    },
+  });
+
+  if (error) {
+    setSignInError('Could not send sign-in link.');
+    return;
+  }
+
+  setMagicLinkSent(true);
+}
   async function signInWithGoogle() {
     setSigningInWithGoogle(true);
     setSignInError('');
@@ -648,7 +755,7 @@ export default function Home() {
     if (data) setTasks((prev) => [...prev, data]);
     setTaskText('');
     setTaskTime('');
-    setCaptureOpen(false);
+    closeCaptureSheet();
   }
 
   async function updateTask(id: string, text: string, mins: number) {
@@ -665,7 +772,7 @@ export default function Home() {
     const alreadyActive = tasks.find((t) => t.status === 'active');
     if (alreadyActive) return;
     const startedAt = new Date().toISOString();
-    await supabase.from('tasks').update({ status: 'active', started_at: startedAt, near_notified: false, over_notified: false, last_overdue_ping_at: null }).eq('id', id);
+    await supabase.from('tasks').update({ status: 'active', started_at: startedAt, near_notified: false, over_notified: false }).eq('id', id);
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'active', started_at: startedAt } : t)));
   }
 
@@ -689,6 +796,9 @@ export default function Home() {
       .update({ status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: Math.round(finalLogged), completed_at: new Date().toISOString() })
       .eq('id', id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    if (task) {
+      setTaskHistory((prev) => [...prev, { text: task.text, actual_mins: Math.round(finalLogged) }]);
+    }
   }
 
   async function deleteTask(id: string) {
@@ -830,7 +940,7 @@ export default function Home() {
             <>
               <h1 className="auth-title">{isNewUser ? 'Set up Dokkit' : 'Get started'}</h1>
               <p className="auth-sub">
-                {isNewUser ? 'Sign up with Google or create a password-protected account.' : 'A personal thinking tool that understands time.'}
+                {isNewUser ? 'Sign up with Google or create a password-protected account.' : 'Built to offload your brain. Not just organise it.'}
               </p>
               
               <button 
@@ -860,7 +970,7 @@ export default function Home() {
                   </button>
                 </>
               ) : (
-                <form onSubmit={(e) => { e.preventDefault(); setMagicLinkSent(true); }} className="auth-form">
+                <form onSubmit={sendMagicLink} className="auth-form">
                   <input
                     type="email"
                     value={email}
@@ -892,7 +1002,20 @@ export default function Home() {
     const aKey = a.due_today ? 0 : 1;
     const bKey = b.due_today ? 0 : 1;
     if (aKey !== bKey) return aKey - bKey;
-    return a.order_index - b.order_index;
+
+    switch (taskSortMode) {
+      case 'oldest':
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      case 'newest':
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      case 'longest':
+        return b.estimate_mins - a.estimate_mins;
+      case 'shortest':
+        return a.estimate_mins - b.estimate_mins;
+      case 'manual':
+      default:
+        return a.order_index - b.order_index;
+    }
   });
 
   function completedSubtaskMins(taskId: string): number {
@@ -907,7 +1030,8 @@ export default function Home() {
     return Math.max(t.estimate_mins - logged - completedSubtaskMins(t.id), 0);
   }
 
-  const meetingMins = meetings.reduce((sum, m) => sum + m.duration_mins, 0);
+  const activeMeetings = meetings.filter((m) => isMeetingActive(m, now));
+  const meetingMins = activeMeetings.reduce((sum, m) => sum + m.duration_mins, 0);
   const remainingTaskMins = ordered.reduce((sum, t) => sum + remainingForTask(t), 0);
   const remainingWorkMins = meetingMins + remainingTaskMins;
 
@@ -937,54 +1061,63 @@ export default function Home() {
     }
   }
 
-  const activeTask = tasks.find((t) => t.status === 'active') || null;
-  let activeLiveLogged = 0;
-  if (activeTask && activeTask.started_at) {
-    activeLiveLogged = activeTask.logged_mins + (Date.now() - new Date(activeTask.started_at).getTime()) / 60000;
-  }
-  const activeOverEstimate = !!activeTask && activeLiveLogged > activeTask.estimate_mins;
+  // The ring measures workload against the time actually left today — not
+  // against itself. When there's no time baseline (off day, or already past
+  // work hours), any remaining workload reads as fully over capacity, since
+  // there's nowhere left to fit it today.
+  const hasCapacityBaseline = minutesLeftToday > 0;
+  const loadRatio = hasCapacityBaseline
+    ? remainingWorkMins / minutesLeftToday
+    : remainingWorkMins > 0 ? 2 : 0;
+  const ringFillRatio = Math.min(loadRatio, 1);
+  const ringOverflowRatio = Math.min(Math.max(loadRatio - 1, 0), 1);
 
-  const timeLeftPercent = Math.min(minutesLeftToday / Math.max(minutesLeftToday, 1), 1);
-  const taskLoadPercent = Math.min(remainingWorkMins / Math.max(minutesLeftToday, 1), 1);
+  const suggestedMins = taskText.trim().length > 1 ? suggestEstimateMins(taskText, taskHistory) : null;
 
   return (
     <div className="app-shell">
-      <div
-        className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}
-        onClick={() => router.push('/analytics')}
-      >
+      <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
         <div className="today-header-top-row">
           <div className="today-header-date">{dateLabel}</div>
           <GearMenu />
         </div>
         <div className="capacity-row">
           <div className="capacity-ring-wrap">
-            <svg width="60" height="60" viewBox="0 0 60 60">
-              <circle cx="30" cy="30" r="25" fill="none" stroke="var(--line)" strokeWidth="6" />
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              {/* Track — the whole of today's available time */}
+              <circle cx="48" cy="48" r="34" fill="none" stroke="var(--line)" strokeWidth="8" />
+              {/* Fill — how much of today is already spoken for by planned work */}
               <circle
-                cx="30"
-                cy="30"
-                r="25"
+                cx="48"
+                cy="48"
+                r="34"
                 fill="none"
-                stroke="var(--steel)"
-                strokeWidth="6"
+                stroke={loadRatio >= 1 ? 'var(--hazard)' : 'var(--steel)'}
+                strokeWidth="8"
                 strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 25 * timeLeftPercent} ${2 * Math.PI * 25}`}
-                strokeDashoffset={0}
-                style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '30px 30px', transform: 'rotate(-90deg)' }}
+                strokeDasharray={`${2 * Math.PI * 34 * ringFillRatio} ${2 * Math.PI * 34}`}
+                style={{
+                  transition: 'stroke-dasharray 0.5s var(--ease), stroke 0.3s var(--ease)',
+                  transformOrigin: '48px 48px',
+                  transform: 'rotate(-90deg)',
+                }}
               />
-              {taskLoadPercent > timeLeftPercent && (
+              {/* Overflow — how far workload spills past what today can hold */}
+              {ringOverflowRatio > 0 && (
                 <circle
-                  cx="30"
-                  cy="30"
-                  r="25"
+                  cx="48"
+                  cy="48"
+                  r="42"
                   fill="none"
                   stroke="var(--hazard)"
-                  strokeWidth="6"
+                  strokeWidth="4"
                   strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 25 * (taskLoadPercent - timeLeftPercent)} ${2 * Math.PI * 25}`}
-                  strokeDashoffset={-2 * Math.PI * 25 * timeLeftPercent}
-                  style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '30px 30px', transform: 'rotate(-90deg)' }}
+                  strokeDasharray={`${2 * Math.PI * 42 * ringOverflowRatio} ${2 * Math.PI * 42}`}
+                  style={{
+                    transition: 'stroke-dasharray 0.5s var(--ease)',
+                    transformOrigin: '48px 48px',
+                    transform: 'rotate(-90deg)',
+                  }}
                 />
               )}
             </svg>
@@ -1038,36 +1171,37 @@ export default function Home() {
         })}
       </div>
 
-      {activeTask && (
-        <ActiveTimerBar
-          task={activeTask}
-          liveLogged={activeLiveLogged}
-          overEstimate={activeOverEstimate}
-          onStop={stopTask}
-          onOpen={setOpenTaskId}
-        />
-      )}
-
       {captureOpen && (
-        <div className="capture-sheet">
-          <input
-            type="text"
-            value={taskText}
-            onChange={(e) => setTaskText(e.target.value)}
-            placeholder="What needs doing?"
-          />
-          <div className="capture-row">
+        <div className={`sheet-backdrop${captureClosing ? ' closing' : ''}`} onClick={closeCaptureSheet}>
+          <div className={`capture-sheet${captureClosing ? ' closing' : ''}`} onClick={(e) => e.stopPropagation()}>
             <input
               type="text"
-              value={taskTime}
-              onChange={(e) => setTaskTime(e.target.value)}
-              placeholder="0m"
-              style={{ width: 80 }}
+              value={taskText}
+              onChange={(e) => setTaskText(e.target.value)}
+              placeholder="What needs doing?"
             />
-            <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
+            {suggestedMins !== null && (
+              <button
+                type="button"
+                className="estimate-suggestion-chip"
+                onClick={() => setTaskTime(fmtMins(Math.round(suggestedMins)))}
+              >
+                Similar tasks usually take ~{fmtMins(Math.round(suggestedMins))} · tap to use
+              </button>
+            )}
+            <div className="capture-row">
+              <input
+                type="text"
+                value={taskTime}
+                onChange={(e) => setTaskTime(e.target.value)}
+                placeholder="0m"
+                style={{ width: 80 }}
+              />
+              <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
+            </div>
+            {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+            <button className="btn-text" onClick={closeCaptureSheet}>Cancel</button>
           </div>
-          {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-          <button className="btn-text" onClick={() => setCaptureOpen(false)}>Cancel</button>
         </div>
       )}
 
@@ -1082,7 +1216,8 @@ export default function Home() {
           remainingForThis={openTaskRemaining}
           liveLogged={openTaskLiveLogged}
           anyActive={tasks.some((x) => x.status === 'active')}
-          onClose={() => setOpenTaskId(null)}
+          closing={taskDetailClosing}
+          onClose={closeTaskDetail}
           onSave={updateTask}
           onComplete={completeTask}
           onStart={startTask}
