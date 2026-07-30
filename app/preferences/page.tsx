@@ -4,16 +4,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
 
-type TaskSortMode = 'manual' | 'oldest' | 'newest' | 'longest' | 'shortest';
-
-const TASK_SORT_OPTIONS: { label: string; value: TaskSortMode; description: string }[] = [
-  { label: 'Manual', value: 'manual', description: 'Keep your existing custom order, with due-today tasks first.' },
-  { label: 'Oldest first', value: 'oldest', description: 'Show tasks you added earliest first.' },
-  { label: 'Newest first', value: 'newest', description: 'Show recently added tasks first.' },
-  { label: 'Longest first', value: 'longest', description: 'Show larger time estimates first.' },
-  { label: 'Shortest first', value: 'shortest', description: 'Show quick wins first.' },
-];
-
 const DAY_OPTIONS: { label: string; value: number }[] = [
   { label: 'M', value: 1 },
   { label: 'T', value: 2 },
@@ -41,9 +31,12 @@ export default function Preferences() {
   const [workEnd, setWorkEnd] = useState('16:00');
   const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [notificationStyle, setNotificationStyle] = useState<'default' | 'silent'>('default');
-  const [taskSortMode, setTaskSortMode] = useState<TaskSortMode>('manual');
   const [notifStatus, setNotifStatus] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
+
+  type SortMode = 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
+  const [sortMode, setSortMode] = useState<SortMode>('due_today_first');
+  const [sortSavedMsg, setSortSavedMsg] = useState('');
 
   const [calendarConnection, setCalendarConnection] = useState<{ connected_email: string | null } | null>(null);
   const [calendarMessage, setCalendarMessage] = useState('');
@@ -79,15 +72,15 @@ export default function Preferences() {
     const userId = session.user.id;
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days, notification_style, task_sort_mode')
+      .select('work_start, work_end, work_days, notification_style, sort_mode')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
+      setSortMode((settings.sort_mode as SortMode) || 'due_today_first');
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : [1, 2, 3, 4, 5]);
       setNotificationStyle(settings.notification_style || 'default');
-      setTaskSortMode(settings.task_sort_mode || 'manual');
     }
   }
 
@@ -130,14 +123,23 @@ export default function Preferences() {
     setTimeout(() => setSavedMsg(''), 2000);
   }
 
+  async function saveSortMode(mode: SortMode) {
+    const previous = sortMode;
+    setSortMode(mode);
+    const { error } = await supabase.from('user_settings').update({ sort_mode: mode }).eq('user_id', session.user.id);
+    if (error) {
+      setSortMode(previous);
+      setSortSavedMsg('Could not save: ' + error.message);
+      setTimeout(() => setSortSavedMsg(''), 4000);
+      return;
+    }
+    setSortSavedMsg('Saved.');
+    setTimeout(() => setSortSavedMsg(''), 1500);
+  }
+
   async function saveNotificationStyle(style: 'default' | 'silent') {
     setNotificationStyle(style);
     await supabase.from('user_settings').update({ notification_style: style }).eq('user_id', session.user.id);
-  }
-
-  async function saveTaskSortMode(mode: TaskSortMode) {
-    setTaskSortMode(mode);
-    await supabase.from('user_settings').update({ task_sort_mode: mode }).eq('user_id', session.user.id);
   }
 
   async function enableNotifications() {
@@ -223,22 +225,29 @@ export default function Preferences() {
       </div>
 
       <div className="settings-panel">
-        <div className="settings-panel-title">Task priority</div>
+        <div className="settings-panel-title">Task order</div>
         <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-          Choose how your task list is prioritized. Tasks marked due today still stay at the top.
+          How your task list is arranged. Choose "Manual" to drag tasks into whatever order matters
+          to you — a drag handle appears on each task once this is selected.
         </p>
-        <div className="priority-option-list">
-          {TASK_SORT_OPTIONS.map((option) => (
+        <div className="sort-option-grid">
+          {([
+            { value: 'due_today_first', label: 'Due today first', desc: 'Due-today tasks float to the top' },
+            { value: 'manual', label: 'Manual', desc: 'Drag to arrange exactly how you want' },
+            { value: 'oldest_first', label: 'Oldest first', desc: 'By when each task was added' },
+            { value: 'newest_first', label: 'Newest first', desc: 'Most recently added on top' },
+          ] as { value: SortMode; label: string; desc: string }[]).map((opt) => (
             <button
-              key={option.value}
-              className={taskSortMode === option.value ? 'priority-option active' : 'priority-option'}
-              onClick={() => saveTaskSortMode(option.value)}
+              key={opt.value}
+              className={sortMode === opt.value ? 'sort-option-btn active' : 'sort-option-btn'}
+              onClick={() => saveSortMode(opt.value)}
             >
-              <span className="priority-option-label">{option.label}</span>
-              <span className="priority-option-description">{option.description}</span>
+              <span className="sort-option-label">{opt.label}</span>
+              <span className="sort-option-desc">{opt.desc}</span>
             </button>
           ))}
         </div>
+        {sortSavedMsg && <span className="settings-saved">{sortSavedMsg}</span>}
       </div>
 
       <div className="settings-panel">
