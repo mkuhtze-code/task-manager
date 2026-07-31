@@ -34,8 +34,8 @@ export default function Preferences() {
   const [notifStatus, setNotifStatus] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
 
-  type SortMode = 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
-  const [sortMode, setSortMode] = useState<SortMode>('due_today_first');
+  type SortMode = 'capacity_first' | 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
+  const [sortMode, setSortMode] = useState<SortMode>('capacity_first');
   const [sortSavedMsg, setSortSavedMsg] = useState('');
 
   const [calendarConnection, setCalendarConnection] = useState<{ connected_email: string | null } | null>(null);
@@ -53,8 +53,6 @@ export default function Preferences() {
     }
   }, [session]);
 
-  // Pick up the ?calendar=connected / ?calendar=error redirect from the
-  // OAuth callback and clean the URL so a refresh doesn't re-show it.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -76,7 +74,7 @@ export default function Preferences() {
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
-      setSortMode((settings.sort_mode as SortMode) || 'due_today_first');
+      setSortMode((settings.sort_mode as SortMode) || 'capacity_first');
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : [1, 2, 3, 4, 5]);
@@ -232,6 +230,7 @@ export default function Preferences() {
         </p>
         <div className="sort-option-grid">
           {([
+            { value: 'capacity_first', label: 'Fits today first', desc: 'Tasks that realistically fit in the time you have left float to the top — the rest are flagged, not hidden' },
             { value: 'due_today_first', label: 'Due today first', desc: 'Due-today tasks float to the top' },
             { value: 'manual', label: 'Manual', desc: 'Drag to arrange exactly how you want' },
             { value: 'oldest_first', label: 'Oldest first', desc: 'By when each task was added' },
