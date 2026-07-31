@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import webpush from '@/lib/webpush';
+import webpush, { HIGH_PRIORITY_OPTIONS } from '@/lib/webpush';
 import { getUserLocalTime, timeStringToMinutes } from '@/lib/timezone';
 
 const OVERDUE_REPEAT_MINS = 30; // how often to re-ping once a task is running over
@@ -122,7 +122,8 @@ export async function GET(req: NextRequest) {
         subs.map((sub) =>
           webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-            payload
+            payload,
+            HIGH_PRIORITY_OPTIONS
           )
         )
       );
