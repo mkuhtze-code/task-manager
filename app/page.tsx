@@ -552,15 +552,32 @@ export default function Home() {
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days')
+      .select('work_start, work_end, work_days, timezone')
       .eq('user_id', userId)
       .maybeSingle();
+
+    // Detected once per load from the browser's own clock — same source
+    // the "left today" countdown already trusts. No new UI; this just
+    // gives the reminder cron (which only ever sees UTC) a way to know
+    // when the user's work day has actually ended.
+    const detectedTimezone =
+      typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : null;
+
     if (settings) {
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : DEFAULT_WORK_DAYS);
+      if (!settings.timezone && detectedTimezone) {
+        supabase.from('user_settings').update({ timezone: detectedTimezone }).eq('user_id', userId);
+      }
     } else {
-      await supabase.from('user_settings').insert({ user_id: userId, work_start: '08:00', work_end: '16:00', work_days: DEFAULT_WORK_DAYS });
+      await supabase.from('user_settings').insert({
+        user_id: userId,
+        work_start: '08:00',
+        work_end: '16:00',
+        work_days: DEFAULT_WORK_DAYS,
+        timezone: detectedTimezone,
+      });
     }
 
     const { data: taskRows } = await supabase
