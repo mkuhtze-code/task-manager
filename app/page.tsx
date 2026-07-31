@@ -15,6 +15,7 @@ type Task = {
   started_at: string | null;
   due_today: boolean;
   order_index: number;
+  created_at: string;
 };
 
 type Subtask = {
@@ -30,6 +31,8 @@ type Meeting = {
   text: string;
   duration_mins: number;
 };
+
+type SortMode = 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
 
 const HAS_SIGNED_IN_KEY = 'dokkit-has-signed-in';
 const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
@@ -63,6 +66,26 @@ function timeStringToMinutes(t: string): number {
   const h = parseInt(parts[0], 10);
   const m = parseInt(parts[1], 10);
   return h * 60 + m;
+}
+
+function sortTasks(list: Task[], mode: SortMode): Task[] {
+  const arr = [...list];
+  if (mode === 'manual') {
+    arr.sort((a, b) => a.order_index - b.order_index);
+  } else if (mode === 'oldest_first') {
+    arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  } else if (mode === 'newest_first') {
+    arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  } else {
+    // due_today_first (default)
+    arr.sort((a, b) => {
+      const aKey = a.due_today ? 0 : 1;
+      const bKey = b.due_today ? 0 : 1;
+      if (aKey !== bKey) return aKey - bKey;
+      return a.order_index - b.order_index;
+    });
+  }
+  return arr;
 }
 
 function CheckIcon({ done }: { done: boolean }) {
@@ -99,6 +122,16 @@ function StopIcon() {
   );
 }
 
+function DragHandleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" />
+      <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
+      <circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />
+    </svg>
+  );
+}
+
 const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
 
@@ -118,10 +151,17 @@ function TaskCard(props: {
   onStop: (id: string) => void;
   onOpen: (id: string) => void;
   onToggleDue: (id: string, current: boolean) => void;
+  dragHandleProps?: {
+    onPointerDown: (e: React.PointerEvent) => void;
+    onPointerMove: (e: React.PointerEvent) => void;
+    onPointerUp: (e: React.PointerEvent) => void;
+  };
+  isBeingDragged?: boolean;
 }) {
   const {
     task: t, remainingForThis, liveLogged, overCap, anyActive, subs,
     openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen, onToggleDue,
+    dragHandleProps, isBeingDragged,
   } = props;
 
   const [dragX, setDragX] = useState(0);
@@ -226,7 +266,7 @@ function TaskCard(props: {
   const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', taskColorClass].join(' ').trim();
 
   return (
-    <div className={rowClass}>
+    <div className={rowClass} style={isBeingDragged ? { opacity: 0.55, boxShadow: '0 8px 20px rgba(26,41,51,0.25)' } : undefined}>
       <div className="swipe-zone">
         <button
           className="swipe-reveal-right start-stop-btn"
@@ -250,6 +290,18 @@ function TaskCard(props: {
           style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.3s var(--spring)' }}
         >
           <div className="task-main">
+            {dragHandleProps && (
+              <button
+                className="drag-handle-btn"
+                onPointerDown={(e) => { e.stopPropagation(); dragHandleProps.onPointerDown(e); }}
+                onPointerMove={(e) => { e.stopPropagation(); dragHandleProps.onPointerMove(e); }}
+                onPointerUp={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
+                onPointerCancel={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
+                aria-label="Drag to reorder"
+              >
+                <DragHandleIcon />
+              </button>
+            )}
             <button
               className="check-btn"
               onPointerDown={(e) => e.stopPropagation()}
@@ -507,12 +559,22 @@ export default function Home() {
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
   const [workDays, setWorkDays] = useState<number[]>(DEFAULT_WORK_DAYS);
+  const [sortMode, setSortMode] = useState<SortMode>('due_today_first');
   const [captureOpen, setCaptureOpen] = useState(false);
 
   const [taskText, setTaskText] = useState('');
   const [taskTime, setTaskTime] = useState('');
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
+
+  // Manual drag-to-reorder state. dragPreviewIds is only populated during
+  // an active drag — it's a live-reordered snapshot of task ids used for
+  // rendering, kept separate from `tasks` so we don't hit the database on
+  // every pointer-move, only once on release.
+  const [dragPreviewIds, setDragPreviewIds] = useState<string[] | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
+  const rowRectsRef = useRef<Record<string, DOMRect>>({});
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -552,7 +614,7 @@ export default function Home() {
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days, timezone')
+      .select('work_start, work_end, work_days, timezone, sort_mode')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -567,6 +629,7 @@ export default function Home() {
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : DEFAULT_WORK_DAYS);
+      setSortMode((settings.sort_mode as SortMode) || 'due_today_first');
       if (!settings.timezone && detectedTimezone) {
         supabase.from('user_settings').update({ timezone: detectedTimezone }).eq('user_id', userId);
       }
@@ -747,6 +810,63 @@ export default function Home() {
     }));
   }
 
+  // ── Manual drag-to-reorder ─────────────────────────────────────
+  function handleDragHandlePointerDown(e: React.PointerEvent, taskId: string, currentOrder: Task[]) {
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    const ids = currentOrder.map((t) => t.id);
+    setDragPreviewIds(ids);
+    setActiveDragId(taskId);
+    const rects: Record<string, DOMRect> = {};
+    ids.forEach((id) => {
+      const el = rowElsRef.current[id];
+      if (el) rects[id] = el.getBoundingClientRect();
+    });
+    rowRectsRef.current = rects;
+  }
+
+  function handleDragHandlePointerMove(e: React.PointerEvent) {
+    if (!activeDragId) return;
+    const pointerY = e.clientY;
+    setDragPreviewIds((prev) => {
+      if (!prev) return prev;
+      const currentIndex = prev.indexOf(activeDragId);
+      if (currentIndex === -1) return prev;
+      let targetIndex = prev.length - 1;
+      for (let i = 0; i < prev.length; i++) {
+        const rect = rowRectsRef.current[prev[i]];
+        if (!rect) continue;
+        if (pointerY < rect.top + rect.height / 2) {
+          targetIndex = i;
+          break;
+        }
+      }
+      if (targetIndex === currentIndex) return prev;
+      const next = [...prev];
+      next.splice(currentIndex, 1);
+      next.splice(targetIndex, 0, activeDragId);
+      return next;
+    });
+  }
+
+  async function handleDragHandlePointerUp() {
+    const finalIds = dragPreviewIds;
+    setActiveDragId(null);
+    setDragPreviewIds(null);
+    if (!finalIds) return;
+
+    setTasks((prev) => {
+      const byId: Record<string, Task> = {};
+      prev.forEach((t) => (byId[t.id] = t));
+      const reindexed = finalIds.filter((id) => byId[id]).map((id, idx) => ({ ...byId[id], order_index: idx }));
+      const others = prev.filter((t) => !finalIds.includes(t.id));
+      return [...reindexed, ...others];
+    });
+
+    await Promise.all(
+      finalIds.map((id, idx) => supabase.from('tasks').update({ order_index: idx }).eq('id', id))
+    );
+  }
+
   if (!session) {
     return (
       <div className="auth-shell">
@@ -905,12 +1025,13 @@ export default function Home() {
     );
   }
 
-  const ordered = [...tasks].sort((a, b) => {
-    const aKey = a.due_today ? 0 : 1;
-    const bKey = b.due_today ? 0 : 1;
-    if (aKey !== bKey) return aKey - bKey;
-    return a.order_index - b.order_index;
-  });
+  const ordered = sortTasks(tasks, sortMode);
+
+  const tasksById: Record<string, Task> = {};
+  tasks.forEach((t) => { tasksById[t.id] = t; });
+  const displayList: Task[] = dragPreviewIds
+    ? dragPreviewIds.map((id) => tasksById[id]).filter(Boolean)
+    : ordered;
 
   function completedSubtaskMins(taskId: string): number {
     return (subtasksByTask[taskId] || []).filter((s) => s.done).reduce((sum, s) => sum + s.mins, 0);
@@ -935,7 +1056,7 @@ export default function Home() {
   const workEndMinutes = timeStringToMinutes(workEnd);
   const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
 
-  const overloaded = isWorkDay && remainingWorkMins > minutesLeftToday;
+  const overloaded = isWorkDay && minutesLeftToday > 0 && remainingWorkMins > minutesLeftToday;
 
   let cumulative = 0;
   const taskCapacity = minutesLeftToday - meetingMins;
@@ -1021,10 +1142,10 @@ export default function Home() {
       </div>
 
       <div className="task-list">
-        {ordered.length === 0 && (
+        {displayList.length === 0 && (
           <div className="empty-state">Nothing on your plate yet.<br />Tap + to add something.</div>
         )}
-        {ordered.map((t) => {
+        {displayList.map((t) => {
           const remainingForThis = remainingForTask(t);
           cumulative += remainingForThis;
           const overCap = cumulative > taskCapacity;
@@ -1035,22 +1156,33 @@ export default function Home() {
             liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
           }
           return (
-            <TaskCard
-              key={t.id}
-              task={t}
-              remainingForThis={remainingForThis}
-              liveLogged={liveLogged}
-              overCap={overCap}
-              anyActive={anyActive}
-              subs={subs}
-              openSwipeId={openSwipeId}
-              setOpenSwipeId={setOpenSwipeId}
-              onComplete={completeTask}
-              onStart={startTask}
-              onStop={stopTask}
-              onOpen={setOpenTaskId}
-              onToggleDue={toggleDueToday}
-            />
+            <div key={t.id} ref={(el) => { rowElsRef.current[t.id] = el; }}>
+              <TaskCard
+                task={t}
+                remainingForThis={remainingForThis}
+                liveLogged={liveLogged}
+                overCap={overCap}
+                anyActive={anyActive}
+                subs={subs}
+                openSwipeId={openSwipeId}
+                setOpenSwipeId={setOpenSwipeId}
+                onComplete={completeTask}
+                onStart={startTask}
+                onStop={stopTask}
+                onOpen={setOpenTaskId}
+                onToggleDue={toggleDueToday}
+                isBeingDragged={activeDragId === t.id}
+                dragHandleProps={
+                  sortMode === 'manual'
+                    ? {
+                        onPointerDown: (e) => handleDragHandlePointerDown(e, t.id, ordered),
+                        onPointerMove: handleDragHandlePointerMove,
+                        onPointerUp: handleDragHandlePointerUp,
+                      }
+                    : undefined
+                }
+              />
+            </div>
           );
         })}
       </div>
