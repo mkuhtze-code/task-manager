@@ -1331,3 +1331,37 @@ button:focus-visible, input:focus-visible {
   cursor: grabbing;
   color: var(--ink-soft);
 }
+
+.sort-option-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sort-option-btn {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  padding: var(--space-3);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sort-option-btn.active {
+  background: var(--steel-wash);
+  border-color: var(--steel);
+}
+
+.sort-option-label {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.sort-option-desc {
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
