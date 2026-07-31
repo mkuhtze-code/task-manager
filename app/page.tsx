@@ -34,9 +34,20 @@ type Meeting = {
 
 type SortMode = 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
 
+type DragState = {
+  id: string;
+  originalIndex: number;
+  currentIndex: number;
+  startY: number;
+  offsetY: number;
+  rowHeight: number;
+  orderSnapshot: string[];
+};
+
 const HAS_SIGNED_IN_KEY = 'dokkit-has-signed-in';
 const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
 const LONG_PRESS_MS = 500;
+const ROW_GAP = 8; // matches --space-2, used for drag row-height math
 
 function parseMins(raw: string): number | null {
   const str = raw.trim().toLowerCase();
@@ -77,7 +88,6 @@ function sortTasks(list: Task[], mode: SortMode): Task[] {
   } else if (mode === 'newest_first') {
     arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   } else {
-    // due_today_first (default)
     arr.sort((a, b) => {
       const aKey = a.due_today ? 0 : 1;
       const bKey = b.due_today ? 0 : 1;
@@ -150,18 +160,16 @@ function TaskCard(props: {
   onStart: (id: string) => void;
   onStop: (id: string) => void;
   onOpen: (id: string) => void;
-  onToggleDue: (id: string, current: boolean) => void;
   dragHandleProps?: {
     onPointerDown: (e: React.PointerEvent) => void;
     onPointerMove: (e: React.PointerEvent) => void;
     onPointerUp: (e: React.PointerEvent) => void;
   };
-  isBeingDragged?: boolean;
 }) {
   const {
     task: t, remainingForThis, liveLogged, overCap, anyActive, subs,
-    openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen, onToggleDue,
-    dragHandleProps, isBeingDragged,
+    openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen,
+    dragHandleProps,
   } = props;
 
   const [dragX, setDragX] = useState(0);
@@ -266,7 +274,7 @@ function TaskCard(props: {
   const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', taskColorClass].join(' ').trim();
 
   return (
-    <div className={rowClass} style={isBeingDragged ? { opacity: 0.55, boxShadow: '0 8px 20px rgba(26,41,51,0.25)' } : undefined}>
+    <div className={rowClass}>
       <div className="swipe-zone">
         <button
           className="swipe-reveal-right start-stop-btn"
@@ -290,18 +298,6 @@ function TaskCard(props: {
           style={{ transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.3s var(--spring)' }}
         >
           <div className="task-main">
-            {dragHandleProps && (
-              <button
-                className="drag-handle-btn"
-                onPointerDown={(e) => { e.stopPropagation(); dragHandleProps.onPointerDown(e); }}
-                onPointerMove={(e) => { e.stopPropagation(); dragHandleProps.onPointerMove(e); }}
-                onPointerUp={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
-                onPointerCancel={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
-                aria-label="Drag to reorder"
-              >
-                <DragHandleIcon />
-              </button>
-            )}
             <button
               className="check-btn"
               onPointerDown={(e) => e.stopPropagation()}
@@ -330,13 +326,18 @@ function TaskCard(props: {
                 </div>
               )}
             </div>
-            <button
-              className="btn-due-today"
-              onClick={(e) => { e.stopPropagation(); onToggleDue(t.id, t.due_today); }}
-              title={t.due_today ? 'Remove from due today' : 'Mark as due today'}
-            >
-              {t.due_today ? '✓' : '○'}
-            </button>
+            {dragHandleProps && (
+              <button
+                className="drag-handle-btn"
+                onPointerDown={(e) => { e.stopPropagation(); dragHandleProps.onPointerDown(e); }}
+                onPointerMove={(e) => { e.stopPropagation(); dragHandleProps.onPointerMove(e); }}
+                onPointerUp={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
+                onPointerCancel={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
+                aria-label="Drag to reorder"
+              >
+                <DragHandleIcon />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -567,14 +568,12 @@ export default function Home() {
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
 
-  // Manual drag-to-reorder state. dragPreviewIds is only populated during
-  // an active drag — it's a live-reordered snapshot of task ids used for
-  // rendering, kept separate from `tasks` so we don't hit the database on
-  // every pointer-move, only once on release.
-  const [dragPreviewIds, setDragPreviewIds] = useState<string[] | null>(null);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  // Manual drag-to-reorder. During a drag we never touch `tasks` or DOM
+  // order — we only compute a visual transform per row (the dragged row
+  // follows the finger, others slide by one row-height to make room). The
+  // real reorder is committed to state + Supabase once on pointer-up.
+  const [dragState, setDragState] = useState<DragState | null>(null);
   const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
-  const rowRectsRef = useRef<Record<string, DOMRect>>({});
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -618,10 +617,6 @@ export default function Home() {
       .eq('user_id', userId)
       .maybeSingle();
 
-    // Detected once per load from the browser's own clock — same source
-    // the "left today" countdown already trusts. No new UI; this just
-    // gives the reminder cron (which only ever sees UTC) a way to know
-    // when the user's work day has actually ended.
     const detectedTimezone =
       typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : null;
 
@@ -811,59 +806,55 @@ export default function Home() {
   }
 
   // ── Manual drag-to-reorder ─────────────────────────────────────
-  function handleDragHandlePointerDown(e: React.PointerEvent, taskId: string, currentOrder: Task[]) {
+  function handleDragHandlePointerDown(e: React.PointerEvent, taskId: string, currentOrderIds: string[]) {
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    const ids = currentOrder.map((t) => t.id);
-    setDragPreviewIds(ids);
-    setActiveDragId(taskId);
-    const rects: Record<string, DOMRect> = {};
-    ids.forEach((id) => {
-      const el = rowElsRef.current[id];
-      if (el) rects[id] = el.getBoundingClientRect();
+    const originalIndex = currentOrderIds.indexOf(taskId);
+    const rowEl = rowElsRef.current[taskId];
+    const rect = rowEl?.getBoundingClientRect();
+    const rowHeight = (rect?.height || 60) + ROW_GAP;
+    setDragState({
+      id: taskId,
+      originalIndex,
+      currentIndex: originalIndex,
+      startY: e.clientY,
+      offsetY: 0,
+      rowHeight,
+      orderSnapshot: currentOrderIds,
     });
-    rowRectsRef.current = rects;
   }
 
   function handleDragHandlePointerMove(e: React.PointerEvent) {
-    if (!activeDragId) return;
-    const pointerY = e.clientY;
-    setDragPreviewIds((prev) => {
+    setDragState((prev) => {
       if (!prev) return prev;
-      const currentIndex = prev.indexOf(activeDragId);
-      if (currentIndex === -1) return prev;
-      let targetIndex = prev.length - 1;
-      for (let i = 0; i < prev.length; i++) {
-        const rect = rowRectsRef.current[prev[i]];
-        if (!rect) continue;
-        if (pointerY < rect.top + rect.height / 2) {
-          targetIndex = i;
-          break;
-        }
-      }
-      if (targetIndex === currentIndex) return prev;
-      const next = [...prev];
-      next.splice(currentIndex, 1);
-      next.splice(targetIndex, 0, activeDragId);
-      return next;
+      const deltaY = e.clientY - prev.startY;
+      const indexShift = Math.round(deltaY / prev.rowHeight);
+      const maxIndex = prev.orderSnapshot.length - 1;
+      const nextIndex = Math.min(Math.max(prev.originalIndex + indexShift, 0), maxIndex);
+      return { ...prev, offsetY: deltaY, currentIndex: nextIndex };
     });
   }
 
   async function handleDragHandlePointerUp() {
-    const finalIds = dragPreviewIds;
-    setActiveDragId(null);
-    setDragPreviewIds(null);
-    if (!finalIds) return;
+    const finalState = dragState;
+    setDragState(null);
+    if (!finalState) return;
+    const { id, originalIndex, currentIndex, orderSnapshot } = finalState;
+    if (currentIndex === originalIndex) return;
+
+    const newOrderIds = [...orderSnapshot];
+    newOrderIds.splice(originalIndex, 1);
+    newOrderIds.splice(currentIndex, 0, id);
 
     setTasks((prev) => {
       const byId: Record<string, Task> = {};
       prev.forEach((t) => (byId[t.id] = t));
-      const reindexed = finalIds.filter((id) => byId[id]).map((id, idx) => ({ ...byId[id], order_index: idx }));
-      const others = prev.filter((t) => !finalIds.includes(t.id));
+      const reindexed = newOrderIds.filter((tid) => byId[tid]).map((tid, idx) => ({ ...byId[tid], order_index: idx }));
+      const others = prev.filter((t) => !newOrderIds.includes(t.id));
       return [...reindexed, ...others];
     });
 
     await Promise.all(
-      finalIds.map((id, idx) => supabase.from('tasks').update({ order_index: idx }).eq('id', id))
+      newOrderIds.map((tid, idx) => supabase.from('tasks').update({ order_index: idx }).eq('id', tid))
     );
   }
 
@@ -1026,12 +1017,7 @@ export default function Home() {
   }
 
   const ordered = sortTasks(tasks, sortMode);
-
-  const tasksById: Record<string, Task> = {};
-  tasks.forEach((t) => { tasksById[t.id] = t; });
-  const displayList: Task[] = dragPreviewIds
-    ? dragPreviewIds.map((id) => tasksById[id]).filter(Boolean)
-    : ordered;
+  const orderedIds = ordered.map((t) => t.id);
 
   function completedSubtaskMins(taskId: string): number {
     return (subtasksByTask[taskId] || []).filter((s) => s.done).reduce((sum, s) => sum + s.mins, 0);
@@ -1142,10 +1128,10 @@ export default function Home() {
       </div>
 
       <div className="task-list">
-        {displayList.length === 0 && (
+        {ordered.length === 0 && (
           <div className="empty-state">Nothing on your plate yet.<br />Tap + to add something.</div>
         )}
-        {displayList.map((t) => {
+        {ordered.map((t, idx) => {
           const remainingForThis = remainingForTask(t);
           cumulative += remainingForThis;
           const overCap = cumulative > taskCapacity;
@@ -1155,8 +1141,37 @@ export default function Home() {
           if (t.status === 'active' && t.started_at) {
             liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
           }
+
+          // Drag visuals: the dragged row follows the finger raw (no
+          // transition, elevated); every other row only shifts by one
+          // row-height if it currently sits between the drag's start and
+          // target slot, animated smoothly to make room.
+          let rowStyle: React.CSSProperties = {};
+          if (dragState) {
+            if (t.id === dragState.id) {
+              rowStyle = {
+                transform: `translateY(${dragState.offsetY}px) scale(1.02)`,
+                transition: 'none',
+                zIndex: 30,
+                position: 'relative',
+                boxShadow: '0 10px 24px rgba(26,41,51,0.3)',
+              };
+            } else {
+              const { originalIndex, currentIndex, rowHeight } = dragState;
+              let shift = 0;
+              if (originalIndex < currentIndex && idx > originalIndex && idx <= currentIndex) shift = -1;
+              else if (originalIndex > currentIndex && idx >= currentIndex && idx < originalIndex) shift = 1;
+              rowStyle = {
+                transform: `translateY(${shift * rowHeight}px)`,
+                transition: 'transform 0.2s var(--ease)',
+                position: 'relative',
+                zIndex: 1,
+              };
+            }
+          }
+
           return (
-            <div key={t.id} ref={(el) => { rowElsRef.current[t.id] = el; }}>
+            <div key={t.id} ref={(el) => { rowElsRef.current[t.id] = el; }} style={rowStyle}>
               <TaskCard
                 task={t}
                 remainingForThis={remainingForThis}
@@ -1170,12 +1185,10 @@ export default function Home() {
                 onStart={startTask}
                 onStop={stopTask}
                 onOpen={setOpenTaskId}
-                onToggleDue={toggleDueToday}
-                isBeingDragged={activeDragId === t.id}
                 dragHandleProps={
                   sortMode === 'manual'
                     ? {
-                        onPointerDown: (e) => handleDragHandlePointerDown(e, t.id, ordered),
+                        onPointerDown: (e) => handleDragHandlePointerDown(e, t.id, orderedIds),
                         onPointerMove: handleDragHandlePointerMove,
                         onPointerUp: handleDragHandlePointerUp,
                       }
