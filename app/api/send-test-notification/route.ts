@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyUser } from '@/lib/verifyUser';
 import { checkRateLimit } from '@/lib/ratelimit';
-import webpush from '@/lib/webpush';
+import webpush, { HIGH_PRIORITY_OPTIONS } from '@/lib/webpush';
 
 export async function POST(req: NextRequest) {
   const auth = await verifyUser(req);
@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
           endpoint: sub.endpoint,
           keys: { p256dh: sub.p256dh, auth: sub.auth },
         },
-        payload
+        payload,
+        HIGH_PRIORITY_OPTIONS
       )
     )
   );
