@@ -7,3 +7,9 @@ webpush.setVapidDetails(
 );
 
 export default webpush;
+
+// Sends with high urgency so Android's push service treats it as
+// time-sensitive rather than something that can be batched/delayed —
+// matters most on phones (Huawei especially) that already restrict
+// background delivery by default.
+export const HIGH_PRIORITY_OPTIONS = { urgency: 'high' as const };
