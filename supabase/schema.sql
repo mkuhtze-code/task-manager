@@ -12,6 +12,7 @@ create table if not exists user_settings (
   work_days int[] not null default '{1,2,3,4,5}',
   notification_style text not null default 'default' check (notification_style in ('default', 'silent')),
   task_sort_mode text not null default 'manual' check (task_sort_mode in ('manual', 'oldest', 'newest', 'longest', 'shortest')),
+  timezone text,
   updated_at timestamptz not null default now()
 );
 
@@ -42,7 +43,7 @@ create table if not exists tasks (
   completed_at timestamptz,
   near_notified boolean not null default false,
   over_notified boolean not null default false,
-  last_timer_reminder_at timestamptz
+  last_overdue_ping_at timestamptz
 );
 
 -- ── Subtasks ─────────────────────────────────────────────────────
@@ -188,3 +189,8 @@ create policy "admins can read feedback" on feedback
       where admins.user_id = auth.uid()
     )
   );
+
+-- ── Migration section for existing installs ──────────────────────
+-- Safe to rerun; only adds what's missing.
+alter table user_settings add column if not exists timezone text;
+alter table tasks add column if not exists last_overdue_ping_at timestamptz;
