@@ -1311,3 +1311,23 @@ button:focus-visible, input:focus-visible {
   padding: 0;
   color: white;
 }
+
+.drag-handle-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  cursor: grab;
+}
+
+.drag-handle-btn:active {
+  cursor: grabbing;
+  color: var(--ink-soft);
+}
