@@ -32,7 +32,7 @@ type Meeting = {
   duration_mins: number;
 };
 
-type SortMode = 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
+type SortMode = 'capacity_first' | 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
 
 type DragState = {
   id: string;
@@ -79,22 +79,58 @@ function timeStringToMinutes(t: string): number {
   return h * 60 + m;
 }
 
-function sortTasks(list: Task[], mode: SortMode): Task[] {
+function sortTasks(
+  list: Task[],
+  mode: SortMode,
+  remainingForTaskFn?: (t: Task) => number,
+  taskCapacity?: number
+): Task[] {
   const arr = [...list];
+
   if (mode === 'manual') {
     arr.sort((a, b) => a.order_index - b.order_index);
-  } else if (mode === 'oldest_first') {
-    arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-  } else if (mode === 'newest_first') {
-    arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  } else {
-    arr.sort((a, b) => {
-      const aKey = a.due_today ? 0 : 1;
-      const bKey = b.due_today ? 0 : 1;
-      if (aKey !== bKey) return aKey - bKey;
-      return a.order_index - b.order_index;
-    });
+    return arr;
   }
+  if (mode === 'oldest_first') {
+    arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    return arr;
+  }
+  if (mode === 'newest_first') {
+    arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return arr;
+  }
+
+  // Shared base ordering for both due_today_first and capacity_first:
+  // due-today tasks first, then insertion order — the same tie-break the
+  // app has always used.
+  arr.sort((a, b) => {
+    const aKey = a.due_today ? 0 : 1;
+    const bKey = b.due_today ? 0 : 1;
+    if (aKey !== bKey) return aKey - bKey;
+    return a.order_index - b.order_index;
+  });
+
+  if (mode === 'capacity_first' && remainingForTaskFn && taskCapacity !== undefined) {
+    // The original founding feature: tasks that can realistically still
+    // fit in the time left today float to the top as a group; everything
+    // that can't gets grouped at the bottom and flagged, rather than
+    // staying interleaved. Uses the same running-total logic that already
+    // drives the "over capacity" left-edge marker, so the grouping and
+    // the flagging always agree.
+    let cumulative = 0;
+    const fits: Task[] = [];
+    const overflow: Task[] = [];
+    for (const t of arr) {
+      cumulative += remainingForTaskFn(t);
+      if (cumulative <= taskCapacity) {
+        fits.push(t);
+      } else {
+        overflow.push(t);
+      }
+    }
+    return [...fits, ...overflow];
+  }
+
   return arr;
 }
 
@@ -309,15 +345,17 @@ function TaskCard(props: {
             </button>
             <div className="task-body" onClick={handleBodyClick}>
               <div className="task-text">{t.text}</div>
-              <div className="task-progress-row">
-                <div className="task-progress-track">
-                  <div
-                    className="task-progress-fill"
-                    style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
-                  />
+              {t.estimate_mins > 0 && (
+                <div className="task-progress-row">
+                  <div className="task-progress-track">
+                    <div
+                      className="task-progress-fill"
+                      style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
                 </div>
-                <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
-              </div>
+              )}
               {(t.status === 'active' || subs.length > 0 || t.due_today) && (
                 <div className="task-tags">
                   {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
@@ -463,15 +501,17 @@ function TaskDetailSheet(props: {
           onBlur={commit}
         />
 
-        <div className="task-progress-row" style={{ marginTop: 0 }}>
-          <div className="task-progress-track">
-            <div
-              className="task-progress-fill"
-              style={{ width: `${Math.min((1 - remainingForThis / Math.max(task.estimate_mins, 1)) * 100, 100)}%` }}
-            />
+        {task.estimate_mins > 0 && (
+          <div className="task-progress-row" style={{ marginTop: 0 }}>
+            <div className="task-progress-track">
+              <div
+                className="task-progress-fill"
+                style={{ width: `${Math.min((1 - remainingForThis / Math.max(task.estimate_mins, 1)) * 100, 100)}%` }}
+              />
+            </div>
+            <span className="task-progress-label mono">{fmtMins(remainingForThis)} left</span>
           </div>
-          <span className="task-progress-label mono">{fmtMins(remainingForThis)} left</span>
-        </div>
+        )}
 
         <div className="capture-row">
           <input type="text" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} onBlur={commit} style={{ width: 90 }} />
@@ -560,7 +600,7 @@ export default function Home() {
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
   const [workDays, setWorkDays] = useState<number[]>(DEFAULT_WORK_DAYS);
-  const [sortMode, setSortMode] = useState<SortMode>('due_today_first');
+  const [sortMode, setSortMode] = useState<SortMode>('capacity_first');
   const [captureOpen, setCaptureOpen] = useState(false);
 
   const [taskText, setTaskText] = useState('');
@@ -568,10 +608,6 @@ export default function Home() {
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
 
-  // Manual drag-to-reorder. During a drag we never touch `tasks` or DOM
-  // order — we only compute a visual transform per row (the dragged row
-  // follows the finger, others slide by one row-height to make room). The
-  // real reorder is committed to state + Supabase once on pointer-up.
   const [dragState, setDragState] = useState<DragState | null>(null);
   const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -624,7 +660,7 @@ export default function Home() {
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : DEFAULT_WORK_DAYS);
-      setSortMode((settings.sort_mode as SortMode) || 'due_today_first');
+      setSortMode((settings.sort_mode as SortMode) || 'capacity_first');
       if (!settings.timezone && detectedTimezone) {
         supabase.from('user_settings').update({ timezone: detectedTimezone }).eq('user_id', userId);
       }
@@ -635,6 +671,7 @@ export default function Home() {
         work_end: '16:00',
         work_days: DEFAULT_WORK_DAYS,
         timezone: detectedTimezone,
+        sort_mode: 'capacity_first',
       });
     }
 
@@ -1016,9 +1053,6 @@ export default function Home() {
     );
   }
 
-  const ordered = sortTasks(tasks, sortMode);
-  const orderedIds = ordered.map((t) => t.id);
-
   function completedSubtaskMins(taskId: string): number {
     return (subtasksByTask[taskId] || []).filter((s) => s.done).reduce((sum, s) => sum + s.mins, 0);
   }
@@ -1032,8 +1066,6 @@ export default function Home() {
   }
 
   const meetingMins = meetings.reduce((sum, m) => sum + m.duration_mins, 0);
-  const remainingTaskMins = ordered.reduce((sum, t) => sum + remainingForTask(t), 0);
-  const remainingWorkMins = meetingMins + remainingTaskMins;
 
   const todayDow = now.getDay();
   const isWorkDay = workDays.includes(todayDow);
@@ -1041,11 +1073,17 @@ export default function Home() {
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
   const workEndMinutes = timeStringToMinutes(workEnd);
   const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
+  const taskCapacity = minutesLeftToday - meetingMins;
+
+  const ordered = sortTasks(tasks, sortMode, remainingForTask, taskCapacity);
+  const orderedIds = ordered.map((t) => t.id);
+
+  const remainingTaskMins = ordered.reduce((sum, t) => sum + remainingForTask(t), 0);
+  const remainingWorkMins = meetingMins + remainingTaskMins;
 
   const overloaded = isWorkDay && minutesLeftToday > 0 && remainingWorkMins > minutesLeftToday;
 
   let cumulative = 0;
-  const taskCapacity = minutesLeftToday - meetingMins;
 
   const dateLabel = now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 
@@ -1142,10 +1180,6 @@ export default function Home() {
             liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
           }
 
-          // Drag visuals: the dragged row follows the finger raw (no
-          // transition, elevated); every other row only shifts by one
-          // row-height if it currently sits between the drag's start and
-          // target slot, animated smoothly to make room.
           let rowStyle: React.CSSProperties = {};
           if (dragState) {
             if (t.id === dragState.id) {
