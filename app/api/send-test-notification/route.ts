@@ -36,25 +36,48 @@ export async function POST(req: NextRequest) {
 
   const results = await Promise.allSettled(
     subs.map((sub) =>
-      webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        payload,
-        HIGH_PRIORITY_OPTIONS
-      )
+      webpush
+        .sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload,
+          HIGH_PRIORITY_OPTIONS
+        )
+        .catch((err) => {
+          throw { err, subId: sub.id, endpoint: sub.endpoint };
+        })
     )
   );
 
   const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-  if (failures.length > 0) {
-    await logError('server', 'send-test-notification:push', failures[0].reason, {
+  let staleRemoved = 0;
+
+  for (const f of failures) {
+    const { err, subId } = (f.reason || {}) as any;
+    const statusCode = err?.statusCode;
+    const responseBody = err?.body;
+
+    if (statusCode === 404 || statusCode === 410) {
+      // Push service confirms this subscription is permanently gone —
+      // safe to delete rather than let it fail silently forever.
+      await supabaseAdmin.from('push_subscriptions').delete().eq('id', subId);
+      staleRemoved += 1;
+    }
+
+    await logError('server', 'send-test-notification:push', err || f.reason, {
+      statusCode,
+      responseBody,
+      subId,
       failureCount: failures.length,
       totalSubs: subs.length,
     }, auth.userId);
   }
 
   if (failures.length === results.length) {
-    return NextResponse.json({ error: 'All deliveries failed — check the Error Log for details.' }, { status: 502 });
+    const hint = staleRemoved > 0
+      ? 'That subscription was stale and has been removed — go to Preferences and tap "Enable notifications" again to reconnect.'
+      : 'Check the Error Log for details.';
+    return NextResponse.json({ error: `All deliveries failed. ${hint}` }, { status: 502 });
   }
 
-  return NextResponse.json({ ok: true, sent: results.length - failures.length, failed: failures.length });
+  return NextResponse.json({ ok: true, sent: results.length - failures.length, failed: failures.length, staleRemoved });
 }
