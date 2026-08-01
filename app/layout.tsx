@@ -1,4 +1,5 @@
 import './globals.css';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export const metadata = {
   title: 'Dokkit',
@@ -33,7 +34,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <ErrorBoundary>{children}</ErrorBoundary>
+      </body>
     </html>
   );
 }
