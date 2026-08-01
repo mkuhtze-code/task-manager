@@ -1633,3 +1633,65 @@ button:focus-visible, input:focus-visible {
   color: #1f8a3e;
   white-space: nowrap;
 }
+
+.today-header-card {
+  border-radius: 26px;
+  box-shadow: 0 2px 6px rgba(26, 41, 51, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.today-header-date-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.today-header-weekday {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--steel-dark);
+}
+
+.today-header-date {
+  font-size: var(--text-md);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.capacity-ring-wrap {
+  width: 68px;
+  height: 68px;
+}
+
+.capacity-hero-label-emph {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.capacity-warn-pill {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(255, 149, 0, 0.14);
+  color: var(--hazard);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.day-progress-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+  margin-top: var(--space-4);
+  overflow: hidden;
+}
+
+.day-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--steel);
+  transition: width 1s var(--ease);
+}
