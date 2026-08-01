@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import webpush, { HIGH_PRIORITY_OPTIONS } from '@/lib/webpush';
 import { getUserLocalTime, timeStringToMinutes } from '@/lib/timezone';
+import { logError } from '@/lib/logError';
 
-const OVERDUE_REPEAT_MINS = 30; // how often to re-ping once a task is running over
-const STALE_FLOOR_MINS = 180; // minimum elapsed time before a task counts as "likely forgotten"
-const STALE_ESTIMATE_MULTIPLIER = 4; // or 4x the estimate, whichever is larger
+const OVERDUE_REPEAT_MINS = 30;
+const STALE_FLOOR_MINS = 180;
+const STALE_ESTIMATE_MULTIPLIER = 4;
 
 function fmtMinsServer(mins: number): string {
   mins = Math.round(mins);
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
     .eq('status', 'active');
 
   if (error) {
+    await logError('server', 'check-task-timers', error, { stage: 'fetch-active-tasks' });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -43,16 +45,9 @@ export async function GET(req: NextRequest) {
       .eq('user_id', task.user_id)
       .maybeSingle();
 
-    // A task is "stale" once it's run long enough that it's more likely
-    // forgotten than actively worked — a flat 3-hour floor so short tasks
-    // don't get flagged too eagerly, scaling up for genuinely long ones.
     const staleThresholdMins = Math.max(STALE_FLOOR_MINS, task.estimate_mins * STALE_ESTIMATE_MULTIPLIER);
     const isStale = elapsedMins >= staleThresholdMins;
 
-    // Work-day-end is the strongest forgotten-task signal there is, but
-    // needs the user's real timezone to evaluate — the server only knows
-    // UTC. If timezone hasn't synced yet, this quietly stays false rather
-    // than guessing.
     let pastWorkEnd = false;
     if (settings?.timezone && settings?.work_end && settings?.work_days) {
       const local = getUserLocalTime(settings.timezone);
@@ -76,7 +71,6 @@ export async function GET(req: NextRequest) {
       const dueForRepeat = minsSinceLastPing === null || minsSinceLastPing >= OVERDUE_REPEAT_MINS;
 
       if (!task.over_notified) {
-        // First time crossing into overdue/stale territory
         shouldNotify = true;
         if (pastWorkEnd) {
           body = `"${task.text}" is still running, and your work day has ended — stop it if you're done for today.`;
@@ -87,9 +81,6 @@ export async function GET(req: NextRequest) {
         }
         updateFields = { over_notified: true, last_overdue_ping_at: new Date().toISOString() };
       } else if (dueForRepeat) {
-        // Still running, hasn't been touched — nudge again on the same
-        // cadence as before, with a message reflecting how long it's
-        // actually been and whether the work day is over.
         shouldNotify = true;
         const overBy = Math.max(elapsedMins - task.estimate_mins, 0);
         if (pastWorkEnd) {
@@ -118,7 +109,7 @@ export async function GET(req: NextRequest) {
     if (subs && subs.length > 0) {
       const silent = settings?.notification_style === 'silent';
       const payload = JSON.stringify({ title, body, silent });
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         subs.map((sub) =>
           webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -127,6 +118,17 @@ export async function GET(req: NextRequest) {
           )
         )
       );
+
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+      if (failures.length > 0) {
+        await logError('server', 'check-task-timers:push', failures[0].reason, {
+          taskId: task.id,
+          userId: task.user_id,
+          failureCount: failures.length,
+          totalSubs: subs.length,
+        }, task.user_id);
+      }
+
       sent += 1;
     }
 
