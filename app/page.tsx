@@ -47,7 +47,7 @@ type DragState = {
 const HAS_SIGNED_IN_KEY = 'dokkit-has-signed-in';
 const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
 const LONG_PRESS_MS = 500;
-const ROW_GAP = 8; // matches --space-2, used for drag row-height math
+const ROW_GAP = 8;
 
 function parseMins(raw: string): number | null {
   const str = raw.trim().toLowerCase();
@@ -70,6 +70,16 @@ function fmtMins(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function fmtClock(timeStr: string): string {
+  const [hStr, mStr] = timeStr.split(':');
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  const ampm = h >= 12 ? 'p' : 'a';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return m === 0 ? `${h}${ampm}` : `${h}:${String(m).padStart(2, '0')}${ampm}`;
 }
 
 function timeStringToMinutes(t: string): number {
@@ -165,6 +175,28 @@ function DragHandleIcon() {
       <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" />
       <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
       <circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />
+    </svg>
+  );
+}
+
+function FitCheckIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FitWarnIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 9v4M12 17h.01M10.29 3.86l-8.18 14A2 2 0 0 0 3.82 21h16.36a2 2 0 0 0 1.71-3.14l-8.18-14a2 2 0 0 0-3.42 0Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -369,42 +401,6 @@ function TaskCard(props: {
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ActiveTimerBar({
-  task,
-  liveLogged,
-  overEstimate,
-  onStop,
-  onOpen,
-}: {
-  task: Task;
-  liveLogged: number;
-  overEstimate: boolean;
-  onStop: (id: string) => void;
-  onOpen: (id: string) => void;
-}) {
-  return (
-    <div
-      className={overEstimate ? 'active-timer-bar over' : 'active-timer-bar'}
-      onClick={() => onOpen(task.id)}
-    >
-      <div className="active-timer-info">
-        <span className="active-timer-dot" />
-        <span className="active-timer-text">{task.text}</span>
-      </div>
-      <div className="active-timer-actions">
-        <span className="active-timer-elapsed mono">{fmtMins(liveLogged)}</span>
-        <button
-          className="active-timer-stop"
-          onClick={(e) => { e.stopPropagation(); onStop(task.id); }}
-          aria-label="Stop timer"
-        >
-          <StopIcon />
-        </button>
       </div>
     </div>
   );
@@ -1067,10 +1063,6 @@ export default function Home() {
   const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
   const taskCapacity = minutesLeftToday - meetingMins;
 
-  const dayElapsedPercent = isWorkDay
-    ? Math.min(Math.max((nowMinutesOfDay - workStartMinutes) / Math.max(workEndMinutes - workStartMinutes, 1), 0), 1)
-    : 0;
-
   const ordered = sortTasks(tasks, sortMode, remainingForTask, taskCapacity);
   const orderedIds = ordered.map((t) => t.id);
 
@@ -1083,6 +1075,12 @@ export default function Home() {
 
   const weekdayLabel = now.toLocaleDateString(undefined, { weekday: 'long' });
   const dateOnlyLabel = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+  const trackSpan = Math.max(workEndMinutes - workStartMinutes, 1);
+  const nowPercent = Math.min(Math.max((nowMinutesOfDay - workStartMinutes) / trackSpan, 0), 1);
+  const projectedFinishMinutes = nowMinutesOfDay + remainingWorkMins;
+  const projectedPercent = (projectedFinishMinutes - workStartMinutes) / trackSpan;
+  const planWidthPercent = Math.max(Math.min(projectedPercent, 1) - nowPercent, 0);
 
   const openTask = openTaskId ? tasks.find((t) => t.id === openTaskId) || null : null;
 
@@ -1101,10 +1099,7 @@ export default function Home() {
   if (activeTask && activeTask.started_at) {
     activeLiveLogged = activeTask.logged_mins + (Date.now() - new Date(activeTask.started_at).getTime()) / 60000;
   }
-  const activeOverEstimate = !!activeTask && activeLiveLogged > activeTask.estimate_mins;
-
-  const timeLeftPercent = Math.min(minutesLeftToday / Math.max(minutesLeftToday, 1), 1);
-  const taskLoadPercent = Math.min(remainingWorkMins / Math.max(minutesLeftToday, 1), 1);
+  const activeOverEstimate = !!activeTask && activeTask.estimate_mins > 0 && activeLiveLogged > activeTask.estimate_mins;
 
   return (
     <div className="app-shell">
@@ -1119,61 +1114,68 @@ export default function Home() {
           </div>
           <GearMenu />
         </div>
-        <div className="capacity-row">
-          <div className="capacity-ring-wrap">
-            <svg width="68" height="68" viewBox="0 0 68 68">
-              {/* Quarter tick marks — a quiet nod to a clock face, since this
-                  ring is fundamentally a clock: how much of today is left. */}
-              <line x1="34" y1="3" x2="34" y2="8" stroke="var(--line-strong)" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="65" y1="34" x2="60" y2="34" stroke="var(--line-strong)" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="34" y1="65" x2="34" y2="60" stroke="var(--line-strong)" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="3" y1="34" x2="8" y2="34" stroke="var(--line-strong)" strokeWidth="1.5" strokeLinecap="round" />
-              <circle cx="34" cy="34" r="27" fill="none" stroke="var(--line)" strokeWidth="7" />
-              <circle
-                cx="34"
-                cy="34"
-                r="27"
-                fill="none"
-                stroke="var(--steel)"
-                strokeWidth="7"
-                strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 27 * timeLeftPercent} ${2 * Math.PI * 27}`}
-                strokeDashoffset={0}
-                style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '34px 34px', transform: 'rotate(-90deg)' }}
-              />
-              {taskLoadPercent > timeLeftPercent && (
-                <circle
-                  cx="34"
-                  cy="34"
-                  r="27"
-                  fill="none"
-                  stroke="var(--hazard)"
-                  strokeWidth="7"
-                  strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 27 * (taskLoadPercent - timeLeftPercent)} ${2 * Math.PI * 27}`}
-                  strokeDashoffset={-2 * Math.PI * 27 * timeLeftPercent}
-                  style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '34px 34px', transform: 'rotate(-90deg)' }}
-                />
-              )}
-            </svg>
+
+        {activeTask && (
+          <div
+            className={activeOverEstimate ? 'header-active-strip over' : 'header-active-strip'}
+            onClick={(e) => { e.stopPropagation(); setOpenTaskId(activeTask.id); }}
+          >
+            <span className="header-active-dot" />
+            <span className="header-active-text">{activeTask.text}</span>
+            <span className="header-active-elapsed mono">{fmtMins(activeLiveLogged)}</span>
+            <button
+              className="header-active-stop"
+              onClick={(e) => { e.stopPropagation(); stopTask(activeTask.id); }}
+              aria-label="Stop timer"
+            >
+              <StopIcon />
+            </button>
           </div>
-          <div className="capacity-number-block">
-            <div className="capacity-hero-number mono">{isWorkDay ? fmtMins(minutesLeftToday) : 'Off'}</div>
-            <div className="capacity-hero-label">
-              {isWorkDay ? (
-                <><span className="capacity-hero-label-emph">left today</span> · {fmtMins(remainingWorkMins)} planned</>
-              ) : (
-                <>not a work day · {fmtMins(remainingWorkMins)} carrying forward</>
-              )}
+        )}
+
+        {isWorkDay ? (
+          <>
+            <div className="header-compare-row">
+              <div className="header-compare-stat">
+                <div className="header-compare-number mono">{fmtMins(minutesLeftToday)}</div>
+                <div className="header-compare-label">time left</div>
+              </div>
+              <div className={overloaded ? 'header-fit-icon over' : 'header-fit-icon fits'}>
+                {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
+              </div>
+              <div className="header-compare-stat">
+                <div className={overloaded ? 'header-compare-number mono over' : 'header-compare-number mono'}>
+                  {fmtMins(remainingWorkMins)}
+                </div>
+                <div className="header-compare-label">to get done</div>
+              </div>
             </div>
-            {overloaded && (
-              <div className="capacity-warn-pill">{fmtMins(remainingWorkMins - minutesLeftToday)} more than time left</div>
-            )}
-          </div>
-        </div>
-        {isWorkDay && (
-          <div className="day-progress-track">
-            <div className="day-progress-fill" style={{ width: `${dayElapsedPercent * 100}%` }} />
+
+            <div className="day-rail-wrap">
+              <div className="day-rail-track">
+                <div className="day-rail-elapsed" style={{ width: `${nowPercent * 100}%` }} />
+                <div
+                  className={overloaded ? 'day-rail-plan over' : 'day-rail-plan'}
+                  style={{ left: `${nowPercent * 100}%`, width: `${planWidthPercent * 100}%` }}
+                />
+                <div
+                  className={activeTask ? 'day-rail-now-dot active' : 'day-rail-now-dot'}
+                  style={{ left: `${nowPercent * 100}%` }}
+                />
+              </div>
+              <div className="day-rail-labels">
+                <span>{fmtClock(workStart)}</span>
+                {overloaded && (
+                  <span className="day-rail-overflow-label">+{fmtMins(remainingWorkMins - minutesLeftToday)}</span>
+                )}
+                <span>{fmtClock(workEnd)}</span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="header-off-row">
+            <div className="header-compare-number mono">Off</div>
+            <div className="header-compare-label">{fmtMins(remainingWorkMins)} carrying forward</div>
           </div>
         )}
       </div>
@@ -1246,16 +1248,6 @@ export default function Home() {
           );
         })}
       </div>
-
-      {activeTask && (
-        <ActiveTimerBar
-          task={activeTask}
-          liveLogged={activeLiveLogged}
-          overEstimate={activeOverEstimate}
-          onStop={stopTask}
-          onOpen={setOpenTaskId}
-        />
-      )}
 
       {captureOpen && (
         <div className="capture-sheet">
