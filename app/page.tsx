@@ -100,9 +100,6 @@ function sortTasks(
     return arr;
   }
 
-  // Shared base ordering for both due_today_first and capacity_first:
-  // due-today tasks first, then insertion order — the same tie-break the
-  // app has always used.
   arr.sort((a, b) => {
     const aKey = a.due_today ? 0 : 1;
     const bKey = b.due_today ? 0 : 1;
@@ -111,12 +108,6 @@ function sortTasks(
   });
 
   if (mode === 'capacity_first' && remainingForTaskFn && taskCapacity !== undefined) {
-    // The original founding feature: tasks that can realistically still
-    // fit in the time left today float to the top as a group; everything
-    // that can't gets grouped at the bottom and flagged, rather than
-    // staying interleaved. Uses the same running-total logic that already
-    // drives the "over capacity" left-edge marker, so the grouping and
-    // the flagging always agree.
     let cumulative = 0;
     const fits: Task[] = [];
     const overflow: Task[] = [];
@@ -1071,9 +1062,14 @@ export default function Home() {
   const isWorkDay = workDays.includes(todayDow);
 
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
+  const workStartMinutes = timeStringToMinutes(workStart);
   const workEndMinutes = timeStringToMinutes(workEnd);
   const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
   const taskCapacity = minutesLeftToday - meetingMins;
+
+  const dayElapsedPercent = isWorkDay
+    ? Math.min(Math.max((nowMinutesOfDay - workStartMinutes) / Math.max(workEndMinutes - workStartMinutes, 1), 0), 1)
+    : 0;
 
   const ordered = sortTasks(tasks, sortMode, remainingForTask, taskCapacity);
   const orderedIds = ordered.map((t) => t.id);
@@ -1085,7 +1081,8 @@ export default function Home() {
 
   let cumulative = 0;
 
-  const dateLabel = now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  const weekdayLabel = now.toLocaleDateString(undefined, { weekday: 'long' });
+  const dateOnlyLabel = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
   const openTask = openTaskId ? tasks.find((t) => t.id === openTaskId) || null : null;
 
@@ -1116,37 +1113,46 @@ export default function Home() {
         onClick={() => router.push('/analytics')}
       >
         <div className="today-header-top-row">
-          <div className="today-header-date">{dateLabel}</div>
+          <div className="today-header-date-block">
+            <div className="today-header-weekday">{weekdayLabel}</div>
+            <div className="today-header-date">{dateOnlyLabel}</div>
+          </div>
           <GearMenu />
         </div>
         <div className="capacity-row">
           <div className="capacity-ring-wrap">
-            <svg width="60" height="60" viewBox="0 0 60 60">
-              <circle cx="30" cy="30" r="25" fill="none" stroke="var(--line)" strokeWidth="6" />
+            <svg width="68" height="68" viewBox="0 0 68 68">
+              {/* Quarter tick marks — a quiet nod to a clock face, since this
+                  ring is fundamentally a clock: how much of today is left. */}
+              <line x1="34" y1="3" x2="34" y2="8" stroke="var(--line-strong)" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="65" y1="34" x2="60" y2="34" stroke="var(--line-strong)" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="34" y1="65" x2="34" y2="60" stroke="var(--line-strong)" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="3" y1="34" x2="8" y2="34" stroke="var(--line-strong)" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="34" cy="34" r="27" fill="none" stroke="var(--line)" strokeWidth="7" />
               <circle
-                cx="30"
-                cy="30"
-                r="25"
+                cx="34"
+                cy="34"
+                r="27"
                 fill="none"
                 stroke="var(--steel)"
-                strokeWidth="6"
+                strokeWidth="7"
                 strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 25 * timeLeftPercent} ${2 * Math.PI * 25}`}
+                strokeDasharray={`${2 * Math.PI * 27 * timeLeftPercent} ${2 * Math.PI * 27}`}
                 strokeDashoffset={0}
-                style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '30px 30px', transform: 'rotate(-90deg)' }}
+                style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '34px 34px', transform: 'rotate(-90deg)' }}
               />
               {taskLoadPercent > timeLeftPercent && (
                 <circle
-                  cx="30"
-                  cy="30"
-                  r="25"
+                  cx="34"
+                  cy="34"
+                  r="27"
                   fill="none"
                   stroke="var(--hazard)"
-                  strokeWidth="6"
+                  strokeWidth="7"
                   strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 25 * (taskLoadPercent - timeLeftPercent)} ${2 * Math.PI * 25}`}
-                  strokeDashoffset={-2 * Math.PI * 25 * timeLeftPercent}
-                  style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '30px 30px', transform: 'rotate(-90deg)' }}
+                  strokeDasharray={`${2 * Math.PI * 27 * (taskLoadPercent - timeLeftPercent)} ${2 * Math.PI * 27}`}
+                  strokeDashoffset={-2 * Math.PI * 27 * timeLeftPercent}
+                  style={{ transition: 'stroke-dasharray 0.5s var(--ease)', transformOrigin: '34px 34px', transform: 'rotate(-90deg)' }}
                 />
               )}
             </svg>
@@ -1154,15 +1160,22 @@ export default function Home() {
           <div className="capacity-number-block">
             <div className="capacity-hero-number mono">{isWorkDay ? fmtMins(minutesLeftToday) : 'Off'}</div>
             <div className="capacity-hero-label">
-              {isWorkDay
-                ? `left today · ${fmtMins(remainingWorkMins)} planned`
-                : `not a work day · ${fmtMins(remainingWorkMins)} carrying forward`}
+              {isWorkDay ? (
+                <><span className="capacity-hero-label-emph">left today</span> · {fmtMins(remainingWorkMins)} planned</>
+              ) : (
+                <>not a work day · {fmtMins(remainingWorkMins)} carrying forward</>
+              )}
             </div>
             {overloaded && (
-              <div className="capacity-warn-line">{fmtMins(remainingWorkMins - minutesLeftToday)} more than time left</div>
+              <div className="capacity-warn-pill">{fmtMins(remainingWorkMins - minutesLeftToday)} more than time left</div>
             )}
           </div>
         </div>
+        {isWorkDay && (
+          <div className="day-progress-track">
+            <div className="day-progress-fill" style={{ width: `${dayElapsedPercent * 100}%` }} />
+          </div>
+        )}
       </div>
 
       <div className="task-list">
