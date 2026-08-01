@@ -310,4 +310,14 @@ export default function Analytics() {
                       <div className="analytics-task-name">{p.label}</div>
                       <div className="analytics-task-time mono">usually ~{fmtMins(p.avgMins)}</div>
                     </div>
-                    <div className="confidence-tag"
+                    <div className="confidence-tag">{confidenceTag(p.count)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
