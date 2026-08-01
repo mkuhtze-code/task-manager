@@ -18,10 +18,12 @@ export default function GearMenu() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasUnreadReply, setHasUnreadReply] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkAdmin();
+    checkUnreadReplies();
   }, []);
 
   async function checkAdmin() {
@@ -36,6 +38,37 @@ export default function GearMenu() {
       .maybeSingle();
 
     setIsAdmin(!!data);
+  }
+
+  async function checkUnreadReplies() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
+    if (!session) return;
+
+    const { data: feedbackRows } = await supabase
+      .from('feedback')
+      .select('id, user_last_read_at')
+      .eq('user_id', session.user.id);
+
+    if (!feedbackRows || feedbackRows.length === 0) return;
+
+    const ids = feedbackRows.map((f) => f.id);
+    const { data: replies } = await supabase
+      .from('feedback_replies')
+      .select('feedback_id, created_at')
+      .in('feedback_id', ids)
+      .eq('author_type', 'admin');
+
+    if (!replies) return;
+
+    const lastReadMap: Record<string, string | null> = {};
+    feedbackRows.forEach((f) => { lastReadMap[f.id] = f.user_last_read_at; });
+
+    const unread = replies.some((r) => {
+      const lastRead = lastReadMap[r.feedback_id];
+      return !lastRead || new Date(r.created_at).getTime() > new Date(lastRead).getTime();
+    });
+    setHasUnreadReply(unread);
   }
 
   useEffect(() => {
@@ -65,6 +98,7 @@ export default function GearMenu() {
         aria-expanded={menuOpen}
       >
         <GearIcon />
+        {hasUnreadReply && <span className="gear-unread-dot" aria-label="Unread feedback reply" />}
       </button>
       {menuOpen && (
         <div className="gear-dropdown">
@@ -77,8 +111,14 @@ export default function GearMenu() {
           <Link href="/account" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
             Account
           </Link>
-          <Link href={feedbackHref} className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+          <Link
+            href={feedbackHref}
+            className="gear-dropdown-item"
+            onClick={() => { setMenuOpen(false); setHasUnreadReply(false); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
             Send Feedback
+            {hasUnreadReply && <span className="gear-unread-dot" style={{ position: 'static' }} />}
           </Link>
           {isAdmin && (
             <Link href="/admin/feedback" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
