@@ -40,6 +40,89 @@ function fmtHours(mins: number): string {
   return `${hours}h`;
 }
 
+function buildDailySeries(
+  tasks: CompletedTask[],
+  start: Date,
+  end: Date,
+  labelMode: 'weekday' | 'sparse'
+): { label: string; mins: number }[] {
+  const totalsByDate: Record<string, number> = {};
+  tasks.forEach((t) => {
+    const key = new Date(t.completed_at).toDateString();
+    totalsByDate[key] = (totalsByDate[key] || 0) + (t.actual_mins || 0);
+  });
+
+  const days: { label: string; mins: number }[] = [];
+  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  let i = 0;
+  while (cursor <= endDay) {
+    const key = cursor.toDateString();
+    let label = '';
+    if (labelMode === 'weekday') {
+      label = cursor.toLocaleDateString(undefined, { weekday: 'narrow' });
+    } else if (i % 5 === 0) {
+      label = String(cursor.getDate());
+    }
+    days.push({ label, mins: totalsByDate[key] || 0 });
+    cursor.setDate(cursor.getDate() + 1);
+    i++;
+  }
+  return days;
+}
+
+function DailyBarChart({ series }: { series: { label: string; mins: number }[] }) {
+  const max = Math.max(...series.map((d) => d.mins), 1);
+  return (
+    <div className="daily-chart">
+      {series.map((d, i) => (
+        <div key={i} className="daily-chart-col">
+          <div className="daily-chart-bar-track">
+            <div
+              className="daily-chart-bar"
+              style={{ height: d.mins > 0 ? `${Math.max((d.mins / max) * 100, 6)}%` : '0%' }}
+            />
+          </div>
+          <div className="daily-chart-label">{d.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AccuracyGauge({ ratioPercent }: { ratioPercent: number }) {
+  const clamped = Math.min(Math.max(ratioPercent, 0), 200);
+  const pos = (clamped / 200) * 100;
+  let tone: 'under' | 'close' | 'over' = 'close';
+  if (ratioPercent < 85) tone = 'under';
+  else if (ratioPercent > 115) tone = 'over';
+
+  let message = 'Your estimates are usually spot on.';
+  if (tone === 'under') message = `You tend to finish about ${Math.round(100 - ratioPercent)}% faster than planned.`;
+  if (tone === 'over') message = `Things tend to take about ${Math.round(ratioPercent - 100)}% longer than planned.`;
+
+  return (
+    <div className="accuracy-gauge-wrap">
+      <div className="accuracy-gauge-track">
+        <div className="accuracy-gauge-mid" />
+        <div className={`accuracy-gauge-marker tone-${tone}`} style={{ left: `${pos}%` }} />
+      </div>
+      <div className="accuracy-gauge-scale-labels">
+        <span>Faster</span>
+        <span>On estimate</span>
+        <span>Slower</span>
+      </div>
+      <p className="accuracy-gauge-message">{message}</p>
+    </div>
+  );
+}
+
+function confidenceTag(count: number): string {
+  if (count >= 5) return 'Well known';
+  if (count >= 3) return 'Fairly confident';
+  return 'Just noticed';
+}
+
 export default function Analytics() {
   const [session, setSession] = useState<any>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData>({
@@ -96,6 +179,10 @@ export default function Analytics() {
     );
   }
 
+  const now = new Date();
+  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
   const currentData = analytics[`${timePeriod}Tasks` as keyof AnalyticsData];
 
   const totalCompleted = currentData.length;
@@ -103,22 +190,15 @@ export default function Analytics() {
   const totalEstimateMins = currentData.reduce((sum, t) => sum + t.estimate_mins, 0);
   const avgEstimate = totalCompleted > 0 ? totalEstimateMins / totalCompleted : 0;
   const avgActual = totalCompleted > 0 ? totalActualMins / totalCompleted : 0;
+  const accuracyRatioPercent = avgEstimate > 0 ? (avgActual / avgEstimate) * 100 : 100;
 
-  // Tasks where the estimate and the actual time diverged meaningfully —
-  // this is what actually helps: next time you write "quote reroof: 30m",
-  // you have a quiet reference point instead of guessing cold.
   const taskDeltas = currentData.map((t) => ({
     ...t,
     ratio: (t.actual_mins || 0) / Math.max(t.estimate_mins, 1),
   }));
-  const ranShorter = taskDeltas.filter((t) => t.ratio < 0.8).sort((a, b) => a.ratio - b.ratio).slice(0, 3);
-  const ranLonger = taskDeltas.filter((t) => t.ratio > 1.2).sort((a, b) => b.ratio - a.ratio).slice(0, 3);
+  const ranShorter = taskDeltas.filter((t) => t.ratio < 0.8).sort((a, b) => a.ratio - b.ratio).slice(0, 2);
+  const ranLonger = taskDeltas.filter((t) => t.ratio > 1.2).sort((a, b) => b.ratio - a.ratio).slice(0, 2);
 
-  // What Docket has learned: task names typed more than once, grouped and
-  // averaged across all-time history (not just the selected window), since
-  // this is meant to be a running memory, not a period-by-period report.
-  // This is the same signal that quietly powers the estimate suggestion
-  // chip in the capture sheet.
   const patternMap: Record<string, LearnedPattern> = {};
   analytics.allTasks.forEach((t) => {
     const key = t.text.trim().toLowerCase();
@@ -136,8 +216,12 @@ export default function Analytics() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
-  const currentTasks =
-    timePeriod === 'today' ? analytics.todayTasks : timePeriod === 'week' ? analytics.weekTasks : analytics.monthTasks;
+  const dailySeries =
+    timePeriod === 'week'
+      ? buildDailySeries(analytics.weekTasks, weekStart, now, 'weekday')
+      : timePeriod === 'month'
+      ? buildDailySeries(analytics.monthTasks, monthStart, now, 'sparse')
+      : null;
 
   return (
     <div className="app-shell">
@@ -172,64 +256,37 @@ export default function Analytics() {
         <div className="empty-state">Nothing wrapped up in this window yet.</div>
       ) : (
         <>
-          {/* Time logged */}
+          {/* Overview */}
           <div className="settings-panel">
-            <div className="settings-panel-title">Time logged</div>
-            <div className="analytics-grid">
-              <div className="analytics-card">
-                <div className="analytics-label">Wrapped up</div>
-                <div className="analytics-number">{totalCompleted}</div>
-              </div>
-              <div className="analytics-card">
-                <div className="analytics-label">Time spent</div>
-                <div className="analytics-number">{fmtHours(totalActualMins)}</div>
-              </div>
-              <div className="analytics-card">
-                <div className="analytics-label">Avg per task</div>
-                <div className="analytics-number">{fmtMins(avgActual)}</div>
+            <div className="settings-panel-title">Time spent</div>
+            <div className="hero-stat-row">
+              <div className="hero-stat-number mono">{fmtHours(totalActualMins)}</div>
+              <div className="hero-stat-sub">
+                across {totalCompleted} task{totalCompleted === 1 ? '' : 's'} · ~{fmtMins(avgActual)} each
               </div>
             </div>
+            {dailySeries && <DailyBarChart series={dailySeries} />}
           </div>
 
           {/* Estimate sense */}
           <div className="settings-panel">
             <div className="settings-panel-title">Estimate sense</div>
-            <div className="analytics-grid">
-              <div className="analytics-card">
-                <div className="analytics-label">You usually estimate</div>
-                <div className="analytics-number">{fmtMins(avgEstimate)}</div>
-              </div>
-              <div className="analytics-card">
-                <div className="analytics-label">Things usually take</div>
-                <div className="analytics-number">{fmtMins(avgActual)}</div>
-              </div>
-            </div>
+            <AccuracyGauge ratioPercent={accuracyRatioPercent} />
 
-            {ranShorter.length > 0 && (
-              <div style={{ marginTop: 'var(--space-4)' }}>
-                <div style={{ fontSize: 12, color: 'var(--ink-soft)', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
-                  Ran shorter than expected:
-                </div>
+            {(ranShorter.length > 0 || ranLonger.length > 0) && (
+              <div className="notable-tasks-block">
                 {ranShorter.map((t) => (
                   <div key={t.id} className="analytics-task-item">
                     <span className="analytics-task-text">{t.text}</span>
-                    <span className="analytics-task-badge" style={{ color: 'var(--ink-soft)' }}>
+                    <span className="analytics-task-badge" style={{ color: 'var(--steel-dark)' }}>
                       {fmtMins(t.estimate_mins)} → {fmtMins(t.actual_mins || 0)}
                     </span>
                   </div>
                 ))}
-              </div>
-            )}
-
-            {ranLonger.length > 0 && (
-              <div style={{ marginTop: 'var(--space-3)' }}>
-                <div style={{ fontSize: 12, color: 'var(--ink-soft)', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
-                  Ran longer than expected:
-                </div>
                 {ranLonger.map((t) => (
                   <div key={t.id} className="analytics-task-item">
                     <span className="analytics-task-text">{t.text}</span>
-                    <span className="analytics-task-badge" style={{ color: 'var(--ink-soft)' }}>
+                    <span className="analytics-task-badge" style={{ color: 'var(--hazard)' }}>
                       {fmtMins(t.estimate_mins)} → {fmtMins(t.actual_mins || 0)}
                     </span>
                   </div>
@@ -238,10 +295,10 @@ export default function Analytics() {
             )}
           </div>
 
-          {/* What Docket has learned */}
+          {/* What Dokkit has learned */}
           {learnedPatterns.length > 0 && (
             <div className="settings-panel">
-              <div className="settings-panel-title">What Docket has learned</div>
+              <div className="settings-panel-title">What Dokkit has learned</div>
               <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.5, margin: '-4px 0 4px' }}>
                 Tasks you've typed more than once, and what they've actually taken. This is what feeds the
                 estimate suggestion when you add something similar.
@@ -253,34 +310,4 @@ export default function Analytics() {
                       <div className="analytics-task-name">{p.label}</div>
                       <div className="analytics-task-time mono">usually ~{fmtMins(p.avgMins)}</div>
                     </div>
-                    <div className="learned-pattern-count">{p.count}×</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Recently completed */}
-          <div className="settings-panel">
-            <div className="settings-panel-title">Recently completed</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              {currentTasks.slice(0, 5).map((task) => (
-                <div key={task.id} className="analytics-task-row">
-                  <div className="analytics-task-info">
-                    <div className="analytics-task-name">{task.text}</div>
-                    <div className="analytics-task-time mono">
-                      {fmtMins(task.estimate_mins)} → {fmtMins(task.actual_mins || 0)}
-                    </div>
-                  </div>
-                  <div className={`analytics-task-source ${task.source}`}>
-                    {task.source === 'planned' ? 'Planned' : 'Came up'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+                    <div className="confidence-tag"
