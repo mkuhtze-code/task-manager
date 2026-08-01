@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyUser } from '@/lib/verifyUser';
 import { checkRateLimit } from '@/lib/ratelimit';
 import webpush, { HIGH_PRIORITY_OPTIONS } from '@/lib/webpush';
+import { logError } from '@/lib/logError';
 
 export async function POST(req: NextRequest) {
   const auth = await verifyUser(req);
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
     .eq('user_id', auth.userId);
 
   if (error) {
+    await logError('server', 'send-test-notification', error, {}, auth.userId);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   if (!subs || subs.length === 0) {
@@ -35,15 +37,24 @@ export async function POST(req: NextRequest) {
   const results = await Promise.allSettled(
     subs.map((sub) =>
       webpush.sendNotification(
-        {
-          endpoint: sub.endpoint,
-          keys: { p256dh: sub.p256dh, auth: sub.auth },
-        },
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         payload,
         HIGH_PRIORITY_OPTIONS
       )
     )
   );
 
-  return NextResponse.json({ ok: true, sent: results.length });
+  const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+  if (failures.length > 0) {
+    await logError('server', 'send-test-notification:push', failures[0].reason, {
+      failureCount: failures.length,
+      totalSubs: subs.length,
+    }, auth.userId);
+  }
+
+  if (failures.length === results.length) {
+    return NextResponse.json({ error: 'All deliveries failed — check the Error Log for details.' }, { status: 502 });
+  }
+
+  return NextResponse.json({ ok: true, sent: results.length - failures.length, failed: failures.length });
 }
