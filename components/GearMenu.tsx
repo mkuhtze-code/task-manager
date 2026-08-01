@@ -121,9 +121,14 @@ export default function GearMenu() {
             {hasUnreadReply && <span className="gear-unread-dot" style={{ position: 'static' }} />}
           </Link>
           {isAdmin && (
-            <Link href="/admin/feedback" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-              Feedback Inbox
-            </Link>
+            <>
+              <Link href="/admin/feedback" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+                Feedback Inbox
+              </Link>
+              <Link href="/admin/errors" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+                Error Log
+              </Link>
+            </>
           )}
           <div className="gear-dropdown-divider" />
           <button className="gear-dropdown-item destructive" onClick={handleLogOut}>
