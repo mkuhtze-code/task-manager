@@ -109,21 +109,36 @@ export async function GET(req: NextRequest) {
     if (subs && subs.length > 0) {
       const silent = settings?.notification_style === 'silent';
       const payload = JSON.stringify({ title, body, silent });
+
       const results = await Promise.allSettled(
         subs.map((sub) =>
-          webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-            payload,
-            HIGH_PRIORITY_OPTIONS
-          )
+          webpush
+            .sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              payload,
+              HIGH_PRIORITY_OPTIONS
+            )
+            .catch((err) => {
+              throw { err, subId: sub.id };
+            })
         )
       );
 
       const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-      if (failures.length > 0) {
-        await logError('server', 'check-task-timers:push', failures[0].reason, {
+      for (const f of failures) {
+        const { err, subId } = (f.reason || {}) as any;
+        const statusCode = err?.statusCode;
+
+        if (statusCode === 404 || statusCode === 410) {
+          await supabaseAdmin.from('push_subscriptions').delete().eq('id', subId);
+        }
+
+        await logError('server', 'check-task-timers:push', err || f.reason, {
           taskId: task.id,
           userId: task.user_id,
+          statusCode,
+          responseBody: err?.body,
+          subId,
           failureCount: failures.length,
           totalSubs: subs.length,
         }, task.user_id);
