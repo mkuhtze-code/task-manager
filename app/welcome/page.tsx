@@ -212,7 +212,7 @@ export default function Welcome() {
                 </div>
                 <div className="w-mock-task-row" style={{ marginTop: 14 }}>
                   <span className="w-mock-task-dot" />
-                  <span className="w-mock-task-text">Quote reroof</span>
+                  <span className="w-mock-task-text">Revise quote</span>
                   <span className="w-mock-tag">usually ~45m</span>
                 </div>
                 <div className="w-mock-task-row">
@@ -236,7 +236,7 @@ export default function Welcome() {
                 <div className="w-mock-gauge-label">Your estimates are usually spot on</div>
                 <div className="w-mock-pattern-row">
                   <div>
-                    <div className="w-mock-pattern-name">Quote reroof</div>
+                    <div className="w-mock-pattern-name">Revise quote</div>
                     <div className="w-mock-pattern-time">usually ~45m</div>
                   </div>
                   <span className="w-mock-confidence">Fairly confident</span>
