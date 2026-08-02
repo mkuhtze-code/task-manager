@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 // small note confirms the capacity math updated too — the whole loop the
 // real capture sheet + effectiveEstimate() do together, played out.
 
-const DEMO_TEXT = 'Quote reroof';
+const DEMO_TEXT = 'Revise Quote';
 const TYPE_MS = 90;
 const RESET_PAUSE_MS = 2200;
 
