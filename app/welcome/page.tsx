@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import DayRailDemo from '@/components/DayRailDemo';
 import ThinkingDemo from '@/components/ThinkingDemo';
+import ReshuffleDemo from '@/components/ReshuffleDemo';
 import RequestAccessForm from '@/components/RequestAccessForm';
 import './welcome.css';
 
@@ -161,6 +162,19 @@ export default function Welcome() {
             honestly over time too: <span className="mono">just noticed</span> → <span className="mono">fairly confident</span> → <span className="mono">well known</span> — always shown plainly, never as a score. And it's entirely
             yours: nothing here is compared against anyone else's pace.
           </p>
+        </section>
+
+        <section className="w-section">
+          <p className="w-section-eyebrow">How it reshuffles</p>
+          <h2>Your list rearranges<br />around your day.</h2>
+          <p className="w-section-lead">
+            Add something new and Dokkit doesn't just drop it at the bottom. It checks
+            what still fits in the time you actually have left, and moves things
+            around so today stays honest — nothing fails, it just gets pushed instead
+            of forced.
+          </p>
+
+          <ReshuffleDemo />
         </section>
 
         <section className="w-section">
