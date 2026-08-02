@@ -14,7 +14,7 @@ const LOOP_MS = 13000;
 
 const DEMO_TASKS: { label: string; atPercent: number }[] = [
   { label: 'Client reply', atPercent: 10 },
-  { label: 'Reroof quote', atPercent: 36 },
+  { label: 'Revise quote', atPercent: 36 },
   { label: 'Team sync', atPercent: 64 },
   { label: 'Proposal', atPercent: 90 },
 ];
