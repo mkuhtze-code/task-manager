@@ -14,6 +14,7 @@
   --w-steel-dark: #0060cc;
   --w-steel-wash: #e5f1ff;
   --w-moss: #34c759;
+  --w-moss-bg: #e3f8e8;
   --w-hazard: #ff9500;
   --w-hazard-bg: #fff2e0;
 
@@ -264,6 +265,279 @@
   font-weight: 600;
 }
 
+/* ── Thinking demo (second signature element) ───────────────────── */
+
+.thinking-demo {
+  background: var(--w-paper-raised);
+  border-radius: 16px;
+  padding: 20px 22px;
+  max-width: 340px;
+  margin: 32px auto 0;
+  box-shadow: 0 2px 6px rgba(26, 41, 51, 0.08);
+  text-align: left;
+}
+
+.thinking-demo-input {
+  border: 1px solid var(--w-line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  background: var(--w-paper);
+}
+
+.thinking-demo-caret {
+  width: 2px;
+  height: 16px;
+  background: var(--w-ink);
+  margin-left: 2px;
+  animation: caret-blink 1s step-end infinite;
+}
+
+@keyframes caret-blink {
+  50% { opacity: 0; }
+}
+
+.thinking-demo-chip {
+  margin-top: 10px;
+  display: inline-flex;
+  background: var(--w-steel-wash);
+  color: var(--w-steel-dark);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 20px;
+  animation: thinking-demo-in 0.3s ease;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.thinking-demo-chip.accepted {
+  background: var(--w-steel);
+  color: white;
+  transform: scale(0.96);
+}
+
+@keyframes thinking-demo-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.thinking-demo-field {
+  margin-top: 10px;
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--w-paper);
+  border: 1px solid var(--w-line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  animation: thinking-demo-in 0.3s ease;
+}
+
+.thinking-demo-note {
+  margin-top: 12px;
+  font-size: 11.5px;
+  color: var(--w-ink-soft);
+  animation: thinking-demo-in 0.4s ease;
+}
+
+/* ── Screenshot mockups (real CSS recreations, not images) ────────── */
+
+.w-mockup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  justify-items: center;
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .w-mockup-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.w-mockup-frame {
+  width: 220px;
+}
+
+.w-mockup-screen {
+  background: var(--w-paper);
+  border: 7px solid var(--w-ink);
+  border-radius: 26px;
+  padding: 16px 13px;
+  box-shadow: 0 20px 40px rgba(26, 41, 51, 0.18);
+  transform: rotate(-2deg);
+  transition: transform 0.25s ease;
+}
+
+.w-mockup-frame.tilt-right .w-mockup-screen {
+  transform: rotate(2deg);
+}
+
+.w-mockup-screen:hover {
+  transform: rotate(0deg);
+}
+
+.w-mockup-caption {
+  text-align: center;
+  font-size: 12px;
+  color: var(--w-ink-soft);
+  font-weight: 600;
+  margin-top: 14px;
+}
+
+.w-mock-date-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--w-ink-soft);
+  margin-bottom: 12px;
+}
+
+.w-mock-ring {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(var(--w-steel) 0% 55%, var(--w-line) 55% 100%);
+}
+
+.w-mock-ring-inner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--w-paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8.5px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.w-mock-task-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  font-size: 10px;
+}
+
+.w-mock-task-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--w-steel);
+  flex-shrink: 0;
+}
+
+.w-mock-task-dot.hazard {
+  background: var(--w-hazard);
+}
+
+.w-mock-task-text {
+  flex: 1;
+  font-weight: 600;
+}
+
+.w-mock-tag {
+  font-size: 8px;
+  font-weight: 700;
+  background: var(--w-steel-wash);
+  color: var(--w-steel-dark);
+  padding: 2px 6px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.w-mock-rail {
+  height: 3px;
+  background: var(--w-line);
+  border-radius: 2px;
+  margin-top: 10px;
+  position: relative;
+}
+
+.w-mock-rail-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 55%;
+  background: var(--w-steel);
+  border-radius: 2px;
+}
+
+.w-mock-gauge-track {
+  height: 4px;
+  background: var(--w-line);
+  border-radius: 2px;
+  position: relative;
+  margin: 14px 0 6px;
+}
+
+.w-mock-gauge-dot {
+  position: absolute;
+  top: 50%;
+  left: 52%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--w-moss);
+  transform: translate(-50%, -50%);
+}
+
+.w-mock-gauge-label {
+  font-size: 9px;
+  color: var(--w-ink-soft);
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.w-mock-pattern-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  gap: 6px;
+}
+
+.w-mock-pattern-name {
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.w-mock-pattern-time {
+  font-size: 8.5px;
+  color: var(--w-ink-soft);
+}
+
+.w-mock-confidence {
+  font-size: 7.5px;
+  font-weight: 700;
+  background: var(--w-moss-bg);
+  color: #1f8a3e;
+  padding: 2px 6px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* ── Reframe section ─────────────────────────────────────────── */
 
 .w-section {
@@ -288,6 +562,24 @@
   text-align: center;
   margin: 0 0 40px;
   line-height: 1.2;
+}
+
+.w-section-lead {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--w-ink-soft);
+  max-width: 480px;
+  margin: 0 auto 8px;
+  text-align: center;
+}
+
+.w-section-note {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--w-ink-soft);
+  max-width: 480px;
+  margin: 28px auto 0;
+  text-align: center;
 }
 
 .w-reframe-list {
