@@ -186,7 +186,7 @@
   height: 4px;
   border-radius: 2px;
   background: var(--w-line);
-  margin: 44px 0 40px;
+  margin: 62px 0 40px;
 }
 
 .rail-demo-elapsed {
@@ -212,13 +212,40 @@
 
 .rail-demo-marker {
   position: absolute;
-  top: -30px;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   width: max-content;
-  max-width: 110px;
+  max-width: 80px;
+}
+
+.rail-demo-marker.tier-near {
+  top: -32px;
+}
+
+.rail-demo-marker.tier-far {
+  top: -54px;
+}
+
+.rail-demo-marker.tier-near::after {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  width: 1px;
+  height: 8px;
+  background: var(--w-line);
+}
+
+.rail-demo-marker.tier-far::after {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  width: 1px;
+  height: 30px;
+  background: var(--w-line);
 }
 
 .rail-demo-marker-dot {
@@ -239,11 +266,11 @@
 }
 
 .rail-demo-marker-label {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--w-ink-soft);
   text-align: center;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .rail-demo-marker.carrying .rail-demo-marker-label {
@@ -399,29 +426,52 @@
   margin-bottom: 12px;
 }
 
-.w-mock-ring {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  margin: 0 auto 12px;
+.w-mock-compare-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: conic-gradient(var(--w-steel) 0% 55%, var(--w-line) 55% 100%);
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
-.w-mock-ring-inner {
-  width: 42px;
-  height: 42px;
+.w-mock-compare-stat {
+  text-align: center;
+}
+
+.w-mock-compare-number {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.w-mock-compare-label {
+  font-size: 8px;
+  color: var(--w-ink-soft);
+  font-weight: 600;
+}
+
+.w-mock-fit-icon {
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: var(--w-paper);
+  background: var(--w-moss-bg);
+  color: #1f8a3e;
+  font-size: 10px;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8.5px;
-  font-weight: 800;
-  text-align: center;
-  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.w-mock-rail-endpoints {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: var(--w-ink-faint);
+  font-weight: 600;
+  margin-top: 4px;
 }
 
 .w-mock-task-row {
@@ -480,6 +530,18 @@
   border-radius: 2px;
 }
 
+.w-mock-rail-dot {
+  position: absolute;
+  top: 50%;
+  left: 55%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--w-steel);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px var(--w-steel-wash);
+}
+
 .w-mock-gauge-track {
   height: 4px;
   background: var(--w-line);
@@ -536,6 +598,114 @@
   border-radius: 20px;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+/* ── Request access form ─────────────────────────────────────── */
+
+.w-request-form {
+  max-width: 380px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.w-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.w-request-form input[type='text'],
+.w-request-form input[type='email'] {
+  border: 1px solid var(--w-line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  background: var(--w-paper-raised);
+  font-family: inherit;
+  width: 100%;
+}
+
+.w-form-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--w-ink-soft);
+  cursor: pointer;
+}
+
+.w-form-checkbox input {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.w-form-error {
+  color: var(--w-hazard);
+  font-size: 12px;
+  margin: 0;
+}
+
+.w-form-sent {
+  max-width: 380px;
+  margin: 0 auto;
+  background: var(--w-paper-raised);
+  border-radius: 14px;
+  padding: 22px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(26, 41, 51, 0.08);
+}
+
+/* ── Waiting room pills ──────────────────────────────────────── */
+
+.w-waiting-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+@media (max-width: 480px) {
+  .w-waiting-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.w-waiting-pill {
+  background: var(--w-paper-raised);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--w-ink);
+  text-align: center;
+}
+
+/* ── Principles strip ────────────────────────────────────────── */
+
+.w-principles-strip {
+  text-align: center;
+  padding: 8px 0 0;
+  font-size: 13px;
+  color: var(--w-ink-soft);
+  font-weight: 600;
+}
+
+.w-principles-strip span {
+  display: inline;
+}
+
+.w-principles-strip span:not(:last-child)::after {
+  content: '·';
+  margin: 0 10px;
+  color: var(--w-ink-faint);
+  font-weight: 400;
 }
 
 /* ── Reframe section ─────────────────────────────────────────── */
