@@ -169,14 +169,17 @@ const BLEND_WEIGHTS: Record<Confidence, number> = {
   high: 0.75,
 };
 
+// Exposed on its own (not just inlined in effectiveEstimate) because the UI
+// needs the same "is this actually worth mentioning" judgment call to
+// decide whether to show a quiet hint next to a task.
+export function hasMeaningfulDivergence(typedMins: number, suggestedMins: number): boolean {
+  const diff = Math.abs(suggestedMins - typedMins);
+  return diff >= 5 && diff / Math.max(typedMins, 1) >= 0.15;
+}
+
 export function effectiveEstimate(typedMins: number, suggestion: EstimateSuggestion | null): number {
   if (!suggestion) return typedMins;
-
-  // If they're already close, don't bother blending — no point nudging a
-  // number that's already honest.
-  const diff = Math.abs(suggestion.suggestedMins - typedMins);
-  const meaningfulDiff = diff >= 5 && diff / Math.max(typedMins, 1) >= 0.15;
-  if (!meaningfulDiff) return typedMins;
+  if (!hasMeaningfulDivergence(typedMins, suggestion.suggestedMins)) return typedMins;
 
   const weight = BLEND_WEIGHTS[suggestion.confidence];
   const blended = typedMins * (1 - weight) + suggestion.suggestedMins * weight;
