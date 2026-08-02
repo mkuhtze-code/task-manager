@@ -72,7 +72,7 @@ export default function ThinkingDemo() {
 
       {accepted && <div className="thinking-demo-field mono">45m</div>}
 
-      {showNote && <div className="thinking-demo-note">Capacity updated quietly — nothing forced.</div>}
+      {showNote && <div className="thinking-demo-note">Capacity just got a little more honest.</div>}
     </div>
   );
 }
