@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
+import MicButton from '@/components/MicButton';
 import {
   buildClusters,
   suggestEstimate,
@@ -564,6 +565,12 @@ function TaskDetailSheet(props: {
               placeholder="Sub-task"
               value={subDraftText}
               onChange={(e) => setSubDraftText(e.target.value)}
+            />
+            <MicButton
+              size="small"
+              onResult={(text) =>
+                setSubDraftText(subDraftText.trim().length > 0 ? `${subDraftText.trim()} ${text}` : text)
+              }
             />
             <input
               type="text"
@@ -1326,12 +1333,19 @@ export default function Home() {
 
       {captureOpen && (
         <div className="capture-sheet">
-          <input
-            type="text"
-            value={taskText}
-            onChange={(e) => setTaskText(e.target.value)}
-            placeholder="What needs doing?"
-          />
+          <div className="capture-text-row">
+            <input
+              type="text"
+              value={taskText}
+              onChange={(e) => setTaskText(e.target.value)}
+              placeholder="What needs doing?"
+            />
+            <MicButton
+              onResult={(text) =>
+                setTaskText((prev) => (prev.trim().length > 0 ? `${prev.trim()} ${text}` : text))
+              }
+            />
+          </div>
           {captureSuggestion && (
             <button
               type="button"
