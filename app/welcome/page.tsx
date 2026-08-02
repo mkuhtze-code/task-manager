@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import DayRailDemo from '@/components/DayRailDemo';
+import ThinkingDemo from '@/components/ThinkingDemo';
 import './welcome.css';
 
 export const metadata = {
@@ -90,6 +91,86 @@ export default function Welcome() {
                 <li>Whatever comes up mid-day just gets dropped in, no re-planning</li>
                 <li>Nothing forgotten overnight — it's still there when you open the app</li>
               </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="w-section">
+          <p className="w-section-eyebrow">The quiet part</p>
+          <h2>Dokkit learns how long<br />things actually take you.</h2>
+          <p className="w-section-lead">
+            Every task remembers what it actually took, not just what you typed. Type
+            something you've done before — even worded a little differently — and
+            Dokkit quietly recognizes it and offers what it usually takes.
+          </p>
+
+          <ThinkingDemo />
+
+          <p className="w-section-note">
+            Tap the suggestion or ignore it — either way, nothing changes without you.
+            The same pattern also quietly informs whether today's list actually fits
+            the time you have left, even before you accept anything. Confidence
+            builds honestly over time too: <span className="mono">just noticed</span> → <span className="mono">fairly confident</span> → <span className="mono">well known</span> — always shown plainly, never as a score. And it's entirely
+            yours: nothing here is compared against anyone else's pace.
+          </p>
+        </section>
+
+        <section className="w-section">
+          <p className="w-section-eyebrow">A closer look</p>
+          <h2>What it actually<br />looks like.</h2>
+          <div className="w-mockup-grid">
+            <div className="w-mockup-frame">
+              <div className="w-mockup-screen">
+                <div className="w-mock-date-row">
+                  <span>Tuesday · Aug 4</span>
+                  <span>⚙</span>
+                </div>
+                <div className="w-mock-ring">
+                  <div className="w-mock-ring-inner">3h 10m<br />left</div>
+                </div>
+                <div className="w-mock-task-row">
+                  <span className="w-mock-task-dot" />
+                  <span className="w-mock-task-text">Quote reroof</span>
+                  <span className="w-mock-tag">usually ~45m</span>
+                </div>
+                <div className="w-mock-task-row">
+                  <span className="w-mock-task-dot hazard" />
+                  <span className="w-mock-task-text">Draft proposal</span>
+                  <span className="w-mock-tag">due today</span>
+                </div>
+                <div className="w-mock-rail">
+                  <div className="w-mock-rail-fill" />
+                </div>
+              </div>
+              <div className="w-mockup-caption">Today — capacity, not a checklist</div>
+            </div>
+
+            <div className="w-mockup-frame tilt-right">
+              <div className="w-mockup-screen">
+                <div className="w-mock-date-row">
+                  <span>Patterns</span>
+                  <span>Week</span>
+                </div>
+                <div className="w-mock-gauge-track">
+                  <div className="w-mock-gauge-dot" />
+                </div>
+                <div className="w-mock-gauge-label">Your estimates are usually spot on</div>
+                <div className="w-mock-pattern-row">
+                  <div>
+                    <div className="w-mock-pattern-name">Quote reroof</div>
+                    <div className="w-mock-pattern-time">usually ~45m</div>
+                  </div>
+                  <span className="w-mock-confidence">Fairly confident</span>
+                </div>
+                <div className="w-mock-pattern-row">
+                  <div>
+                    <div className="w-mock-pattern-name">Team check-in</div>
+                    <div className="w-mock-pattern-time">usually ~20m</div>
+                  </div>
+                  <span className="w-mock-confidence">Well known</span>
+                </div>
+              </div>
+              <div className="w-mockup-caption">Patterns — a quiet look back, not a scoreboard</div>
             </div>
           </div>
         </section>
