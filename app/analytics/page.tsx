@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
+import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
 
 type CompletedTask = {
   id: string;
@@ -199,22 +200,19 @@ export default function Analytics() {
   const ranShorter = taskDeltas.filter((t) => t.ratio < 0.8).sort((a, b) => a.ratio - b.ratio).slice(0, 2);
   const ranLonger = taskDeltas.filter((t) => t.ratio > 1.2).sort((a, b) => b.ratio - a.ratio).slice(0, 2);
 
-  const patternMap: Record<string, LearnedPattern> = {};
-  analytics.allTasks.forEach((t) => {
-    const key = t.text.trim().toLowerCase();
-    if (!key) return;
-    if (!patternMap[key]) {
-      patternMap[key] = { label: t.text.trim(), count: 0, avgMins: 0 };
-    }
-    const entry = patternMap[key];
-    const prevTotal = entry.avgMins * entry.count;
-    entry.count += 1;
-    entry.avgMins = (prevTotal + (t.actual_mins || 0)) / entry.count;
-  });
-  const learnedPatterns = Object.values(patternMap)
-    .filter((p) => p.count >= 2)
+  // "What Dokkit has learned" now runs on the same fuzzy clustering that
+  // powers the capture-time suggestion chip on the home page, instead of
+  // its old exact lowercase-text match. This is deliberate: the two should
+  // never quietly disagree about what counts as "the same task".
+  const historyForClustering: HistoricalTask[] = analytics.allTasks.map((t) => ({
+    text: t.text,
+    actual_mins: t.actual_mins || 0,
+  }));
+  const learnedPatterns: LearnedPattern[] = buildClusters(historyForClustering)
+    .filter((c) => c.count >= 2)
     .sort((a, b) => b.count - a.count)
-    .slice(0, 6);
+    .slice(0, 6)
+    .map((c) => ({ label: c.label, count: c.count, avgMins: c.avgMins }));
 
   const dailySeries =
     timePeriod === 'week'
