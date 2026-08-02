@@ -73,6 +73,10 @@ export default function Welcome() {
               </ul>
             </div>
           </div>
+          <p className="w-compare-caption">
+            Works the same whether it's client work, a two-person shop, or a farm's
+            morning list. You do these, I'll do those.
+          </p>
         </section>
 
         <section className="w-section">
