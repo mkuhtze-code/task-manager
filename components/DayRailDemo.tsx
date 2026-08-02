@@ -13,10 +13,10 @@ const WORK_END_MIN = 16 * 60; // 4:00p
 const LOOP_MS = 13000;
 
 const DEMO_TASKS: { label: string; atPercent: number }[] = [
-  { label: 'Reply to client', atPercent: 12 },
-  { label: 'Quote reroof', atPercent: 38 },
-  { label: 'Team check-in', atPercent: 62 },
-  { label: 'Draft proposal', atPercent: 88 },
+  { label: 'Client reply', atPercent: 10 },
+  { label: 'Reroof quote', atPercent: 36 },
+  { label: 'Team sync', atPercent: 64 },
+  { label: 'Proposal', atPercent: 90 },
 ];
 
 function fmtClock(minutesOfDay: number): string {
@@ -61,19 +61,23 @@ export default function DayRailDemo() {
       <div className="rail-demo-track">
         <div className="rail-demo-elapsed" style={{ width: `${percent}%` }} />
         <div className="rail-demo-now-dot" style={{ left: `${percent}%` }} />
-        {DEMO_TASKS.map((t) => {
+        {DEMO_TASKS.map((t, i) => {
           const resolved = percent >= t.atPercent && t.atPercent !== carryForwardThreshold;
           const carrying = t.atPercent === carryForwardThreshold && percent >= t.atPercent;
+          // Alternate near/far tiers so adjacent markers never fight for
+          // the same horizontal space — this is what was causing labels
+          // to visually collide before.
+          const tier = i % 2 === 0 ? 'near' : 'far';
           return (
             <div
               key={t.label}
-              className={`rail-demo-marker ${resolved ? 'resolved' : ''} ${carrying ? 'carrying' : ''}`}
+              className={`rail-demo-marker tier-${tier} ${resolved ? 'resolved' : ''} ${carrying ? 'carrying' : ''}`}
               style={{ left: `${t.atPercent}%` }}
             >
               <span className="rail-demo-marker-dot" />
               <span className="rail-demo-marker-label">
                 {t.label}
-                {carrying && <em> · carrying forward</em>}
+                {carrying && <em>carrying forward</em>}
               </span>
             </div>
           );
