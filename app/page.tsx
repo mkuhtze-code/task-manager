@@ -1,9 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
+import {
+  buildClusters,
+  suggestEstimate,
+  effectiveEstimate,
+  hasMeaningfulDivergence,
+  type HistoricalTask,
+} from '@/lib/taskIntelligence';
 
 type Task = {
   id: string;
@@ -70,6 +77,14 @@ function fmtMins(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+// Turns a raw minute count back into something parseMins() can read, for
+// filling in the capture time field when a suggestion chip is tapped.
+function minsToInput(mins: number): string {
+  if (mins <= 0) return '0m';
+  if (mins % 60 === 0) return `${mins / 60}h`;
+  return `${mins}m`;
 }
 
 function fmtClock(timeStr: string): string {
@@ -213,6 +228,7 @@ function TaskCard(props: {
   overCap: boolean;
   anyActive: boolean;
   subs: Subtask[];
+  learnedHint: string | null;
   openSwipeId: string | null;
   setOpenSwipeId: (id: string | null) => void;
   onComplete: (id: string) => void;
@@ -226,7 +242,7 @@ function TaskCard(props: {
   };
 }) {
   const {
-    task: t, remainingForThis, liveLogged, overCap, anyActive, subs,
+    task: t, remainingForThis, liveLogged, overCap, anyActive, subs, learnedHint,
     openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen,
     dragHandleProps,
   } = props;
@@ -379,11 +395,12 @@ function TaskCard(props: {
                   <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
                 </div>
               )}
-              {(t.status === 'active' || subs.length > 0 || t.due_today) && (
+              {(t.status === 'active' || subs.length > 0 || t.due_today || learnedHint) && (
                 <div className="task-tags">
                   {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
                   {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
                   {t.due_today && <span className="tag tag-due">due today</span>}
+                  {learnedHint && <span className="tag">usually ~{learnedHint}</span>}
                 </div>
               )}
             </div>
@@ -598,6 +615,18 @@ export default function Home() {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // ── The "brain": completed-task history feeds fuzzy clustering, which
+  // powers both the capture-time suggestion chip and the capacity math's
+  // effective (learned) estimates below.
+  const [history, setHistory] = useState<HistoricalTask[]>([]);
+  const clusters = useMemo(() => buildClusters(history), [history]);
+
+  const captureSuggestion = useMemo(() => {
+    const trimmed = taskText.trim();
+    if (trimmed.length === 0) return null;
+    return suggestEstimate(trimmed, history, clusters);
+  }, [taskText, history, clusters]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setHasSignedInBefore(window.localStorage.getItem(HAS_SIGNED_IN_KEY) === 'true');
@@ -682,6 +711,17 @@ export default function Home() {
       });
       setSubtasksByTask(grouped);
     }
+
+    // Completed-task history for the learning layer — capped at the most
+    // recent 500 so clustering stays cheap even after months of use.
+    const { data: historyRows } = await supabase
+      .from('tasks')
+      .select('text, actual_mins')
+      .eq('status', 'done')
+      .not('actual_mins', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(500);
+    setHistory((historyRows || []).map((r: any) => ({ text: r.text, actual_mins: r.actual_mins })));
   }
 
   async function signInWithPassword(e: React.FormEvent) {
@@ -788,6 +828,12 @@ export default function Home() {
       .update({ status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: Math.round(finalLogged), completed_at: new Date().toISOString() })
       .eq('id', id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    // Keep the learning layer current without waiting for a full reload —
+    // this task's outcome should be eligible to inform the very next
+    // suggestion, not just after the next page load.
+    if (task) {
+      setHistory((prev) => [{ text: task.text, actual_mins: Math.round(finalLogged) }, ...prev]);
+    }
   }
 
   async function deleteTask(id: string) {
@@ -1044,12 +1090,33 @@ export default function Home() {
     return (subtasksByTask[taskId] || []).filter((s) => s.done).reduce((sum, s) => sum + s.mins, 0);
   }
 
+  // Display-facing remaining time: driven purely by what the person typed.
+  // Never silently changes — this is "what does the progress bar on this
+  // specific task say", and it should always match what you set.
   function remainingForTask(t: Task): number {
     let logged = t.logged_mins;
     if (t.status === 'active' && t.started_at) {
       logged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
     }
     return Math.max(t.estimate_mins - logged - completedSubtaskMins(t.id), 0);
+  }
+
+  // Capacity-facing remaining time: the "brain". Blends the typed estimate
+  // with what history says this kind of task actually takes, so the
+  // aggregate capacity picture (the ring, the day rail, overflow flags,
+  // capacity_first sort) is calibrated by reality — without ever touching
+  // the number the person actually sees on the task itself.
+  function effectiveRemainingForTask(t: Task): number {
+    let logged = t.logged_mins;
+    if (t.status === 'active' && t.started_at) {
+      logged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
+    }
+    if (t.estimate_mins <= 0) {
+      return Math.max(t.estimate_mins - logged - completedSubtaskMins(t.id), 0);
+    }
+    const suggestion = suggestEstimate(t.text, history, clusters);
+    const effEstimate = effectiveEstimate(t.estimate_mins, suggestion);
+    return Math.max(effEstimate - logged - completedSubtaskMins(t.id), 0);
   }
 
   const meetingMins = meetings.reduce((sum, m) => sum + m.duration_mins, 0);
@@ -1063,10 +1130,10 @@ export default function Home() {
   const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
   const taskCapacity = minutesLeftToday - meetingMins;
 
-  const ordered = sortTasks(tasks, sortMode, remainingForTask, taskCapacity);
+  const ordered = sortTasks(tasks, sortMode, effectiveRemainingForTask, taskCapacity);
   const orderedIds = ordered.map((t) => t.id);
 
-  const remainingTaskMins = ordered.reduce((sum, t) => sum + remainingForTask(t), 0);
+  const remainingTaskMins = ordered.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
   const remainingWorkMins = meetingMins + remainingTaskMins;
 
   const overloaded = isWorkDay && minutesLeftToday > 0 && remainingWorkMins > minutesLeftToday;
@@ -1186,7 +1253,8 @@ export default function Home() {
         )}
         {ordered.map((t, idx) => {
           const remainingForThis = remainingForTask(t);
-          cumulative += remainingForThis;
+          const effectiveRemaining = effectiveRemainingForTask(t);
+          cumulative += effectiveRemaining;
           const overCap = cumulative > taskCapacity;
           const anyActive = tasks.some((x) => x.status === 'active');
           const subs = subtasksByTask[t.id] || [];
@@ -1194,6 +1262,12 @@ export default function Home() {
           if (t.status === 'active' && t.started_at) {
             liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
           }
+
+          const suggestion = t.estimate_mins > 0 ? suggestEstimate(t.text, history, clusters) : null;
+          const learnedHint =
+            suggestion && hasMeaningfulDivergence(t.estimate_mins, suggestion.suggestedMins)
+              ? fmtMins(suggestion.suggestedMins)
+              : null;
 
           let rowStyle: React.CSSProperties = {};
           if (dragState) {
@@ -1228,6 +1302,7 @@ export default function Home() {
                 overCap={overCap}
                 anyActive={anyActive}
                 subs={subs}
+                learnedHint={learnedHint}
                 openSwipeId={openSwipeId}
                 setOpenSwipeId={setOpenSwipeId}
                 onComplete={completeTask}
@@ -1257,6 +1332,15 @@ export default function Home() {
             onChange={(e) => setTaskText(e.target.value)}
             placeholder="What needs doing?"
           />
+          {captureSuggestion && (
+            <button
+              type="button"
+              className="estimate-suggestion-chip"
+              onClick={() => setTaskTime(minsToInput(captureSuggestion.suggestedMins))}
+            >
+              ≈ {fmtMins(captureSuggestion.suggestedMins)} usual ({captureSuggestion.sampleCount}×)
+            </button>
+          )}
           <div className="capture-row">
             <input
               type="text"
