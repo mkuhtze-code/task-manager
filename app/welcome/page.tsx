@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import DayRailDemo from '@/components/DayRailDemo';
 import ThinkingDemo from '@/components/ThinkingDemo';
+import RequestAccessForm from '@/components/RequestAccessForm';
 import './welcome.css';
 
 export const metadata = {
-  title: 'Dokkit — a personal thinking tool that understands time',
+  title: 'Dokkit — give your thoughts somewhere to go',
   description:
-    "Dokkit isn't a scoreboard. It's a place to put everything down, see what actually fits today, and stop carrying it all in your head.",
+    'Dokkit was created because most productivity tools are good at organizing tasks, but not at understanding how people actually think.',
 };
 
 export default function Welcome() {
@@ -20,17 +21,17 @@ export default function Welcome() {
 
         <header className="w-hero">
           <p className="w-hero-eyebrow">Private beta</p>
-          <h1>A personal thinking tool<br />that understands time.</h1>
+          <h1>Give your thoughts<br />somewhere to go.</h1>
           <p className="w-hero-sub">
-            Dokkit isn't a scoreboard. It's a place to put everything down, see what
-            actually fits in the time you have left today, and stop carrying the rest
-            in your head.
+            Dokkit was created because most productivity tools are good at organizing
+            tasks — but not at understanding how people actually think. It's built to
+            offload your brain, not manage it.
           </p>
 
           <DayRailDemo />
 
           <div className="w-cta-row" style={{ marginTop: 40 }}>
-            <a href="mailto:hello@dokkit.app?subject=Requesting%20access%20to%20Dokkit" className="w-btn w-btn-primary">
+            <a href="#request-access" className="w-btn w-btn-primary">
               Request access
             </a>
             <Link href="/" className="w-btn w-btn-ghost">
@@ -38,6 +39,40 @@ export default function Welcome() {
             </Link>
           </div>
         </header>
+
+        <section className="w-section">
+          <p className="w-section-eyebrow">Where it comes from</p>
+          <h2>Built from a list kept<br />under the keyboard.</h2>
+          <p className="w-section-lead">
+            The list itself was never the problem — a piece of paper works fine for
+            remembering things. The real problem was carrying thoughts: things to
+            remember, ideas that aren't ready to act on yet, problems waiting on
+            someone else, tasks that can't move until something else happens first.
+            Dokkit became a place for those to live — not just a faster way to check
+            boxes.
+          </p>
+
+          <div className="w-compare" style={{ marginTop: 32 }}>
+            <div className="w-compare-col w-compare-old">
+              <div className="w-compare-title">The old way</div>
+              <ul>
+                <li>Written out each morning on paper</li>
+                <li>Ticked off by hand through the day</li>
+                <li>Spontaneous asks tracked from memory — and often forgotten</li>
+                <li>Anything remembered right before bed is gone again by morning</li>
+              </ul>
+            </div>
+            <div className="w-compare-col w-compare-new">
+              <div className="w-compare-title">Dokkit</div>
+              <ul>
+                <li>Five-second capture — type it or say it</li>
+                <li>Swipe to complete, the way you already do in Mail or Reminders</li>
+                <li>Whatever comes up mid-day just gets dropped in, no re-planning</li>
+                <li>Nothing forgotten overnight — it's still there when you open the app</li>
+              </ul>
+            </div>
+          </div>
+        </section>
 
         <section className="w-section">
           <p className="w-section-eyebrow">Not another productivity app</p>
@@ -63,54 +98,67 @@ export default function Welcome() {
               <span className="w-reframe-old">Productivity score</span>
               <span className="w-reframe-arrow">→</span>
               <span className="w-reframe-new-block">
-                <span className="w-reframe-new">Capacity, not completion</span>
+                <span className="w-reframe-new">Capacity awareness</span>
                 <span className="w-reframe-desc">The only question is whether today's list matches today's time.</span>
+              </span>
+            </div>
+            <div className="w-reframe-row">
+              <span className="w-reframe-old">Inbox</span>
+              <span className="w-reframe-arrow">→</span>
+              <span className="w-reframe-new-block">
+                <span className="w-reframe-new">Holding space</span>
+                <span className="w-reframe-desc">Not everything captured needs immediate action.</span>
               </span>
             </div>
           </div>
         </section>
 
         <section className="w-section">
-          <p className="w-section-eyebrow">Where it comes from</p>
-          <h2>Built from a list kept<br />under the keyboard.</h2>
-          <div className="w-compare">
-            <div className="w-compare-col w-compare-old">
-              <div className="w-compare-title">The old way</div>
-              <ul>
-                <li>Written out each morning on paper</li>
-                <li>Ticked off by hand through the day</li>
-                <li>Spontaneous asks tracked from memory — and often forgotten</li>
-                <li>Anything remembered right before bed is gone again by morning</li>
-              </ul>
-            </div>
-            <div className="w-compare-col w-compare-new">
-              <div className="w-compare-title">Dokkit</div>
-              <ul>
-                <li>Five-second capture — type it or say it</li>
-                <li>Swipe to complete, the way you already do in Mail or Reminders</li>
-                <li>Whatever comes up mid-day just gets dropped in, no re-planning</li>
-                <li>Nothing forgotten overnight — it's still there when you open the app</li>
-              </ul>
-            </div>
+          <p className="w-section-eyebrow">A different kind of unfinished</p>
+          <h2>The waiting room.</h2>
+          <p className="w-section-lead">
+            Not every thought is ready to become a task. Some things are just
+            waiting — and Dokkit doesn't force those into a checklist before they're
+            ready.
+          </p>
+          <div className="w-waiting-grid" style={{ marginTop: 28 }}>
+            <div className="w-waiting-pill">Waiting for information</div>
+            <div className="w-waiting-pill">Waiting for a decision</div>
+            <div className="w-waiting-pill">Waiting for the right time</div>
+            <div className="w-waiting-pill">Waiting for clarity</div>
+          </div>
+          <p className="w-section-note">
+            Unfinished doesn't always mean incomplete. Sometimes it just means not
+            yet — and that's allowed to sit there without becoming a failure.
+          </p>
+
+          <div className="w-principles-strip" style={{ marginTop: 36 }}>
+            <span>Capacity over completion</span>
+            <span>Patterns over scores</span>
+            <span>Personal data over comparison</span>
+            <span>No streaks</span>
+            <span>No leaderboards</span>
+            <span>No guilt</span>
           </div>
         </section>
 
         <section className="w-section">
-          <p className="w-section-eyebrow">The quiet part</p>
+          <p className="w-section-eyebrow">How it thinks</p>
           <h2>Dokkit learns how long<br />things actually take you.</h2>
           <p className="w-section-lead">
             Every task remembers what it actually took, not just what you typed. Type
             something you've done before — even worded a little differently — and
-            Dokkit quietly recognizes it and offers what it usually takes.
+            Dokkit recognizes it and offers what it usually takes, no extra step
+            required.
           </p>
 
           <ThinkingDemo />
 
           <p className="w-section-note">
             Tap the suggestion or ignore it — either way, nothing changes without you.
-            The same pattern also quietly informs whether today's list actually fits
-            the time you have left, even before you accept anything. Confidence
-            builds honestly over time too: <span className="mono">just noticed</span> → <span className="mono">fairly confident</span> → <span className="mono">well known</span> — always shown plainly, never as a score. And it's entirely
+            The same pattern also feeds into whether today's list actually fits the
+            time you have left, even before you accept anything. Confidence builds
+            honestly over time too: <span className="mono">just noticed</span> → <span className="mono">fairly confident</span> → <span className="mono">well known</span> — always shown plainly, never as a score. And it's entirely
             yours: nothing here is compared against anyone else's pace.
           </p>
         </section>
@@ -125,10 +173,26 @@ export default function Welcome() {
                   <span>Tuesday · Aug 4</span>
                   <span>⚙</span>
                 </div>
-                <div className="w-mock-ring">
-                  <div className="w-mock-ring-inner">3h 10m<br />left</div>
+                <div className="w-mock-compare-row">
+                  <div className="w-mock-compare-stat">
+                    <div className="w-mock-compare-number">3h 10m</div>
+                    <div className="w-mock-compare-label">time left</div>
+                  </div>
+                  <span className="w-mock-fit-icon">✓</span>
+                  <div className="w-mock-compare-stat">
+                    <div className="w-mock-compare-number">2h 55m</div>
+                    <div className="w-mock-compare-label">to get done</div>
+                  </div>
                 </div>
-                <div className="w-mock-task-row">
+                <div className="w-mock-rail">
+                  <div className="w-mock-rail-fill" />
+                  <div className="w-mock-rail-dot" />
+                </div>
+                <div className="w-mock-rail-endpoints">
+                  <span>8a</span>
+                  <span>4p</span>
+                </div>
+                <div className="w-mock-task-row" style={{ marginTop: 14 }}>
                   <span className="w-mock-task-dot" />
                   <span className="w-mock-task-text">Quote reroof</span>
                   <span className="w-mock-tag">usually ~45m</span>
@@ -137,9 +201,6 @@ export default function Welcome() {
                   <span className="w-mock-task-dot hazard" />
                   <span className="w-mock-task-text">Draft proposal</span>
                   <span className="w-mock-tag">due today</span>
-                </div>
-                <div className="w-mock-rail">
-                  <div className="w-mock-rail-fill" />
                 </div>
               </div>
               <div className="w-mockup-caption">Today — capacity, not a checklist</div>
@@ -194,35 +255,31 @@ export default function Welcome() {
               </div>
             </div>
             <div className="w-feature-card">
-              <div className="w-feature-title">Patterns, quietly</div>
+              <div className="w-feature-title">Patterns, not a scoreboard</div>
               <div className="w-feature-desc">
                 Dokkit notices how long things actually take you, and lets that inform
-                your estimates over time — never a scoreboard, never a streak.
+                your estimates over time — never a streak, never a grade.
               </div>
             </div>
           </div>
         </section>
 
-        <section className="w-closing">
+        <section className="w-closing" id="request-access">
           <div className="w-closing-badge">
             <span className="w-closing-badge-dot" />
             Currently a private beta
           </div>
-          <h2>Built for one person at a time.</h2>
+          <h2>I built Dokkit because<br />I needed it.</h2>
           <p className="w-closing-sub">
-            Dokkit is being built slowly and tested with a small group of trusted
-            users before opening up more widely. If that sounds like your kind of
-            thing, say hello.
+            Now I'm looking for a small group of people to tell me if it helps them
+            too. No pitch, no funnel — just your name and email, and I'll reach out
+            personally.
           </p>
-          <div className="w-cta-row">
-            <a href="mailto:hello@dokkit.app?subject=Requesting%20access%20to%20Dokkit" className="w-btn w-btn-primary">
-              Request access
-            </a>
-          </div>
+          <RequestAccessForm />
         </section>
 
         <footer className="w-footer">
-          Dokkit — a personal thinking tool that understands time.
+          Dokkit — a place for your thoughts to go.
         </footer>
       </div>
     </div>
