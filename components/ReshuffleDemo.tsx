@@ -18,7 +18,7 @@ const ITEMS: DemoItem[] = [
   { id: 'reply', label: 'Reply to client', mins: 15, fits: true },
   { id: 'sync', label: 'Team sync', mins: 20, fits: true },
   { id: 'proposal', label: 'Draft proposal', mins: 90, fits: false },
-  { id: 'reroof', label: 'Quote reroof', mins: 45, fits: true },
+  { id: 'reroof', label: 'Revise Quote', mins: 45, fits: true },
 ];
 
 const CAPACITY_MINS = 100;
