@@ -1,5 +1,4 @@
 import './globals.css';
-import ErrorBoundary from '@/components/ErrorBoundary';
 
 export const metadata = {
   title: 'Dokkit',
@@ -33,10 +32,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
           rel="stylesheet"
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                  navigator.serviceWorker.register('/sw.js').then(function (reg) {
+                    console.log('SW registered:', reg.scope);
+                  }).catch(function (err) {
+                    console.error('SW registration failed:', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
       </head>
-      <body>
-        <ErrorBoundary>{children}</ErrorBoundary>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
