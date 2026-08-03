@@ -754,6 +754,27 @@ export default function Home() {
     setForgotPasswordSent(true);
   }
 
+  async function handleMagicLink(e: React.FormEvent) {
+    e.preventDefault();
+    setSignInError('');
+    // Explicit shouldCreateUser: false as a second layer on top of the
+    // "Allow new users to sign up" toggle in the Supabase dashboard — if
+    // that setting ever gets flipped back on by accident, magic-link
+    // sign-in still won't silently create new accounts.
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}`,
+      },
+    });
+    if (error) {
+      setSignInError("Could not send a sign-in link. If you're not on the invite list yet, reach out and we'll get you set up.");
+      return;
+    }
+    setMagicLinkSent(true);
+  }
+
   async function signInWithGoogle() {
     setSigningInWithGoogle(true);
     setSignInError('');
@@ -1065,7 +1086,7 @@ export default function Home() {
                   </button>
                 </>
               ) : (
-                <form onSubmit={(e) => { e.preventDefault(); setMagicLinkSent(true); }} className="auth-form">
+                <form onSubmit={handleMagicLink} className="auth-form">
                   <input
                     type="email"
                     value={email}
