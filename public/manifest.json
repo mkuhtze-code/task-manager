@@ -4,10 +4,15 @@
   "short_name": "Dokkit",
   "description": "A personal thinking tool that understands time",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
+  "lang": "en",
+  "dir": "ltr",
   "background_color": "#f1efe6",
   "theme_color": "#1E6BE6",
+  "categories": ["productivity", "utilities"],
   "icons": [
     { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png" },
@@ -21,6 +26,15 @@
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Today's task list with capacity view"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add a task",
+      "short_name": "Add task",
+      "description": "Quickly capture something new",
+      "url": "/?action=capture",
+      "icons": [{ "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }
