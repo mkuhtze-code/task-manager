@@ -24,6 +24,13 @@ type Task = {
   due_today: boolean;
   order_index: number;
   created_at: string;
+  // Date (YYYY-MM-DD) this task should first become visible. Null/past
+  // means "visible now" — the existing, unchanged behavior. A future date
+  // means the task is a passive reminder: fully hidden from the list,
+  // capacity math, and day rail until that date arrives, at which point
+  // it just appears like any other task/list item — no notification,
+  // no "overdue" state if a day is missed.
+  surface_date: string | null;
 };
 
 type Subtask = {
@@ -105,6 +112,26 @@ function timeStringToMinutes(t: string): number {
   return h * 60 + m;
 }
 
+// Local (not UTC) YYYY-MM-DD, so "Friday" means the user's Friday, not
+// whatever day it happens to be in UTC at the time.
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function fmtSurfaceDate(dateStr: string): string {
+  // Parse as local, not UTC, to avoid off-by-one day display issues.
+  const [y, m, d] = dateStr.split('-').map((n) => parseInt(n, 10));
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function isScheduledForLater(t: Task, todayStr: string): boolean {
+  return !!t.surface_date && t.surface_date > todayStr;
+}
+
 function sortTasks(
   list: Task[],
   mode: SortMode,
@@ -134,10 +161,18 @@ function sortTasks(
   });
 
   if (mode === 'capacity_first' && remainingForTaskFn && taskCapacity !== undefined) {
+    // List items (no time estimate) never compete in the time-based fit
+    // calculation — there's no clock pressure to weigh them against, so
+    // they'd trivially "fit" and skew the ordering. They get their own
+    // calm lane at the bottom instead, in the same due-today/order_index
+    // sequence as everything else.
+    const timed = arr.filter((t) => t.estimate_mins > 0);
+    const listItems = arr.filter((t) => t.estimate_mins <= 0);
+
     let cumulative = 0;
     const fits: Task[] = [];
     const overflow: Task[] = [];
-    for (const t of arr) {
+    for (const t of timed) {
       cumulative += remainingForTaskFn(t);
       if (cumulative <= taskCapacity) {
         fits.push(t);
@@ -145,7 +180,7 @@ function sortTasks(
         overflow.push(t);
       }
     }
-    return [...fits, ...overflow];
+    return [...fits, ...overflow, ...listItems];
   }
 
   return arr;
@@ -266,6 +301,7 @@ function TaskCard(props: {
   }, [openSwipeId]);
 
   const startDisabled = anyActive && t.status !== 'active';
+  const isListItem = t.estimate_mins <= 0;
 
   function handlePointerDown(e: React.PointerEvent) {
     startXRef.current.x = e.clientX;
@@ -347,7 +383,12 @@ function TaskCard(props: {
     taskColorClass = 'task-due-today';
   }
 
-  const rowClass = ['task-row', t.source === 'came_up' ? 'came-up' : '', taskColorClass].join(' ').trim();
+  const rowClass = [
+    'task-row',
+    t.source === 'came_up' ? 'came-up' : '',
+    taskColorClass,
+    isListItem ? 'task-list-item' : '',
+  ].join(' ').trim();
 
   return (
     <div className={rowClass}>
@@ -431,7 +472,7 @@ function TaskDetailSheet(props: {
   liveLogged: number;
   anyActive: boolean;
   onClose: () => void;
-  onSave: (id: string, text: string, mins: number) => void;
+  onSave: (id: string, text: string, mins: number, surfaceDate: string | null) => void;
   onComplete: (id: string) => void;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
@@ -452,11 +493,13 @@ function TaskDetailSheet(props: {
 
   const [text, setText] = useState(task.text);
   const [timeStr, setTimeStr] = useState(fmtMins(task.estimate_mins));
+  const [surfaceDate, setSurfaceDate] = useState(task.surface_date || '');
   const [error, setError] = useState('');
 
   useEffect(() => {
     setText(task.text);
     setTimeStr(fmtMins(task.estimate_mins));
+    setSurfaceDate(task.surface_date || '');
     setError('');
   }, [task.id]);
 
@@ -467,12 +510,14 @@ function TaskDetailSheet(props: {
       return;
     }
     const mins = parseMins(timeStr);
-    if (mins === null || mins <= 0) {
-      setError('Could not read that time, try 15m or 1.5h');
+    // 0 is valid — that's what makes this a list item / reminder rather
+    // than a timed task. Only reject unparseable or negative input.
+    if (mins === null || mins < 0) {
+      setError('Could not read that time, try 15m, 1.5h, or 0m');
       return;
     }
     setError('');
-    onSave(task.id, trimmed, mins);
+    onSave(task.id, trimmed, mins, surfaceDate.length > 0 ? surfaceDate : null);
   }
 
   function handleClose() {
@@ -529,6 +574,25 @@ function TaskDetailSheet(props: {
           </button>
         </div>
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+
+        <div className="reminder-date-row">
+          <input
+            type="date"
+            value={surfaceDate}
+            onChange={(e) => setSurfaceDate(e.target.value)}
+            onBlur={commit}
+          />
+          {surfaceDate.length > 0 && (
+            <button className="btn-text" onClick={() => { setSurfaceDate(''); commit(); }}>
+              Clear
+            </button>
+          )}
+        </div>
+        {surfaceDate.length > 0 && (
+          <p style={{ color: 'var(--ink-soft)', fontSize: 12, margin: 0 }}>
+            Hidden from your list until {fmtSurfaceDate(surfaceDate)}.
+          </p>
+        )}
 
         <div className="task-detail-actions">
           {task.status === 'active' ? (
@@ -587,6 +651,43 @@ function TaskDetailSheet(props: {
   );
 }
 
+function ScheduledSheet(props: {
+  tasks: Task[];
+  onClose: () => void;
+  onOpenTask: (id: string) => void;
+}) {
+  const { tasks, onClose, onOpenTask } = props;
+  const sorted = [...tasks].sort((a, b) => (a.surface_date || '').localeCompare(b.surface_date || ''));
+
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="task-detail-header">
+          <div className="settings-panel-title">Scheduled</div>
+          <button className="btn-text" onClick={onClose}>Close</button>
+        </div>
+        {sorted.length === 0 ? (
+          <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Nothing scheduled for later.</p>
+        ) : (
+          sorted.map((t) => (
+            <div key={t.id} className="scheduled-item">
+              <span className="scheduled-item-text">{t.text}</span>
+              <button
+                className="tag-reminder tag"
+                style={{ border: 'none', cursor: 'pointer' }}
+                onClick={() => { onOpenTask(t.id); onClose(); }}
+                aria-label="Edit reminder"
+              >
+                {t.surface_date ? fmtSurfaceDate(t.surface_date) : ''}
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
@@ -606,6 +707,7 @@ export default function Home() {
   const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [scheduledSheetOpen, setScheduledSheetOpen] = useState(false);
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [workStart, setWorkStart] = useState('08:00');
@@ -616,6 +718,8 @@ export default function Home() {
 
   const [taskText, setTaskText] = useState('');
   const [taskTime, setTaskTime] = useState('');
+  const [showReminderField, setShowReminderField] = useState(false);
+  const [captureSurfaceDate, setCaptureSurfaceDate] = useState('');
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
 
@@ -801,6 +905,7 @@ export default function Home() {
     setError('');
     const userId = session.user.id;
     const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order_index), 0);
+    const surfaceDate = showReminderField && captureSurfaceDate.length > 0 ? captureSurfaceDate : null;
     const { data } = await supabase
       .from('tasks')
       .insert({
@@ -809,18 +914,21 @@ export default function Home() {
         estimate_mins: mins,
         source: 'came_up',
         order_index: maxOrder + 1,
+        surface_date: surfaceDate,
       })
       .select()
       .single();
     if (data) setTasks((prev) => [...prev, data]);
     setTaskText('');
     setTaskTime('');
+    setShowReminderField(false);
+    setCaptureSurfaceDate('');
     setCaptureOpen(false);
   }
 
-  async function updateTask(id: string, text: string, mins: number) {
-    await supabase.from('tasks').update({ text, estimate_mins: mins }).eq('id', id);
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins } : t)));
+  async function updateTask(id: string, text: string, mins: number, surfaceDate: string | null) {
+    await supabase.from('tasks').update({ text, estimate_mins: mins, surface_date: surfaceDate }).eq('id', id);
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins, surface_date: surfaceDate } : t)));
   }
 
   async function toggleDueToday(id: string, current: boolean) {
@@ -1147,6 +1255,14 @@ export default function Home() {
     return Math.max(effEstimate - logged - completedSubtaskMins(t.id), 0);
   }
 
+  const todayStr = localDateStr(now);
+
+  // Reminders (future surface_date) are excluded here, before anything
+  // else touches capacity, sort, or the day rail — they don't exist for
+  // any time-pressure purpose until their date arrives.
+  const visibleTasks = tasks.filter((t) => !isScheduledForLater(t, todayStr));
+  const scheduledTasks = tasks.filter((t) => isScheduledForLater(t, todayStr));
+
   const meetingMins = meetings.reduce((sum, m) => sum + m.duration_mins, 0);
 
   const todayDow = now.getDay();
@@ -1158,7 +1274,7 @@ export default function Home() {
   const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
   const taskCapacity = minutesLeftToday - meetingMins;
 
-  const ordered = sortTasks(tasks, sortMode, effectiveRemainingForTask, taskCapacity);
+  const ordered = sortTasks(visibleTasks, sortMode, effectiveRemainingForTask, taskCapacity);
   const orderedIds = ordered.map((t) => t.id);
 
   const remainingTaskMins = ordered.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
@@ -1189,7 +1305,7 @@ export default function Home() {
     }
   }
 
-  const activeTask = tasks.find((t) => t.status === 'active') || null;
+  const activeTask = visibleTasks.find((t) => t.status === 'active') || null;
   let activeLiveLogged = 0;
   if (activeTask && activeTask.started_at) {
     activeLiveLogged = activeTask.logged_mins + (Date.now() - new Date(activeTask.started_at).getTime()) / 60000;
@@ -1283,8 +1399,10 @@ export default function Home() {
           const remainingForThis = remainingForTask(t);
           const effectiveRemaining = effectiveRemainingForTask(t);
           cumulative += effectiveRemaining;
-          const overCap = cumulative > taskCapacity;
-          const anyActive = tasks.some((x) => x.status === 'active');
+          // List items (no estimate) can never be "over capacity" — there's
+          // no time on the clock for them to compete for.
+          const overCap = t.estimate_mins > 0 && cumulative > taskCapacity;
+          const anyActive = visibleTasks.some((x) => x.status === 'active');
           const subs = subtasksByTask[t.id] || [];
           let liveLogged = t.logged_mins;
           if (t.status === 'active' && t.started_at) {
@@ -1350,6 +1468,13 @@ export default function Home() {
             </div>
           );
         })}
+        {scheduledTasks.length > 0 && (
+          <div className="scheduled-link-row">
+            <button className="btn-text" onClick={() => setScheduledSheetOpen(true)}>
+              {scheduledTasks.length} scheduled for later
+            </button>
+          </div>
+        )}
       </div>
 
       {captureOpen && (
@@ -1386,6 +1511,30 @@ export default function Home() {
             />
             <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
           </div>
+          {!showReminderField ? (
+            <button
+              type="button"
+              className="reveal-reminder-link"
+              onClick={() => setShowReminderField(true)}
+            >
+              Remind me later instead
+            </button>
+          ) : (
+            <div className="reminder-date-row">
+              <input
+                type="date"
+                value={captureSurfaceDate}
+                onChange={(e) => setCaptureSurfaceDate(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn-text"
+                onClick={() => { setShowReminderField(false); setCaptureSurfaceDate(''); }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
           {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
           <button className="btn-text" onClick={() => setCaptureOpen(false)}>Cancel</button>
         </div>
@@ -1401,7 +1550,7 @@ export default function Home() {
           subs={subtasksByTask[openTask.id] || []}
           remainingForThis={openTaskRemaining}
           liveLogged={openTaskLiveLogged}
-          anyActive={tasks.some((x) => x.status === 'active')}
+          anyActive={visibleTasks.some((x) => x.status === 'active')}
           onClose={() => setOpenTaskId(null)}
           onSave={updateTask}
           onComplete={completeTask}
@@ -1415,6 +1564,14 @@ export default function Home() {
           subDraftTime={subDraftTime[openTask.id] || ''}
           setSubDraftText={(v) => setSubDraftText((prev) => ({ ...prev, [openTask.id]: v }))}
           setSubDraftTime={(v) => setSubDraftTime((prev) => ({ ...prev, [openTask.id]: v }))}
+        />
+      )}
+
+      {scheduledSheetOpen && (
+        <ScheduledSheet
+          tasks={scheduledTasks}
+          onClose={() => setScheduledSheetOpen(false)}
+          onOpenTask={(id) => setOpenTaskId(id)}
         />
       )}
     </div>

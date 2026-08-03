@@ -2057,3 +2057,100 @@ button:focus-visible, input:focus-visible {
   border: 2px solid var(--hazard);
   animation: pulse-dot 1.4s ease-in-out infinite;
 }
+
+/* ── List mode & reminders ──────────────────────────────────────
+   List items (estimate_mins = 0) get a deliberately quieter treatment —
+   neutral edge marker instead of a colored one, lighter text weight —
+   so they read as calm reference, not something with a clock attached.
+   Reminders (surface_date set) reuse the existing --overflow token,
+   previously defined but unused, to stay visually distinct from
+   due-today (steel) and overtime (hazard) without inventing a new color. */
+
+.task-row.task-list-item::before {
+  background: var(--line-strong);
+}
+
+.task-row.task-list-item .task-text {
+  font-weight: 500;
+}
+
+.task-row.task-list-item .swipe-foreground {
+  background: var(--paper-raised);
+}
+
+.tag-reminder {
+  background: var(--overflow-bg);
+  color: var(--overflow);
+}
+
+.reveal-reminder-link {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 2px 0;
+  min-height: 0;
+}
+
+.reveal-reminder-link:hover {
+  color: var(--ink);
+}
+
+.reminder-date-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.reminder-date-row input[type="date"] {
+  flex: 1;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: var(--text-base);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.scheduled-link-row {
+  text-align: center;
+  padding: var(--space-2) 0 0;
+}
+
+.scheduled-link-row .btn-text {
+  font-weight: 600;
+}
+
+.scheduled-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.scheduled-item:last-child {
+  border-bottom: none;
+}
+
+.scheduled-item-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scheduled-item-date {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--overflow);
+  background: var(--overflow-bg);
+  padding: 3px 9px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
