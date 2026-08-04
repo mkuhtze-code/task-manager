@@ -8,6 +8,7 @@ const APP_SHELL_URLS = [
   '/manifest.json',
   '/icons/android-chrome-192.png',
   '/icons/android-chrome-512.png',
+  '/icons/notification-badge-96.png',
 ];
 
 self.addEventListener('install', function (event) {
@@ -87,8 +88,8 @@ self.addEventListener('push', function(event) {
   }
   var options = {
     body: data.body,
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/icons/android-chrome-192.png',
+    badge: '/icons/notification-badge-96.png',
     silent: !!data.silent,
   };
   event.waitUntil(
