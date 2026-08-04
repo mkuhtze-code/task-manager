@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import AppHeader from '@/components/AppHeader';
+import { useAdminSession } from '../layout';
 
 type WaitlistRow = {
   id: string;
@@ -14,38 +14,22 @@ type WaitlistRow = {
 };
 
 export default function WaitlistInbox() {
-  const [session, setSession] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const { session } = useAdminSession();
   const [items, setItems] = useState<WaitlistRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState<Record<string, boolean>>({});
   const [approveError, setApproveError] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    loadWaitlist();
   }, []);
 
-  useEffect(() => {
-    if (session) checkAdminAndLoad();
-  }, [session]);
-
-  async function checkAdminAndLoad() {
-    const { data: adminRow } = await supabase
-      .from('admins')
-      .select('user_id')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-
-    const admin = !!adminRow;
-    setIsAdmin(admin);
-
-    if (admin) {
-      const { data } = await supabase
-        .from('waitlist_signups')
-        .select('*')
-        .order('created_at', { ascending: false });
-      setItems(data || []);
-    }
+  async function loadWaitlist() {
+    const { data } = await supabase
+      .from('waitlist_signups')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setItems(data || []);
     setLoading(false);
   }
 
@@ -90,39 +74,13 @@ export default function WaitlistInbox() {
     URL.revokeObjectURL(url);
   }
 
-  if (!session) {
-    return (
-      <div className="app-shell">
-        <AppHeader title="Waitlist" backHref="/" />
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>Sign in on the main page first.</p>
-      </div>
-    );
-  }
-
-  if (loading || isAdmin === null) {
-    return (
-      <div className="app-shell">
-        <AppHeader title="Waitlist" backHref="/" />
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="app-shell">
-        <AppHeader title="Waitlist" backHref="/" />
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>You don't have access to this page.</p>
-      </div>
-    );
-  }
+  if (loading) return null;
 
   const optInCount = items.filter((i) => i.marketing_opt_in).length;
   const approvedCount = items.filter((i) => i.approved_at).length;
 
   return (
-    <div className="app-shell">
-      <AppHeader title="Waitlist" backHref="/" />
-
+    <>
       <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
         <div className="settings-panel-title">
           {items.length} {items.length === 1 ? 'request' : 'requests'} · {approvedCount} approved · {optInCount} opted in to updates
@@ -170,6 +128,6 @@ export default function WaitlistInbox() {
           )}
         </div>
       ))}
-    </div>
+    </>
   );
 }
