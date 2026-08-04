@@ -25,6 +25,16 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+function InfoIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 11v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="8" r="1.1" fill="currentColor" />
+    </svg>
+  );
+}
+
 export default function Preferences() {
   const [session, setSession] = useState<any>(null);
   const [workStart, setWorkStart] = useState('08:00');
@@ -279,10 +289,16 @@ export default function Preferences() {
 
       <div className="settings-panel">
         <div className="settings-panel-title">Notifications</div>
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+          A nudge when a task is nearing its estimate, and again if it runs over — enough to keep
+          you aware, not enough to nag.
+        </p>
+
         <div className="settings-row">
-          <button className="btn btn-ghost" onClick={enableNotifications}>Enable notifications</button>
-          <button className="btn btn-ghost" onClick={sendTestNotification}>Send test</button>
+          <button className="btn btn-steel" onClick={enableNotifications}>Enable notifications</button>
+          <button className="btn-text" onClick={sendTestNotification}>Send test</button>
         </div>
+
         <div className="settings-row">
           <span className="settings-label">Style</span>
           <div className="segmented" style={{ maxWidth: 160 }}>
@@ -300,7 +316,16 @@ export default function Preferences() {
             </button>
           </div>
         </div>
+
         {notifStatus && <div className="settings-status">{notifStatus}</div>}
+
+        <div className="settings-info-note">
+          <InfoIcon />
+          <span>
+            Right now, notifications only arrive while Dokkit is open in a browser tab — background
+            delivery while it's closed is being finalized. This note will go away once that's live.
+          </span>
+        </div>
       </div>
     </div>
   );
