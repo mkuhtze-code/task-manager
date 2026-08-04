@@ -64,6 +64,19 @@ const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
 const LONG_PRESS_MS = 500;
 const ROW_GAP = 8;
 
+// Same day-label set used on the Preferences page, so onboarding and
+// Preferences look and behave identically rather than as two slightly
+// different implementations of the same control.
+const DAY_OPTIONS: { label: string; value: number }[] = [
+  { label: 'M', value: 1 },
+  { label: 'T', value: 2 },
+  { label: 'W', value: 3 },
+  { label: 'T', value: 4 },
+  { label: 'F', value: 5 },
+  { label: 'S', value: 6 },
+  { label: 'S', value: 0 },
+];
+
 function parseMins(raw: string): number | null {
   const str = raw.trim().toLowerCase();
   if (str.length === 0) return 0;
@@ -716,6 +729,11 @@ export default function Home() {
   const [sortMode, setSortMode] = useState<SortMode>('capacity_first');
   const [captureOpen, setCaptureOpen] = useState(false);
 
+  // Gates the first-run welcome/setup screen. Starts false so returning
+  // users never see a flash of it before settings load.
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardSaving, setOnboardSaving] = useState(false);
+
   const [taskText, setTaskText] = useState('');
   const [taskTime, setTaskTime] = useState('');
   const [showReminderField, setShowReminderField] = useState(false);
@@ -776,7 +794,7 @@ export default function Home() {
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days, timezone, sort_mode')
+      .select('work_start, work_end, work_days, timezone, sort_mode, onboarded')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -791,6 +809,12 @@ export default function Home() {
       if (!settings.timezone && detectedTimezone) {
         supabase.from('user_settings').update({ timezone: detectedTimezone }).eq('user_id', userId);
       }
+      // onboarded defaults false on the column; only explicit false shows
+      // the welcome screen — anything truthy (including rows from before
+      // this column existed, which were backfilled to true) skips it.
+      if (settings.onboarded === false) {
+        setShowOnboarding(true);
+      }
     } else {
       await supabase.from('user_settings').insert({
         user_id: userId,
@@ -799,7 +823,9 @@ export default function Home() {
         work_days: DEFAULT_WORK_DAYS,
         timezone: detectedTimezone,
         sort_mode: 'capacity_first',
+        onboarded: false,
       });
+      setShowOnboarding(true);
     }
 
     const { data: taskRows } = await supabase
@@ -833,6 +859,23 @@ export default function Home() {
       .order('completed_at', { ascending: false })
       .limit(500);
     setHistory((historyRows || []).map((r: any) => ({ text: r.text, actual_mins: r.actual_mins })));
+  }
+
+  function toggleWorkDay(day: number) {
+    setWorkDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b)
+    );
+  }
+
+  async function completeOnboarding() {
+    if (!session) return;
+    setOnboardSaving(true);
+    await supabase
+      .from('user_settings')
+      .update({ work_start: workStart, work_end: workEnd, work_days: workDays, onboarded: true })
+      .eq('user_id', session.user.id);
+    setOnboardSaving(false);
+    setShowOnboarding(false);
   }
 
   async function signInWithPassword(e: React.FormEvent) {
@@ -1224,6 +1267,55 @@ setTasks(prev => [...prev, data]);
               )}
             </>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  if (showOnboarding) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-card">
+          <div className="auth-eyebrow">Welcome to Dokkit</div>
+          <h1 className="auth-title">Let's get set up</h1>
+          <p className="auth-sub">
+            Dokkit is a personal thinking tool that understands time — a digital sticky note,
+            not a productivity scoreboard. Add what's on your plate with a rough time estimate,
+            and Dokkit shows you what realistically fits before your day runs out.
+          </p>
+
+          <div className="settings-panel-title" style={{ marginBottom: 'var(--space-2)' }}>Work hours</div>
+          <div className="settings-row">
+            <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
+            <span>to</span>
+            <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
+          </div>
+
+          <span className="settings-label" style={{ display: 'block', marginTop: 'var(--space-3)' }}>Work days</span>
+          <div className="day-toggle-row" style={{ marginTop: 'var(--space-2)' }}>
+            {DAY_OPTIONS.map((d) => (
+              <button
+                key={d.value}
+                className={workDays.includes(d.value) ? 'day-toggle-btn active' : 'day-toggle-btn'}
+                onClick={() => toggleWorkDay(d.value)}
+                aria-label={d.label}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            className="btn btn-steel"
+            style={{ width: '100%', marginTop: 'var(--space-5)' }}
+            onClick={completeOnboarding}
+            disabled={onboardSaving}
+          >
+            {onboardSaving ? 'Setting up…' : "Let's go"}
+          </button>
+          <p style={{ fontSize: 12, color: 'var(--ink-faint)', textAlign: 'center', marginTop: 'var(--space-2)' }}>
+            You can change these anytime in Preferences.
+          </p>
         </div>
       </div>
     );
