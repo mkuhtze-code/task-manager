@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { useAdminSession } from '../layout';
+import { useAdminSession } from '../AdminContext';
 
 type WaitlistRow = {
   id: string;
