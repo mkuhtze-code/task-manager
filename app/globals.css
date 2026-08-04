@@ -11,8 +11,11 @@
   --steel: #2451d4;
   --steel-dark: #1b3da1;
   --steel-wash: #d7dff7;
-  --hazard: #c2410c;
-  --hazard-bg: #f4ddd3;
+  --hazard: #b45309;
+  --hazard-bg: #f2e0d3;
+  --danger: #dc2626;
+  --danger-dark: #b91c1c;
+  --danger-bg: #f9d8d8;
   --moss: #15803d;
   --moss-bg: #d5e8dc;
   --overflow: #6d28d9;
@@ -218,7 +221,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .gear-dropdown-item.destructive {
-  color: var(--hazard);
+  color: var(--danger);
 }
 
 .gear-dropdown-divider {
@@ -997,7 +1000,7 @@ button:focus-visible, input:focus-visible {
 
 .auth-error {
   font-size: var(--text-sm);
-  color: var(--hazard);
+  color: var(--danger);
   margin: 0;
 }
 
@@ -1009,8 +1012,8 @@ button:focus-visible, input:focus-visible {
 .account-logout-btn {
   width: 100%;
   margin-top: var(--space-4);
-  color: var(--hazard);
-  border-color: var(--hazard-bg);
+  color: var(--danger);
+  border-color: var(--danger-bg);
 }
 
 .account-detail-row {
@@ -1019,23 +1022,23 @@ button:focus-visible, input:focus-visible {
 }
 
 .danger-zone {
-  border: 1px solid var(--hazard-bg);
-  background: rgba(255, 242, 224, 0.35);
+  border: 1px solid var(--danger-bg);
+  background: var(--danger-bg);
 }
 
 .danger-btn {
-  color: var(--hazard);
-  border-color: var(--hazard-bg);
+  color: var(--danger);
+  border-color: var(--danger-bg);
 }
 
 .danger-btn-solid {
-  background: var(--hazard);
+  background: var(--danger);
   color: white;
   border: none;
 }
 
 .danger-btn-solid:hover:not(:disabled) {
-  background: #9a3410;
+  background: var(--danger-dark);
 }
 
 /* ── Patterns page ───────────────────────────────────────────── */
@@ -1402,7 +1405,7 @@ button:focus-visible, input:focus-visible {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--hazard);
+  background: var(--danger);
   border: 1.5px solid var(--paper);
 }
 
@@ -1449,7 +1452,7 @@ button:focus-visible, input:focus-visible {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--hazard);
+  background: var(--danger);
   flex-shrink: 0;
   margin-top: 5px;
 }
@@ -1701,7 +1704,7 @@ button:focus-visible, input:focus-visible {
   margin-top: 4px;
   padding: 3px 10px;
   border-radius: 20px;
-  background: rgba(255, 149, 0, 0.14);
+  background: rgba(180, 83, 9, 0.16);
   color: var(--hazard);
   font-size: var(--text-2xs);
   font-weight: 700;
@@ -1786,8 +1789,8 @@ button:focus-visible, input:focus-visible {
 }
 
 .error-source-badge.client {
-  background: var(--hazard-bg);
-  color: var(--hazard);
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
 .error-route {
@@ -2074,8 +2077,8 @@ button:focus-visible, input:focus-visible {
 }
 
 .mic-btn.listening {
-  background: var(--hazard);
-  border-color: var(--hazard);
+  background: var(--danger);
+  border-color: var(--danger);
   color: white;
 }
 
@@ -2088,7 +2091,7 @@ button:focus-visible, input:focus-visible {
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  border: 2px solid var(--hazard);
+  border: 2px solid var(--danger);
   animation: pulse-dot 1.4s ease-in-out infinite;
 }
 
