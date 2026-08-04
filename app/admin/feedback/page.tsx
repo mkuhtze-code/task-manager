@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import AppHeader from '@/components/AppHeader';
+import { useAdminSession } from '../layout';
 
 type FeedbackRow = {
   id: string;
@@ -22,8 +22,7 @@ type Reply = {
 };
 
 export default function FeedbackInbox() {
-  const [session, setSession] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const { session } = useAdminSession();
   const [items, setItems] = useState<FeedbackRow[]>([]);
   const [repliesByFeedback, setRepliesByFeedback] = useState<Record<string, Reply[]>>({});
   const [loading, setLoading] = useState(true);
@@ -31,44 +30,29 @@ export default function FeedbackInbox() {
   const [replySending, setReplySending] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    loadFeedback();
   }, []);
 
-  useEffect(() => {
-    if (session) checkAdminAndLoad();
-  }, [session]);
+  async function loadFeedback() {
+    const { data } = await supabase
+      .from('feedback')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setItems(data || []);
 
-  async function checkAdminAndLoad() {
-    const { data: adminRow } = await supabase
-      .from('admins')
-      .select('user_id')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-
-    const admin = !!adminRow;
-    setIsAdmin(admin);
-
-    if (admin) {
-      const { data } = await supabase
-        .from('feedback')
+    if (data && data.length > 0) {
+      const ids = data.map((i) => i.id);
+      const { data: replies } = await supabase
+        .from('feedback_replies')
         .select('*')
-        .order('created_at', { ascending: false });
-      setItems(data || []);
-
-      if (data && data.length > 0) {
-        const ids = data.map((i) => i.id);
-        const { data: replies } = await supabase
-          .from('feedback_replies')
-          .select('*')
-          .in('feedback_id', ids)
-          .order('created_at', { ascending: true });
-        const grouped: Record<string, Reply[]> = {};
-        (replies || []).forEach((r) => {
-          if (!grouped[r.feedback_id]) grouped[r.feedback_id] = [];
-          grouped[r.feedback_id].push(r);
-        });
-        setRepliesByFeedback(grouped);
-      }
+        .in('feedback_id', ids)
+        .order('created_at', { ascending: true });
+      const grouped: Record<string, Reply[]> = {};
+      (replies || []).forEach((r) => {
+        if (!grouped[r.feedback_id]) grouped[r.feedback_id] = [];
+        grouped[r.feedback_id].push(r);
+      });
+      setRepliesByFeedback(grouped);
     }
     setLoading(false);
   }
@@ -99,36 +83,10 @@ export default function FeedbackInbox() {
     setReplyDraft((prev) => ({ ...prev, [feedbackId]: '' }));
   }
 
-  if (!session) {
-    return (
-      <div className="app-shell">
-        <AppHeader title="Feedback Inbox" backHref="/" />
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>Sign in on the main page first.</p>
-      </div>
-    );
-  }
-
-  if (loading || isAdmin === null) {
-    return (
-      <div className="app-shell">
-        <AppHeader title="Feedback Inbox" backHref="/" />
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="app-shell">
-        <AppHeader title="Feedback Inbox" backHref="/" />
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>You don't have access to this page.</p>
-      </div>
-    );
-  }
+  if (loading) return null;
 
   return (
-    <div className="app-shell">
-      <AppHeader title="Feedback Inbox" backHref="/" />
-
+    <>
       <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
         <div className="settings-panel-title">
           {items.length} {items.length === 1 ? 'message' : 'messages'}
@@ -197,6 +155,6 @@ export default function FeedbackInbox() {
           </div>
         );
       })}
-    </div>
+    </>
   );
 }
