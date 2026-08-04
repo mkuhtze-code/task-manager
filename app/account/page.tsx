@@ -16,6 +16,8 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
+type AccountTier = 'trusted_tester' | 'free' | 'premium';
+
 export default function Account() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
@@ -28,9 +30,63 @@ export default function Account() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
+  const [accountTier, setAccountTier] = useState<AccountTier | null>(null);
+
+  // PWA install state. `deferredPrompt` holds the browser's native install
+  // event (Chrome/Android/most desktop Chromium) so we can trigger it from
+  // our own button instead of waiting for the browser's own mini-infobar.
+  // iOS Safari never fires this event — there's no programmatic install on
+  // iOS — so that path falls back to plain instructions instead.
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
   }, []);
+
+  useEffect(() => {
+    if (session) loadAccountTier();
+  }, [session]);
+
+  async function loadAccountTier() {
+    const { data } = await supabase
+      .from('user_settings')
+      .select('account_tier')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    setAccountTier((data?.account_tier as AccountTier) || 'free');
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+    setIsStandalone(standalone);
+
+    const ios = /iphone|ipad|ipod/i.test(window.navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(ios);
+
+    function handleBeforeInstallPrompt(e: Event) {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    }
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  async function handleInstallClick() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
+    } else if (isIOS) {
+      setShowIOSInstructions((v) => !v);
+    }
+  }
 
   async function handleLogOut() {
     await supabase.auth.signOut();
@@ -133,6 +189,57 @@ export default function Account() {
           Signed in with {signInMethod}
           {memberSince && <span> · Member since {memberSince}</span>}
         </div>
+      </div>
+
+      <div className="settings-panel">
+        <div className="settings-panel-title">Account Type</div>
+        {accountTier === 'trusted_tester' && (
+          <>
+            <span className="learned-pattern-count">Full Access · Beta Tester</span>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+              You have full access to everything — including future Premium features — for the life
+              of this beta. Thank you for helping build this.
+            </p>
+          </>
+        )}
+        {accountTier === 'premium' && (
+          <span className="learned-pattern-count">Premium</span>
+        )}
+        {accountTier === 'free' && (
+          <>
+            <span className="tag">Free</span>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+              You have the complete task manager — no caps on tasks or history. Premium adds Patterns,
+              estimate learning, and calendar sync.
+            </p>
+            <button className="btn btn-ghost" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+              Upgrade — coming soon
+            </button>
+          </>
+        )}
+      </div>
+
+      <div className="settings-panel">
+        <div className="settings-panel-title">Get the App</div>
+        {isStandalone ? (
+          <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+            You're using the installed app.
+          </p>
+        ) : (
+          <>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+              Add Dokkit to your home screen for a faster, full-screen experience.
+            </p>
+            <button className="btn btn-ghost" onClick={handleInstallClick}>
+              {deferredPrompt ? 'Install Dokkit' : isIOS ? 'How to install' : 'Install Dokkit'}
+            </button>
+            {showIOSInstructions && (
+              <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+                Tap the Share icon in Safari, then "Add to Home Screen."
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       <div className="settings-panel">
