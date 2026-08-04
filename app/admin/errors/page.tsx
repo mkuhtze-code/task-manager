@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import AppHeader from '@/components/AppHeader';
 
 type ErrorLogRow = {
   id: string;
@@ -16,32 +15,14 @@ type ErrorLogRow = {
 };
 
 export default function ErrorLogPage() {
-  const [session, setSession] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [items, setItems] = useState<ErrorLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showResolved, setShowResolved] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    loadErrors();
   }, []);
-
-  useEffect(() => {
-    if (session) checkAdminAndLoad();
-  }, [session]);
-
-  async function checkAdminAndLoad() {
-    const { data: adminRow } = await supabase
-      .from('admins')
-      .select('user_id')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-    const admin = !!adminRow;
-    setIsAdmin(admin);
-    if (admin) await loadErrors();
-    setLoading(false);
-  }
 
   async function loadErrors() {
     const { data } = await supabase
@@ -50,6 +31,7 @@ export default function ErrorLogPage() {
       .order('created_at', { ascending: false })
       .limit(100);
     setItems(data || []);
+    setLoading(false);
   }
 
   async function toggleResolved(id: string, current: boolean) {
@@ -57,39 +39,13 @@ export default function ErrorLogPage() {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, resolved: !current } : i)));
   }
 
-  if (!session) {
-    return (
-      <div className="app-shell">
-        <AppHeader title="Error Log" backHref="/" />
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>Sign in on the main page first.</p>
-      </div>
-    );
-  }
-
-  if (loading || isAdmin === null) {
-    return (
-      <div className="app-shell">
-        <AppHeader title="Error Log" backHref="/" />
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="app-shell">
-        <AppHeader title="Error Log" backHref="/" />
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>You don't have access to this page.</p>
-      </div>
-    );
-  }
+  if (loading) return null;
 
   const visibleItems = items.filter((i) => showResolved || !i.resolved);
   const unresolvedCount = items.filter((i) => !i.resolved).length;
 
   return (
-    <div className="app-shell">
-      <AppHeader title="Error Log" backHref="/" />
-
+    <>
       <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
         <div className="settings-panel-title">
           {unresolvedCount} unresolved · {items.length} shown (last 100)
@@ -133,6 +89,6 @@ export default function ErrorLogPage() {
           </div>
         );
       })}
-    </div>
+    </>
   );
 }
