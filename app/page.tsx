@@ -906,19 +906,26 @@ export default function Home() {
     const userId = session.user.id;
     const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order_index), 0);
     const surfaceDate = showReminderField && captureSurfaceDate.length > 0 ? captureSurfaceDate : null;
-    const { data } = await supabase
-      .from('tasks')
-      .insert({
-        user_id: userId,
-        text,
-        estimate_mins: mins,
-        source: 'came_up',
-        order_index: maxOrder + 1,
-        surface_date: surfaceDate,
-      })
-      .select()
-      .single();
-    if (data) setTasks((prev) => [...prev, data]);
+    const { data, error } = await supabase
+  .from("tasks")
+  .insert({
+    user_id: userId,
+    text,
+    estimate_mins: mins,
+    source: "came_up",
+    order_index: maxOrder + 1,
+    surface_date: surfaceDate,
+  })
+  .select()
+  .single();
+
+if (error) {
+  console.error(error);
+  alert(error.message);
+  return;
+}
+
+setTasks(prev => [...prev, data]);
     setTaskText('');
     setTaskTime('');
     setShowReminderField(false);
