@@ -6,15 +6,15 @@
   --paper-raised: #ffffff;
   --line: #ddd7c6;
   --line-strong: #c4bca5;
-  --steel: #007aff;
-  --steel-dark: #0060cc;
-  --steel-wash: #e5f1ff;
-  --hazard: #ff9500;
-  --hazard-bg: #fff2e0;
-  --moss: #34c759;
-  --moss-bg: #e3f8e8;
-  --overflow: #5856d6;
-  --overflow-bg: #ecebfb;
+  --steel: #2451d4;
+  --steel-dark: #1b3da1;
+  --steel-wash: #d7dff7;
+  --hazard: #c2410c;
+  --hazard-bg: #f4ddd3;
+  --moss: #15803d;
+  --moss-bg: #d5e8dc;
+  --overflow: #6d28d9;
+  --overflow-bg: #e5d8f8;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -850,7 +850,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .estimate-suggestion-chip:hover {
-  background: #d5e9ff;
+  background: #c3d0f5;
 }
 
 .segmented {
@@ -1032,7 +1032,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .danger-btn-solid:hover:not(:disabled) {
-  background: #e6850a;
+  background: #9a3410;
 }
 
 /* ── Patterns page ───────────────────────────────────────────── */
@@ -1167,7 +1167,7 @@ button:focus-visible, input:focus-visible {
   border-radius: 20px;
   flex-shrink: 0;
   background: var(--moss-bg);
-  color: #1f8a3e;
+  color: #0f5c2a;
 }
 
 .feedback-textarea {
@@ -1641,7 +1641,7 @@ button:focus-visible, input:focus-visible {
   border-radius: 20px;
   flex-shrink: 0;
   background: var(--moss-bg);
-  color: #1f8a3e;
+  color: #0f5c2a;
   white-space: nowrap;
 }
 
@@ -1855,7 +1855,7 @@ button:focus-visible, input:focus-visible {
 
 .header-fit-icon.fits {
   background: var(--moss-bg);
-  color: #1f8a3e;
+  color: #0f5c2a;
 }
 
 .header-fit-icon.over {
