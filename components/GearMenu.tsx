@@ -90,6 +90,11 @@ export default function GearMenu() {
               Waitlist
             </Link>
           )}
+          {isAdmin && (
+            <Link href="/admin/errors" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+              Error Log
+            </Link>
+          )}
           <div className="gear-dropdown-divider" />
           <button className="gear-dropdown-item destructive" onClick={handleLogOut}>
             Log out
