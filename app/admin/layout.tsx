@@ -1,21 +1,10 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
-
-type AdminContextValue = {
-  session: any;
-};
-
-const AdminContext = createContext<AdminContextValue | null>(null);
-
-export function useAdminSession() {
-  const ctx = useContext(AdminContext);
-  if (!ctx) throw new Error('useAdminSession must be used within the admin layout');
-  return ctx;
-}
+import { AdminContext } from './AdminContext';
 
 const TABS = [
   { href: '/admin', label: 'Overview' },
