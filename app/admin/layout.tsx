@@ -91,7 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {TABS.map((tab) => {
             const active = pathname === tab.href;
             return (
-              
+              <a
                 key={tab.href}
                 href={tab.href}
                 style={{
