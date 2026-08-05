@@ -1,22 +1,32 @@
 /* Scoped to /welcome only — deliberately isolated from the app's own
    globals.css rather than editing that file blind. Reuses the app's real
-   design tokens (paper / ink / steel / moss / hazard) so the marketing
-   page and the product it's selling actually look like the same thing. */
+   brand tokens: cobalt as the functional accent, deep violet as the
+   "voice" color for labels and the reframe signature, deep emerald for
+   positive states, coral red for hazard. The old iOS system blue
+   (#007aff) is gone — it was never actually Dokkit's color, just the
+   safest possible default. */
 
 .welcome-page {
   --w-paper: #f1efe6;
   --w-paper-raised: #ffffff;
-  --w-ink: #1a2933;
-  --w-ink-soft: #5c6d76;
+  --w-ink: #14181c;
+  --w-ink-hover: #262d33;
+  --w-ink-soft: #55636b;
   --w-ink-faint: #93a3ab;
   --w-line: #ddd7c6;
-  --w-steel: #007aff;
-  --w-steel-dark: #0060cc;
-  --w-steel-wash: #e5f1ff;
-  --w-moss: #34c759;
-  --w-moss-bg: #e3f8e8;
-  --w-hazard: #ff9500;
-  --w-hazard-bg: #fff2e0;
+
+  --w-steel: #2451d4;
+  --w-steel-dark: #1a3aa0;
+  --w-steel-wash: #e4e9fb;
+
+  --w-signature: #6d28d9;
+  --w-signature-wash: #efe6fb;
+
+  --w-moss: #15803d;
+  --w-moss-bg: #dcf1e2;
+
+  --w-hazard: #dc2626;
+  --w-hazard-bg: #fbe4e4;
 
   background: var(--w-paper);
   color: var(--w-ink);
@@ -54,9 +64,9 @@
 }
 
 .w-nav-mark {
-  font-weight: 800;
-  font-size: 19px;
-  letter-spacing: -0.02em;
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: -0.03em;
 }
 
 .w-nav-signin {
@@ -65,7 +75,7 @@
   color: var(--w-ink-soft);
   text-decoration: none;
   padding: 8px 16px;
-  border-radius: 100px;
+  border-radius: 8px;
   border: 1px solid var(--w-line);
 }
 
@@ -82,19 +92,20 @@
 }
 
 .w-hero-eyebrow {
+  font-family: 'Space Mono', ui-monospace, monospace;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--w-steel);
+  color: var(--w-signature);
   margin: 0 0 16px;
 }
 
 .w-hero h1 {
-  font-size: clamp(32px, 6vw, 46px);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.08;
+  font-size: clamp(34px, 7vw, 58px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
   margin: 0 0 18px;
 }
 
@@ -118,7 +129,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 100px;
+  border-radius: 10px;
   padding: 13px 26px;
   font-size: 15px;
   font-weight: 700;
@@ -132,33 +143,33 @@
 }
 
 .w-btn-primary {
-  background: var(--w-steel);
-  color: white;
+  background: var(--w-ink);
+  color: var(--w-paper);
 }
 
 .w-btn-primary:hover {
-  background: var(--w-steel-dark);
+  background: var(--w-ink-hover);
 }
 
 .w-btn-ghost {
-  background: var(--w-paper-raised);
+  background: transparent;
   color: var(--w-ink);
-  border: 1px solid var(--w-line);
+  border: 1.5px solid var(--w-ink);
 }
 
 .w-btn-ghost:hover {
-  background: white;
+  background: var(--w-paper-raised);
 }
 
 /* ── Day rail demo (signature element) ──────────────────────────── */
 
 .rail-demo {
   background: var(--w-paper-raised);
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 28px 24px 20px;
   margin: 0 auto;
   max-width: 460px;
-  box-shadow: 0 2px 6px rgba(26, 41, 51, 0.08), 0 20px 48px rgba(26, 41, 51, 0.08);
+  box-shadow: 0 2px 6px rgba(20, 24, 28, 0.08), 0 20px 48px rgba(20, 24, 28, 0.08);
   text-align: left;
 }
 
@@ -296,11 +307,11 @@
 
 .thinking-demo {
   background: var(--w-paper-raised);
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 20px 22px;
   max-width: 340px;
   margin: 32px auto 0;
-  box-shadow: 0 2px 6px rgba(26, 41, 51, 0.08);
+  box-shadow: 0 2px 6px rgba(20, 24, 28, 0.08);
   text-align: left;
 }
 
@@ -335,7 +346,7 @@
   font-size: 12px;
   font-weight: 700;
   padding: 6px 12px;
-  border-radius: 20px;
+  border-radius: 8px;
   animation: thinking-demo-in 0.3s ease;
   transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
@@ -392,10 +403,10 @@
 
 .w-mockup-screen {
   background: var(--w-paper);
-  border: 7px solid var(--w-ink);
-  border-radius: 26px;
+  border: 8px solid var(--w-ink);
+  border-radius: 20px;
   padding: 16px 13px;
-  box-shadow: 0 20px 40px rgba(26, 41, 51, 0.18);
+  box-shadow: 0 20px 40px rgba(20, 24, 28, 0.18);
   transform: rotate(-2deg);
   transition: transform 0.25s ease;
 }
@@ -456,7 +467,7 @@
   height: 18px;
   border-radius: 50%;
   background: var(--w-moss-bg);
-  color: #1f8a3e;
+  color: var(--w-moss);
   font-size: 10px;
   font-weight: 800;
   display: flex;
@@ -508,7 +519,7 @@
   background: var(--w-steel-wash);
   color: var(--w-steel-dark);
   padding: 2px 6px;
-  border-radius: 20px;
+  border-radius: 6px;
   white-space: nowrap;
 }
 
@@ -593,9 +604,9 @@
   font-size: 7.5px;
   font-weight: 700;
   background: var(--w-moss-bg);
-  color: #1f8a3e;
+  color: var(--w-moss);
   padding: 2px 6px;
-  border-radius: 20px;
+  border-radius: 6px;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -620,7 +631,7 @@
 .w-request-form input[type='text'],
 .w-request-form input[type='email'] {
   border: 1px solid var(--w-line);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 12px 14px;
   font-size: 14px;
   background: var(--w-paper-raised);
@@ -658,7 +669,7 @@
   font-size: 15px;
   font-weight: 600;
   text-align: center;
-  box-shadow: 0 2px 6px rgba(26, 41, 51, 0.08);
+  box-shadow: 0 2px 6px rgba(20, 24, 28, 0.08);
 }
 
 /* ── Waiting room pills ──────────────────────────────────────── */
@@ -679,7 +690,7 @@
 
 .w-waiting-pill {
   background: var(--w-paper-raised);
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 14px 16px;
   font-size: 13px;
   font-weight: 600;
@@ -690,33 +701,34 @@
 /* ── Principles strip ────────────────────────────────────────── */
 
 .w-principles-strip {
-  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
   padding: 8px 0 0;
-  font-size: 13px;
-  color: var(--w-ink-soft);
-  font-weight: 600;
 }
 
 .w-principles-strip span {
-  display: inline;
-}
-
-.w-principles-strip span:not(:last-child)::after {
-  content: '·';
-  margin: 0 10px;
-  color: var(--w-ink-faint);
-  font-weight: 400;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--w-ink-soft);
+  border: 1px solid var(--w-line);
+  border-radius: 6px;
+  padding: 5px 10px;
 }
 
 /* ── Reshuffle demo (third signature element) ───────────────────── */
 
 .reshuffle-demo {
   background: var(--w-paper-raised);
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 22px 22px 20px;
   max-width: 380px;
   margin: 32px auto 0;
-  box-shadow: 0 2px 6px rgba(26, 41, 51, 0.08);
+  box-shadow: 0 2px 6px rgba(20, 24, 28, 0.08);
   text-align: left;
 }
 
@@ -769,7 +781,7 @@
   align-items: center;
   gap: 8px;
   background: var(--w-paper);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 0 12px;
   transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
 }
@@ -812,7 +824,7 @@
   color: var(--w-hazard);
   background: white;
   padding: 2px 7px;
-  border-radius: 20px;
+  border-radius: 6px;
   flex-shrink: 0;
 }
 
@@ -825,6 +837,11 @@
 }
 
 /* ── Reframe section ─────────────────────────────────────────── */
+/* This is the page's one real signature move: the old word gets crossed
+   out for real (not faded to grey — struck through in hazard red, the
+   way a hand would mark it up), and the replacement carries a violet
+   underline mark, like it was corrected on purpose. Everything else on
+   the page stays quiet so this reads as deliberate, not decorative. */
 
 .w-section {
   padding: 56px 0;
@@ -832,19 +849,20 @@
 }
 
 .w-section-eyebrow {
+  font-family: 'Space Mono', ui-monospace, monospace;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--w-steel);
+  color: var(--w-signature);
   margin: 0 0 10px;
   text-align: center;
 }
 
 .w-section h2 {
-  font-size: clamp(24px, 4vw, 30px);
+  font-size: clamp(26px, 4.5vw, 32px);
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   text-align: center;
   margin: 0 0 40px;
   line-height: 1.2;
@@ -880,31 +898,40 @@
   align-items: center;
   gap: 14px;
   background: var(--w-paper-raised);
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 18px 22px;
 }
 
 .w-reframe-old {
   font-size: 14px;
-  color: var(--w-ink-faint);
+  font-weight: 600;
+  color: var(--w-hazard);
   text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--w-hazard);
   text-align: right;
+  opacity: 0.75;
 }
 
 .w-reframe-arrow {
-  color: var(--w-steel);
-  font-size: 16px;
+  color: var(--w-signature);
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .w-reframe-new-block {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .w-reframe-new {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
+  color: var(--w-ink);
+  width: fit-content;
+  border-bottom: 3px solid var(--w-signature);
+  padding-bottom: 1px;
 }
 
 .w-reframe-desc {
@@ -942,7 +969,7 @@
 }
 
 .w-compare-col {
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 22px;
 }
 
@@ -953,7 +980,7 @@
 
 .w-compare-new {
   background: var(--w-paper-raised);
-  box-shadow: 0 2px 6px rgba(26, 41, 51, 0.08);
+  box-shadow: 0 2px 6px rgba(20, 24, 28, 0.08);
 }
 
 .w-compare-title {
@@ -969,7 +996,7 @@
 }
 
 .w-compare-new .w-compare-title {
-  color: var(--w-steel);
+  color: var(--w-signature);
 }
 
 .w-compare ul {
@@ -1019,7 +1046,7 @@
 
 .w-feature-card {
   background: var(--w-paper-raised);
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 22px 20px;
   display: flex;
   flex-direction: column;
@@ -1050,10 +1077,14 @@
   gap: 6px;
   background: var(--w-hazard-bg);
   color: var(--w-hazard);
-  font-size: 12px;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: 11px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   padding: 6px 14px;
-  border-radius: 100px;
+  border: 1px solid var(--w-hazard);
+  border-radius: 6px;
   margin-bottom: 18px;
 }
 
