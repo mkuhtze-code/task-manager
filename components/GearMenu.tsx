@@ -1,10 +1,8 @@
 'use client';
-
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-
 function GearIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -12,32 +10,26 @@ function GearIcon() {
     </svg>
   );
 }
-
 export default function GearMenu() {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     checkAdmin();
   }, []);
-
   async function checkAdmin() {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData.session;
     if (!session) return;
-
     const { data } = await supabase
       .from('admins')
       .select('user_id')
       .eq('user_id', session.user.id)
       .maybeSingle();
-
     setIsAdmin(!!data);
   }
-
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -47,15 +39,12 @@ export default function GearMenu() {
     if (menuOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
-
   async function handleLogOut() {
     setMenuOpen(false);
     await supabase.auth.signOut();
     router.push('/');
   }
-
   const feedbackHref = `/feedback?from=${encodeURIComponent(pathname || '/')}`;
-
   return (
     <div className="gear-menu-wrap" ref={menuRef} onClick={(e) => e.stopPropagation()}>
       <button
@@ -81,18 +70,8 @@ export default function GearMenu() {
             Send Feedback
           </Link>
           {isAdmin && (
-            <Link href="/admin/feedback" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-              Feedback Inbox
-            </Link>
-          )}
-          {isAdmin && (
-            <Link href="/admin/waitlist" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-              Waitlist
-            </Link>
-          )}
-          {isAdmin && (
-            <Link href="/admin/errors" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-              Error Log
+            <Link href="/admin" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+              Admin
             </Link>
           )}
           <div className="gear-dropdown-divider" />
