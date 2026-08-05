@@ -197,7 +197,7 @@ export default function Account() {
           <>
             <span className="learned-pattern-count">Full Access · Beta Tester</span>
             <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-              You have full access to everything — including future Premium features — for the life
+              You have full access to Dokkit — including future Premium features — for the life
               of this beta. Thank you for helping build this.
             </p>
           </>
@@ -209,7 +209,7 @@ export default function Account() {
           <>
             <span className="tag">Free</span>
             <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-              You have the complete task manager — no caps on tasks or history. Premium adds Patterns,
+              You have full operational access to Dokkit — no caps on tasks or history. Premium adds Patterns,
               estimate learning, and calendar sync.
             </p>
             <button className="btn btn-ghost" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
