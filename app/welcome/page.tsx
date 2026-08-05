@@ -24,9 +24,8 @@ export default function Welcome() {
           <p className="w-hero-eyebrow">Private beta</p>
           <h1>Give your thoughts<br />somewhere to go.</h1>
           <p className="w-hero-sub">
-            Dokkit was created because most productivity tools are good at organizing
-            tasks — but not at understanding how people actually think. It's built to
-            offload your brain, not manage it.
+            Most tools ask you to reorganize how you think around their system.
+            Dokkit does the opposite — it adapts to you.
           </p>
 
           <DayRailDemo />
@@ -82,6 +81,10 @@ export default function Welcome() {
         <section className="w-section">
           <p className="w-section-eyebrow">Not another productivity app</p>
           <h2>The vocabulary is different<br />on purpose.</h2>
+          <p className="w-section-lead">
+            If a word implied failure, we changed it. The vocabulary is different
+            because what the tool expects of you is different.
+          </p>
           <div className="w-reframe-list">
             <div className="w-reframe-row">
               <span className="w-reframe-old">Task management</span>
@@ -289,15 +292,16 @@ export default function Welcome() {
           </div>
           <h2>I built Dokkit because<br />I needed it.</h2>
           <p className="w-closing-sub">
-            Now I'm looking for a small group of people to tell me if it helps them
-            too. No pitch, no funnel — just your name and email, and I'll reach out
-            personally.
+            If you've ever needed a tool that bends around your day instead of
+            asking you to bend around it, this might be it. Now I'm looking for a
+            small group of people to tell me if it helps them too. No pitch, no
+            funnel — just your name and email, and I'll reach out personally.
           </p>
           <RequestAccessForm />
         </section>
 
         <footer className="w-footer">
-          Dokkit — a place for your thoughts to go.
+          Dokkit — give your thoughts somewhere to go.
         </footer>
       </div>
     </div>
