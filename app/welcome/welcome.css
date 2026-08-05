@@ -57,10 +57,11 @@
 }
 
 /* ── Motion ──────────────────────────────────────────────────── */
-/* One spring-based entrance, reused everywhere: hero on load, every
-   section on scroll, task-like chips in a staggered cascade. Where
-   animation-timeline: view() isn't supported, elements simply render in
-   their final visible state — no broken states, just less motion. */
+/* One spring-based entrance, reused everywhere: hero pops in on page
+   load via pure CSS. Everything below the fold is revealed by
+   RevealSection.tsx (IntersectionObserver) adding an `is-visible` class,
+   which these transitions key off — reliable across all browsers,
+   unlike CSS scroll-timelines. */
 
 @keyframes w-pop-in {
   from { opacity: 0; transform: translateY(18px) scale(0.96); }
@@ -423,13 +424,18 @@
 
 .w-mockup-frame {
   width: 220px;
-  animation: w-pop-in 0.6s var(--w-spring) both;
-  animation-timeline: view();
-  animation-range: entry 0% cover 30%;
+  opacity: 0;
+  transform: translateY(18px) scale(0.96);
+  transition: opacity 0.6s var(--w-spring), transform 0.6s var(--w-spring);
 }
 
-.w-mockup-frame.tilt-right {
-  animation-delay: 0.1s;
+.is-visible .w-mockup-frame {
+  opacity: 1;
+  transform: none;
+}
+
+.is-visible .w-mockup-frame.tilt-right {
+  transition-delay: 0.1s;
 }
 
 .w-mockup-screen {
@@ -727,14 +733,19 @@
   font-weight: 600;
   color: var(--w-ink);
   text-align: center;
-  animation: w-pop-in 0.5s var(--w-spring) both;
-  animation-timeline: view();
-  animation-range: entry 0% cover 25%;
+  opacity: 0;
+  transform: translateY(14px) scale(0.97);
+  transition: opacity 0.5s var(--w-spring), transform 0.5s var(--w-spring);
 }
 
-.w-waiting-pill:nth-child(2) { animation-delay: 0.06s; }
-.w-waiting-pill:nth-child(3) { animation-delay: 0.12s; }
-.w-waiting-pill:nth-child(4) { animation-delay: 0.18s; }
+.is-visible .w-waiting-pill {
+  opacity: 1;
+  transform: none;
+}
+
+.is-visible .w-waiting-pill:nth-child(2) { transition-delay: 0.06s; }
+.is-visible .w-waiting-pill:nth-child(3) { transition-delay: 0.12s; }
+.is-visible .w-waiting-pill:nth-child(4) { transition-delay: 0.18s; }
 
 /* ── Principles strip ────────────────────────────────────────── */
 
@@ -884,9 +895,14 @@
 .w-section {
   padding: 56px 0;
   border-top: 1px solid var(--w-line);
-  animation: w-pop-in 0.7s var(--w-spring) both;
-  animation-timeline: view();
-  animation-range: entry 0% cover 25%;
+  opacity: 0;
+  transform: translateY(18px) scale(0.97);
+  transition: opacity 0.7s var(--w-spring), transform 0.7s var(--w-spring);
+}
+
+.w-section.is-visible {
+  opacity: 1;
+  transform: none;
 }
 
 .w-section-eyebrow {
@@ -941,15 +957,19 @@
   background: var(--w-paper-raised);
   border-radius: 14px;
   padding: 18px 22px;
-  animation: w-pop-in 0.5s var(--w-spring) both;
-  animation-timeline: view();
-  animation-range: entry 0% cover 25%;
-  transition: transform 0.3s var(--w-spring);
+  opacity: 0;
+  transform: translateY(14px) scale(0.97);
+  transition: opacity 0.5s var(--w-spring), transform 0.5s var(--w-spring);
 }
 
-.w-reframe-row:nth-child(2) { animation-delay: 0.06s; }
-.w-reframe-row:nth-child(3) { animation-delay: 0.12s; }
-.w-reframe-row:nth-child(4) { animation-delay: 0.18s; }
+.is-visible .w-reframe-row {
+  opacity: 1;
+  transform: none;
+}
+
+.is-visible .w-reframe-row:nth-child(2) { transition-delay: 0.06s; }
+.is-visible .w-reframe-row:nth-child(3) { transition-delay: 0.12s; }
+.is-visible .w-reframe-row:nth-child(4) { transition-delay: 0.18s; }
 
 .w-reframe-row:hover {
   transform: translateY(-3px);
@@ -1034,9 +1054,14 @@
 .w-compare-new {
   background: var(--w-paper-raised);
   box-shadow: 0 2px 6px rgba(20, 24, 28, 0.08);
-  animation: w-pop-in 0.6s var(--w-spring) 0.1s both;
-  animation-timeline: view();
-  animation-range: entry 0% cover 30%;
+  opacity: 0;
+  transform: translateY(14px) scale(0.97);
+  transition: opacity 0.6s var(--w-spring) 0.1s, transform 0.6s var(--w-spring) 0.1s;
+}
+
+.is-visible .w-compare-new {
+  opacity: 1;
+  transform: none;
 }
 
 .w-compare-title {
@@ -1125,6 +1150,14 @@
 .w-closing {
   text-align: center;
   padding: 64px 0 48px;
+  opacity: 0;
+  transform: translateY(18px) scale(0.97);
+  transition: opacity 0.7s var(--w-spring), transform 0.7s var(--w-spring);
+}
+
+.w-closing.is-visible {
+  opacity: 1;
+  transform: none;
 }
 
 .w-closing-badge {
