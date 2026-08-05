@@ -28,6 +28,8 @@
   --w-hazard: #dc2626;
   --w-hazard-bg: #fbe4e4;
 
+  --w-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
   background: var(--w-paper);
   color: var(--w-ink);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -54,6 +56,17 @@
   padding: 0 24px;
 }
 
+/* ── Motion ──────────────────────────────────────────────────── */
+/* One spring-based entrance, reused everywhere: hero on load, every
+   section on scroll, task-like chips in a staggered cascade. Where
+   animation-timeline: view() isn't supported, elements simply render in
+   their final visible state — no broken states, just less motion. */
+
+@keyframes w-pop-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ── Nav ─────────────────────────────────────────────────────── */
 
 .w-nav {
@@ -77,11 +90,13 @@
   padding: 8px 16px;
   border-radius: 8px;
   border: 1px solid var(--w-line);
+  transition: transform 0.3s var(--w-spring), color 0.15s ease, background 0.15s ease;
 }
 
 .w-nav-signin:hover {
   color: var(--w-ink);
   background: var(--w-paper-raised);
+  transform: translateY(-2px);
 }
 
 /* ── Hero ────────────────────────────────────────────────────── */
@@ -99,6 +114,7 @@
   text-transform: uppercase;
   color: var(--w-signature);
   margin: 0 0 16px;
+  animation: w-pop-in 0.6s var(--w-spring) both;
 }
 
 .w-hero h1 {
@@ -107,6 +123,7 @@
   letter-spacing: -0.04em;
   line-height: 1.05;
   margin: 0 0 18px;
+  animation: w-pop-in 0.6s var(--w-spring) 0.08s both;
 }
 
 .w-hero-sub {
@@ -115,6 +132,7 @@
   color: var(--w-ink-soft);
   max-width: 480px;
   margin: 0 auto 40px;
+  animation: w-pop-in 0.6s var(--w-spring) 0.16s both;
 }
 
 .w-cta-row {
@@ -123,6 +141,7 @@
   justify-content: center;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  animation: w-pop-in 0.6s var(--w-spring) 0.32s both;
 }
 
 .w-btn {
@@ -135,7 +154,11 @@
   font-weight: 700;
   text-decoration: none;
   border: none;
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: transform 0.3s var(--w-spring), background 0.15s ease;
+}
+
+.w-btn:hover {
+  transform: translateY(-2px);
 }
 
 .w-btn:active {
@@ -171,6 +194,7 @@
   max-width: 460px;
   box-shadow: 0 2px 6px rgba(20, 24, 28, 0.08), 0 20px 48px rgba(20, 24, 28, 0.08);
   text-align: left;
+  animation: w-pop-in 0.6s var(--w-spring) 0.24s both;
 }
 
 .rail-demo-readout {
@@ -399,6 +423,13 @@
 
 .w-mockup-frame {
   width: 220px;
+  animation: w-pop-in 0.6s var(--w-spring) both;
+  animation-timeline: view();
+  animation-range: entry 0% cover 30%;
+}
+
+.w-mockup-frame.tilt-right {
+  animation-delay: 0.1s;
 }
 
 .w-mockup-screen {
@@ -408,7 +439,7 @@
   padding: 16px 13px;
   box-shadow: 0 20px 40px rgba(20, 24, 28, 0.18);
   transform: rotate(-2deg);
-  transition: transform 0.25s ease;
+  transition: transform 0.4s var(--w-spring);
 }
 
 .w-mockup-frame.tilt-right .w-mockup-screen {
@@ -696,7 +727,14 @@
   font-weight: 600;
   color: var(--w-ink);
   text-align: center;
+  animation: w-pop-in 0.5s var(--w-spring) both;
+  animation-timeline: view();
+  animation-range: entry 0% cover 25%;
 }
+
+.w-waiting-pill:nth-child(2) { animation-delay: 0.06s; }
+.w-waiting-pill:nth-child(3) { animation-delay: 0.12s; }
+.w-waiting-pill:nth-child(4) { animation-delay: 0.18s; }
 
 /* ── Principles strip ────────────────────────────────────────── */
 
@@ -846,6 +884,9 @@
 .w-section {
   padding: 56px 0;
   border-top: 1px solid var(--w-line);
+  animation: w-pop-in 0.7s var(--w-spring) both;
+  animation-timeline: view();
+  animation-range: entry 0% cover 25%;
 }
 
 .w-section-eyebrow {
@@ -900,6 +941,18 @@
   background: var(--w-paper-raised);
   border-radius: 14px;
   padding: 18px 22px;
+  animation: w-pop-in 0.5s var(--w-spring) both;
+  animation-timeline: view();
+  animation-range: entry 0% cover 25%;
+  transition: transform 0.3s var(--w-spring);
+}
+
+.w-reframe-row:nth-child(2) { animation-delay: 0.06s; }
+.w-reframe-row:nth-child(3) { animation-delay: 0.12s; }
+.w-reframe-row:nth-child(4) { animation-delay: 0.18s; }
+
+.w-reframe-row:hover {
+  transform: translateY(-3px);
 }
 
 .w-reframe-old {
@@ -981,6 +1034,9 @@
 .w-compare-new {
   background: var(--w-paper-raised);
   box-shadow: 0 2px 6px rgba(20, 24, 28, 0.08);
+  animation: w-pop-in 0.6s var(--w-spring) 0.1s both;
+  animation-timeline: view();
+  animation-range: entry 0% cover 30%;
 }
 
 .w-compare-title {
