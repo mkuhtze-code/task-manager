@@ -105,7 +105,12 @@ export default function ReshuffleDemo() {
         })}
       </div>
 
-      {phase === 'after' && <p className="reshuffle-demo-note">Reordered to fit today — nothing lost, nothing forced.</p>}
+      {/* Always rendered — visibility is a class toggle, not a mount, so
+          the card's height stays constant across all three phases and
+          doesn't push page content down and back up on every loop. */}
+      <p className={`reshuffle-demo-note ${phase === 'after' ? 'is-shown' : ''}`} aria-hidden={phase !== 'after'}>
+        Reordered to fit today — nothing lost, nothing forced.
+      </p>
     </div>
   );
 }
