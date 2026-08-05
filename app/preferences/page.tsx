@@ -322,7 +322,7 @@ export default function Preferences() {
         <div className="settings-info-note">
           <InfoIcon />
           <span>
-            Right now, notifications only arrive while Dokkit is open in a browser tab — background
+            Right now, Dokkit runs as a web app. this means notifications only get pushed while your screen is awake — background
             delivery while it's closed is being finalized. This note will go away once that's live.
           </span>
         </div>
