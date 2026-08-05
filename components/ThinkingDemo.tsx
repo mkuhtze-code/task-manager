@@ -64,15 +64,24 @@ export default function ThinkingDemo() {
         <span className="thinking-demo-caret" />
       </div>
 
-      {showSuggestion && (
-        <div className={`thinking-demo-chip ${accepted ? 'accepted' : ''}`}>
-          ≈ 45m usual (4×)
-        </div>
-      )}
+      {/* All three staged elements always render, from first paint, so
+          the card's height never changes as the demo plays — visibility
+          is purely a class toggle (opacity/transform), not a mount. This
+          keeps everything below the demo from shifting on every loop. */}
+      <div
+        className={`thinking-demo-chip ${showSuggestion ? 'is-shown' : ''} ${accepted ? 'accepted' : ''}`}
+        aria-hidden={!showSuggestion}
+      >
+        ≈ 45m usual (4×)
+      </div>
 
-      {accepted && <div className="thinking-demo-field mono">45m</div>}
+      <div className={`thinking-demo-field mono ${accepted ? 'is-shown' : ''}`} aria-hidden={!accepted}>
+        45m
+      </div>
 
-      {showNote && <div className="thinking-demo-note">Capacity just got a little more honest.</div>}
+      <div className={`thinking-demo-note ${showNote ? 'is-shown' : ''}`} aria-hidden={!showNote}>
+        Capacity just got a little more honest.
+      </div>
     </div>
   );
 }
