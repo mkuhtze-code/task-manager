@@ -372,8 +372,14 @@
   font-weight: 700;
   padding: 6px 12px;
   border-radius: 8px;
-  animation: thinking-demo-in 0.3s ease;
-  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.3s ease, transform 0.3s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.thinking-demo-chip.is-shown {
+  opacity: 1;
+  transform: none;
 }
 
 .thinking-demo-chip.accepted {
@@ -396,14 +402,28 @@
   border: 1px solid var(--w-line);
   border-radius: 8px;
   padding: 6px 10px;
-  animation: thinking-demo-in 0.3s ease;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.thinking-demo-field.is-shown {
+  opacity: 1;
+  transform: none;
 }
 
 .thinking-demo-note {
   margin-top: 12px;
   font-size: 11.5px;
   color: var(--w-ink-soft);
-  animation: thinking-demo-in 0.4s ease;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.thinking-demo-note.is-shown {
+  opacity: 1;
+  transform: none;
 }
 
 /* ── Screenshot mockups (real CSS recreations, not images) ────────── */
@@ -882,7 +902,14 @@
   font-size: 11.5px;
   color: var(--w-ink-soft);
   text-align: center;
-  animation: thinking-demo-in 0.4s ease;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.reshuffle-demo-note.is-shown {
+  opacity: 1;
+  transform: none;
 }
 
 /* ── Reframe section ─────────────────────────────────────────── */
