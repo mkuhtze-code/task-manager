@@ -190,37 +190,57 @@
 .rail-demo {
   background: var(--w-paper-raised);
   border-radius: 16px;
+  border: 1.5px solid var(--w-line);
   padding: 28px 24px 20px;
   margin: 0 auto;
   max-width: 460px;
-  box-shadow: 0 2px 6px rgba(20, 24, 28, 0.08), 0 20px 48px rgba(20, 24, 28, 0.08);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(20, 24, 28, 0.1), 0 24px 56px rgba(20, 24, 28, 0.12);
   text-align: left;
   animation: w-pop-in 0.6s var(--w-spring) 0.24s both;
 }
 
+.rail-demo::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--w-steel), var(--w-signature));
+}
+
 .rail-demo-readout {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 22px;
 }
 
 .rail-demo-time {
-  font-size: 26px;
-  font-weight: 800;
+  font-size: 32px;
+  font-weight: 900;
   letter-spacing: -0.02em;
+  text-shadow: 0 0 18px rgba(36, 81, 212, 0.25);
 }
 
 .rail-demo-label {
-  font-size: 12px;
-  color: var(--w-ink-soft);
-  font-weight: 600;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--w-signature);
+  background: var(--w-signature-wash);
+  padding: 4px 8px;
+  border-radius: 6px;
 }
 
 .rail-demo-track {
   position: relative;
-  height: 4px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 3px;
   background: var(--w-line);
   margin: 62px 0 40px;
 }
@@ -230,20 +250,24 @@
   top: 0;
   left: 0;
   height: 100%;
-  border-radius: 2px;
+  border-radius: 3px;
   background: var(--w-steel);
-  opacity: 0.35;
 }
 
 .rail-demo-now-dot {
   position: absolute;
   top: 50%;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--w-steel);
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 4px var(--w-steel-wash);
+  animation: rail-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes rail-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px var(--w-steel-wash); }
+  50% { box-shadow: 0 0 0 9px rgba(36, 81, 212, 0.1); }
 }
 
 .rail-demo-marker {
@@ -290,11 +314,12 @@
   border-radius: 50%;
   background: var(--w-ink-faint);
   margin-bottom: 6px;
-  transition: background 0.3s ease;
+  transition: background 0.3s ease, transform 0.3s var(--w-spring);
 }
 
 .rail-demo-marker.resolved .rail-demo-marker-dot {
   background: var(--w-moss);
+  transform: scale(1.2);
 }
 
 .rail-demo-marker.carrying .rail-demo-marker-dot {
@@ -314,10 +339,15 @@
 }
 
 .rail-demo-marker-label em {
-  display: block;
+  display: inline-block;
   font-style: normal;
   font-weight: 700;
-  font-size: 9.5px;
+  font-size: 9px;
+  color: var(--w-hazard);
+  background: var(--w-hazard-bg);
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-top: 4px;
 }
 
 .rail-demo-endpoints {
