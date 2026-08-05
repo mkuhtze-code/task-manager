@@ -3,6 +3,7 @@ import DayRailDemo from '@/components/DayRailDemo';
 import ThinkingDemo from '@/components/ThinkingDemo';
 import ReshuffleDemo from '@/components/ReshuffleDemo';
 import RequestAccessForm from '@/components/RequestAccessForm';
+import RevealSection from '@/components/RevealSection';
 import './welcome.css';
 
 export const metadata = {
@@ -14,6 +15,12 @@ export const metadata = {
 export default function Welcome() {
   return (
     <div className="welcome-page">
+      {/* If JS never loads, sections default to opacity:0 via CSS until
+          the observer fires. This forces them visible instead. */}
+      <noscript>
+        <style>{`.w-section,.w-closing{opacity:1!important;transform:none!important}`}</style>
+      </noscript>
+
       <div className="w-shell">
         <nav className="w-nav">
           <span className="w-nav-mark">Dokkit</span>
@@ -40,7 +47,7 @@ export default function Welcome() {
           </div>
         </header>
 
-        <section className="w-section">
+        <RevealSection className="w-section">
           <p className="w-section-eyebrow">Where it comes from</p>
           <h2>Built from a list kept<br />under the keyboard.</h2>
           <p className="w-section-lead">
@@ -76,9 +83,9 @@ export default function Welcome() {
             Works the same whether it's client work, a two-person shop, or a farm's
             morning list. You do these, I'll do those.
           </p>
-        </section>
+        </RevealSection>
 
-        <section className="w-section">
+        <RevealSection className="w-section">
           <p className="w-section-eyebrow">Not another productivity app</p>
           <h2>The vocabulary is different<br />on purpose.</h2>
           <p className="w-section-lead">
@@ -119,9 +126,9 @@ export default function Welcome() {
               </span>
             </div>
           </div>
-        </section>
+        </RevealSection>
 
-        <section className="w-section">
+        <RevealSection className="w-section">
           <p className="w-section-eyebrow">A different kind of unfinished</p>
           <h2>The waiting room.</h2>
           <p className="w-section-lead">
@@ -148,9 +155,9 @@ export default function Welcome() {
             <span>No leaderboards</span>
             <span>No guilt</span>
           </div>
-        </section>
+        </RevealSection>
 
-        <section className="w-section">
+        <RevealSection className="w-section">
           <p className="w-section-eyebrow">How it thinks</p>
           <h2>Dokkit learns how long<br />things actually take you.</h2>
           <p className="w-section-lead">
@@ -169,9 +176,9 @@ export default function Welcome() {
             honestly over time too: <span className="mono">just noticed</span> → <span className="mono">fairly confident</span> → <span className="mono">well known</span> — always shown plainly, never as a score. And it's entirely
             yours: nothing here is compared against anyone else's pace.
           </p>
-        </section>
+        </RevealSection>
 
-        <section className="w-section">
+        <RevealSection className="w-section">
           <p className="w-section-eyebrow">How it reshuffles</p>
           <h2>Your list rearranges<br />around your day.</h2>
           <p className="w-section-lead">
@@ -182,9 +189,9 @@ export default function Welcome() {
           </p>
 
           <ReshuffleDemo />
-        </section>
+        </RevealSection>
 
-        <section className="w-section">
+        <RevealSection className="w-section">
           <p className="w-section-eyebrow">A closer look</p>
           <h2>What it actually<br />looks like.</h2>
           <div className="w-mockup-grid">
@@ -255,9 +262,9 @@ export default function Welcome() {
               <div className="w-mockup-caption">Patterns — a quiet look back, not a scoreboard</div>
             </div>
           </div>
-        </section>
+        </RevealSection>
 
-        <section className="w-closing" id="request-access">
+        <RevealSection className="w-closing" id="request-access">
           <div className="w-closing-badge">
             <span className="w-closing-badge-dot" />
             Currently a private beta
@@ -270,7 +277,7 @@ export default function Welcome() {
             name and email — I'll reach out personally.
           </p>
           <RequestAccessForm />
-        </section>
+        </RevealSection>
 
         <footer className="w-footer">
           Dokkit — give your thoughts somewhere to go.
