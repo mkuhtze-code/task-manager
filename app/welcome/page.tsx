@@ -257,34 +257,6 @@ export default function Welcome() {
           </div>
         </section>
 
-        <section className="w-section">
-          <p className="w-section-eyebrow">How it works</p>
-          <h2>Built the way you<br />actually work.</h2>
-          <div className="w-feature-grid">
-            <div className="w-feature-card">
-              <div className="w-feature-title">Five-second capture</div>
-              <div className="w-feature-desc">
-                Type it or say it. If it fits in your head for five seconds, it fits
-                in Dokkit.
-              </div>
-            </div>
-            <div className="w-feature-card">
-              <div className="w-feature-title">Capacity, not a to-do list</div>
-              <div className="w-feature-desc">
-                A live view of what's left today, compared honestly against the time
-                you actually have — not an idealized eight-hour block.
-              </div>
-            </div>
-            <div className="w-feature-card">
-              <div className="w-feature-title">Patterns, not a scoreboard</div>
-              <div className="w-feature-desc">
-                Dokkit notices how long things actually take you, and lets that inform
-                your estimates over time — never a streak, never a grade.
-              </div>
-            </div>
-          </div>
-        </section>
-
         <section className="w-closing" id="request-access">
           <div className="w-closing-badge">
             <span className="w-closing-badge-dot" />
@@ -293,9 +265,9 @@ export default function Welcome() {
           <h2>I built Dokkit because<br />I needed it.</h2>
           <p className="w-closing-sub">
             If you've ever needed a tool that bends around your day instead of
-            asking you to bend around it, this might be it. Now I'm looking for a
-            small group of people to tell me if it helps them too. No pitch, no
-            funnel — just your name and email, and I'll reach out personally.
+            asking you to bend around it — this might be it. I'm looking for a few
+            people to tell me if it helps them too. No pitch, no funnel. Just your
+            name and email — I'll reach out personally.
           </p>
           <RequestAccessForm />
         </section>
