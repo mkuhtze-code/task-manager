@@ -44,7 +44,7 @@
   box-sizing: border-box;
 }
 
-.welcome-page a {
+.welcome-page :where(a) {
   color: inherit;
 }
 
