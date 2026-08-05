@@ -44,8 +44,8 @@ export default function Welcome() {
           <p className="w-section-eyebrow">Where it comes from</p>
           <h2>Built from a list kept<br />under the keyboard.</h2>
           <p className="w-section-lead">
-            The list itself was never the problem — a piece of paper works fine for
-            remembering things. The real problem was carrying thoughts: things to
+            A piece of paper works fine for remembering things. The list was never
+            the problem. The real problem was carrying thoughts: things to
             remember, ideas that aren't ready to act on yet, problems waiting on
             someone else, tasks that can't move until something else happens first.
             Dokkit became a place for those to live — not just a faster way to check
@@ -264,8 +264,8 @@ export default function Welcome() {
             <div className="w-feature-card">
               <div className="w-feature-title">Five-second capture</div>
               <div className="w-feature-desc">
-                Type it or say it out loud. If it fits in your head for five seconds,
-                it fits in Dokkit.
+                Type it or say it. If it fits in your head for five seconds, it fits
+                in Dokkit.
               </div>
             </div>
             <div className="w-feature-card">
