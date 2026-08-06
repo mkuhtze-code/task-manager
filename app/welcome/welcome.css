@@ -340,24 +340,42 @@
   color: var(--w-hazard);
 }
 
-.rail-demo-marker-label em {
-  display: inline-block;
-  font-style: normal;
-  font-weight: 700;
-  font-size: 9px;
-  color: var(--w-hazard);
-  background: var(--w-hazard-bg);
-  padding: 2px 7px;
-  border-radius: 20px;
-  margin-top: 4px;
-}
-
 .rail-demo-endpoints {
   display: flex;
   justify-content: space-between;
   font-size: 11px;
   color: var(--w-ink-faint);
   font-weight: 600;
+}
+
+.rail-demo-carry-tag {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--w-hazard);
+  background: var(--w-paper-raised);
+  border: 1px solid var(--w-hazard);
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.rail-demo-carry-tag::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 1px;
+  height: 7px;
+  background: var(--w-hazard);
+  opacity: 0.5;
+}
+
+.rail-demo-marker.carrying .rail-demo-marker-dot {
+  background: var(--w-hazard);
 }
 
 /* ── Thinking demo (second signature element) ───────────────────── */
