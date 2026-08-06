@@ -189,6 +189,7 @@
 
 .rail-demo {
   background: var(--w-paper-raised);
+  color: var(--w-ink);
   border-radius: 16px;
   border: 1.5px solid var(--w-line);
   padding: 28px 24px 20px;
@@ -223,6 +224,7 @@
   font-weight: 900;
   letter-spacing: -0.02em;
   text-shadow: 0 0 18px rgba(36, 81, 212, 0.25);
+  min-width: 5.5ch;
 }
 
 .rail-demo-label {
