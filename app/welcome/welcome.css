@@ -104,7 +104,6 @@
 /* ── Hero ────────────────────────────────────────────────────── */
 
 .w-hero {
-  padding: 64px 0 56px;
   text-align: center;
 }
 
@@ -963,13 +962,14 @@
   transform: none;
 }
 
-/* ── Waiting room — the one section that breaks the page's rhythm ──── */
-/* This is where the core belief lives, not a feature, so it gets a
-   different register: a full-bleed dark panel instead of another card
-   on cream. Everything else on the page stays disciplined; this is the
-   one deliberate exception. */
+/* ── Dark panel — shared by the hero and the waiting room ──────── */
+/* Used in exactly two places on purpose: the opening statement and the
+   philosophical core. Everything else on the page stays on the normal
+   cream/white register — these two are the moments that get to look
+   different, and sharing one treatment between them ties them together
+   as a pair rather than reading as two unrelated ideas. */
 
-.w-waiting-block {
+.w-dark-panel {
   background: var(--w-ink);
   color: var(--w-paper);
   width: 100vw;
@@ -979,37 +979,62 @@
   border-top: none;
 }
 
-.w-waiting-block .w-shell-inner {
+.w-dark-panel .w-shell-inner {
   max-width: 720px;
   margin: 0 auto;
 }
 
-.w-waiting-block .w-section-eyebrow {
+.w-dark-panel .w-hero-eyebrow,
+.w-dark-panel .w-section-eyebrow {
   color: var(--w-signature-light);
 }
 
-.w-waiting-block h2 {
-  font-size: clamp(30px, 5.5vw, 40px);
-  margin-bottom: 28px;
+.w-dark-panel h1,
+.w-dark-panel h2 {
+  color: var(--w-paper);
 }
 
-.w-waiting-block .w-section-lead {
+.w-dark-panel .w-hero-sub,
+.w-dark-panel .w-section-lead {
   color: rgba(241, 239, 230, 0.78);
 }
 
-.w-waiting-block .w-section-note {
+.w-dark-panel .w-section-note {
   color: rgba(241, 239, 230, 0.6);
 }
 
-.w-waiting-block .w-waiting-pill {
+.w-dark-panel .w-waiting-pill {
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: var(--w-paper);
 }
 
-.w-waiting-block .w-principles-strip span {
+.w-dark-panel .w-principles-strip span {
   border-color: rgba(255, 255, 255, 0.18);
   color: rgba(241, 239, 230, 0.75);
+}
+
+.w-dark-panel h2 {
+  font-size: clamp(30px, 5.5vw, 40px);
+  margin-bottom: 28px;
+}
+
+.w-dark-panel .w-btn-primary {
+  background: var(--w-paper);
+  color: var(--w-ink);
+}
+
+.w-dark-panel .w-btn-primary:hover {
+  background: #ffffff;
+}
+
+.w-dark-panel .w-btn-ghost {
+  border-color: var(--w-paper);
+  color: var(--w-paper);
+}
+
+.w-dark-panel .w-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .w-section-eyebrow {
