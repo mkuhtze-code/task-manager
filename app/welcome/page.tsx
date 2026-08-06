@@ -128,7 +128,8 @@ export default function Welcome() {
           </div>
         </RevealSection>
 
-        <RevealSection className="w-section">
+        <RevealSection className="w-section w-waiting-block">
+          <div className="w-shell-inner">
           <p className="w-section-eyebrow">A different kind of unfinished</p>
           <h2>The waiting room.</h2>
           <p className="w-section-lead">
@@ -154,6 +155,7 @@ export default function Welcome() {
             <span>No streaks</span>
             <span>No leaderboards</span>
             <span>No guilt</span>
+          </div>
           </div>
         </RevealSection>
 
