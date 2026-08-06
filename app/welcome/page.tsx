@@ -27,7 +27,8 @@ export default function Welcome() {
           <Link href="/" className="w-nav-signin">Sign in</Link>
         </nav>
 
-        <header className="w-hero">
+        <header className="w-hero w-dark-panel">
+          <div className="w-shell-inner">
           <p className="w-hero-eyebrow">Private beta</p>
           <h1>Give your thoughts<br />somewhere to go.</h1>
           <p className="w-hero-sub">
@@ -44,6 +45,7 @@ export default function Welcome() {
             <Link href="/" className="w-btn w-btn-ghost">
               Already invited? Sign in
             </Link>
+          </div>
           </div>
         </header>
 
@@ -128,7 +130,7 @@ export default function Welcome() {
           </div>
         </RevealSection>
 
-        <RevealSection className="w-section w-waiting-block">
+        <RevealSection className="w-section w-dark-panel">
           <div className="w-shell-inner">
           <p className="w-section-eyebrow">A different kind of unfinished</p>
           <h2>The waiting room.</h2>
