@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 
 // A live, looping miniature of Dokkit's own day-rail — this is the landing
 // page's signature element. Rather than describe the capacity model in
@@ -65,21 +65,27 @@ export default function DayRailDemo() {
           const resolved = percent >= t.atPercent && t.atPercent !== carryForwardThreshold;
           const carrying = t.atPercent === carryForwardThreshold && percent >= t.atPercent;
           // Alternate near/far tiers so adjacent markers never fight for
-          // the same horizontal space — this is what was causing labels
-          // to visually collide before.
+          // the same horizontal space.
           const tier = i % 2 === 0 ? 'near' : 'far';
           return (
-            <div
-              key={t.label}
-              className={`rail-demo-marker tier-${tier} ${resolved ? 'resolved' : ''} ${carrying ? 'carrying' : ''}`}
-              style={{ left: `${t.atPercent}%` }}
-            >
-              <span className="rail-demo-marker-dot" />
-              <span className="rail-demo-marker-label">
-                {t.label}
-                {carrying && <em>carrying forward</em>}
-              </span>
-            </div>
+            <Fragment key={t.label}>
+              <div
+                className={`rail-demo-marker tier-${tier} ${resolved ? 'resolved' : ''} ${carrying ? 'carrying' : ''}`}
+                style={{ left: `${t.atPercent}%` }}
+              >
+                <span className="rail-demo-marker-dot" />
+                <span className="rail-demo-marker-label">{t.label}</span>
+              </div>
+              {/* Carrying-forward now lives below the line as its own tag
+                  — matching ReshuffleDemo's overflow tag styling — rather
+                  than stacked inside the label above it, which is what
+                  was colliding with the track. */}
+              {carrying && (
+                <div className="rail-demo-carry-tag" style={{ left: `${t.atPercent}%` }}>
+                  carrying forward
+                </div>
+              )}
+            </Fragment>
           );
         })}
       </div>
