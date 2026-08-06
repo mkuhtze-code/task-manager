@@ -21,6 +21,7 @@
 
   --w-signature: #6d28d9;
   --w-signature-wash: #efe6fb;
+  --w-signature-light: #c4a6f5;
 
   --w-moss: #15803d;
   --w-moss-bg: #dcf1e2;
@@ -960,6 +961,55 @@
 .w-section.is-visible {
   opacity: 1;
   transform: none;
+}
+
+/* ── Waiting room — the one section that breaks the page's rhythm ──── */
+/* This is where the core belief lives, not a feature, so it gets a
+   different register: a full-bleed dark panel instead of another card
+   on cream. Everything else on the page stays disciplined; this is the
+   one deliberate exception. */
+
+.w-waiting-block {
+  background: var(--w-ink);
+  color: var(--w-paper);
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: 76px 24px 68px;
+  border-top: none;
+}
+
+.w-waiting-block .w-shell-inner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.w-waiting-block .w-section-eyebrow {
+  color: var(--w-signature-light);
+}
+
+.w-waiting-block h2 {
+  font-size: clamp(30px, 5.5vw, 40px);
+  margin-bottom: 28px;
+}
+
+.w-waiting-block .w-section-lead {
+  color: rgba(241, 239, 230, 0.78);
+}
+
+.w-waiting-block .w-section-note {
+  color: rgba(241, 239, 230, 0.6);
+}
+
+.w-waiting-block .w-waiting-pill {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--w-paper);
+}
+
+.w-waiting-block .w-principles-strip span {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(241, 239, 230, 0.75);
 }
 
 .w-section-eyebrow {
