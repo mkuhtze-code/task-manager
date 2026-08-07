@@ -228,7 +228,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .gear-dropdown-item.destructive {
-  color: var(--danger);
+  color: var(--danger-text, var(--danger));
 }
 
 .gear-dropdown-divider {
@@ -299,7 +299,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .today-header-card.overloaded .capacity-hero-number {
-  color: var(--hazard);
+  color: var(--hazard-text, var(--hazard));
 }
 
 .capacity-hero-label {
@@ -310,7 +310,7 @@ button:focus-visible, input:focus-visible {
 
 .capacity-warn-line {
   font-size: var(--text-xs);
-  color: var(--hazard);
+  color: var(--hazard-text, var(--hazard));
   font-weight: 700;
   margin-top: 2px;
 }
@@ -334,7 +334,7 @@ button:focus-visible, input:focus-visible {
 
 .settings-saved {
   font-size: var(--text-xs);
-  color: var(--moss);
+  color: var(--moss-text, var(--moss));
   font-weight: 600;
 }
 
@@ -664,12 +664,12 @@ button:focus-visible, input:focus-visible {
 
 .tag-due {
   background: var(--hazard-bg);
-  color: var(--hazard);
+  color: var(--hazard-text, var(--hazard));
 }
 
 .tag-elapsed {
   background: var(--steel-wash);
-  color: var(--steel-dark);
+  color: var(--steel-text, var(--steel-dark));
 }
 
 .btn-due-today {
@@ -695,7 +695,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .task-row.task-due-today .btn-due-today {
-  color: var(--steel);
+  color: var(--steel-text, var(--steel));
 }
 
 .task-row.task-due-today .btn-due-today:hover {
@@ -853,7 +853,7 @@ button:focus-visible, input:focus-visible {
 .estimate-suggestion-chip {
   align-self: flex-start;
   background: var(--steel-wash);
-  color: var(--steel-dark);
+  color: var(--steel-text, var(--steel-dark));
   border: none;
   border-radius: 20px;
   padding: 6px 12px;
@@ -965,7 +965,7 @@ button:focus-visible, input:focus-visible {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--steel);
+  color: var(--steel-text, var(--steel));
   margin-bottom: var(--space-1);
 }
 
@@ -1007,7 +1007,7 @@ button:focus-visible, input:focus-visible {
 
 .auth-error {
   font-size: var(--text-sm);
-  color: var(--danger);
+  color: var(--danger-text, var(--danger));
   margin: 0;
 }
 
@@ -1019,7 +1019,7 @@ button:focus-visible, input:focus-visible {
 .account-logout-btn {
   width: 100%;
   margin-top: var(--space-4);
-  color: var(--danger);
+  color: var(--danger-text, var(--danger));
   border-color: var(--danger-bg);
 }
 
@@ -1034,7 +1034,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .danger-btn {
-  color: var(--danger);
+  color: var(--danger-text, var(--danger));
   border-color: var(--danger-bg);
 }
 
@@ -1165,12 +1165,12 @@ button:focus-visible, input:focus-visible {
 
 .analytics-task-source.planned {
   background: var(--steel-wash);
-  color: var(--steel-dark);
+  color: var(--steel-text, var(--steel-dark));
 }
 
 .analytics-task-source.came_up {
   background: var(--hazard-bg);
-  color: var(--hazard);
+  color: var(--hazard-text, var(--hazard));
 }
 
 .learned-pattern-count {
@@ -1506,7 +1506,7 @@ button:focus-visible, input:focus-visible {
 .thread-bubble-label {
   font-size: var(--text-2xs);
   font-weight: 700;
-  color: var(--steel-dark);
+  color: var(--steel-text, var(--steel-dark));
   margin-bottom: 2px;
 }
 
@@ -1686,7 +1686,7 @@ button:focus-visible, input:focus-visible {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--steel-dark);
+  color: var(--steel-text, var(--steel-dark));
 }
 
 .today-header-date {
@@ -1712,7 +1712,7 @@ button:focus-visible, input:focus-visible {
   padding: 3px 10px;
   border-radius: 20px;
   background: rgba(180, 83, 9, 0.16);
-  color: var(--hazard);
+  color: var(--hazard-text, var(--hazard));
   font-size: var(--text-2xs);
   font-weight: 700;
 }
@@ -1797,7 +1797,7 @@ button:focus-visible, input:focus-visible {
 
 .error-source-badge.client {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text, var(--danger));
 }
 
 .error-route {
@@ -1860,7 +1860,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .header-compare-number.over {
-  color: var(--hazard);
+  color: var(--hazard-text, var(--hazard));
   text-shadow: 0 0 20px rgba(194, 65, 12, 0.18);
 }
 
@@ -1889,7 +1889,7 @@ button:focus-visible, input:focus-visible {
 
 .header-fit-icon.over {
   background: var(--hazard-bg);
-  color: var(--hazard);
+  color: var(--hazard-text, var(--hazard));
 }
 
 .day-rail-wrap {
@@ -1948,7 +1948,7 @@ button:focus-visible, input:focus-visible {
 
 .day-rail-overflow-label {
   font-family: var(--font-digital);
-  color: var(--hazard);
+  color: var(--hazard-text, var(--hazard));
   font-weight: 700;
   letter-spacing: 0.01em;
 }
@@ -2017,12 +2017,12 @@ button:focus-visible, input:focus-visible {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: var(--steel-dark);
+  color: var(--steel-text, var(--steel-dark));
   flex-shrink: 0;
 }
 
 .header-active-strip.over .header-active-elapsed {
-  color: var(--hazard);
+  color: var(--hazard-text, var(--hazard));
 }
 
 .header-active-stop {
@@ -2231,32 +2231,38 @@ button:focus-visible, input:focus-visible {
      color is a deliberate symmetry, not a coincidence. */
   --ink: #f1efe6;
   --ink-soft: #a7b3ba;
-  --ink-faint: #6b7680;
+  --ink-faint: #8a939c;
 
   --line: #2a313b;
   --line-strong: #3a4450;
 
-  /* Functional accent (cobalt) — brightened so it still pops against a
-     dark background instead of reading as muddy navy. */
-  --steel: #5b82e8;
-  --steel-dark: #83a3f0;
+  /* --steel/--hazard/--danger/--moss are deliberately NOT overridden
+     here. They're mostly used as solid fills holding white text (main
+     buttons, the FAB, progress bars, active-state markers) — and the
+     original saturated values already hold white text at 4.5:1+, while
+     a brightened "dark mode" version of them does not (checked: white
+     on a brightened accent drops to 1.7–3.6:1, a real failure). Only
+     the wash/chip backgrounds get dark equivalents below; the handful
+     of places these colors appear as bare or on-chip *text* use the
+     dedicated -text tokens further down instead of these directly. */
   --steel-wash: #1f2c4d;
-
-  /* Warning/hazard — brightened amber instead of the light-mode's
-     deeper burnt orange, which would lose contrast on dark. */
-  --hazard: #e08a3c;
   --hazard-bg: #3d2a18;
-
-  --danger: #f0645c;
-  --danger-dark: #f58a84;
   --danger-bg: #3d1f1e;
-
-  --moss: #4ade80;
   --moss-bg: #1a3324;
+
+  /* Dedicated text-only variants — brightened specifically for reading
+     as text against the dark page or a dark wash chip, checked against
+     both (paper, paper-raised, and each color's own wash background).
+     One value per accent covers both roles; splitting further wasn't
+     needed once checked. */
+  --steel-text: #83a3f0;
+  --hazard-text: #e08a3c;
+  --danger-text: #f0645c;
   --moss-text: #6ee7a8;
 
-  /* Signature violet — same family as the landing page's dark-panel
-     accent, brightened for dark-surface legibility. */
+  /* Signature violet has no fill/white-text role anywhere in the app —
+     only ever appears as text or on its own wash chip — so it can be
+     brightened directly with no split needed. */
   --overflow: #a78bfa;
   --overflow-bg: #2e2150;
 
