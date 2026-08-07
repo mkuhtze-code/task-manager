@@ -2298,5 +2298,25 @@ button:focus-visible, input:focus-visible {
   box-shadow: 0 2px 6px rgba(var(--shadow-rgb), 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* Google's button stays white in both themes — that's their brand mark,
-   not one of ours, so it's deliberately excluded from the token system. */
+/* The overloaded-state background was a literal cream, not a token, so
+   it never picked up a dark variant — text inside (--ink) correctly
+   went light, leaving light-on-cream. Give it a dark equivalent that
+   keeps the same warm/hazard-tinted feel as the light-mode version. */
+[data-theme="dark"] .today-header-card.overloaded {
+  background: rgba(61, 42, 24, 0.92);
+}
+
+/* Google's button stays a fixed white pill in both themes — that's
+   their brand mark, not one of ours, so its background is deliberately
+   excluded from the token system. But its text was inheriting --ink,
+   which flips to near-white in dark mode, making it unreadable against
+   the still-white pill. Pin the text (and hover background) to fixed
+   light-mode values so the whole button stays visually constant
+   regardless of theme. */
+[data-theme="dark"] .btn-google {
+  color: #1a2933;
+}
+
+[data-theme="dark"] .btn-google:hover:not(:disabled) {
+  background: #f1efe6;
+}
