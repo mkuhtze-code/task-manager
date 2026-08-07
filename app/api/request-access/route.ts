@@ -37,6 +37,15 @@ export async function POST(req: NextRequest) {
   });
 
   if (error) {
+    // 23505 = unique_violation — this email is already on the waitlist.
+    // Not an error from the user's point of view, so respond accordingly
+    // rather than showing a generic failure.
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { ok: true, alreadyOnList: true },
+        { status: 200 }
+      );
+    }
     return NextResponse.json({ error: 'Could not submit your request.' }, { status: 500 });
   }
 
