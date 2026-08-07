@@ -26,25 +26,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        {/* Runs before first paint, before the stylesheet even needs to
-            resolve — reads the stored theme (or falls back to the OS
-            preference if the person hasn't chosen one yet in Preferences)
-            and sets data-theme="dark" on <html> if needed. Light mode
-            needs no attribute at all, since :root already holds the
-            light values; this only ever adds the dark override. */}
+        {/* Runs before first paint. Reads the stored theme choice —
+            'light' | 'dark' | 'system' | null — and resolves it to an
+            actual attribute. 'system' and null both defer to the OS
+            preference; only 'dark' sets data-theme, since light mode
+            is the unmarked default already in :root. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function () {
                 try {
                   var stored = localStorage.getItem('dokkit-theme');
-                  var theme = stored;
-                  if (!theme) {
-                    theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                  var resolved = stored;
+                  if (!resolved || resolved === 'system') {
+                    resolved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
                       ? 'dark'
                       : 'light';
                   }
-                  if (theme === 'dark') {
+                  if (resolved === 'dark') {
                     document.documentElement.setAttribute('data-theme', 'dark');
                   }
                 } catch (e) {}
