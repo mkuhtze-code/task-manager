@@ -21,9 +21,15 @@
   --overflow: #6d28d9;
   --overflow-bg: #e5d8f8;
 
-  --shadow-violet-rgb: 51, 41, 101;
-  --overflow-light: #c4a6f5;
-  --hazard-on-dark: #f0a868;
+  /* RGB channels (no rgba() wrapper) so box-shadow/border declarations
+     can do rgba(var(--shadow-rgb), 0.1) and pick up the right shadow
+     color per theme automatically. */
+  --shadow-rgb: 26, 41, 51;
+
+  /* Same pattern, for the two frosted-glass surfaces (capacity card,
+     capture sheet) — light theme is white glass, dark theme becomes
+     dark glass instead of staying stuck on white. */
+  --glass-rgb: 255, 255, 255;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -37,9 +43,6 @@
   --radius-md: 14px;
   --radius-lg: 20px;
 
-  /* Type scale — 8 deliberate steps, replacing 15 ad hoc font-sizes that
-     had grown organically across the app. Each step has a clear job;
-     nothing here is "whatever looked fine at the time." */
   --text-2xs: 11px;
   --text-xs: 12px;
   --text-sm: 13px;
@@ -197,7 +200,7 @@ button:focus-visible, input:focus-visible {
   min-width: 172px;
   background: var(--paper-raised);
   border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(var(--shadow-violet-rgb), 0.18);
+  box-shadow: 0 8px 24px rgba(var(--shadow-rgb), 0.18);
   padding: var(--space-2);
   display: flex;
   flex-direction: column;
@@ -238,29 +241,18 @@ button:focus-visible, input:focus-visible {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(20, 24, 33, 0.94);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  background: rgba(var(--glass-rgb), 0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
   margin: var(--space-5) 0 var(--space-5);
-  box-shadow: 0 2px 6px rgba(var(--shadow-violet-rgb), 0.1);
+  box-shadow: 0 2px 6px rgba(var(--shadow-rgb), 0.1);
   transition: background 0.3s var(--ease);
 }
 
-.today-header-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  border-radius: 26px 26px 0 0;
-  background: linear-gradient(90deg, var(--steel), var(--overflow));
-}
-
 .today-header-card.overloaded {
-  background: rgba(72, 54, 38, 0.94);
+  background: rgba(255, 242, 224, 0.92);
 }
 
 .today-header-top-row {
@@ -496,10 +488,10 @@ button:focus-visible, input:focus-visible {
 .task-row {
   position: relative;
   border-radius: 16px;
-  border: 1px solid rgba(26, 41, 51, 0.055);
+  border: 1px solid rgba(var(--shadow-rgb), 0.055);
   box-shadow:
-    0 1px 2px rgba(26, 41, 51, 0.05),
-    0 4px 12px rgba(var(--shadow-violet-rgb), 0.06),
+    0 1px 2px rgba(var(--shadow-rgb), 0.05),
+    0 4px 12px rgba(var(--shadow-rgb), 0.055),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
   overflow: hidden;
   transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
@@ -513,7 +505,7 @@ button:focus-visible, input:focus-visible {
   bottom: 6px;
   width: 3px;
   border-radius: 3px;
-  background: white;
+  background: var(--marker-default, white);
   z-index: 3;
   opacity: 0.9;
   transition: background 0.2s var(--ease), opacity 0.2s var(--ease);
@@ -594,7 +586,7 @@ button:focus-visible, input:focus-visible {
 .check-btn svg {
   width: 22px;
   height: 22px;
-  filter: drop-shadow(0 1px 1.5px rgba(26, 41, 51, 0.08));
+  filter: drop-shadow(0 1px 1.5px rgba(var(--shadow-rgb), 0.08));
 }
 
 .check-btn svg path {
@@ -666,7 +658,7 @@ button:focus-visible, input:focus-visible {
   padding: 3px 8px;
   border-radius: 20px;
   background: var(--paper);
-  border: 1px solid rgba(26, 41, 51, 0.05);
+  border: 1px solid rgba(var(--shadow-rgb), 0.05);
   color: var(--ink-soft);
 }
 
@@ -795,7 +787,7 @@ button:focus-visible, input:focus-visible {
   border: none;
   font-size: 26px;
   font-weight: 300;
-  box-shadow: 0 4px 14px rgba(var(--shadow-violet-rgb), 0.3);
+  box-shadow: 0 4px 14px rgba(var(--shadow-rgb), 0.3);
   z-index: 20;
   transition: transform 0.15s var(--ease), background 0.15s var(--ease);
 }
@@ -809,12 +801,12 @@ button:focus-visible, input:focus-visible {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--glass-rgb), 0.92);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--space-4);
-  box-shadow: 0 -6px 24px rgba(var(--shadow-violet-rgb), 0.22);
+  box-shadow: 0 -6px 24px rgba(var(--shadow-rgb), 0.22);
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -871,7 +863,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .estimate-suggestion-chip:hover {
-  background: #c3d0f5;
+  background: var(--steel-wash-hover, #c3d0f5);
 }
 
 .segmented {
@@ -897,13 +889,13 @@ button:focus-visible, input:focus-visible {
 .segmented-btn.active {
   background: var(--paper-raised);
   color: var(--ink);
-  box-shadow: 0 1px 3px rgba(26, 41, 51, 0.15);
+  box-shadow: 0 1px 3px rgba(var(--shadow-rgb), 0.15);
 }
 
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(26, 41, 51, 0.32);
+  background: rgba(var(--shadow-rgb), 0.32);
   z-index: 29;
   animation: fade-in 0.2s var(--ease);
 }
@@ -964,7 +956,7 @@ button:focus-visible, input:focus-visible {
   background: var(--paper-raised);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
-  box-shadow: 0 2px 6px rgba(var(--shadow-violet-rgb), 0.1);
+  box-shadow: 0 2px 6px rgba(var(--shadow-rgb), 0.1);
   animation: expand-in 0.35s var(--spring);
 }
 
@@ -1188,7 +1180,7 @@ button:focus-visible, input:focus-visible {
   border-radius: 20px;
   flex-shrink: 0;
   background: var(--moss-bg);
-  color: #0f5c2a;
+  color: var(--moss-text, #0f5c2a);
 }
 
 .feedback-textarea {
@@ -1281,7 +1273,7 @@ button:focus-visible, input:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  box-shadow: 0 4px 14px rgba(var(--shadow-violet-rgb), 0.3);
+  box-shadow: 0 4px 14px rgba(var(--shadow-rgb), 0.3);
   z-index: 19;
   cursor: pointer;
 }
@@ -1631,7 +1623,7 @@ button:focus-visible, input:focus-visible {
   border-radius: 50%;
   border: 2px solid white;
   transform: translate(-50%, -50%);
-  box-shadow: 0 1px 3px rgba(26, 41, 51, 0.3);
+  box-shadow: 0 1px 3px rgba(var(--shadow-rgb), 0.3);
   transition: left 0.4s var(--ease);
 }
 
@@ -1674,13 +1666,13 @@ button:focus-visible, input:focus-visible {
   border-radius: 20px;
   flex-shrink: 0;
   background: var(--moss-bg);
-  color: #0f5c2a;
+  color: var(--moss-text, #0f5c2a);
   white-space: nowrap;
 }
 
 .today-header-card {
   border-radius: 26px;
-  box-shadow: 0 4px 16px rgba(var(--shadow-violet-rgb), 0.35), 0 24px 48px rgba(var(--shadow-violet-rgb), 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 6px rgba(var(--shadow-rgb), 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .today-header-date-block {
@@ -1694,14 +1686,14 @@ button:focus-visible, input:focus-visible {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--overflow-light);
+  color: var(--steel-dark);
 }
 
 .today-header-date {
   font-size: var(--text-md);
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--paper);
+  color: var(--ink);
 }
 
 .capacity-ring-wrap {
@@ -1755,7 +1747,7 @@ button:focus-visible, input:focus-visible {
   background: var(--paper-raised);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
-  box-shadow: 0 2px 6px rgba(var(--shadow-violet-rgb), 0.1);
+  box-shadow: 0 2px 6px rgba(var(--shadow-rgb), 0.1);
   text-align: center;
 }
 
@@ -1892,7 +1884,7 @@ button:focus-visible, input:focus-visible {
 
 .header-fit-icon.fits {
   background: var(--moss-bg);
-  color: #0f5c2a;
+  color: var(--moss-text, #0f5c2a);
 }
 
 .header-fit-icon.over {
@@ -1942,7 +1934,7 @@ button:focus-visible, input:focus-visible {
   background: var(--ink);
   border: 2px solid white;
   transform: translate(-50%, -50%);
-  box-shadow: 0 1px 3px rgba(26, 41, 51, 0.35);
+  box-shadow: 0 1px 3px rgba(var(--shadow-rgb), 0.35);
 }
 
 .day-rail-labels {
@@ -1979,59 +1971,6 @@ button:focus-visible, input:focus-visible {
   font-weight: 500;
   color: var(--ink-soft);
   letter-spacing: 0;
-}
-
-/* ── Text/icons painted directly on the dark capacity card ──────────
-   Anything with its own opaque chip background (fit icon, due-today
-   tag, the active-timer strip) needs no change — only bare text and
-   icons sitting straight on --ink do. */
-
-.today-header-card .header-compare-number {
-  color: var(--paper);
-  text-shadow: 0 0 22px rgba(109, 40, 217, 0.3);
-}
-
-.today-header-card .header-compare-number.over {
-  color: var(--hazard-on-dark);
-  text-shadow: 0 0 20px rgba(240, 168, 104, 0.25);
-}
-
-.today-header-card .header-compare-label {
-  color: rgba(241, 239, 230, 0.55);
-}
-
-.today-header-card .day-rail-labels {
-  color: rgba(241, 239, 230, 0.4);
-}
-
-.today-header-card .day-rail-overflow-label {
-  color: var(--hazard-on-dark);
-}
-
-.today-header-card .day-rail-now-dot {
-  background: var(--paper);
-}
-
-.today-header-card .header-off-row .header-compare-label {
-  color: rgba(241, 239, 230, 0.65);
-}
-
-.today-header-card .capacity-warn-pill {
-  background: rgba(240, 168, 104, 0.18);
-  color: var(--hazard-on-dark);
-}
-
-.today-header-card .gear-btn {
-  color: rgba(241, 239, 230, 0.65);
-}
-
-.today-header-card .gear-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--paper);
-}
-
-.today-header-card .gear-unread-dot {
-  border-color: var(--ink);
 }
 
 .header-active-strip {
@@ -2259,3 +2198,99 @@ button:focus-visible, input:focus-visible {
   border-radius: 20px;
   flex-shrink: 0;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   DARK THEME
+   ══════════════════════════════════════════════════════════════════
+   Applied via [data-theme="dark"] on <html> — toggled from Preferences,
+   read from user_settings (with a localStorage fallback for the instant
+   the page loads, before Supabase responds) so it doesn't flash the
+   wrong theme on load.
+
+   Every color token gets a dark equivalent. Structural tokens (spacing,
+   radius, type scale, easing) are theme-independent and untouched.
+
+   A few colors couldn't be handled by the token layer alone, since they
+   were hardcoded literals rather than var() references — those were
+   converted to var(--token, fallback) in place above, so they inherit
+   the light-mode value by default and only need a value here:
+     --shadow-rgb      (shadow/border color, was rgba(26,41,51,…) everywhere)
+     --glass-rgb       (the two frosted-glass surfaces)
+     --marker-default  (task-row's unmarked left edge)
+     --moss-text       (dark-green text sitting on the moss chip)
+     --steel-wash-hover (suggestion-chip hover state)
+   ══════════════════════════════════════════════════════════════════ */
+
+[data-theme="dark"] {
+  /* Base surfaces — ink itself becomes the app background; paper-raised
+     becomes one step lighter, for the layering between page and card. */
+  --paper: #14181f;
+  --paper-raised: #1c222c;
+
+  /* Text — reusing light-mode's paper (cream) as dark-mode's main text
+     color is a deliberate symmetry, not a coincidence. */
+  --ink: #f1efe6;
+  --ink-soft: #a7b3ba;
+  --ink-faint: #6b7680;
+
+  --line: #2a313b;
+  --line-strong: #3a4450;
+
+  /* Functional accent (cobalt) — brightened so it still pops against a
+     dark background instead of reading as muddy navy. */
+  --steel: #5b82e8;
+  --steel-dark: #83a3f0;
+  --steel-wash: #1f2c4d;
+
+  /* Warning/hazard — brightened amber instead of the light-mode's
+     deeper burnt orange, which would lose contrast on dark. */
+  --hazard: #e08a3c;
+  --hazard-bg: #3d2a18;
+
+  --danger: #f0645c;
+  --danger-dark: #f58a84;
+  --danger-bg: #3d1f1e;
+
+  --moss: #4ade80;
+  --moss-bg: #1a3324;
+  --moss-text: #6ee7a8;
+
+  /* Signature violet — same family as the landing page's dark-panel
+     accent, brightened for dark-surface legibility. */
+  --overflow: #a78bfa;
+  --overflow-bg: #2e2150;
+
+  /* Shadows go from ink-tinted to pure black — still subtle against a
+     dark background, which is expected; dark UIs lean on borders and
+     lighter surface color for elevation more than heavy shadow. */
+  --shadow-rgb: 0, 0, 0;
+
+  /* The frosted-glass header/sheet backgrounds become dark glass
+     instead of staying stuck on white. */
+  --glass-rgb: 20, 24, 31;
+
+  /* Unmarked task cards blend with the dark card instead of showing a
+     stray white sliver on the left edge. */
+  --marker-default: var(--paper-raised);
+
+  /* Suggestion-chip hover — a lighter version of the dark steel-wash,
+     mirroring what the light-mode hover does relative to its own wash. */
+  --steel-wash-hover: #2c3e6b;
+}
+
+/* A couple of spots needed a literal (not token) adjustment, since the
+   light-mode value was a fixed white sheen rather than something that
+   already flows through a variable. */
+[data-theme="dark"] .task-row {
+  box-shadow:
+    0 1px 2px rgba(var(--shadow-rgb), 0.3),
+    0 4px 12px rgba(var(--shadow-rgb), 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] .today-header-card {
+  box-shadow: 0 2px 6px rgba(var(--shadow-rgb), 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Google's button stays white in both themes — that's their brand mark,
+   not one of ours, so it's deliberately excluded from the token system. */
