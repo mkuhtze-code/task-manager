@@ -35,6 +35,26 @@ function InfoIcon() {
   );
 }
 
+type Theme = 'light' | 'dark' | 'system';
+
+// Resolves 'system' against the OS preference and flips the data-theme
+// attribute on <html> immediately, so the toggle feels instant rather
+// than waiting on the Supabase round-trip.
+function applyTheme(theme: Theme) {
+  if (typeof window === 'undefined') return;
+  let resolved: 'light' | 'dark' = theme === 'system'
+    ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : theme;
+  if (resolved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+  try {
+    localStorage.setItem('dokkit-theme', theme);
+  } catch (e) {}
+}
+
 export default function Preferences() {
   const [session, setSession] = useState<any>(null);
   const [workStart, setWorkStart] = useState('08:00');
@@ -43,6 +63,19 @@ export default function Preferences() {
   const [notificationStyle, setNotificationStyle] = useState<'default' | 'silent'>('default');
   const [notifStatus, setNotifStatus] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
+
+  // Initialize from whatever the pre-paint script already stored, so the
+  // segmented control shows the right selection on first render instead
+  // of flashing to "system" before Supabase responds.
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'system';
+    try {
+      const stored = localStorage.getItem('dokkit-theme') as Theme | null;
+      return stored || 'system';
+    } catch (e) {
+      return 'system';
+    }
+  });
 
   type SortMode = 'capacity_first' | 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
   const [sortMode, setSortMode] = useState<SortMode>('capacity_first');
@@ -80,7 +113,7 @@ export default function Preferences() {
     const userId = session.user.id;
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days, notification_style, sort_mode')
+      .select('work_start, work_end, work_days, notification_style, sort_mode, theme')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
@@ -89,6 +122,12 @@ export default function Preferences() {
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : [1, 2, 3, 4, 5]);
       setNotificationStyle(settings.notification_style || 'default');
+      // The stored row is the source of truth once it arrives — it may
+      // differ from another device's localStorage. Apply it so this
+      // device converges to match.
+      const storedTheme = (settings.theme as Theme) || 'system';
+      setTheme(storedTheme);
+      applyTheme(storedTheme);
     }
   }
 
@@ -150,6 +189,17 @@ export default function Preferences() {
     await supabase.from('user_settings').update({ notification_style: style }).eq('user_id', session.user.id);
   }
 
+  async function saveTheme(next: Theme) {
+    const previous = theme;
+    setTheme(next);
+    applyTheme(next); // instant visual feedback, doesn't wait on the network
+    const { error } = await supabase.from('user_settings').update({ theme: next }).eq('user_id', session.user.id);
+    if (error) {
+      setTheme(previous);
+      applyTheme(previous);
+    }
+  }
+
   async function enableNotifications() {
     setNotifStatus('Requesting permission...');
     try {
@@ -205,6 +255,25 @@ export default function Preferences() {
       <AppHeader title="Preferences" backHref="/" />
 
       <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
+        <div className="settings-panel-title">Appearance</div>
+        <div className="segmented">
+          {([
+            { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' },
+            { value: 'system', label: 'System' },
+          ] as { value: Theme; label: string }[]).map((opt) => (
+            <button
+              key={opt.value}
+              className={theme === opt.value ? 'segmented-btn active' : 'segmented-btn'}
+              onClick={() => saveTheme(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="settings-panel">
         <div className="settings-panel-title">Work hours</div>
         <div className="settings-row">
           <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
