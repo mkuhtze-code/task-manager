@@ -7,12 +7,19 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
 
-type Trip = {
-  id: string;
-  name: string;
-  start_date: string;
-  end_date: string;
-};
+{accommodationSheetOpen && (
+  <AccommodationSheet
+    tripId={tripId}
+    tripStartDate={trip.start_date}
+    tripEndDate={trip.end_date}
+    onClose={() => setAccommodationSheetOpen(false)}
+    onSynced={async () => {
+      await loadTrip();
+      await refreshSelectedDay();
+      recalculateDay();
+    }}
+  />
+)}
 
 type TripDay = {
   id: string;
