@@ -7,19 +7,12 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
 
-{accommodationSheetOpen && (
-  <AccommodationSheet
-    tripId={tripId}
-    tripStartDate={trip.start_date}
-    tripEndDate={trip.end_date}
-    onClose={() => setAccommodationSheetOpen(false)}
-    onSynced={async () => {
-      await loadTrip();
-      await refreshSelectedDay();
-      recalculateDay();
-    }}
-  />
-)}
+type Trip = {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+};
 
 type TripDay = {
   id: string;
@@ -32,6 +25,8 @@ type TripDay = {
   base_lat: number | null;
   base_lng: number | null;
   drive_from_base_mins: number | null;
+  arrival_time: string | null;
+  departure_time: string | null;
 };
 
 type Activity = {
@@ -261,46 +256,6 @@ function ActivityDetailSheet(props: {
   );
 }
 
-function BaseEditorSheet(props: {
-  tripDay: TripDay;
-  onClose: () => void;
-  onSave: (locationText: string, lat: number | null, lng: number | null) => void;
-}) {
-  const { tripDay, onClose, onSave } = props;
-  const [location, setLocation] = useState(tripDay.base_location_text || '');
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    tripDay.base_lat != null && tripDay.base_lng != null ? { lat: tripDay.base_lat, lng: tripDay.base_lng } : null
-  );
-
-  function commit() {
-    onSave(location.trim(), coords?.lat ?? null, coords?.lng ?? null);
-  }
-
-  return (
-    <div className="sheet-backdrop" onClick={() => { commit(); onClose(); }}>
-      <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="settings-panel-title">Where are you staying?</div>
-        <LocationAutocomplete
-          value={location}
-          placeholder="Hotel or accommodation"
-          onChange={setLocation}
-          onPlaceSelected={(result) => {
-            setLocation(result.formattedAddress);
-            setCoords({ lat: result.lat, lng: result.lng });
-          }}
-        />
-        {location.length > 0 && !coords && (
-          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
-            Pick a suggestion so this can anchor your drive-time calculations.
-          </p>
-        )}
-        <button className="btn btn-steel" onClick={() => { commit(); onClose(); }}>Save</button>
-        <button className="btn-text" onClick={onClose}>Cancel</button>
-      </div>
-    </div>
-  );
-}
-
 export default function TripDayView() {
   const router = useRouter();
   const params = useParams();
@@ -466,16 +421,6 @@ export default function TripDayView() {
     recalculateDay();
   }
 
-  async function saveBase(locationText: string, lat: number | null, lng: number | null) {
-    if (!selectedDayId) return;
-    await supabase
-      .from('trip_days')
-      .update({ base_location_text: locationText || null, base_lat: lat, base_lng: lng })
-      .eq('id', selectedDayId);
-    await refreshSelectedDay();
-    if (lat != null) recalculateDay();
-  }
-
   // ── Manual drag-to-reorder — same mechanic as Dokkit's task list ────
   function handleDragHandlePointerDown(e: React.PointerEvent, activityId: string, currentOrderIds: string[]) {
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
@@ -532,10 +477,7 @@ export default function TripDayView() {
 
   const selectedDay = tripDays.find((d) => d.id === selectedDayId) || null;
 
-  // ── Legs for "find something nearby" — one per stretch of driving in
-  // the current order: base→first stop (if base is set), then each
-  // consecutive stop→stop pair. Recomputed whenever the order or base
-  // changes, since insertIndex depends on current position in the list.
+  // ── Legs for "find something nearby" ─────────────────────────────
   const legs: Leg[] = useMemo(() => {
     if (!selectedDay) return [];
     const out: Leg[] = [];
@@ -571,7 +513,7 @@ export default function TripDayView() {
     return out;
   }, [selectedDay, activities]);
 
- async function runNearbySearch(leg: Leg, category: string) {
+  async function runNearbySearch(leg: Leg, category: string) {
     setNearbyLoading(true);
     setNearbySuggestions([]);
     try {
@@ -638,8 +580,13 @@ export default function TripDayView() {
     recalculateDay();
   }
 
-  const dayStartMinutes = selectedDay ? timeStringToMinutes(selectedDay.day_start) : 0;
-  const dayEndMinutes = selectedDay ? timeStringToMinutes(selectedDay.day_end) : 0;
+  // Arrival/departure on this specific day override the normal day_start/
+  // day_end — set by AccommodationSheet on check-in/check-out days only.
+  const effectiveDayStart = selectedDay?.arrival_time || selectedDay?.day_start || '08:00';
+  const effectiveDayEnd = selectedDay?.departure_time || selectedDay?.day_end || '20:00';
+
+  const dayStartMinutes = selectedDay ? timeStringToMinutes(effectiveDayStart) : 0;
+  const dayEndMinutes = selectedDay ? timeStringToMinutes(effectiveDayEnd) : 0;
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
 
   const todayStr = now.toISOString().slice(0, 10);
@@ -690,15 +637,15 @@ export default function TripDayView() {
 
       {selectedDay && (
         <>
-         <button
-  className="btn-text"
-  style={{ padding: 0, marginBottom: 'var(--space-2)' }}
-  onClick={() => setAccommodationSheetOpen(true)}
->
-  {selectedDay?.base_location_text
-    ? `Staying at ${selectedDay.base_location_text}`
-    : 'Set accommodation for this trip →'}
-</button>
+          <button
+            className="btn-text"
+            style={{ padding: 0, marginBottom: 'var(--space-2)' }}
+            onClick={() => setAccommodationSheetOpen(true)}
+          >
+            {selectedDay.base_location_text
+              ? `Staying at ${selectedDay.base_location_text}`
+              : 'Set accommodation for this trip →'}
+          </button>
 
           <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
             <div className="header-compare-row">
@@ -727,9 +674,9 @@ export default function TripDayView() {
                 {isToday && <div className="day-rail-now-dot" style={{ left: `${nowPercent * 100}%` }} />}
               </div>
               <div className="day-rail-labels">
-                <span>{fmtClock(selectedDay.day_start)}</span>
+                <span>{fmtClock(effectiveDayStart)}{selectedDay.arrival_time ? ' (arrival)' : ''}</span>
                 {overloaded && <span className="day-rail-overflow-label">+{fmtMins(plannedMins - minutesLeftToday)}</span>}
-                <span>{fmtClock(selectedDay.day_end)}</span>
+                <span>{fmtClock(effectiveDayEnd)}{selectedDay.departure_time ? ' (departure)' : ''}</span>
               </div>
             </div>
 
@@ -743,10 +690,10 @@ export default function TripDayView() {
             </button>
 
             {legs.length === 0 && activities.length > 0 && (
-  <p style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 6 }}>
-    No nearby suggestions available for this day yet — this needs either a base set above, or at least two stops with a location picked from the search suggestions (not just typed).
-  </p>
-)}
+              <p style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 6 }}>
+                No nearby suggestions available for this day yet — this needs either a base set above, or at least two stops with a location picked from the search suggestions (not just typed).
+              </p>
+            )}
           </div>
 
           {legs.length > 0 && activities.length === 0 && selectedDay.base_lat != null && (
@@ -891,27 +838,29 @@ export default function TripDayView() {
       )}
 
       {accommodationSheetOpen && (
-  <AccommodationSheet
-    tripId={tripId}
-    onClose={() => setAccommodationSheetOpen(false)}
-    onSynced={async () => {
-      await loadTrip(); // refetches tripDays, which now carries synced base fields
-      await refreshSelectedDay();
-      recalculateDay();
-    }}
-  />
-)}
+        <AccommodationSheet
+          tripId={tripId}
+          tripStartDate={trip.start_date}
+          tripEndDate={trip.end_date}
+          onClose={() => setAccommodationSheetOpen(false)}
+          onSynced={async () => {
+            await loadTrip();
+            await refreshSelectedDay();
+            recalculateDay();
+          }}
+        />
+      )}
 
       {nearbyOpen && (
-  <NearbySheet
-    loading={nearbyLoading}
-    suggestions={nearbySuggestions}
-    selectedCategory={nearbyCategory}
-    onCategoryChange={handleCategoryChange}
-    onClose={() => setNearbyOpen(false)}
-    onPick={insertNearbySuggestion}
-  />
-)}
+        <NearbySheet
+          loading={nearbyLoading}
+          suggestions={nearbySuggestions}
+          selectedCategory={nearbyCategory}
+          onCategoryChange={handleCategoryChange}
+          onClose={() => setNearbyOpen(false)}
+          onPick={insertNearbySuggestion}
+        />
+      )}
     </div>
   );
 }
