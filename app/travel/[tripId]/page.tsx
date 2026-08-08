@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
 
 type Trip = {
   id: string;
@@ -18,6 +19,10 @@ type TripDay = {
   day_start: string;
   day_end: string;
   notes: string | null;
+  base_location_text: string | null;
+  base_lat: number | null;
+  base_lng: number | null;
+  drive_from_base_mins: number | null;
 };
 
 type Activity = {
@@ -28,6 +33,8 @@ type Activity = {
   estimate_mins: number;
   drive_mins_to_next: number;
   location_text: string | null;
+  lat: number | null;
+  lng: number | null;
   order_index: number;
   status: 'pending' | 'done';
 };
@@ -79,6 +86,23 @@ function parseMins(raw: string): number | null {
   return unit === 'h' ? Math.round(num * 60) : Math.round(num);
 }
 
+// Every call to a protected /api/travel/* route needs the caller's live
+// Supabase access token attached — this mirrors verifyUser's expectation
+// of an `Authorization: Bearer <token>` header on the server side.
+async function authedFetch(url: string, body: any) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
 function FitCheckIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -102,7 +126,7 @@ function ActivityDetailSheet(props: {
   activity: Activity;
   tripDays: TripDay[];
   onClose: () => void;
-  onSave: (id: string, text: string, estimateMins: number, driveMins: number, location: string) => void;
+  onSave: (id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null) => void;
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onMoveToDay: (id: string, newTripDayId: string) => void;
@@ -110,19 +134,20 @@ function ActivityDetailSheet(props: {
   const { activity: a, tripDays, onClose, onSave, onComplete, onDelete, onMoveToDay } = props;
   const [text, setText] = useState(a.text);
   const [estimateStr, setEstimateStr] = useState(fmtMins(a.estimate_mins));
-  const [driveStr, setDriveStr] = useState(fmtMins(a.drive_mins_to_next));
   const [location, setLocation] = useState(a.location_text || '');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    a.lat != null && a.lng != null ? { lat: a.lat, lng: a.lng } : null
+  );
   const [error, setError] = useState('');
 
   function commit() {
     const est = parseMins(estimateStr);
-    const drive = parseMins(driveStr);
-    if (est === null || drive === null || est < 0 || drive < 0) {
+    if (est === null || est < 0) {
       setError('Could not read a time — try 15m or 1.5h');
       return;
     }
     setError('');
-    onSave(a.id, text.trim() || a.text, est, drive, location.trim());
+    onSave(a.id, text.trim() || a.text, est, location.trim(), coords?.lat ?? null, coords?.lng ?? null);
   }
 
   return (
@@ -141,24 +166,31 @@ function ActivityDetailSheet(props: {
           onBlur={commit}
         />
 
-        <input
-          type="text"
-          placeholder="Location (optional)"
+        <LocationAutocomplete
           value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          onBlur={commit}
+          placeholder="Search for a place"
+          onChange={setLocation}
+          onPlaceSelected={(result) => {
+            setLocation(result.formattedAddress);
+            setCoords({ lat: result.lat, lng: result.lng });
+          }}
         />
+        {location.length > 0 && !coords && (
+          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+            Pick a suggestion from the list so drive time can be calculated for this stop.
+          </p>
+        )}
 
-        <div className="capture-row">
-          <div style={{ flex: 1 }}>
-            <span className="settings-label">Time here</span>
-            <input type="text" value={estimateStr} onChange={(e) => setEstimateStr(e.target.value)} onBlur={commit} style={{ width: '100%' }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <span className="settings-label">Drive to next</span>
-            <input type="text" value={driveStr} onChange={(e) => setDriveStr(e.target.value)} onBlur={commit} style={{ width: '100%' }} />
-          </div>
+        <div style={{ flex: 1 }}>
+          <span className="settings-label">Time here</span>
+          <input type="text" value={estimateStr} onChange={(e) => setEstimateStr(e.target.value)} onBlur={commit} style={{ width: '100%' }} />
         </div>
+
+        {a.drive_mins_to_next > 0 && (
+          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
+            Drive to next stop: <span className="mono" style={{ fontWeight: 700 }}>{fmtMins(a.drive_mins_to_next)}</span> (calculated)
+          </p>
+        )}
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
 
         <div className="task-detail-actions">
@@ -191,6 +223,46 @@ function ActivityDetailSheet(props: {
   );
 }
 
+function BaseEditorSheet(props: {
+  tripDay: TripDay;
+  onClose: () => void;
+  onSave: (locationText: string, lat: number | null, lng: number | null) => void;
+}) {
+  const { tripDay, onClose, onSave } = props;
+  const [location, setLocation] = useState(tripDay.base_location_text || '');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    tripDay.base_lat != null && tripDay.base_lng != null ? { lat: tripDay.base_lat, lng: tripDay.base_lng } : null
+  );
+
+  function commit() {
+    onSave(location.trim(), coords?.lat ?? null, coords?.lng ?? null);
+  }
+
+  return (
+    <div className="sheet-backdrop" onClick={() => { commit(); onClose(); }}>
+      <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="settings-panel-title">Where are you staying?</div>
+        <LocationAutocomplete
+          value={location}
+          placeholder="Hotel or accommodation"
+          onChange={setLocation}
+          onPlaceSelected={(result) => {
+            setLocation(result.formattedAddress);
+            setCoords({ lat: result.lat, lng: result.lng });
+          }}
+        />
+        {location.length > 0 && !coords && (
+          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+            Pick a suggestion so this can anchor your drive-time calculations.
+          </p>
+        )}
+        <button className="btn btn-steel" onClick={() => { commit(); onClose(); }}>Save</button>
+        <button className="btn-text" onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 export default function TripDayView() {
   const router = useRouter();
   const params = useParams();
@@ -202,12 +274,15 @@ export default function TripDayView() {
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [now, setNow] = useState(new Date());
+  const [recalculating, setRecalculating] = useState(false);
 
   const [openActivityId, setOpenActivityId] = useState<string | null>(null);
+  const [baseEditorOpen, setBaseEditorOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureText, setCaptureText] = useState('');
+  const [captureLocation, setCaptureLocation] = useState('');
+  const [captureCoords, setCaptureCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [captureEstimate, setCaptureEstimate] = useState('30m');
-  const [captureDrive, setCaptureDrive] = useState('0m');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -256,12 +331,36 @@ export default function TripDayView() {
     setActivities(data || []);
   }
 
+  async function refreshSelectedDay() {
+    if (!selectedDayId) return;
+    const { data } = await supabase.from('trip_days').select('*').eq('id', selectedDayId).maybeSingle();
+    if (data) {
+      setTripDays((prev) => prev.map((d) => (d.id === data.id ? data : d)));
+    }
+  }
+
+  // Fires the server-side chain calculation, then refetches both the
+  // activities (for updated drive_mins_to_next) and the day (for the
+  // updated drive_from_base_mins). Called after anything that changes the
+  // route — never on every keystroke — since each call is a small burst of
+  // Routes API requests, one per leg in the day.
+  async function recalculateDay() {
+    if (!selectedDayId) return;
+    setRecalculating(true);
+    try {
+      await authedFetch('/api/travel/calculate-day', { trip_day_id: selectedDayId });
+      await loadActivities();
+      await refreshSelectedDay();
+    } finally {
+      setRecalculating(false);
+    }
+  }
+
   async function addActivity() {
     const text = captureText.trim();
     if (text.length === 0 || !selectedDayId || !session) return;
     const est = parseMins(captureEstimate);
-    const drive = parseMins(captureDrive);
-    if (est === null || drive === null) {
+    if (est === null) {
       setError('Could not read a time — try 15m or 1.5h');
       return;
     }
@@ -274,7 +373,10 @@ export default function TripDayView() {
         trip_day_id: selectedDayId,
         text,
         estimate_mins: est,
-        drive_mins_to_next: drive,
+        drive_mins_to_next: 0,
+        location_text: captureLocation.trim() || null,
+        lat: captureCoords?.lat ?? null,
+        lng: captureCoords?.lng ?? null,
         order_index: maxOrder + 1,
       })
       .select()
@@ -285,35 +387,50 @@ export default function TripDayView() {
     }
     setActivities((prev) => [...prev, data]);
     setCaptureText('');
+    setCaptureLocation('');
+    setCaptureCoords(null);
     setCaptureEstimate('30m');
-    setCaptureDrive('0m');
     setCaptureOpen(false);
+    if (data.lat != null) recalculateDay();
   }
 
-  async function updateActivity(id: string, text: string, estimateMins: number, driveMins: number, location: string) {
+  async function updateActivity(id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null) {
     await supabase
       .from('activities')
-      .update({ text, estimate_mins: estimateMins, drive_mins_to_next: driveMins, location_text: location || null })
+      .update({ text, estimate_mins: estimateMins, location_text: location || null, lat, lng })
       .eq('id', id);
     setActivities((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, text, estimate_mins: estimateMins, drive_mins_to_next: driveMins, location_text: location || null } : a))
+      prev.map((a) => (a.id === id ? { ...a, text, estimate_mins: estimateMins, location_text: location || null, lat, lng } : a))
     );
+    recalculateDay();
   }
 
   async function completeActivity(id: string) {
     await supabase.from('activities').update({ status: 'done' }).eq('id', id);
     setActivities((prev) => prev.filter((a) => a.id !== id));
+    recalculateDay();
   }
 
   async function deleteActivity(id: string) {
     await supabase.from('activities').delete().eq('id', id);
     setActivities((prev) => prev.filter((a) => a.id !== id));
+    recalculateDay();
   }
 
   async function moveActivityToDay(id: string, newTripDayId: string) {
-    const maxOrder = 0; // lands at top of the new day; reorder manually after
-    await supabase.from('activities').update({ trip_day_id: newTripDayId, order_index: maxOrder }).eq('id', id);
+    await supabase.from('activities').update({ trip_day_id: newTripDayId, order_index: 0 }).eq('id', id);
     setActivities((prev) => prev.filter((a) => a.id !== id));
+    recalculateDay();
+  }
+
+  async function saveBase(locationText: string, lat: number | null, lng: number | null) {
+    if (!selectedDayId) return;
+    await supabase
+      .from('trip_days')
+      .update({ base_location_text: locationText || null, base_lat: lat, base_lng: lng })
+      .eq('id', selectedDayId);
+    await refreshSelectedDay();
+    if (lat != null) recalculateDay();
   }
 
   const selectedDay = tripDays.find((d) => d.id === selectedDayId) || null;
@@ -326,7 +443,8 @@ export default function TripDayView() {
   const isToday = selectedDay?.date === todayStr;
   const minutesLeftToday = isToday ? Math.max(dayEndMinutes - nowMinutesOfDay, 0) : Math.max(dayEndMinutes - dayStartMinutes, 0);
 
-  const plannedMins = activities.reduce((sum, a) => sum + a.estimate_mins + a.drive_mins_to_next, 0);
+  const driveFromBase = selectedDay?.drive_from_base_mins || 0;
+  const plannedMins = driveFromBase + activities.reduce((sum, a) => sum + a.estimate_mins + a.drive_mins_to_next, 0);
   const overloaded = minutesLeftToday > 0 && plannedMins > minutesLeftToday;
 
   const trackSpan = Math.max(dayEndMinutes - dayStartMinutes, 1);
@@ -367,39 +485,60 @@ export default function TripDayView() {
       </div>
 
       {selectedDay && (
-        <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
-          <div className="header-compare-row">
-            <div className="header-compare-stat">
-              <div className="header-compare-number mono">{fmtMins(minutesLeftToday)}</div>
-              <div className="header-compare-label">{isToday ? 'time left' : 'day length'}</div>
-            </div>
-            <div className={overloaded ? 'header-fit-icon over' : 'header-fit-icon fits'}>
-              {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
-            </div>
-            <div className="header-compare-stat">
-              <div className={overloaded ? 'header-compare-number mono over' : 'header-compare-number mono'}>
-                {fmtMins(plannedMins)}
-              </div>
-              <div className="header-compare-label">planned + drive</div>
-            </div>
-          </div>
+        <>
+          <button
+            className="btn-text"
+            style={{ padding: 0, marginBottom: 'var(--space-2)' }}
+            onClick={() => setBaseEditorOpen(true)}
+          >
+            {selectedDay.base_location_text
+              ? `Staying at ${selectedDay.base_location_text}`
+              : 'Set where you\'re staying →'}
+          </button>
 
-          <div className="day-rail-wrap">
-            <div className="day-rail-track">
-              {isToday && <div className="day-rail-elapsed" style={{ width: `${nowPercent * 100}%` }} />}
-              <div
-                className={overloaded ? 'day-rail-plan over' : 'day-rail-plan'}
-                style={{ left: `${nowPercent * 100}%`, width: `${planWidthPercent * 100}%` }}
-              />
-              {isToday && <div className="day-rail-now-dot" style={{ left: `${nowPercent * 100}%` }} />}
+          <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
+            <div className="header-compare-row">
+              <div className="header-compare-stat">
+                <div className="header-compare-number mono">{fmtMins(minutesLeftToday)}</div>
+                <div className="header-compare-label">{isToday ? 'time left' : 'day length'}</div>
+              </div>
+              <div className={overloaded ? 'header-fit-icon over' : 'header-fit-icon fits'}>
+                {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
+              </div>
+              <div className="header-compare-stat">
+                <div className={overloaded ? 'header-compare-number mono over' : 'header-compare-number mono'}>
+                  {fmtMins(plannedMins)}
+                </div>
+                <div className="header-compare-label">planned + drive</div>
+              </div>
             </div>
-            <div className="day-rail-labels">
-              <span>{fmtClock(selectedDay.day_start)}</span>
-              {overloaded && <span className="day-rail-overflow-label">+{fmtMins(plannedMins - minutesLeftToday)}</span>}
-              <span>{fmtClock(selectedDay.day_end)}</span>
+
+            <div className="day-rail-wrap">
+              <div className="day-rail-track">
+                {isToday && <div className="day-rail-elapsed" style={{ width: `${nowPercent * 100}%` }} />}
+                <div
+                  className={overloaded ? 'day-rail-plan over' : 'day-rail-plan'}
+                  style={{ left: `${nowPercent * 100}%`, width: `${planWidthPercent * 100}%` }}
+                />
+                {isToday && <div className="day-rail-now-dot" style={{ left: `${nowPercent * 100}%` }} />}
+              </div>
+              <div className="day-rail-labels">
+                <span>{fmtClock(selectedDay.day_start)}</span>
+                {overloaded && <span className="day-rail-overflow-label">+{fmtMins(plannedMins - minutesLeftToday)}</span>}
+                <span>{fmtClock(selectedDay.day_end)}</span>
+              </div>
             </div>
+
+            <button
+              className="btn-text"
+              style={{ marginTop: 'var(--space-2)', padding: 0 }}
+              onClick={recalculateDay}
+              disabled={recalculating}
+            >
+              {recalculating ? 'Recalculating drive times…' : 'Recalculate drive times'}
+            </button>
           </div>
-        </div>
+        </>
       )}
 
       <div className="task-list">
@@ -419,6 +558,9 @@ export default function TripDayView() {
                         <span className="tag mono">+{fmtMins(a.drive_mins_to_next)} drive</span>
                       )}
                       {a.location_text && <span className="tag">{a.location_text}</span>}
+                      {a.location_text && a.lat == null && (
+                        <span className="tag tag-due">no coords — drive time skipped</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -434,17 +576,20 @@ export default function TripDayView() {
             type="text"
             value={captureText}
             onChange={(e) => setCaptureText(e.target.value)}
-            placeholder="Where to?"
+            placeholder="What's the stop?"
           />
-          <div className="capture-row">
-            <div style={{ flex: 1 }}>
-              <span className="settings-label">Time there</span>
-              <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} style={{ width: '100%' }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <span className="settings-label">Drive to next</span>
-              <input type="text" value={captureDrive} onChange={(e) => setCaptureDrive(e.target.value)} style={{ width: '100%' }} />
-            </div>
+          <LocationAutocomplete
+            value={captureLocation}
+            placeholder="Search for a place"
+            onChange={setCaptureLocation}
+            onPlaceSelected={(result) => {
+              setCaptureLocation(result.formattedAddress);
+              setCaptureCoords({ lat: result.lat, lng: result.lng });
+            }}
+          />
+          <div>
+            <span className="settings-label">Time there</span>
+            <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} style={{ width: '100%' }} />
           </div>
           {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
           <button className="btn btn-steel" onClick={addActivity}>Add stop</button>
@@ -465,6 +610,14 @@ export default function TripDayView() {
           onComplete={completeActivity}
           onDelete={deleteActivity}
           onMoveToDay={moveActivityToDay}
+        />
+      )}
+
+      {baseEditorOpen && selectedDay && (
+        <BaseEditorSheet
+          tripDay={selectedDay}
+          onClose={() => setBaseEditorOpen(false)}
+          onSave={saveBase}
         />
       )}
     </div>
