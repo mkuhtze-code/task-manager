@@ -720,6 +720,12 @@ export default function TripDayView() {
             >
               {recalculating ? 'Recalculating drive times…' : 'Recalculate drive times'}
             </button>
+
+            {legs.length === 0 && activities.length > 0 && (
+  <p style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 6 }}>
+    No nearby suggestions available for this day yet — this needs either a base set above, or at least two stops with a location picked from the search suggestions (not just typed).
+  </p>
+)}
           </div>
 
           {legs.length > 0 && activities.length === 0 && selectedDay.base_lat != null && (
