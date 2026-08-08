@@ -709,7 +709,7 @@ export default function TripDayView() {
           <h1 className="app-title" style={{ fontSize: 'var(--text-lg)' }}>{trip.name}</h1>
         </div>
         <div className="app-header-right">
-          <GearMenu context="travel" />
+          <GearMenu />
         </div>
       </div>
 
