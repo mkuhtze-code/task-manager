@@ -323,6 +323,8 @@ export default function TripDayView() {
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbySuggestions, setNearbySuggestions] = useState<NearbySuggestion[]>([]);
   const [nearbyInsertIndex, setNearbyInsertIndex] = useState<number | null>(null);
+  const [nearbyCategory, setNearbyCategory] = useState('attraction');
+  const [nearbyLeg, setNearbyLeg] = useState<Leg | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -562,9 +564,7 @@ export default function TripDayView() {
     return out;
   }, [selectedDay, activities]);
 
-  async function findNearby(leg: Leg) {
-    setNearbyInsertIndex(leg.insertIndex);
-    setNearbyOpen(true);
+ async function runNearbySearch(leg: Leg, category: string) {
     setNearbyLoading(true);
     setNearbySuggestions([]);
     try {
@@ -574,11 +574,24 @@ export default function TripDayView() {
         destLat: leg.toLat,
         destLng: leg.toLng,
         directMins: leg.directMins,
+        category,
       });
       setNearbySuggestions(json.suggestions || []);
     } finally {
       setNearbyLoading(false);
     }
+  }
+
+  async function findNearby(leg: Leg) {
+    setNearbyLeg(leg);
+    setNearbyInsertIndex(leg.insertIndex);
+    setNearbyOpen(true);
+    runNearbySearch(leg, nearbyCategory);
+  }
+
+  function handleCategoryChange(category: string) {
+    setNearbyCategory(category);
+    if (nearbyLeg) runNearbySearch(nearbyLeg, category);
   }
 
   async function insertNearbySuggestion(s: NearbySuggestion) {
@@ -883,13 +896,15 @@ export default function TripDayView() {
 )}
 
       {nearbyOpen && (
-        <NearbySheet
-          loading={nearbyLoading}
-          suggestions={nearbySuggestions}
-          onClose={() => setNearbyOpen(false)}
-          onPick={insertNearbySuggestion}
-        />
-      )}
+  <NearbySheet
+    loading={nearbyLoading}
+    suggestions={nearbySuggestions}
+    selectedCategory={nearbyCategory}
+    onCategoryChange={handleCategoryChange}
+    onClose={() => setNearbyOpen(false)}
+    onPick={insertNearbySuggestion}
+  />
+)}
     </div>
   );
 }
