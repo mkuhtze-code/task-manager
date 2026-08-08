@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
+import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 
 type Trip = {
   id: string;
@@ -47,6 +48,16 @@ type DragState = {
   offsetY: number;
   rowHeight: number;
   orderSnapshot: string[];
+};
+
+type Leg = {
+  fromLabel: string;
+  fromLat: number;
+  fromLng: number;
+  toLat: number;
+  toLng: number;
+  directMins: number;
+  insertIndex: number;
 };
 
 const ROW_GAP = 8;
@@ -307,6 +318,11 @@ export default function TripDayView() {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
 
+  const [nearbyOpen, setNearbyOpen] = useState(false);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [nearbySuggestions, setNearbySuggestions] = useState<NearbySuggestion[]>([]);
+  const [nearbyInsertIndex, setNearbyInsertIndex] = useState<number | null>(null);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
   }, []);
@@ -501,12 +517,105 @@ export default function TripDayView() {
     await Promise.all(
       newOrderIds.map((aid, idx) => supabase.from('activities').update({ order_index: idx }).eq('id', aid))
     );
-    // New order means new legs — recalculate once the drop settles, not
-    // during the drag itself.
     recalculateDay();
   }
 
   const selectedDay = tripDays.find((d) => d.id === selectedDayId) || null;
+
+  // ── Legs for "find something nearby" — one per stretch of driving in
+  // the current order: base→first stop (if base is set), then each
+  // consecutive stop→stop pair. Recomputed whenever the order or base
+  // changes, since insertIndex depends on current position in the list.
+  const legs: Leg[] = useMemo(() => {
+    if (!selectedDay) return [];
+    const out: Leg[] = [];
+    const hasBase = selectedDay.base_lat != null && selectedDay.base_lng != null;
+
+    if (hasBase && activities.length > 0 && activities[0].lat != null && activities[0].lng != null) {
+      out.push({
+        fromLabel: 'start',
+        fromLat: selectedDay.base_lat as number,
+        fromLng: selectedDay.base_lng as number,
+        toLat: activities[0].lat,
+        toLng: activities[0].lng,
+        directMins: selectedDay.drive_from_base_mins || 0,
+        insertIndex: 0,
+      });
+    }
+
+    for (let i = 0; i < activities.length - 1; i++) {
+      const a = activities[i];
+      const b = activities[i + 1];
+      if (a.lat == null || a.lng == null || b.lat == null || b.lng == null) continue;
+      out.push({
+        fromLabel: a.text,
+        fromLat: a.lat,
+        fromLng: a.lng,
+        toLat: b.lat,
+        toLng: b.lng,
+        directMins: a.drive_mins_to_next,
+        insertIndex: i + 1,
+      });
+    }
+
+    return out;
+  }, [selectedDay, activities]);
+
+  async function findNearby(leg: Leg) {
+    setNearbyInsertIndex(leg.insertIndex);
+    setNearbyOpen(true);
+    setNearbyLoading(true);
+    setNearbySuggestions([]);
+    try {
+      const json = await authedFetch('/api/travel/nearby-on-route', {
+        originLat: leg.fromLat,
+        originLng: leg.fromLng,
+        destLat: leg.toLat,
+        destLng: leg.toLng,
+        directMins: leg.directMins,
+      });
+      setNearbySuggestions(json.suggestions || []);
+    } finally {
+      setNearbyLoading(false);
+    }
+  }
+
+  async function insertNearbySuggestion(s: NearbySuggestion) {
+    if (!selectedDayId || !session || nearbyInsertIndex === null) return;
+    setNearbyOpen(false);
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('activities')
+      .insert({
+        user_id: session.user.id,
+        trip_day_id: selectedDayId,
+        text: s.name,
+        estimate_mins: 30,
+        drive_mins_to_next: 0,
+        location_text: s.address,
+        lat: s.lat,
+        lng: s.lng,
+        order_index: 9999,
+      })
+      .select()
+      .single();
+
+    if (insertError || !inserted) {
+      alert(insertError?.message || 'Could not add stop');
+      return;
+    }
+
+    const currentIds = activities.map((a) => a.id);
+    const newOrderIds = [...currentIds];
+    newOrderIds.splice(nearbyInsertIndex, 0, inserted.id);
+
+    await Promise.all(
+      newOrderIds.map((id, idx) => supabase.from('activities').update({ order_index: idx }).eq('id', id))
+    );
+
+    await loadActivities();
+    recalculateDay();
+  }
 
   const dayStartMinutes = selectedDay ? timeStringToMinutes(selectedDay.day_start) : 0;
   const dayEndMinutes = selectedDay ? timeStringToMinutes(selectedDay.day_end) : 0;
@@ -612,12 +721,30 @@ export default function TripDayView() {
               {recalculating ? 'Recalculating drive times…' : 'Recalculate drive times'}
             </button>
           </div>
+
+          {legs.length > 0 && activities.length === 0 && selectedDay.base_lat != null && (
+            <div className="empty-state">Add a stop to see what's nearby your base.</div>
+          )}
         </>
       )}
 
       <div className="task-list">
         {activities.length === 0 && (
           <div className="empty-state">Nothing planned for this day yet.<br />Tap + to add a stop.</div>
+        )}
+        {selectedDay && selectedDay.base_lat != null && activities.length > 0 && (
+          (() => {
+            const startLeg = legs.find((l) => l.insertIndex === 0 && l.fromLabel === 'start');
+            return startLeg ? (
+              <button
+                className="btn-text"
+                style={{ padding: '2px 0 6px', fontSize: 12 }}
+                onClick={() => findNearby(startLeg)}
+              >
+                Find something nearby, on the way from your base →
+              </button>
+            ) : null;
+          })()
         )}
         {activities.map((a, idx) => {
           let rowStyle: React.CSSProperties = {};
@@ -643,6 +770,8 @@ export default function TripDayView() {
               };
             }
           }
+
+          const legAfterThis = legs.find((l) => l.insertIndex === idx + 1 && l.fromLabel === a.text);
 
           return (
             <div key={a.id} ref={(el) => { rowElsRef.current[a.id] = el; }} style={rowStyle}>
@@ -674,6 +803,15 @@ export default function TripDayView() {
                         <DragHandleIcon />
                       </button>
                     </div>
+                    {legAfterThis && (
+                      <button
+                        className="btn-text"
+                        style={{ padding: '4px 0 0', fontSize: 12 }}
+                        onClick={(e) => { e.stopPropagation(); findNearby(legAfterThis); }}
+                      >
+                        Find something nearby →
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -730,6 +868,15 @@ export default function TripDayView() {
           tripDay={selectedDay}
           onClose={() => setBaseEditorOpen(false)}
           onSave={saveBase}
+        />
+      )}
+
+      {nearbyOpen && (
+        <NearbySheet
+          loading={nearbyLoading}
+          suggestions={nearbySuggestions}
+          onClose={() => setNearbyOpen(false)}
+          onPick={insertNearbySuggestion}
         />
       )}
     </div>
