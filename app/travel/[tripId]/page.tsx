@@ -443,6 +443,7 @@ export default function TripDayView() {
     setCaptureOpen(false);
     if (data.lat != null) recalculateDay();
   }
+
   async function updateActivity(id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null, timeType: 'flexible' | 'fixed', fixedTime: string | null) {
     await supabase
       .from('activities')
@@ -528,7 +529,9 @@ export default function TripDayView() {
 
   const selectedDay = tripDays.find((d) => d.id === selectedDayId) || null;
 
-  // ── Legs for "find something nearby" ─────────────────────────────
+  // ── Legs for "find something nearby" — always computed against the
+  // stored order_index sequence, independent of the current sort mode
+  // display order below.
   const legs: Leg[] = useMemo(() => {
     if (!selectedDay) return [];
     const out: Leg[] = [];
@@ -560,21 +563,7 @@ export default function TripDayView() {
         insertIndex: i + 1,
       });
     }
-const referencePoint = selectedDay?.base_lat != null && selectedDay?.base_lng != null
-    ? { lat: selectedDay.base_lat, lng: selectedDay.base_lng }
-    : null;
 
-  // "Nearby to me" is approximated from the day's base for now, not live
-  // GPS — see the design note on why this was deferred.
-  const setActivities = useMemo(
-    () => sortActivities(activities as any, travelSortMode, referencePoint),
-    [activities, travelSortMode, referencePoint]
-  ) as Activity[];
-
-  const fixedTimeConflicts = useMemo(
-    () => findFixedTimeConflicts(setActivities as any, dayStartMinutes),
-    [setActivities, dayStartMinutes]
-  );
     return out;
   }, [selectedDay, activities]);
 
@@ -667,6 +656,26 @@ const referencePoint = selectedDay?.base_lat != null && selectedDay?.base_lng !=
   const projectedFinish = (isToday ? nowMinutesOfDay : dayStartMinutes) + plannedMins;
   const projectedPercent = (projectedFinish - dayStartMinutes) / trackSpan;
   const planWidthPercent = Math.max(Math.min(projectedPercent, 1) - nowPercent, 0);
+
+  // ── Sort-mode display order — computed here, after dayStartMinutes
+  // exists, and named distinctly from the setActivities state setter to
+  // avoid the shadowing bug from the previous pass. This only affects
+  // rendering order; legs/insertIndex above still use the stored
+  // order_index sequence, so "find something nearby" positions stay
+  // correct even when a non-manual sort mode is active for display.
+  const referencePoint = selectedDay?.base_lat != null && selectedDay?.base_lng != null
+    ? { lat: selectedDay.base_lat, lng: selectedDay.base_lng }
+    : null;
+
+  const sortedActivities = useMemo(
+    () => sortActivities(activities as any, travelSortMode, referencePoint) as Activity[],
+    [activities, travelSortMode, referencePoint]
+  );
+
+  const fixedTimeConflicts = useMemo(
+    () => findFixedTimeConflicts(sortedActivities as any, dayStartMinutes),
+    [sortedActivities, dayStartMinutes]
+  );
 
   const openActivity = openActivityId ? activities.find((a) => a.id === openActivityId) || null : null;
   const orderedIds = activities.map((a) => a.id);
@@ -793,7 +802,7 @@ const referencePoint = selectedDay?.base_lat != null && selectedDay?.base_lng !=
             ) : null;
           })()
         )}
-        {setActivities.map((a, idx) => {
+        {sortedActivities.map((a, idx) => {
           let rowStyle: React.CSSProperties = {};
           if (dragState) {
             if (a.id === dragState.id) {
