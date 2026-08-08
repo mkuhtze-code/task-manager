@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
+import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
 
 type Trip = {
   id: string;
@@ -41,6 +42,8 @@ type Activity = {
   lng: number | null;
   order_index: number;
   status: 'pending' | 'done';
+  time_type: 'flexible' | 'fixed';
+  fixed_time: string | null;
 };
 
 type DragState = {
@@ -159,7 +162,7 @@ function ActivityDetailSheet(props: {
   activity: Activity;
   tripDays: TripDay[];
   onClose: () => void;
-  onSave: (id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null) => void;
+  onSave: (id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null, timeType: 'flexible' | 'fixed', fixedTime: string | null) => void;
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onMoveToDay: (id: string, newTripDayId: string) => void;
@@ -171,6 +174,8 @@ function ActivityDetailSheet(props: {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     a.lat != null && a.lng != null ? { lat: a.lat, lng: a.lng } : null
   );
+  const [timeType, setTimeType] = useState<'flexible' | 'fixed'>(a.time_type || 'flexible');
+  const [fixedTime, setFixedTime] = useState(a.fixed_time || '');
   const [error, setError] = useState('');
 
   function commit() {
@@ -179,8 +184,21 @@ function ActivityDetailSheet(props: {
       setError('Could not read a time — try 15m or 1.5h');
       return;
     }
+    if (timeType === 'fixed' && !fixedTime) {
+      setError('Set a time for this fixed commitment');
+      return;
+    }
     setError('');
-    onSave(a.id, text.trim() || a.text, est, location.trim(), coords?.lat ?? null, coords?.lng ?? null);
+    onSave(
+      a.id,
+      text.trim() || a.text,
+      est,
+      location.trim(),
+      coords?.lat ?? null,
+      coords?.lng ?? null,
+      timeType,
+      timeType === 'fixed' ? fixedTime : null
+    );
   }
 
   return (
@@ -198,6 +216,28 @@ function ActivityDetailSheet(props: {
           onChange={(e) => setText(e.target.value)}
           onBlur={commit}
         />
+
+        <div className="segmented">
+          <button
+            className={timeType === 'flexible' ? 'segmented-btn active' : 'segmented-btn'}
+            onClick={() => { setTimeType('flexible'); }}
+          >
+            Flexible
+          </button>
+          <button
+            className={timeType === 'fixed' ? 'segmented-btn active' : 'segmented-btn'}
+            onClick={() => { setTimeType('fixed'); }}
+          >
+            Fixed time
+          </button>
+        </div>
+
+        {timeType === 'fixed' && (
+          <div>
+            <span className="settings-label">At</span>
+            <input type="time" value={fixedTime} onChange={(e) => setFixedTime(e.target.value)} onBlur={commit} style={{ width: '100%' }} />
+          </div>
+        )}
 
         <LocationAutocomplete
           value={location}
@@ -288,6 +328,10 @@ export default function TripDayView() {
   const [nearbyCategory, setNearbyCategory] = useState('attraction');
   const [nearbyLeg, setNearbyLeg] = useState<Leg | null>(null);
 
+  const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
+  const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
+  const [captureFixedTime, setCaptureFixedTime] = useState('');
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
   }, []);
@@ -362,6 +406,10 @@ export default function TripDayView() {
       setError('Could not read a time — try 15m or 1.5h');
       return;
     }
+    if (captureTimeType === 'fixed' && !captureFixedTime) {
+      setError('Set a time for this fixed commitment');
+      return;
+    }
     setError('');
     const maxOrder = activities.reduce((m, a) => Math.max(m, a.order_index), 0);
     const { data, error: insertError } = await supabase
@@ -376,6 +424,8 @@ export default function TripDayView() {
         lat: captureCoords?.lat ?? null,
         lng: captureCoords?.lng ?? null,
         order_index: maxOrder + 1,
+        time_type: captureTimeType,
+        fixed_time: captureTimeType === 'fixed' ? captureFixedTime : null,
       })
       .select()
       .single();
@@ -388,17 +438,18 @@ export default function TripDayView() {
     setCaptureLocation('');
     setCaptureCoords(null);
     setCaptureEstimate('30m');
+    setCaptureTimeType('flexible');
+    setCaptureFixedTime('');
     setCaptureOpen(false);
     if (data.lat != null) recalculateDay();
   }
-
-  async function updateActivity(id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null) {
+  async function updateActivity(id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null, timeType: 'flexible' | 'fixed', fixedTime: string | null) {
     await supabase
       .from('activities')
-      .update({ text, estimate_mins: estimateMins, location_text: location || null, lat, lng })
+      .update({ text, estimate_mins: estimateMins, location_text: location || null, lat, lng, time_type: timeType, fixed_time: fixedTime })
       .eq('id', id);
     setActivities((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, text, estimate_mins: estimateMins, location_text: location || null, lat, lng } : a))
+      prev.map((a) => (a.id === id ? { ...a, text, estimate_mins: estimateMins, location_text: location || null, lat, lng, time_type: timeType, fixed_time: fixedTime } : a))
     );
     recalculateDay();
   }
@@ -509,7 +560,21 @@ export default function TripDayView() {
         insertIndex: i + 1,
       });
     }
+const referencePoint = selectedDay?.base_lat != null && selectedDay?.base_lng != null
+    ? { lat: selectedDay.base_lat, lng: selectedDay.base_lng }
+    : null;
 
+  // "Nearby to me" is approximated from the day's base for now, not live
+  // GPS — see the design note on why this was deferred.
+  const sortedActivities = useMemo(
+    () => sortActivities(activities as any, travelSortMode, referencePoint),
+    [activities, travelSortMode, referencePoint]
+  ) as Activity[];
+
+  const fixedTimeConflicts = useMemo(
+    () => findFixedTimeConflicts(sortedActivities as any, dayStartMinutes),
+    [sortedActivities, dayStartMinutes]
+  );
     return out;
   }, [selectedDay, activities]);
 
@@ -702,6 +767,14 @@ export default function TripDayView() {
         </>
       )}
 
+      {activities.length > 0 && (
+        <div className="segmented" style={{ marginBottom: 'var(--space-2)' }}>
+          <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setTravelSortMode('manual')}>Manual</button>
+          <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setTravelSortMode('what_fits')}>What fits</button>
+          <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setTravelSortMode('close_to_accom')}>Near stay</button>
+        </div>
+      )}
+
       <div className="task-list">
         {activities.length === 0 && (
           <div className="empty-state">Nothing planned for this day yet.<br />Tap + to add a stop.</div>
@@ -720,7 +793,7 @@ export default function TripDayView() {
             ) : null;
           })()
         )}
-        {activities.map((a, idx) => {
+        {sortedActivities.map((a, idx) => {
           let rowStyle: React.CSSProperties = {};
           if (dragState) {
             if (a.id === dragState.id) {
@@ -756,6 +829,9 @@ export default function TripDayView() {
                       <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
                         <div className="task-text">{a.text}</div>
                         <div className="task-tags">
+                          {a.time_type === 'fixed' && a.fixed_time && (
+                            <span className="tag tag-due mono">{fmtClock(a.fixed_time)}</span>
+                          )}
                           <span className="tag tag-elapsed mono">{fmtMins(a.estimate_mins)} there</span>
                           {a.drive_mins_to_next > 0 && (
                             <span className="tag mono">+{fmtMins(a.drive_mins_to_next)} drive</span>
@@ -764,18 +840,25 @@ export default function TripDayView() {
                           {a.location_text && a.lat == null && (
                             <span className="tag tag-due">no coords — drive time skipped</span>
                           )}
+                          {fixedTimeConflicts[a.id] && (
+                            <span className="tag" style={{ background: 'var(--danger-bg)', color: 'var(--danger-text, var(--danger))' }}>
+                              won't make it in time
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <button
-                        className="drag-handle-btn"
-                        onPointerDown={(e) => { e.stopPropagation(); handleDragHandlePointerDown(e, a.id, orderedIds); }}
-                        onPointerMove={(e) => { e.stopPropagation(); handleDragHandlePointerMove(e); }}
-                        onPointerUp={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
-                        onPointerCancel={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
-                        aria-label="Drag to reorder"
-                      >
-                        <DragHandleIcon />
-                      </button>
+                      {a.time_type === 'flexible' && (
+                        <button
+                          className="drag-handle-btn"
+                          onPointerDown={(e) => { e.stopPropagation(); handleDragHandlePointerDown(e, a.id, orderedIds); }}
+                          onPointerMove={(e) => { e.stopPropagation(); handleDragHandlePointerMove(e); }}
+                          onPointerUp={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
+                          onPointerCancel={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
+                          aria-label="Drag to reorder"
+                        >
+                          <DragHandleIcon />
+                        </button>
+                      )}
                     </div>
                     {legAfterThis && (
                       <button
@@ -811,6 +894,16 @@ export default function TripDayView() {
               setCaptureCoords({ lat: result.lat, lng: result.lng });
             }}
           />
+          <div className="segmented">
+            <button className={captureTimeType === 'flexible' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setCaptureTimeType('flexible')}>Flexible</button>
+            <button className={captureTimeType === 'fixed' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setCaptureTimeType('fixed')}>Fixed time</button>
+          </div>
+          {captureTimeType === 'fixed' && (
+            <div>
+              <span className="settings-label">At</span>
+              <input type="time" value={captureFixedTime} onChange={(e) => setCaptureFixedTime(e.target.value)} style={{ width: '100%' }} />
+            </div>
+          )}
           <div>
             <span className="settings-label">Time there</span>
             <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} style={{ width: '100%' }} />
