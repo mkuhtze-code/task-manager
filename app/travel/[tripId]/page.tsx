@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
+import AccommodationSheet from '@/components/AccommodationSheet';
 
 type Trip = {
   id: string;
@@ -307,7 +308,7 @@ export default function TripDayView() {
   const [recalculating, setRecalculating] = useState(false);
 
   const [openActivityId, setOpenActivityId] = useState<string | null>(null);
-  const [baseEditorOpen, setBaseEditorOpen] = useState(false);
+  const [accommodationSheetOpen, setAccommodationSheetOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureText, setCaptureText] = useState('');
   const [captureLocation, setCaptureLocation] = useState('');
@@ -669,15 +670,15 @@ export default function TripDayView() {
 
       {selectedDay && (
         <>
-          <button
-            className="btn-text"
-            style={{ padding: 0, marginBottom: 'var(--space-2)' }}
-            onClick={() => setBaseEditorOpen(true)}
-          >
-            {selectedDay.base_location_text
-              ? `Staying at ${selectedDay.base_location_text}`
-              : 'Set where you\'re staying →'}
-          </button>
+         <button
+  className="btn-text"
+  style={{ padding: 0, marginBottom: 'var(--space-2)' }}
+  onClick={() => setAccommodationSheetOpen(true)}
+>
+  {selectedDay?.base_location_text
+    ? `Staying at ${selectedDay.base_location_text}`
+    : 'Set accommodation for this trip →'}
+</button>
 
           <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
             <div className="header-compare-row">
@@ -869,13 +870,17 @@ export default function TripDayView() {
         />
       )}
 
-      {baseEditorOpen && selectedDay && (
-        <BaseEditorSheet
-          tripDay={selectedDay}
-          onClose={() => setBaseEditorOpen(false)}
-          onSave={saveBase}
-        />
-      )}
+      {accommodationSheetOpen && (
+  <AccommodationSheet
+    tripId={tripId}
+    onClose={() => setAccommodationSheetOpen(false)}
+    onSynced={async () => {
+      await loadTrip(); // refetches tripDays, which now carries synced base fields
+      await refreshSelectedDay();
+      recalculateDay();
+    }}
+  />
+)}
 
       {nearbyOpen && (
         <NearbySheet
