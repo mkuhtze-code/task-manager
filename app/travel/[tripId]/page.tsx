@@ -7,6 +7,7 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
 import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
+import GearMenu from '@/components/GearMenu';
 
 type Trip = {
   id: string;
@@ -361,6 +362,19 @@ export default function TripDayView() {
       const todayMatch = dayRows.find((d: TripDay) => d.date === todayStr);
       setSelectedDayId(todayMatch ? todayMatch.id : dayRows[0].id);
     }
+
+    // Same column Dokkit's own sort_mode already lives in — one shared
+    // preferences row per person, not a separate travel-only store.
+    if (session) {
+      const { data: settings } = await supabase
+        .from('user_settings')
+        .select('travel_sort_mode')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (settings?.travel_sort_mode) {
+        setTravelSortMode(settings.travel_sort_mode as TravelSortMode);
+      }
+    }
   }
 
   useEffect(() => {
@@ -527,6 +541,13 @@ export default function TripDayView() {
     recalculateDay();
   }
 
+  async function changeSortMode(mode: TravelSortMode) {
+    setTravelSortMode(mode);
+    if (session) {
+      await supabase.from('user_settings').update({ travel_sort_mode: mode }).eq('user_id', session.user.id);
+    }
+  }
+
   const selectedDay = tripDays.find((d) => d.id === selectedDayId) || null;
 
   // ── Legs for "find something nearby" — always computed against the
@@ -657,12 +678,8 @@ export default function TripDayView() {
   const projectedPercent = (projectedFinish - dayStartMinutes) / trackSpan;
   const planWidthPercent = Math.max(Math.min(projectedPercent, 1) - nowPercent, 0);
 
-  // ── Sort-mode display order — computed here, after dayStartMinutes
-  // exists, and named distinctly from the setActivities state setter to
-  // avoid the shadowing bug from the previous pass. This only affects
-  // rendering order; legs/insertIndex above still use the stored
-  // order_index sequence, so "find something nearby" positions stay
-  // correct even when a non-manual sort mode is active for display.
+  // ── Sort-mode display order — computed after dayStartMinutes exists,
+  // and named distinctly from the setActivities state setter.
   const referencePoint = selectedDay?.base_lat != null && selectedDay?.base_lng != null
     ? { lat: selectedDay.base_lat, lng: selectedDay.base_lng }
     : null;
@@ -690,6 +707,9 @@ export default function TripDayView() {
         <div className="app-header-left">
           <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back">‹</button>
           <h1 className="app-title" style={{ fontSize: 'var(--text-lg)' }}>{trip.name}</h1>
+        </div>
+        <div className="app-header-right">
+          <GearMenu context="travel" />
         </div>
       </div>
 
@@ -778,9 +798,9 @@ export default function TripDayView() {
 
       {activities.length > 0 && (
         <div className="segmented" style={{ marginBottom: 'var(--space-2)' }}>
-          <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setTravelSortMode('manual')}>Manual</button>
-          <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setTravelSortMode('what_fits')}>What fits</button>
-          <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setTravelSortMode('close_to_accom')}>Near stay</button>
+          <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('manual')}>Manual</button>
+          <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('what_fits')}>What fits</button>
+          <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near stay</button>
         </div>
       )}
 
