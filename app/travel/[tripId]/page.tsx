@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
@@ -38,6 +38,18 @@ type Activity = {
   order_index: number;
   status: 'pending' | 'done';
 };
+
+type DragState = {
+  id: string;
+  originalIndex: number;
+  currentIndex: number;
+  startY: number;
+  offsetY: number;
+  rowHeight: number;
+  orderSnapshot: string[];
+};
+
+const ROW_GAP = 8;
 
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
@@ -86,9 +98,6 @@ function parseMins(raw: string): number | null {
   return unit === 'h' ? Math.round(num * 60) : Math.round(num);
 }
 
-// Every call to a protected /api/travel/* route needs the caller's live
-// Supabase access token attached — this mirrors verifyUser's expectation
-// of an `Authorization: Bearer <token>` header on the server side.
 async function authedFetch(url: string, body: any) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
@@ -118,6 +127,16 @@ function FitWarnIcon() {
         d="M12 9v4M12 17h.01M10.29 3.86l-8.18 14A2 2 0 0 0 3.82 21h16.36a2 2 0 0 0 1.71-3.14l-8.18-14a2 2 0 0 0-3.42 0Z"
         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function DragHandleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" />
+      <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
+      <circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />
     </svg>
   );
 }
@@ -285,6 +304,9 @@ export default function TripDayView() {
   const [captureEstimate, setCaptureEstimate] = useState('30m');
   const [error, setError] = useState('');
 
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
   }, []);
@@ -339,11 +361,6 @@ export default function TripDayView() {
     }
   }
 
-  // Fires the server-side chain calculation, then refetches both the
-  // activities (for updated drive_mins_to_next) and the day (for the
-  // updated drive_from_base_mins). Called after anything that changes the
-  // route — never on every keystroke — since each call is a small burst of
-  // Routes API requests, one per leg in the day.
   async function recalculateDay() {
     if (!selectedDayId) return;
     setRecalculating(true);
@@ -433,6 +450,62 @@ export default function TripDayView() {
     if (lat != null) recalculateDay();
   }
 
+  // ── Manual drag-to-reorder — same mechanic as Dokkit's task list ────
+  function handleDragHandlePointerDown(e: React.PointerEvent, activityId: string, currentOrderIds: string[]) {
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    const originalIndex = currentOrderIds.indexOf(activityId);
+    const rowEl = rowElsRef.current[activityId];
+    const rect = rowEl?.getBoundingClientRect();
+    const rowHeight = (rect?.height || 60) + ROW_GAP;
+    setDragState({
+      id: activityId,
+      originalIndex,
+      currentIndex: originalIndex,
+      startY: e.clientY,
+      offsetY: 0,
+      rowHeight,
+      orderSnapshot: currentOrderIds,
+    });
+  }
+
+  function handleDragHandlePointerMove(e: React.PointerEvent) {
+    setDragState((prev) => {
+      if (!prev) return prev;
+      const deltaY = e.clientY - prev.startY;
+      const indexShift = Math.round(deltaY / prev.rowHeight);
+      const maxIndex = prev.orderSnapshot.length - 1;
+      const nextIndex = Math.min(Math.max(prev.originalIndex + indexShift, 0), maxIndex);
+      return { ...prev, offsetY: deltaY, currentIndex: nextIndex };
+    });
+  }
+
+  async function handleDragHandlePointerUp() {
+    const finalState = dragState;
+    setDragState(null);
+    if (!finalState) return;
+    const { id, originalIndex, currentIndex, orderSnapshot } = finalState;
+    if (currentIndex === originalIndex) return;
+
+    const newOrderIds = [...orderSnapshot];
+    newOrderIds.splice(originalIndex, 1);
+    newOrderIds.splice(currentIndex, 0, id);
+
+    setActivities((prev) => {
+      const byId: Record<string, Activity> = {};
+      prev.forEach((a) => (byId[a.id] = a));
+      const reindexed = newOrderIds.filter((aid) => byId[aid]).map((aid, idx) => ({ ...byId[aid], order_index: idx }));
+      const others = prev.filter((a) => !newOrderIds.includes(a.id));
+      return [...reindexed, ...others];
+    });
+
+    await Promise.all(
+      newOrderIds.map((aid, idx) => supabase.from('activities').update({ order_index: idx }).eq('id', aid))
+    );
+    // New order means new legs — recalculate once the drop settles, not
+    // during the drag itself.
+    recalculateDay();
+  }
+
   const selectedDay = tripDays.find((d) => d.id === selectedDayId) || null;
 
   const dayStartMinutes = selectedDay ? timeStringToMinutes(selectedDay.day_start) : 0;
@@ -454,6 +527,7 @@ export default function TripDayView() {
   const planWidthPercent = Math.max(Math.min(projectedPercent, 1) - nowPercent, 0);
 
   const openActivity = openActivityId ? activities.find((a) => a.id === openActivityId) || null : null;
+  const orderedIds = activities.map((a) => a.id);
 
   if (!session || !trip) {
     return <div className="app-shell" style={{ paddingTop: 40 }}>Loading…</div>;
@@ -545,29 +619,67 @@ export default function TripDayView() {
         {activities.length === 0 && (
           <div className="empty-state">Nothing planned for this day yet.<br />Tap + to add a stop.</div>
         )}
-        {activities.map((a) => (
-          <div key={a.id} className={a.activity_type === 'stop' ? 'task-row' : 'task-row task-list-item'}>
-            <div className="swipe-zone">
-              <div className="swipe-foreground" onClick={() => setOpenActivityId(a.id)}>
-                <div className="task-main">
-                  <div className="task-body">
-                    <div className="task-text">{a.text}</div>
-                    <div className="task-tags">
-                      <span className="tag tag-elapsed mono">{fmtMins(a.estimate_mins)} there</span>
-                      {a.drive_mins_to_next > 0 && (
-                        <span className="tag mono">+{fmtMins(a.drive_mins_to_next)} drive</span>
-                      )}
-                      {a.location_text && <span className="tag">{a.location_text}</span>}
-                      {a.location_text && a.lat == null && (
-                        <span className="tag tag-due">no coords — drive time skipped</span>
-                      )}
+        {activities.map((a, idx) => {
+          let rowStyle: React.CSSProperties = {};
+          if (dragState) {
+            if (a.id === dragState.id) {
+              rowStyle = {
+                transform: `translateY(${dragState.offsetY}px) scale(1.02)`,
+                transition: 'none',
+                zIndex: 30,
+                position: 'relative',
+                boxShadow: '0 10px 24px rgba(26,41,51,0.3)',
+              };
+            } else {
+              const { originalIndex, currentIndex, rowHeight } = dragState;
+              let shift = 0;
+              if (originalIndex < currentIndex && idx > originalIndex && idx <= currentIndex) shift = -1;
+              else if (originalIndex > currentIndex && idx >= currentIndex && idx < originalIndex) shift = 1;
+              rowStyle = {
+                transform: `translateY(${shift * rowHeight}px)`,
+                transition: 'transform 0.2s var(--ease)',
+                position: 'relative',
+                zIndex: 1,
+              };
+            }
+          }
+
+          return (
+            <div key={a.id} ref={(el) => { rowElsRef.current[a.id] = el; }} style={rowStyle}>
+              <div className={a.activity_type === 'stop' ? 'task-row' : 'task-row task-list-item'}>
+                <div className="swipe-zone">
+                  <div className="swipe-foreground">
+                    <div className="task-main">
+                      <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
+                        <div className="task-text">{a.text}</div>
+                        <div className="task-tags">
+                          <span className="tag tag-elapsed mono">{fmtMins(a.estimate_mins)} there</span>
+                          {a.drive_mins_to_next > 0 && (
+                            <span className="tag mono">+{fmtMins(a.drive_mins_to_next)} drive</span>
+                          )}
+                          {a.location_text && <span className="tag">{a.location_text}</span>}
+                          {a.location_text && a.lat == null && (
+                            <span className="tag tag-due">no coords — drive time skipped</span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        className="drag-handle-btn"
+                        onPointerDown={(e) => { e.stopPropagation(); handleDragHandlePointerDown(e, a.id, orderedIds); }}
+                        onPointerMove={(e) => { e.stopPropagation(); handleDragHandlePointerMove(e); }}
+                        onPointerUp={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
+                        onPointerCancel={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
+                        aria-label="Drag to reorder"
+                      >
+                        <DragHandleIcon />
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {captureOpen && (
