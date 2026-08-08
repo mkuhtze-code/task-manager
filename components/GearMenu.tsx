@@ -1,8 +1,10 @@
 'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+
 function GearIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -10,15 +12,18 @@ function GearIcon() {
     </svg>
   );
 }
-export default function GearMenu() {
+
+export default function GearMenu({ context = 'work' }: { context?: 'work' | 'travel' }) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     checkAdmin();
   }, []);
+
   async function checkAdmin() {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData.session;
@@ -30,6 +35,7 @@ export default function GearMenu() {
       .maybeSingle();
     setIsAdmin(!!data);
   }
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -39,12 +45,15 @@ export default function GearMenu() {
     if (menuOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
+
   async function handleLogOut() {
     setMenuOpen(false);
     await supabase.auth.signOut();
     router.push('/');
   }
+
   const feedbackHref = `/feedback?from=${encodeURIComponent(pathname || '/')}`;
+
   return (
     <div className="gear-menu-wrap" ref={menuRef} onClick={(e) => e.stopPropagation()}>
       <button
@@ -57,12 +66,16 @@ export default function GearMenu() {
       </button>
       {menuOpen && (
         <div className="gear-dropdown">
-          <Link href="/analytics" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-            Patterns
-          </Link>
-          <Link href="/preferences" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-            Preferences
-          </Link>
+          {context === 'work' && (
+            <>
+              <Link href="/analytics" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+                Patterns
+              </Link>
+              <Link href="/preferences" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+                Preferences
+              </Link>
+            </>
+          )}
           <Link href="/account" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
             Account
           </Link>
