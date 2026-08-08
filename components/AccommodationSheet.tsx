@@ -12,6 +12,8 @@ type Accommodation = {
   lng: number | null;
   check_in_date: string;
   check_out_date: string;
+  arrival_time: string | null;
+  departure_time: string | null;
 };
 
 function fmtDate(dateStr: string): string {
@@ -19,11 +21,25 @@ function fmtDate(dateStr: string): string {
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-// Writes this stay's location onto every trip_days row it covers
-// (check-in date through check-out date inclusive) — this is what lets
-// calculate-day keep reading base_lat/base_lng from trip_days unchanged,
-// now populated from a stay instead of typed per day.
-async function syncStayToDays(stay: { trip_id: string; location_text: string; lat: number | null; lng: number | null; check_in_date: string; check_out_date: string }) {
+function fmtClock(timeStr: string | null): string {
+  if (!timeStr) return '';
+  const [hStr, mStr] = timeStr.split(':');
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  const ampm = h >= 12 ? 'p' : 'a';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return m === 0 ? `${h}${ampm}` : `${h}:${String(m).padStart(2, '0')}${ampm}`;
+}
+
+async function syncStayToDays(stay: {
+  trip_id: string;
+  location_text: string;
+  lat: number | null;
+  lng: number | null;
+  check_in_date: string;
+  check_out_date: string;
+}) {
   await supabase
     .from('trip_days')
     .update({
@@ -38,16 +54,20 @@ async function syncStayToDays(stay: { trip_id: string; location_text: string; la
 
 export default function AccommodationSheet(props: {
   tripId: string;
+  tripStartDate: string;
+  tripEndDate: string;
   onClose: () => void;
-  onSynced: () => void; // parent refetches trip_days after any change
+  onSynced: () => void;
 }) {
-  const { tripId, onClose, onSynced } = props;
+  const { tripId, tripStartDate, tripEndDate, onClose, onSynced } = props;
   const [stays, setStays] = useState<Accommodation[]>([]);
   const [adding, setAdding] = useState(false);
   const [location, setLocation] = useState('');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
+  const [arrivalTime, setArrivalTime] = useState('');
+  const [departureTime, setDepartureTime] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -77,6 +97,10 @@ export default function AccommodationSheet(props: {
       setError('Check-out is before check-in');
       return;
     }
+    if (checkIn < tripStartDate || checkOut > tripEndDate) {
+      setError('Dates must fall within the trip');
+      return;
+    }
     setError('');
     setSaving(true);
 
@@ -91,6 +115,8 @@ export default function AccommodationSheet(props: {
         lng: coords?.lng ?? null,
         check_in_date: checkIn,
         check_out_date: checkOut,
+        arrival_time: arrivalTime || null,
+        departure_time: departureTime || null,
       })
       .select()
       .single();
@@ -106,6 +132,8 @@ export default function AccommodationSheet(props: {
     setCoords(null);
     setCheckIn('');
     setCheckOut('');
+    setArrivalTime('');
+    setDepartureTime('');
     setAdding(false);
     await loadStays();
     onSynced();
@@ -114,11 +142,6 @@ export default function AccommodationSheet(props: {
   async function deleteStay(id: string) {
     await supabase.from('accommodations').delete().eq('id', id);
     await loadStays();
-    // Note: this doesn't clear base fields already synced onto trip_days —
-    // if you delete a stay, its days keep the last-known base until a new
-    // stay covering those dates is saved (or you clear it manually via the
-    // day view). Simple, predictable, avoids silently blanking a day's
-    // plan mid-trip.
     onSynced();
   }
 
@@ -139,7 +162,11 @@ export default function AccommodationSheet(props: {
             <div key={s.id} className="priority-option" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div className="priority-option-label">{s.location_text}</div>
-                <div className="priority-option-description">{fmtDate(s.check_in_date)} – {fmtDate(s.check_out_date)}</div>
+                <div className="priority-option-description">
+                  {fmtDate(s.check_in_date)}{s.arrival_time ? ` ${fmtClock(s.arrival_time)}` : ''}
+                  {' – '}
+                  {fmtDate(s.check_out_date)}{s.departure_time ? ` ${fmtClock(s.departure_time)}` : ''}
+                </div>
               </div>
               <button className="icon-btn" onClick={() => deleteStay(s.id)} aria-label="Remove stay">×</button>
             </div>
@@ -162,16 +189,53 @@ export default function AccommodationSheet(props: {
                 Pick a suggestion so this can anchor drive-time calculations.
               </p>
             )}
+
             <div className="capture-row">
               <div style={{ flex: 1 }}>
-                <span className="settings-label">Check-in</span>
-                <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} style={{ width: '100%' }} />
+                <span className="settings-label">Check-in date</span>
+                <input
+                  type="date"
+                  value={checkIn}
+                  min={tripStartDate}
+                  max={tripEndDate}
+                  onChange={(e) => setCheckIn(e.target.value)}
+                  style={{ width: '100%' }}
+                />
               </div>
               <div style={{ flex: 1 }}>
-                <span className="settings-label">Check-out</span>
-                <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} style={{ width: '100%' }} />
+                <span className="settings-label">Check-out date</span>
+                <input
+                  type="date"
+                  value={checkOut}
+                  min={checkIn || tripStartDate}
+                  max={tripEndDate}
+                  onChange={(e) => setCheckOut(e.target.value)}
+                  style={{ width: '100%' }}
+                />
               </div>
             </div>
+
+            <div className="capture-row">
+              <div style={{ flex: 1 }}>
+                <span className="settings-label">Expected arrival</span>
+                <input
+                  type="time"
+                  value={arrivalTime}
+                  onChange={(e) => setArrivalTime(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <span className="settings-label">Expected departure</span>
+                <input
+                  type="time"
+                  value={departureTime}
+                  onChange={(e) => setDepartureTime(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+
             {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
             <button className="btn btn-steel" onClick={saveStay} disabled={saving}>
               {saving ? 'Saving…' : 'Save stay'}
