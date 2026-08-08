@@ -4,6 +4,9 @@ import { checkRateLimit } from '@/lib/ratelimit';
 
 type Coords = { lat: number; lng: number };
 
+// Straight-line distance in meters — used only to size the search radius,
+// never as the actual ranking signal (crow-flies distance is a bad proxy
+// for "how much extra driving does this actually cost").
 function haversineMeters(a: Coords, b: Coords): number {
   const R = 6371000;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
@@ -44,6 +47,19 @@ function humanizeType(type: string | undefined | null): string | null {
     .join(' ');
 }
 
+// Only confirmed Table A types go here — includedTypes rejects the whole
+// request on a single bad value (this is what broke point_of_interest
+// earlier), so nothing speculative belongs in this list. "lookout" has no
+// dedicated Google type — tourist_attraction + park is the closest real
+// match, not a perfect one.
+const CATEGORY_TYPES: Record<string, string[]> = {
+  rest_stop: ['rest_stop', 'gas_station'],
+  lookout: ['tourist_attraction', 'park'],
+  attraction: ['tourist_attraction', 'museum', 'art_gallery', 'monument', 'historical_place', 'cultural_landmark'],
+  food: ['restaurant', 'cafe', 'meal_takeaway'],
+  supplies: ['supermarket', 'convenience_store', 'pharmacy'],
+};
+
 export async function POST(req: NextRequest) {
   const auth = await verifyUser(req);
   if (!auth.ok) {
@@ -55,10 +71,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests, try again shortly.' }, { status: 429 });
   }
 
-  const { originLat, originLng, destLat, destLng, directMins } = await req.json();
+  const { originLat, originLng, destLat, destLng, directMins, category } = await req.json();
   if ([originLat, originLng, destLat, destLng, directMins].some((v) => typeof v !== 'number')) {
     return NextResponse.json({ error: 'origin/dest coordinates and directMins are required' }, { status: 400 });
   }
+
+  const includedTypes = CATEGORY_TYPES[category] || CATEGORY_TYPES.attraction;
 
   const origin: Coords = { lat: originLat, lng: originLng };
   const dest: Coords = { lat: destLat, lng: destLng };
@@ -72,17 +90,11 @@ export async function POST(req: NextRequest) {
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY as string,
-      // primaryType (not primaryTypeDisplayName) — confirmed-valid single
-      // Table A type per place, used below to build a readable label.
       'X-Goog-FieldMask':
         'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.primaryType',
     },
     body: JSON.stringify({
-      // point_of_interest removed — it's a Table B type (response-only),
-      // not usable as an includedTypes filter, and was causing Google to
-      // reject the whole request with a 400 that was being swallowed
-      // silently below.
-      includedTypes: ['tourist_attraction', 'park', 'museum', 'art_gallery'],
+      includedTypes,
       maxResultCount: 8,
       locationRestriction: {
         circle: { center: { latitude: midpoint.lat, longitude: midpoint.lng }, radius },
@@ -92,8 +104,6 @@ export async function POST(req: NextRequest) {
 
   const nearbyData = await nearbyRes.json();
 
-  // Surface real failures instead of quietly returning an empty list —
-  // this is what made the previous bug invisible.
   if (!nearbyRes.ok) {
     return NextResponse.json(
       { error: nearbyData?.error?.message || 'Places search failed', suggestions: [] },
@@ -102,7 +112,6 @@ export async function POST(req: NextRequest) {
   }
 
   const candidates = (nearbyData.places || []).slice(0, 5);
-
   if (candidates.length === 0) {
     return NextResponse.json({ suggestions: [] });
   }
