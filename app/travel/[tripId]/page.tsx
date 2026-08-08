@@ -800,7 +800,7 @@ export default function TripDayView() {
         <div className="segmented" style={{ marginBottom: 'var(--space-2)' }}>
           <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('manual')}>Manual</button>
           <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('what_fits')}>What fits</button>
-          <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near stay</button>
+          <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near Accom</button>
         </div>
       )}
 
