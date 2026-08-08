@@ -566,14 +566,14 @@ const referencePoint = selectedDay?.base_lat != null && selectedDay?.base_lng !=
 
   // "Nearby to me" is approximated from the day's base for now, not live
   // GPS — see the design note on why this was deferred.
-  const sortedActivities = useMemo(
+  const setActivities = useMemo(
     () => sortActivities(activities as any, travelSortMode, referencePoint),
     [activities, travelSortMode, referencePoint]
   ) as Activity[];
 
   const fixedTimeConflicts = useMemo(
-    () => findFixedTimeConflicts(sortedActivities as any, dayStartMinutes),
-    [sortedActivities, dayStartMinutes]
+    () => findFixedTimeConflicts(setActivities as any, dayStartMinutes),
+    [setActivities, dayStartMinutes]
   );
     return out;
   }, [selectedDay, activities]);
@@ -793,7 +793,7 @@ const referencePoint = selectedDay?.base_lat != null && selectedDay?.base_lng !=
             ) : null;
           })()
         )}
-        {sortedActivities.map((a, idx) => {
+        {setActivities.map((a, idx) => {
           let rowStyle: React.CSSProperties = {};
           if (dragState) {
             if (a.id === dragState.id) {
