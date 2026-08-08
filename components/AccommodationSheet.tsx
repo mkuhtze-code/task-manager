@@ -39,7 +39,10 @@ async function syncStayToDays(stay: {
   lng: number | null;
   check_in_date: string;
   check_out_date: string;
+  arrival_time: string | null;
+  departure_time: string | null;
 }) {
+  // Base location applies to every day of the stay.
   await supabase
     .from('trip_days')
     .update({
@@ -50,6 +53,24 @@ async function syncStayToDays(stay: {
     .eq('trip_id', stay.trip_id)
     .gte('date', stay.check_in_date)
     .lte('date', stay.check_out_date);
+
+  // Arrival time only overrides the check-in day's effective start.
+  if (stay.arrival_time) {
+    await supabase
+      .from('trip_days')
+      .update({ arrival_time: stay.arrival_time })
+      .eq('trip_id', stay.trip_id)
+      .eq('date', stay.check_in_date);
+  }
+
+  // Departure time only overrides the check-out day's effective end.
+  if (stay.departure_time) {
+    await supabase
+      .from('trip_days')
+      .update({ departure_time: stay.departure_time })
+      .eq('trip_id', stay.trip_id)
+      .eq('date', stay.check_out_date);
+  }
 }
 
 export default function AccommodationSheet(props: {
