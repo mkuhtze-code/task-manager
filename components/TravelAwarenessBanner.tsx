@@ -12,6 +12,19 @@ function fmtEndDate(dateStr: string): string {
   return dt.toLocaleDateString(undefined, { weekday: 'short' });
 }
 
+// Local (not UTC) YYYY-MM-DD — matters a lot here. new Date().toISOString()
+// converts to UTC first, and in a timezone ahead of UTC (like NZ), any
+// time before local afternoon can still read as "yesterday" in UTC. That
+// was making a trip starting today register as starting tomorrow. This
+// mirrors the same helper app/page.tsx already uses for exactly this
+// reason — this file just hadn't reused it.
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // Deliberately its own self-contained fetch, not wired into Today's
 // existing loadEverything() — keeps this addition isolated from the
 // production data-loading path rather than tangling a new query into
@@ -29,7 +42,7 @@ export default function TravelAwarenessBanner() {
     const session = sessionData.session;
     if (!session) return;
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = localDateStr(new Date());
     const { data } = await supabase
       .from('trips')
       .select('id, name, end_date')
