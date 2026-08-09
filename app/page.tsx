@@ -12,6 +12,7 @@ import {
   hasMeaningfulDivergence,
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
+import TopSwitcher from '@/components/TopSwitcher';
 
 type Task = {
   id: string;
@@ -1413,6 +1414,8 @@ setTasks(prev => [...prev, data]);
 
   return (
     <div className="app-shell">
+      <TopSwitcher active="today" />
+
       <div
         className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}
         onClick={() => router.push('/analytics')}
