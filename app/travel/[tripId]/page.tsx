@@ -390,6 +390,8 @@ export default function TripDayView() {
   const [nearbyInsertIndex, setNearbyInsertIndex] = useState<number | null>(null);
   const [nearbyCategory, setNearbyCategory] = useState('attraction');
   const [nearbyLeg, setNearbyLeg] = useState<Leg | null>(null);
+  const [nearbyError, setNearbyError] = useState<string | null>(null);
+  const [recalcError, setRecalcError] = useState<string | null>(null);
 
   // Session-only cache of nearby-search results, keyed by the exact leg
   // (fromId+toId) and category. Cleared whenever recalculateDay succeeds,
@@ -468,18 +470,39 @@ export default function TripDayView() {
     }
   }
 
-  async function recalculateDay() {
-    if (!selectedDayId) return;
-    setRecalculating(true);
+  async function runNearbySearch(leg: Leg, category: string) {
+    const key = legCacheKey(leg, category);
+    const cached = nearbyCacheRef.current[key];
+    if (cached) {
+      setNearbySuggestions(cached);
+      setNearbyError(null);
+      setNearbyLoading(false);
+      return;
+    }
+
+    setNearbyLoading(true);
+    setNearbySuggestions([]);
+    setNearbyError(null);
     try {
-      await authedFetch('/api/travel/calculate-day', { trip_day_id: selectedDayId });
-      await loadActivities();
-      await refreshSelectedDay();
-      // Drive times may have changed, so any cached detour numbers are
-      // stale — clear everything rather than try to selectively evict.
-      nearbyCacheRef.current = {};
+      const json = await authedFetch('/api/travel/nearby-on-route', {
+        originLat: leg.fromLat,
+        originLng: leg.fromLng,
+        destLat: leg.toLat,
+        destLng: leg.toLng,
+        directMins: leg.directMins,
+        category,
+      });
+      if (json.error) {
+        setNearbyError(json.error);
+        return;
+      }
+      const results: NearbySuggestion[] = json.suggestions || [];
+      nearbyCacheRef.current[key] = results;
+      setNearbySuggestions(results);
+    } catch {
+      setNearbyError('Could not reach the server — check your connection and try again.');
     } finally {
-      setRecalculating(false);
+      setNearbyLoading(false);
     }
   }
 
@@ -867,6 +890,11 @@ export default function TripDayView() {
             >
               {recalculating ? 'Recalculating drive times…' : 'Recalculate drive times'}
             </button>
+            {recalcError && (
+              <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', marginTop: 6 }}>
+                {recalcError}
+              </p>
+            )}
 
             {legs.length === 0 && activities.length > 0 && (
               <p style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 6 }}>
@@ -1063,6 +1091,7 @@ export default function TripDayView() {
       {nearbyOpen && (
         <NearbySheet
           loading={nearbyLoading}
+          error={nearbyError}
           suggestions={nearbySuggestions}
           selectedCategory={nearbyCategory}
           onCategoryChange={handleCategoryChange}
