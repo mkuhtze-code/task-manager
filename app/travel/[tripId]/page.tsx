@@ -469,7 +469,28 @@ export default function TripDayView() {
       setTripDays((prev) => prev.map((d) => (d.id === data.id ? data : d)));
     }
   }
-
+ async function recalculateDay() {
+    if (!selectedDayId) return;
+    setRecalculating(true);
+    setRecalcError(null);
+    try {
+      const json = await authedFetch('/api/travel/calculate-day', { trip_day_id: selectedDayId });
+      if (json.error) {
+        setRecalcError(json.error);
+      } else {
+        // Only invalidate the cache on a successful recalc — a failed
+        // one leaves prior drive times (and prior detour numbers) still
+        // trustworthy.
+        nearbyCacheRef.current = {};
+      }
+      await loadActivities();
+      await refreshSelectedDay();
+    } catch {
+      setRecalcError('Could not reach the server — check your connection and try again.');
+    } finally {
+      setRecalculating(false);
+    }
+  }
 
   async function addActivity() {
     const text = captureText.trim();
@@ -658,12 +679,14 @@ export default function TripDayView() {
     const cached = nearbyCacheRef.current[key];
     if (cached) {
       setNearbySuggestions(cached);
+      setNearbyError(null);
       setNearbyLoading(false);
       return;
     }
 
     setNearbyLoading(true);
     setNearbySuggestions([]);
+    setNearbyError(null);
     try {
       const json = await authedFetch('/api/travel/nearby-on-route', {
         originLat: leg.fromLat,
@@ -673,9 +696,15 @@ export default function TripDayView() {
         directMins: leg.directMins,
         category,
       });
+      if (json.error) {
+        setNearbyError(json.error);
+        return;
+      }
       const results: NearbySuggestion[] = json.suggestions || [];
       nearbyCacheRef.current[key] = results;
       setNearbySuggestions(results);
+    } catch {
+      setNearbyError('Could not reach the server — check your connection and try again.');
     } finally {
       setNearbyLoading(false);
     }
