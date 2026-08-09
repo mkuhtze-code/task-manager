@@ -13,6 +13,22 @@ type Trip = {
   created_at: string;
 };
 
+function CloseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function fmtDateRange(start: string, end: string): string {
   const [sy, sm, sd] = start.split('-').map((n) => parseInt(n, 10));
   const [ey, em, ed] = end.split('-').map((n) => parseInt(n, 10));
@@ -28,6 +44,17 @@ function tripStatus(start: string, end: string, todayStr: string): 'upcoming' | 
   if (todayStr < start) return 'upcoming';
   if (todayStr > end) return 'past';
   return 'active';
+}
+
+// Whole-day difference between two YYYY-MM-DD strings, computed from local
+// midnight on both sides so DST/timezone edge cases don't shift the count
+// by a day.
+function dateDiffDays(fromStr: string, toStr: string): number {
+  const [fy, fm, fd] = fromStr.split('-').map((n) => parseInt(n, 10));
+  const [ty, tm, td] = toStr.split('-').map((n) => parseInt(n, 10));
+  const fromDate = new Date(fy, fm - 1, fd);
+  const toDate = new Date(ty, tm - 1, td);
+  return Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
 }
 
 function daysBetween(start: string, end: string): string[] {
@@ -76,6 +103,11 @@ export default function TravelHome() {
       .order('start_date', { ascending: true });
     setTrips(data || []);
     setLoading(false);
+  }
+
+  function closeCreate() {
+    setCreateOpen(false);
+    setError('');
   }
 
   async function createTrip() {
@@ -137,7 +169,8 @@ export default function TravelHome() {
     router.push(`/travel/${tripRow.id}`);
   }
 
-  async function deleteTrip(id: string) {
+  async function deleteTrip(id: string, e?: React.MouseEvent) {
+    e?.stopPropagation();
     if (!confirm('Delete this trip and everything planned in it?')) return;
     await supabase.from('trips').delete().eq('id', id);
     setTrips((prev) => prev.filter((t) => t.id !== id));
@@ -150,6 +183,29 @@ export default function TravelHome() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const upcoming = trips.filter((t) => tripStatus(t.start_date, t.end_date, todayStr) !== 'past');
   const past = trips.filter((t) => tripStatus(t.start_date, t.end_date, todayStr) === 'past');
+
+  const heroTrip = upcoming.length > 0 ? upcoming[0] : null;
+  const restUpcoming = upcoming.length > 1 ? upcoming.slice(1) : [];
+
+  let heroStatus: 'upcoming' | 'active' | null = null;
+  let heroEyebrow = '';
+  let heroNumber = '';
+  let heroLabel = '';
+  if (heroTrip) {
+    heroStatus = tripStatus(heroTrip.start_date, heroTrip.end_date, todayStr) as 'upcoming' | 'active';
+    if (heroStatus === 'active') {
+      const dayNum = dateDiffDays(heroTrip.start_date, todayStr) + 1;
+      const totalDays = dateDiffDays(heroTrip.start_date, heroTrip.end_date) + 1;
+      heroEyebrow = 'Happening now';
+      heroNumber = String(dayNum);
+      heroLabel = `of ${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;
+    } else {
+      const days = dateDiffDays(todayStr, heroTrip.start_date);
+      heroEyebrow = 'Next trip';
+      heroNumber = String(days);
+      heroLabel = days === 1 ? 'day to go' : 'days to go';
+    }
+  }
 
   return (
     <div className="app-shell">
@@ -166,81 +222,63 @@ export default function TravelHome() {
       {loading ? (
         <div className="empty-state">Loading…</div>
       ) : trips.length === 0 ? (
-        <div className="empty-state">No trips yet.<br />Tap + to plan one.</div>
+        <div className="trip-empty-state">
+          <div className="trip-empty-title">Where to next?</div>
+          <p className="trip-empty-sub">
+            Add a trip, block out your days, and Dokkit will help you work out<br />what actually fits.
+          </p>
+          <button className="btn btn-steel" onClick={() => setCreateOpen(true)}>Plan a trip</button>
+        </div>
       ) : (
         <>
-          {upcoming.length > 0 && (
-            <div className="task-list" style={{ marginTop: 'var(--space-4)' }}>
-              {upcoming.map((t) => {
-                const status = tripStatus(t.start_date, t.end_date, todayStr);
+          {heroTrip && (
+            <div className="trip-hero-card" onClick={() => router.push(`/travel/${heroTrip.id}`)}>
+              <div className="trip-hero-eyebrow">{heroEyebrow}</div>
+              <div className="trip-hero-name">{heroTrip.name}</div>
+              <div className="trip-hero-countdown-row">
+                <span className="trip-hero-countdown-number mono">{heroNumber}</span>
+                <span className="trip-hero-countdown-label">{heroLabel}</span>
+              </div>
+              <div className="trip-hero-dates">{fmtDateRange(heroTrip.start_date, heroTrip.end_date)}</div>
+            </div>
+          )}
+
+          {restUpcoming.length > 0 && (
+            <>
+              <div className="trip-section-label">More upcoming</div>
+              {restUpcoming.map((t) => {
+                const days = dateDiffDays(todayStr, t.start_date);
                 return (
-                  <div key={t.id} className="task-row">
-                    <div className="swipe-zone">
-                      <button
-                        className="swipe-reveal-right start-stop-btn"
-                        style={{ background: 'var(--danger)' }}
-                        onClick={() => deleteTrip(t.id)}
-                        aria-label="Delete trip"
-                      >
-                        <span>Delete</span>
-                      </button>
-                      <div
-                        className="swipe-foreground"
-                        onClick={() => router.push(`/travel/${t.id}`)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <div className="task-main">
-                          <div className="task-body">
-                            <div className="task-text">{t.name}</div>
-                            <div className="task-tags">
-                              <span className="tag mono">{fmtDateRange(t.start_date, t.end_date)}</span>
-                              {status === 'active' && <span className="tag tag-due">happening now</span>}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                  <div key={t.id} className="trip-card" onClick={() => router.push(`/travel/${t.id}`)}>
+                    <div className="trip-card-body">
+                      <div className="trip-card-eyebrow">{days === 1 ? 'In 1 day' : `In ${days} days`}</div>
+                      <div className="trip-card-name">{t.name}</div>
+                      <div className="trip-card-dates">{fmtDateRange(t.start_date, t.end_date)}</div>
                     </div>
+                    <button className="trip-card-delete" onClick={(e) => deleteTrip(t.id, e)} aria-label="Delete trip">
+                      <TrashIcon />
+                    </button>
                   </div>
                 );
               })}
-            </div>
+            </>
           )}
 
           {past.length > 0 && (
             <>
-              <div className="settings-label" style={{ display: 'block', margin: 'var(--space-5) 0 var(--space-2)' }}>
-                Past trips
-              </div>
-              <div className="task-list">
-                {past.map((t) => (
-                  <div key={t.id} className="task-row task-list-item">
-                    <div className="swipe-zone">
-                      <button
-                        className="swipe-reveal-right start-stop-btn"
-                        style={{ background: 'var(--danger)' }}
-                        onClick={() => deleteTrip(t.id)}
-                        aria-label="Delete trip"
-                      >
-                        <span>Delete</span>
-                      </button>
-                      <div
-                        className="swipe-foreground"
-                        onClick={() => router.push(`/travel/${t.id}`)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <div className="task-main">
-                          <div className="task-body">
-                            <div className="task-text">{t.name}</div>
-                            <div className="task-tags">
-                              <span className="tag mono">{fmtDateRange(t.start_date, t.end_date)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+              <div className="trip-section-label">Past trips</div>
+              {past.map((t) => (
+                <div key={t.id} className="trip-card past" onClick={() => router.push(`/travel/${t.id}`)}>
+                  <div className="trip-card-body">
+                    <div className="trip-card-eyebrow">Completed</div>
+                    <div className="trip-card-name">{t.name}</div>
+                    <div className="trip-card-dates">{fmtDateRange(t.start_date, t.end_date)}</div>
                   </div>
-                ))}
-              </div>
+                  <button className="trip-card-delete" onClick={(e) => deleteTrip(t.id, e)} aria-label="Delete trip">
+                    <TrashIcon />
+                  </button>
+                </div>
+              ))}
             </>
           )}
         </>
@@ -248,6 +286,12 @@ export default function TravelHome() {
 
       {createOpen && (
         <div className="capture-sheet">
+          <div className="task-detail-header" style={{ marginBottom: 0 }}>
+            <div className="settings-panel-title">New trip</div>
+            <button className="gear-btn" onClick={closeCreate} aria-label="Close">
+              <CloseIcon />
+            </button>
+          </div>
           <input
             type="text"
             value={name}
@@ -268,11 +312,10 @@ export default function TravelHome() {
           <button className="btn btn-steel" onClick={createTrip} disabled={saving}>
             {saving ? 'Creating…' : 'Create trip'}
           </button>
-          <button className="btn-text" onClick={() => setCreateOpen(false)}>Cancel</button>
         </div>
       )}
 
-      {!createOpen && (
+      {trips.length > 0 && !createOpen && (
         <button className="capture-fab" onClick={() => setCreateOpen(true)} aria-label="New trip">+</button>
       )}
     </div>
