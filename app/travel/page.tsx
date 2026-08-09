@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import GearMenu from '@/components/GearMenu';
 
 type Trip = {
   id: string;
@@ -156,6 +157,9 @@ export default function TravelHome() {
         <div className="app-header-left">
           <button className="back-link" onClick={() => router.push('/')} aria-label="Back">‹</button>
           <h1 className="app-title">Trips</h1>
+        </div>
+        <div className="app-header-right">
+          <GearMenu context="travel" />
         </div>
       </div>
 
