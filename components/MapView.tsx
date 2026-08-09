@@ -20,7 +20,7 @@ type MapBase = {
 let scriptLoadPromise: Promise<void> | null = null;
 
 function loadGoogleMapsScript(): Promise<void> {
-  if (typeof window !== 'undefined' && (window as any).google?.maps) {
+  if (typeof window !== 'undefined' && (window as any).google?.maps?.geometry) {
     return Promise.resolve();
   }
   if (scriptLoadPromise) return scriptLoadPromise;
@@ -47,8 +47,6 @@ function MapView(props: {
   onClose: () => void;
 }) {
   const { base, activities, onClose } = props;
-  // Debug logs to detect remounts/renders when diagnosing refresh
-  console.count('MapView render');
 
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any | null>(null);
@@ -57,11 +55,12 @@ function MapView(props: {
   const lastBoundsRef = useRef<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    console.log('MapView mounted');
-    return () => console.log('MapView unmounted');
-  }, []);
+  // Real state, not just a ref — this is what lets the overlay effect
+  // below correctly re-fire the moment the map instance actually exists.
+  // A ref alone (mapRef.current becoming non-null) does NOT trigger a
+  // re-render or re-run any effect's dependency check, which was the
+  // root cause of routes/pins never appearing on first open.
+  const [mapReady, setMapReady] = useState(false);
 
   const fingerprint = useMemo(() => {
     const basePart = base ? `${base.lat ?? ''},${base.lng ?? ''},${base.route_polyline ?? ''}` : '';
@@ -71,7 +70,7 @@ function MapView(props: {
     return basePart + '||' + actsPart;
   }, [base, activities]);
 
-  // Load script and initialize map instance once
+  // Load script and initialize the map instance once per mount.
   useEffect(() => {
     let cancelled = false;
     loadGoogleMapsScript()
@@ -87,6 +86,7 @@ function MapView(props: {
           });
         }
         setLoading(false);
+        setMapReady(true);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -99,9 +99,13 @@ function MapView(props: {
     };
   }, []);
 
-  // Update overlays only when the fingerprint changes
+  // Draws markers + route polylines. Now re-runs both when the data
+  // changes (fingerprint) AND when the map first becomes ready
+  // (mapReady) — previously only depended on fingerprint, so the very
+  // first paint always ran before the map existed and nothing after
+  // that ever told it to try again.
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapReady || !mapRef.current) return;
     const g = (window as any).google;
 
     const points: { lat: number; lng: number }[] = [];
@@ -110,22 +114,16 @@ function MapView(props: {
       if (a.lat != null && a.lng != null) points.push({ lat: a.lat, lng: a.lng });
     });
 
-    if (points.length === 0) {
-      markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = [];
-      polylinesRef.current.forEach((p) => p.setMap(null));
-      polylinesRef.current = [];
-      setError('Nothing with a location to show yet.');
-      return;
-    }
-
-    setError('');
-
-    // remove old overlays
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
     polylinesRef.current.forEach((p) => p.setMap(null));
     polylinesRef.current = [];
+
+    if (points.length === 0) {
+      setError('Nothing with a location to show yet.');
+      return;
+    }
+    setError('');
 
     const bounds = new g.maps.LatLngBounds();
 
@@ -158,7 +156,12 @@ function MapView(props: {
       if (a.route_polyline) allPolylines.push(a.route_polyline);
     });
 
+    if (allPolylines.length === 0 && activities.some((a) => a.lat != null)) {
+      setError('Pins are set, but no route has been calculated yet — try "Recalculate drive times" first.');
+    }
+
     allPolylines.forEach((encoded) => {
+      if (!g.maps.geometry?.encoding) return;
       try {
         const path = g.maps.geometry.encoding.decodePath(encoded);
         const poly = new g.maps.Polyline({
@@ -169,8 +172,9 @@ function MapView(props: {
         });
         poly.setMap(mapRef.current);
         polylinesRef.current.push(poly);
-      } catch (e) {
-        // ignore
+      } catch {
+        // A single malformed polyline shouldn't block the rest of the
+        // map from rendering — skip it silently.
       }
     });
 
@@ -182,19 +186,13 @@ function MapView(props: {
           lastBoundsRef.current = newBoundsStr;
         }
       } else {
-        const currentCenter = mapRef.current.getCenter?.();
-        const lat = points[0].lat;
-        const lng = points[0].lng;
-        if (!currentCenter || currentCenter.lat() !== lat || currentCenter.lng() !== lng) {
-          mapRef.current.setCenter(points[0]);
-          mapRef.current.setZoom(11);
-        }
+        mapRef.current.setCenter(points[0]);
+        mapRef.current.setZoom(11);
       }
-    } catch (e) {
-      // ignore
+    } catch {
       mapRef.current.setCenter(points[0]);
     }
-  }, [fingerprint]);
+  }, [fingerprint, mapReady]);
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
