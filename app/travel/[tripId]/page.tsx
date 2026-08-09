@@ -8,6 +8,7 @@ import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
 import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
 import GearMenu from '@/components/GearMenu';
+import MapView from '@/components/MapView';
 
 type Trip = {
   id: string;
@@ -29,6 +30,7 @@ type TripDay = {
   drive_from_base_mins: number | null;
   arrival_time: string | null;
   departure_time: string | null;
+  route_polyline: string | null;
 };
 
 type Activity = {
@@ -380,6 +382,7 @@ export default function TripDayView() {
   const [captureCoords, setCaptureCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [captureEstimate, setCaptureEstimate] = useState('30m');
   const [error, setError] = useState('');
+  const [mapOpen, setMapOpen] = useState(false);
 
   const [dragState, setDragState] = useState<DragState | null>(null);
   const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
@@ -842,6 +845,15 @@ export default function TripDayView() {
               ? `Staying at ${selectedDay.base_location_text}`
               : 'Set accommodation for this trip →'}
           </button>
+          {activities.length > 0 && (
+  <button
+    className="btn-ghost"
+    style={{ marginBottom: 'var(--space-3)', width: '100%' }}
+    onClick={() => setMapOpen(true)}
+  >
+    View map
+  </button>
+)}
 
           <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
             <div className="header-compare-row">
@@ -1093,6 +1105,18 @@ export default function TripDayView() {
           onPick={insertNearbySuggestion}
         />
       )}
+      {mapOpen && (
+  <MapView
+    base={selectedDay ? {
+      location_text: selectedDay.base_location_text,
+      lat: selectedDay.base_lat,
+      lng: selectedDay.base_lng,
+      route_polyline: selectedDay.route_polyline,
+    } : null}
+    activities={activities}
+    onClose={() => setMapOpen(false)}
+  />
+)}
     </div>
   );
 }
