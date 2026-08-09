@@ -470,41 +470,6 @@ export default function TripDayView() {
     }
   }
 
-  async function runNearbySearch(leg: Leg, category: string) {
-    const key = legCacheKey(leg, category);
-    const cached = nearbyCacheRef.current[key];
-    if (cached) {
-      setNearbySuggestions(cached);
-      setNearbyError(null);
-      setNearbyLoading(false);
-      return;
-    }
-
-    setNearbyLoading(true);
-    setNearbySuggestions([]);
-    setNearbyError(null);
-    try {
-      const json = await authedFetch('/api/travel/nearby-on-route', {
-        originLat: leg.fromLat,
-        originLng: leg.fromLng,
-        destLat: leg.toLat,
-        destLng: leg.toLng,
-        directMins: leg.directMins,
-        category,
-      });
-      if (json.error) {
-        setNearbyError(json.error);
-        return;
-      }
-      const results: NearbySuggestion[] = json.suggestions || [];
-      nearbyCacheRef.current[key] = results;
-      setNearbySuggestions(results);
-    } catch {
-      setNearbyError('Could not reach the server — check your connection and try again.');
-    } finally {
-      setNearbyLoading(false);
-    }
-  }
 
   async function addActivity() {
     const text = captureText.trim();
