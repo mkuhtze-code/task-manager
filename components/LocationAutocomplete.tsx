@@ -17,6 +17,7 @@ export default function LocationAutocomplete(props: {
   const [loading, setLoading] = useState(false);
   const sessionTokenRef = useRef<string>('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [selectError, setSelectError] = useState('');
 
   // A session starts the moment typing begins and is discarded once a
   // place is picked (or the field is abandoned) — never reused across
@@ -50,7 +51,7 @@ export default function LocationAutocomplete(props: {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     if (text.trim().length < 2) {
-      setPredictions([]);
+      sets([]);
       setOpen(false);
       return;
     }
@@ -63,10 +64,10 @@ export default function LocationAutocomplete(props: {
           sessionToken: ensureSessionToken(),
         });
         const json = await res.json();
-        setPredictions(json.predictions || []);
+        sets(json.s || []);
         setOpen(true);
       } catch {
-        setPredictions([]);
+        sets([]);
       } finally {
         setLoading(false);
       }
@@ -77,6 +78,7 @@ export default function LocationAutocomplete(props: {
     setOpen(false);
     onChange(p.text);
     setLoading(true);
+    setSelectError('');
     try {
       const res = await authedFetch('/api/travel/place-details', {
         placeId: p.placeId,
@@ -85,9 +87,12 @@ export default function LocationAutocomplete(props: {
       const json = await res.json();
       if (json.lat != null && json.lng != null) {
         onPlaceSelected({ lat: json.lat, lng: json.lng, formattedAddress: json.formattedAddress });
+      } else {
+        setSelectError("Couldn't pin down that location — drive time won't be calculated for it.");
       }
+    } catch {
+      setSelectError('Could not reach the server — try again.');
     } finally {
-      // Session ends here — the next keystroke after this starts a fresh one.
       sessionTokenRef.current = '';
       setLoading(false);
     }
@@ -125,6 +130,11 @@ export default function LocationAutocomplete(props: {
         <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--ink-faint)' }}>
           …
         </span>
+      )}
+      {selectError && (
+        <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', margin: '4px 0 0' }}>
+          {selectError}
+        </p>
       )}
     </div>
   );
