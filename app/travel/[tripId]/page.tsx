@@ -6,9 +6,9 @@ import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
+import MapView from '@/components/MapView';
 import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
 import GearMenu from '@/components/GearMenu';
-import MapView from '@/components/MapView';
 
 type Trip = {
   id: string;
@@ -47,6 +47,7 @@ type Activity = {
   status: 'pending' | 'done';
   time_type: 'flexible' | 'fixed';
   fixed_time: string | null;
+  route_polyline: string | null;
 };
 
 type DragState = {
@@ -361,6 +362,7 @@ function ActivityDetailSheet(props: {
     </div>
   );
 }
+
 export default function TripDayView() {
   const router = useRouter();
   const params = useParams();
@@ -376,13 +378,13 @@ export default function TripDayView() {
 
   const [openActivityId, setOpenActivityId] = useState<string | null>(null);
   const [accommodationSheetOpen, setAccommodationSheetOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureText, setCaptureText] = useState('');
   const [captureLocation, setCaptureLocation] = useState('');
   const [captureCoords, setCaptureCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [captureEstimate, setCaptureEstimate] = useState('30m');
   const [error, setError] = useState('');
-  const [mapOpen, setMapOpen] = useState(false);
 
   const [dragState, setDragState] = useState<DragState | null>(null);
   const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
@@ -399,9 +401,7 @@ export default function TripDayView() {
   // Session-only cache of nearby-search results, keyed by the exact leg
   // (fromId+toId) and category. Cleared whenever recalculateDay succeeds,
   // since a changed route means directMins — and therefore detourMins for
-  // every candidate — is no longer trustworthy. This is what stops
-  // flicking through categories on the same leg from re-firing the full
-  // ~11-call chain every single tap.
+  // every candidate — is no longer trustworthy.
   const nearbyCacheRef = useRef<Record<string, NearbySuggestion[]>>({});
 
   const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
@@ -472,7 +472,8 @@ export default function TripDayView() {
       setTripDays((prev) => prev.map((d) => (d.id === data.id ? data : d)));
     }
   }
- async function recalculateDay() {
+
+  async function recalculateDay() {
     if (!selectedDayId) return;
     setRecalculating(true);
     setRecalcError(null);
@@ -481,9 +482,6 @@ export default function TripDayView() {
       if (json.error) {
         setRecalcError(json.error);
       } else {
-        // Only invalidate the cache on a successful recalc — a failed
-        // one leaves prior drive times (and prior detour numbers) still
-        // trustworthy.
         nearbyCacheRef.current = {};
       }
       await loadActivities();
@@ -845,15 +843,16 @@ export default function TripDayView() {
               ? `Staying at ${selectedDay.base_location_text}`
               : 'Set accommodation for this trip →'}
           </button>
+
           {activities.length > 0 && (
-  <button
-    className="btn-ghost"
-    style={{ marginBottom: 'var(--space-3)', width: '100%' }}
-    onClick={() => setMapOpen(true)}
-  >
-    View map
-  </button>
-)}
+            <button
+              className="btn-ghost"
+              style={{ marginBottom: 'var(--space-3)', width: '100%' }}
+              onClick={() => setMapOpen(true)}
+            >
+              View map
+            </button>
+          )}
 
           <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
             <div className="header-compare-row">
@@ -1105,18 +1104,19 @@ export default function TripDayView() {
           onPick={insertNearbySuggestion}
         />
       )}
+
       {mapOpen && (
-  <MapView
-    base={selectedDay ? {
-      location_text: selectedDay.base_location_text,
-      lat: selectedDay.base_lat,
-      lng: selectedDay.base_lng,
-      route_polyline: selectedDay.route_polyline,
-    } : null}
-    activities={activities}
-    onClose={() => setMapOpen(false)}
-  />
-)}
+        <MapView
+          base={selectedDay ? {
+            location_text: selectedDay.base_location_text,
+            lat: selectedDay.base_lat,
+            lng: selectedDay.base_lng,
+            route_polyline: selectedDay.route_polyline,
+          } : null}
+          activities={activities}
+          onClose={() => setMapOpen(false)}
+        />
+      )}
     </div>
   );
 }
