@@ -29,13 +29,14 @@ const CATEGORIES: { value: string; label: string }[] = [
 
 export default function NearbySheet(props: {
   loading: boolean;
+  error?: string | null;
   suggestions: NearbySuggestion[];
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
   onClose: () => void;
   onPick: (s: NearbySuggestion) => void;
 }) {
-  const { loading, suggestions, selectedCategory, onCategoryChange, onClose, onPick } = props;
+  const { loading, error, suggestions, selectedCategory, onCategoryChange, onClose, onPick } = props;
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -60,7 +61,13 @@ export default function NearbySheet(props: {
 
         {loading && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Checking real drive times…</p>}
 
-        {!loading && suggestions.length === 0 && (
+        {!loading && error && (
+          <p style={{ color: 'var(--danger-text, var(--danger))', fontSize: 13 }}>
+            Search failed: {error}
+          </p>
+        )}
+
+        {!loading && !error && suggestions.length === 0 && (
           <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Nothing worth a detour found near this drive.</p>
         )}
 
