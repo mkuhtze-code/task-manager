@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
+import TopSwitcher from '@/components/TopSwitcher';
 
 type Trip = {
   id: string;
@@ -209,6 +210,8 @@ export default function TravelHome() {
 
   return (
     <div className="app-shell">
+      <TopSwitcher active="travel" />
+
       <div className="app-header">
         <div className="app-header-left">
           <button className="back-link" onClick={() => router.push('/')} aria-label="Back">‹</button>
