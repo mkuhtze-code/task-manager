@@ -165,6 +165,30 @@ function DragHandleIcon() {
   );
 }
 
+function CloseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CompleteCheckIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function ActivityDetailSheet(props: {
   activity: Activity;
   tripDays: TripDay[];
@@ -208,12 +232,25 @@ function ActivityDetailSheet(props: {
     );
   }
 
+  function handleDeleteClick() {
+    if (window.confirm(`Delete "${a.text}"? This can't be undone.`)) {
+      onDelete(a.id);
+      onClose();
+    }
+  }
+
   return (
     <div className="sheet-backdrop" onClick={() => { commit(); onClose(); }}>
       <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="task-detail-header">
-          <button className="btn-text" onClick={() => { commit(); onClose(); }}>Close</button>
-          <button className="btn-text" onClick={() => { onDelete(a.id); onClose(); }}>Delete</button>
+          <div className="settings-panel-title">Edit stop</div>
+          <button
+            className="gear-btn"
+            onClick={() => { commit(); onClose(); }}
+            aria-label="Close"
+          >
+            <CloseIcon />
+          </button>
         </div>
 
         <input
@@ -273,11 +310,21 @@ function ActivityDetailSheet(props: {
         )}
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
 
-        <div className="task-detail-actions">
-          <button className="btn btn-steel" style={{ flex: 1 }} onClick={() => { onComplete(a.id); onClose(); }}>
-            Mark done
-          </button>
-        </div>
+        <button
+          className="btn-ghost"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 14px',
+            minHeight: 36,
+            alignSelf: 'flex-start',
+            borderRadius: 'var(--radius-sm)',
+          }}
+          onClick={() => { onComplete(a.id); onClose(); }}
+        >
+          <CompleteCheckIcon /> Mark complete
+        </button>
 
         {tripDays.length > 1 && (
           <div className="subtask-panel">
@@ -298,11 +345,20 @@ function ActivityDetailSheet(props: {
             </div>
           </div>
         )}
+
+        <div style={{ borderTop: '1px dashed var(--line-strong)', paddingTop: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
+          <button
+            className="btn-text"
+            style={{ color: 'var(--danger-text, var(--danger))', display: 'inline-flex', alignItems: 'center', gap: 6, padding: 0 }}
+            onClick={handleDeleteClick}
+          >
+            <TrashIcon /> Delete this stop
+          </button>
+        </div>
       </div>
     </div>
   );
 }
-
 export default function TripDayView() {
   const router = useRouter();
   const params = useParams();
