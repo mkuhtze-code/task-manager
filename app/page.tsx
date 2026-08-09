@@ -13,6 +13,7 @@ import {
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
 import TopSwitcher from '@/components/TopSwitcher';
+import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 
 type Task = {
   id: string;
@@ -1415,6 +1416,7 @@ setTasks(prev => [...prev, data]);
   return (
     <div className="app-shell">
       <TopSwitcher active="today" />
+      <TravelAwarenessBanner />
 
       <div
         className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}
