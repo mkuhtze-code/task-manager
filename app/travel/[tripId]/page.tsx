@@ -192,6 +192,40 @@ function CompleteCheckIcon() {
   );
 }
 
+// Quick-complete affordance on each row — Dokkit's task rows lead with
+// exactly this, one tap to complete, no sheet required. Travel's rows
+// previously had no equivalent, forcing a three-tap detour through the
+// detail sheet just to check something off.
+function RowCheckIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 18 18">
+      <circle cx="9" cy="9" r="7.6" fill="none" stroke="var(--line-strong)" strokeWidth="1.6" />
+      <path
+        d="M5.3 9.3 L7.7 11.8 L12.7 6"
+        fill="none"
+        stroke="var(--moss)"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0"
+      />
+    </svg>
+  );
+}
+
+// Sits in the same slot a drag handle would occupy on a flexible row, so
+// fixed-time rows keep the same right-edge width instead of leaving an
+// empty gap — and gives "this is locked to its time" a visible signal,
+// which the fixed/flexible split never had until now.
+function LockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function ActivityDetailSheet(props: {
   activity: Activity;
   tripDays: TripDay[];
@@ -398,10 +432,6 @@ export default function TripDayView() {
   const [nearbyError, setNearbyError] = useState<string | null>(null);
   const [recalcError, setRecalcError] = useState<string | null>(null);
 
-  // Session-only cache of nearby-search results, keyed by the exact leg
-  // (fromId+toId) and category. Cleared whenever recalculateDay succeeds,
-  // since a changed route means directMins — and therefore detourMins for
-  // every candidate — is no longer trustworthy.
   const nearbyCacheRef = useRef<Record<string, NearbySuggestion[]>>({});
 
   const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
@@ -539,6 +569,11 @@ export default function TripDayView() {
     if (data.lat != null) recalculateDay();
   }
 
+  function closeCapture() {
+    setCaptureOpen(false);
+    setError('');
+  }
+
   async function updateActivity(id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null, timeType: 'flexible' | 'fixed', fixedTime: string | null) {
     await supabase
       .from('activities')
@@ -630,10 +665,8 @@ export default function TripDayView() {
   }
 
   const selectedDay = tripDays.find((d) => d.id === selectedDayId) || null;
+  const selectedDayIndex = tripDays.findIndex((d) => d.id === selectedDayId);
 
-  // ── Legs for "find something nearby" — matched by activity id, not
-  // text, so two same-named stops never collide and sort-mode reordering
-  // below can't scramble which button belongs to which leg.
   const legs: Leg[] = useMemo(() => {
     if (!selectedDay) return [];
     const out: Leg[] = [];
@@ -760,8 +793,6 @@ export default function TripDayView() {
     recalculateDay();
   }
 
-  // Arrival/departure on this specific day override the normal day_start/
-  // day_end — set by AccommodationSheet on check-in/check-out days only.
   const effectiveDayStart = selectedDay?.arrival_time || selectedDay?.day_start || '08:00';
   const effectiveDayEnd = selectedDay?.departure_time || selectedDay?.day_end || '20:00';
 
@@ -809,7 +840,14 @@ export default function TripDayView() {
       <div className="app-header">
         <div className="app-header-left">
           <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back">‹</button>
-          <h1 className="app-title" style={{ fontSize: 'var(--text-lg)' }}>{trip.name}</h1>
+          <div>
+            <h1 className="app-title" style={{ fontSize: 'var(--text-lg)', lineHeight: 1.15 }}>{trip.name}</h1>
+            {tripDays.length > 0 && selectedDayIndex >= 0 && (
+              <div style={{ fontSize: 11, color: 'var(--ink-faint)', fontWeight: 600 }}>
+                Day {selectedDayIndex + 1} of {tripDays.length}
+              </div>
+            )}
+          </div>
         </div>
         <div className="app-header-right">
           <GearMenu context="travel" />
@@ -834,26 +872,10 @@ export default function TripDayView() {
 
       {selectedDay && (
         <>
-          <button
-            className="btn-text"
-            style={{ padding: 0, marginBottom: 'var(--space-2)' }}
-            onClick={() => setAccommodationSheetOpen(true)}
-          >
-            {selectedDay.base_location_text
-              ? `Staying at ${selectedDay.base_location_text}`
-              : 'Set accommodation for this trip →'}
-          </button>
-
-          {activities.length > 0 && (
-            <button
-              className="btn-ghost"
-              style={{ marginBottom: 'var(--space-3)', width: '100%' }}
-              onClick={() => setMapOpen(true)}
-            >
-              View map
-            </button>
-          )}
-
+          {/* Capacity card promoted to the first thing shown, matching
+              Dokkit's own hierarchy — "what fits today" leads, secondary
+              utilities (accommodation, map) follow below it rather than
+              burying the primary signal under button chrome. */}
           <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
             <div className="header-compare-row">
               <div className="header-compare-stat">
@@ -900,11 +922,30 @@ export default function TripDayView() {
                 {recalcError}
               </p>
             )}
+          </div>
 
-            {legs.length === 0 && activities.length > 0 && (
-              <p style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 6 }}>
-                No nearby suggestions available for this day yet — this needs either a base set above, or at least two stops with a location picked from the search suggestions (not just typed).
-              </p>
+          {/* Secondary utility row — accommodation status and the map
+              live side by side as a single compact row instead of two
+              stacked full-width elements competing with the capacity
+              card for attention. */}
+          <div style={{ display: 'flex', gap: 'var(--space-2)', margin: 'var(--space-3) 0' }}>
+            <button
+              className="btn-ghost"
+              style={{ flex: 1, fontSize: 13, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              onClick={() => setAccommodationSheetOpen(true)}
+            >
+              {selectedDay.base_location_text
+                ? `📍 ${selectedDay.base_location_text}`
+                : 'Set accommodation →'}
+            </button>
+            {activities.length > 0 && (
+              <button
+                className="btn-ghost"
+                style={{ flexShrink: 0 }}
+                onClick={() => setMapOpen(true)}
+              >
+                View map
+              </button>
             )}
           </div>
 
@@ -915,17 +956,31 @@ export default function TripDayView() {
       )}
 
       {activities.length > 0 && (
-        <div className="segmented" style={{ marginBottom: 'var(--space-2)' }}>
-          <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('manual')}>Manual</button>
-          <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('what_fits')}>What fits</button>
-          <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near stay</button>
-        </div>
+        <>
+          <span className="settings-label" style={{ display: 'block', marginBottom: 4 }}>Sort by</span>
+          <div className="segmented" style={{ marginBottom: 'var(--space-2)' }}>
+            <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('manual')}>Manual</button>
+            <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('what_fits')}>What fits</button>
+            <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near stay</button>
+          </div>
+        </>
       )}
 
       <div className="task-list">
         {activities.length === 0 && (
           <div className="empty-state">Nothing planned for this day yet.<br />Tap + to add a stop.</div>
         )}
+
+        {/* Nearby-search availability hint moved out of the capacity card
+            — it's about a different feature and was muddying what that
+            card communicates. Lives here instead, next to the actual
+            "find something nearby" entry points it explains. */}
+        {legs.length === 0 && activities.length > 0 && (
+          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '0 0 var(--space-2)' }}>
+            No nearby suggestions available yet — set accommodation above, or pick at least two stop locations from search suggestions (not just typed).
+          </p>
+        )}
+
         {selectedDay && selectedDay.base_lat != null && activities.length > 0 && (
           (() => {
             const startLeg = legs.find((l) => l.insertIndex === 0 && l.fromId === null);
@@ -965,8 +1020,6 @@ export default function TripDayView() {
             }
           }
 
-          // Matched by this activity's own id as the leg's fromId — stable
-          // regardless of display order or duplicate names.
           const legAfterThis = legs.find((l) => l.fromId === a.id);
 
           return (
@@ -975,6 +1028,13 @@ export default function TripDayView() {
                 <div className="swipe-zone">
                   <div className="swipe-foreground">
                     <div className="task-main">
+                      <button
+                        className="check-btn"
+                        onClick={(e) => { e.stopPropagation(); completeActivity(a.id); }}
+                        aria-label="Mark complete"
+                      >
+                        <RowCheckIcon />
+                      </button>
                       <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
                         <div className="task-text">{a.text}</div>
                         <div className="task-tags">
@@ -985,7 +1045,15 @@ export default function TripDayView() {
                           {a.drive_mins_to_next > 0 && (
                             <span className="tag mono">+{fmtMins(a.drive_mins_to_next)} drive</span>
                           )}
-                          {a.location_text && <span className="tag">{a.location_text}</span>}
+                          {a.location_text && (
+                            <span
+                              className="tag"
+                              style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}
+                              title={a.location_text}
+                            >
+                              {a.location_text}
+                            </span>
+                          )}
                           {a.location_text && a.lat == null && (
                             <span className="tag tag-due">no coords — drive time skipped</span>
                           )}
@@ -996,7 +1064,7 @@ export default function TripDayView() {
                           )}
                         </div>
                       </div>
-                      {a.time_type === 'flexible' && (
+                      {a.time_type === 'flexible' ? (
                         <button
                           className="drag-handle-btn"
                           onPointerDown={(e) => { e.stopPropagation(); handleDragHandlePointerDown(e, a.id, orderedIds); }}
@@ -1007,6 +1075,15 @@ export default function TripDayView() {
                         >
                           <DragHandleIcon />
                         </button>
+                      ) : (
+                        <span
+                          className="drag-handle-btn"
+                          style={{ color: 'var(--ink-faint)', cursor: 'default' }}
+                          title="Fixed time — locked in place"
+                          aria-label="Fixed time, locked in place"
+                        >
+                          <LockIcon />
+                        </span>
                       )}
                     </div>
                     {legAfterThis && (
@@ -1028,6 +1105,12 @@ export default function TripDayView() {
 
       {captureOpen && (
         <div className="capture-sheet">
+          <div className="task-detail-header" style={{ marginBottom: 0 }}>
+            <div className="settings-panel-title">Add stop</div>
+            <button className="gear-btn" onClick={closeCapture} aria-label="Close">
+              <CloseIcon />
+            </button>
+          </div>
           <input
             type="text"
             value={captureText}
@@ -1059,7 +1142,6 @@ export default function TripDayView() {
           </div>
           {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
           <button className="btn btn-steel" onClick={addActivity}>Add stop</button>
-          <button className="btn-text" onClick={() => setCaptureOpen(false)}>Cancel</button>
         </div>
       )}
 
