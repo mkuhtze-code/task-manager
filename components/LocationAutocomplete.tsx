@@ -51,7 +51,7 @@ export default function LocationAutocomplete(props: {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     if (text.trim().length < 2) {
-      sets([]);
+      setPredictions([]);
       setOpen(false);
       return;
     }
