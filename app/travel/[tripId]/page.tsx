@@ -57,8 +57,14 @@ type DragState = {
   orderSnapshot: string[];
 };
 
+// fromId is null for the base→first-stop leg (nothing "is" the base as an
+// activity), and an activity id for every other leg. toId is always an
+// activity id. Matching legs by id (not text) is what fixes the bug where
+// two stops sharing a name would collide, and where sort-mode reordering
+// broke which "find nearby" button belonged to which leg.
 type Leg = {
-  fromLabel: string;
+  fromId: string | null;
+  toId: string;
   fromLat: number;
   fromLng: number;
   toLat: number;
@@ -329,6 +335,14 @@ export default function TripDayView() {
   const [nearbyCategory, setNearbyCategory] = useState('attraction');
   const [nearbyLeg, setNearbyLeg] = useState<Leg | null>(null);
 
+  // Session-only cache of nearby-search results, keyed by the exact leg
+  // (fromId+toId) and category. Cleared whenever recalculateDay succeeds,
+  // since a changed route means directMins — and therefore detourMins for
+  // every candidate — is no longer trustworthy. This is what stops
+  // flicking through categories on the same leg from re-firing the full
+  // ~11-call chain every single tap.
+  const nearbyCacheRef = useRef<Record<string, NearbySuggestion[]>>({});
+
   const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
   const [captureFixedTime, setCaptureFixedTime] = useState('');
@@ -363,8 +377,6 @@ export default function TripDayView() {
       setSelectedDayId(todayMatch ? todayMatch.id : dayRows[0].id);
     }
 
-    // Same column Dokkit's own sort_mode already lives in — one shared
-    // preferences row per person, not a separate travel-only store.
     if (session) {
       const { data: settings } = await supabase
         .from('user_settings')
@@ -407,6 +419,9 @@ export default function TripDayView() {
       await authedFetch('/api/travel/calculate-day', { trip_day_id: selectedDayId });
       await loadActivities();
       await refreshSelectedDay();
+      // Drive times may have changed, so any cached detour numbers are
+      // stale — clear everything rather than try to selectively evict.
+      nearbyCacheRef.current = {};
     } finally {
       setRecalculating(false);
     }
@@ -550,9 +565,9 @@ export default function TripDayView() {
 
   const selectedDay = tripDays.find((d) => d.id === selectedDayId) || null;
 
-  // ── Legs for "find something nearby" — always computed against the
-  // stored order_index sequence, independent of the current sort mode
-  // display order below.
+  // ── Legs for "find something nearby" — matched by activity id, not
+  // text, so two same-named stops never collide and sort-mode reordering
+  // below can't scramble which button belongs to which leg.
   const legs: Leg[] = useMemo(() => {
     if (!selectedDay) return [];
     const out: Leg[] = [];
@@ -560,7 +575,8 @@ export default function TripDayView() {
 
     if (hasBase && activities.length > 0 && activities[0].lat != null && activities[0].lng != null) {
       out.push({
-        fromLabel: 'start',
+        fromId: null,
+        toId: activities[0].id,
         fromLat: selectedDay.base_lat as number,
         fromLng: selectedDay.base_lng as number,
         toLat: activities[0].lat,
@@ -575,7 +591,8 @@ export default function TripDayView() {
       const b = activities[i + 1];
       if (a.lat == null || a.lng == null || b.lat == null || b.lng == null) continue;
       out.push({
-        fromLabel: a.text,
+        fromId: a.id,
+        toId: b.id,
         fromLat: a.lat,
         fromLng: a.lng,
         toLat: b.lat,
@@ -588,7 +605,19 @@ export default function TripDayView() {
     return out;
   }, [selectedDay, activities]);
 
+  function legCacheKey(leg: Leg, category: string): string {
+    return `${leg.fromId ?? 'base'}__${leg.toId}__${category}`;
+  }
+
   async function runNearbySearch(leg: Leg, category: string) {
+    const key = legCacheKey(leg, category);
+    const cached = nearbyCacheRef.current[key];
+    if (cached) {
+      setNearbySuggestions(cached);
+      setNearbyLoading(false);
+      return;
+    }
+
     setNearbyLoading(true);
     setNearbySuggestions([]);
     try {
@@ -600,7 +629,9 @@ export default function TripDayView() {
         directMins: leg.directMins,
         category,
       });
-      setNearbySuggestions(json.suggestions || []);
+      const results: NearbySuggestion[] = json.suggestions || [];
+      nearbyCacheRef.current[key] = results;
+      setNearbySuggestions(results);
     } finally {
       setNearbyLoading(false);
     }
@@ -678,8 +709,6 @@ export default function TripDayView() {
   const projectedPercent = (projectedFinish - dayStartMinutes) / trackSpan;
   const planWidthPercent = Math.max(Math.min(projectedPercent, 1) - nowPercent, 0);
 
-  // ── Sort-mode display order — computed after dayStartMinutes exists,
-  // and named distinctly from the setActivities state setter.
   const referencePoint = selectedDay?.base_lat != null && selectedDay?.base_lng != null
     ? { lat: selectedDay.base_lat, lng: selectedDay.base_lng }
     : null;
@@ -709,7 +738,7 @@ export default function TripDayView() {
           <h1 className="app-title" style={{ fontSize: 'var(--text-lg)' }}>{trip.name}</h1>
         </div>
         <div className="app-header-right">
-          <GearMenu />
+          <GearMenu context="travel" />
         </div>
       </div>
 
@@ -800,7 +829,7 @@ export default function TripDayView() {
         <div className="segmented" style={{ marginBottom: 'var(--space-2)' }}>
           <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('manual')}>Manual</button>
           <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('what_fits')}>What fits</button>
-          <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near Accom</button>
+          <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near stay</button>
         </div>
       )}
 
@@ -810,7 +839,7 @@ export default function TripDayView() {
         )}
         {selectedDay && selectedDay.base_lat != null && activities.length > 0 && (
           (() => {
-            const startLeg = legs.find((l) => l.insertIndex === 0 && l.fromLabel === 'start');
+            const startLeg = legs.find((l) => l.insertIndex === 0 && l.fromId === null);
             return startLeg ? (
               <button
                 className="btn-text"
@@ -847,7 +876,9 @@ export default function TripDayView() {
             }
           }
 
-          const legAfterThis = legs.find((l) => l.insertIndex === idx + 1 && l.fromLabel === a.text);
+          // Matched by this activity's own id as the leg's fromId — stable
+          // regardless of display order or duplicate names.
+          const legAfterThis = legs.find((l) => l.fromId === a.id);
 
           return (
             <div key={a.id} ref={(el) => { rowElsRef.current[a.id] = el; }} style={rowStyle}>
