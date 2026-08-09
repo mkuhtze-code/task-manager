@@ -64,10 +64,10 @@ export default function LocationAutocomplete(props: {
           sessionToken: ensureSessionToken(),
         });
         const json = await res.json();
-        sets(json.s || []);
+        setPredictions(json.predictions || []);
         setOpen(true);
       } catch {
-        sets([]);
+        setPredictions([]);
       } finally {
         setLoading(false);
       }
