@@ -4,14 +4,15 @@ import { verifyUser } from '@/lib/verifyUser';
 import { checkRateLimit } from '@/lib/ratelimit';
 
 type Coords = { lat: number; lng: number };
+type RouteLeg = { mins: number; polyline: string | null };
 
-async function computeRouteLeg(origin: Coords, destination: Coords): Promise<number | null> {
+async function computeRouteLeg(origin: Coords, destination: Coords): Promise<RouteLeg | null> {
   const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY as string,
-      'X-Goog-FieldMask': 'routes.duration',
+      'X-Goog-FieldMask': 'routes.duration,routes.polyline.encodedPolyline',
     },
     body: JSON.stringify({
       origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
@@ -25,7 +26,10 @@ async function computeRouteLeg(origin: Coords, destination: Coords): Promise<num
   if (!route?.duration) return null;
 
   const seconds = parseInt(String(route.duration).replace('s', ''), 10);
-  return Math.round(seconds / 60);
+  return {
+    mins: Math.round(seconds / 60),
+    polyline: route.polyline?.encodedPolyline || null,
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -34,11 +38,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  // Stricter key than a single geocode call, since this route can fire
-  // several Routes API calls in one invocation (one per leg in the day's
-  // chain) — the shared 20/60s limiter still applies per-key, but worth
-  // keeping an eye on if a day with many stops gets rate-limited too
-  // eagerly in practice; tighten or split into its own limiter if so.
   const { allowed } = await checkRateLimit(`user:${auth.userId}:travel-calculate-day`);
   if (!allowed) {
     return NextResponse.json({ error: 'Too many requests, try again shortly.' }, { status: 429 });
@@ -49,8 +48,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'trip_day_id is required' }, { status: 400 });
   }
 
-  // supabaseAdmin bypasses RLS, so ownership has to be checked explicitly —
-  // confirm this trip_day's parent trip actually belongs to the caller.
   const { data: tripDay, error: dayError } = await supabaseAdmin
     .from('trip_days')
     .select('id, base_lat, base_lng, trip_id, trips!inner(user_id)')
@@ -78,24 +75,28 @@ export async function POST(req: NextRequest) {
   const stops = activities || [];
   const hasBase = tripDay.base_lat != null && tripDay.base_lng != null;
   const skipped: string[] = [];
-  const updates: { id: string; drive_mins_to_next: number }[] = [];
+  const updates: { id: string; drive_mins_to_next: number; route_polyline: string | null }[] = [];
   let driveFromBaseMins: number | null = null;
+  let baseRoutePolyline: string | null = null;
 
-  // Leg: base -> first stop
   if (hasBase && stops.length > 0) {
     const first = stops[0];
     if (first.lat != null && first.lng != null) {
-      driveFromBaseMins = await computeRouteLeg(
+      const leg = await computeRouteLeg(
         { lat: tripDay.base_lat, lng: tripDay.base_lng },
         { lat: first.lat, lng: first.lng }
       );
-      if (driveFromBaseMins === null) skipped.push(first.text);
+      if (leg) {
+        driveFromBaseMins = leg.mins;
+        baseRoutePolyline = leg.polyline;
+      } else {
+        skipped.push(first.text);
+      }
     } else {
       skipped.push(first.text);
     }
   }
 
-  // Legs: each consecutive pair of stops
   for (let i = 0; i < stops.length - 1; i++) {
     const a = stops[i];
     const b = stops[i + 1];
@@ -103,33 +104,37 @@ export async function POST(req: NextRequest) {
       skipped.push(b.text);
       continue;
     }
-    const mins = await computeRouteLeg({ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng });
-    if (mins !== null) {
-      updates.push({ id: a.id, drive_mins_to_next: mins });
+    const leg = await computeRouteLeg({ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng });
+    if (leg) {
+      updates.push({ id: a.id, drive_mins_to_next: leg.mins, route_polyline: leg.polyline });
     } else {
       skipped.push(b.text);
     }
   }
 
-  // Leg: last stop -> base (reuses the last stop's existing drive_mins_to_next
-  // field, same as any other leg — no separate "return trip" concept needed)
   if (hasBase && stops.length > 0) {
     const last = stops[stops.length - 1];
     if (last.lat != null && last.lng != null) {
-      const mins = await computeRouteLeg(
+      const leg = await computeRouteLeg(
         { lat: last.lat, lng: last.lng },
         { lat: tripDay.base_lat, lng: tripDay.base_lng }
       );
-      updates.push({ id: last.id, drive_mins_to_next: mins ?? 0 });
+      updates.push({ id: last.id, drive_mins_to_next: leg?.mins ?? 0, route_polyline: leg?.polyline ?? null });
     }
   }
 
   await Promise.all(
     updates.map((u) =>
-      supabaseAdmin.from('activities').update({ drive_mins_to_next: u.drive_mins_to_next }).eq('id', u.id)
+      supabaseAdmin
+        .from('activities')
+        .update({ drive_mins_to_next: u.drive_mins_to_next, route_polyline: u.route_polyline })
+        .eq('id', u.id)
     )
   );
-  await supabaseAdmin.from('trip_days').update({ drive_from_base_mins: driveFromBaseMins }).eq('id', trip_day_id);
+  await supabaseAdmin
+    .from('trip_days')
+    .update({ drive_from_base_mins: driveFromBaseMins, route_polyline: baseRoutePolyline })
+    .eq('id', trip_day_id);
 
   return NextResponse.json({ ok: true, driveFromBaseMins, legsComputed: updates.length, skipped });
 }
