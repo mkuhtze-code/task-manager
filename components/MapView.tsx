@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 
 type MapActivity = {
   id: string;
@@ -41,91 +41,51 @@ function loadGoogleMapsScript(): Promise<void> {
   return scriptLoadPromise;
 }
 
-export default function MapView(props: {
+function MapView(props: {
   base: MapBase | null;
   activities: MapActivity[]; // must be in order_index order — polylines are per fromId leg
   onClose: () => void;
 }) {
   const { base, activities, onClose } = props;
+  // Debug logs to detect remounts/renders when diagnosing refresh
+  console.count('MapView render');
+
   const mapDivRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<any | null>(null);
+  const markersRef = useRef<any[]>([]);
+  const polylinesRef = useRef<any[]>([]);
+  const lastBoundsRef = useRef<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
+    console.log('MapView mounted');
+    return () => console.log('MapView unmounted');
+  }, []);
 
+  const fingerprint = useMemo(() => {
+    const basePart = base ? `${base.lat ?? ''},${base.lng ?? ''},${base.route_polyline ?? ''}` : '';
+    const actsPart = activities
+      .map((a) => `${a.id}|${a.lat ?? ''},${a.lng ?? ''},${a.route_polyline ?? ''}`)
+      .join(';');
+    return basePart + '||' + actsPart;
+  }, [base, activities]);
+
+  // Load script and initialize map instance once
+  useEffect(() => {
+    let cancelled = false;
     loadGoogleMapsScript()
       .then(() => {
         if (cancelled || !mapDivRef.current) return;
         const g = (window as any).google;
-
-        const points: { lat: number; lng: number }[] = [];
-        if (base?.lat != null && base?.lng != null) points.push({ lat: base.lat, lng: base.lng });
-        activities.forEach((a) => {
-          if (a.lat != null && a.lng != null) points.push({ lat: a.lat, lng: a.lng });
-        });
-
-        if (points.length === 0) {
-          setError('Nothing with a location to show yet.');
-          setLoading(false);
-          return;
-        }
-
-        const map = new g.maps.Map(mapDivRef.current, {
-          zoom: 11,
-          center: points[0],
-          disableDefaultUI: false,
-          streetViewControl: false,
-        });
-
-        const bounds = new g.maps.LatLngBounds();
-
-        if (base?.lat != null && base?.lng != null) {
-          new g.maps.Marker({
-            position: { lat: base.lat, lng: base.lng },
-            map,
-            label: 'B',
-            title: base.location_text || 'Base',
+        if (!mapRef.current) {
+          mapRef.current = new g.maps.Map(mapDivRef.current, {
+            zoom: 11,
+            center: { lat: 0, lng: 0 },
+            disableDefaultUI: false,
+            streetViewControl: false,
           });
-          bounds.extend({ lat: base.lat, lng: base.lng });
         }
-
-        activities.forEach((a, idx) => {
-          if (a.lat == null || a.lng == null) return;
-          new g.maps.Marker({
-            position: { lat: a.lat, lng: a.lng },
-            map,
-            label: String(idx + 1),
-            title: a.text,
-          });
-          bounds.extend({ lat: a.lat, lng: a.lng });
-        });
-
-        // Draw each leg's real calculated path — base→first stop, then
-        // each consecutive stop pair. A missing polyline (leg never
-        // recalculated, or that call failed) just draws nothing for that
-        // segment rather than a fake straight line standing in for it.
-        const allPolylines: string[] = [];
-        if (base?.route_polyline) allPolylines.push(base.route_polyline);
-        activities.forEach((a) => {
-          if (a.route_polyline) allPolylines.push(a.route_polyline);
-        });
-
-        allPolylines.forEach((encoded) => {
-          const path = g.maps.geometry.encoding.decodePath(encoded);
-          new g.maps.Polyline({
-            path,
-            map,
-            strokeColor: '#2451d4',
-            strokeOpacity: 0.85,
-            strokeWeight: 4,
-          });
-        });
-
-        if (points.length > 1) {
-          map.fitBounds(bounds, 48);
-        }
-
         setLoading(false);
       })
       .catch((err) => {
@@ -134,11 +94,107 @@ export default function MapView(props: {
           setLoading(false);
         }
       });
-
     return () => {
       cancelled = true;
     };
-  }, [base, activities]);
+  }, []);
+
+  // Update overlays only when the fingerprint changes
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const g = (window as any).google;
+
+    const points: { lat: number; lng: number }[] = [];
+    if (base?.lat != null && base?.lng != null) points.push({ lat: base.lat, lng: base.lng });
+    activities.forEach((a) => {
+      if (a.lat != null && a.lng != null) points.push({ lat: a.lat, lng: a.lng });
+    });
+
+    if (points.length === 0) {
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+      polylinesRef.current.forEach((p) => p.setMap(null));
+      polylinesRef.current = [];
+      setError('Nothing with a location to show yet.');
+      return;
+    }
+
+    setError('');
+
+    // remove old overlays
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+    polylinesRef.current.forEach((p) => p.setMap(null));
+    polylinesRef.current = [];
+
+    const bounds = new g.maps.LatLngBounds();
+
+    if (base?.lat != null && base?.lng != null) {
+      const m = new g.maps.Marker({
+        position: { lat: base.lat, lng: base.lng },
+        map: mapRef.current,
+        label: 'B',
+        title: base.location_text || 'Base',
+      });
+      markersRef.current.push(m);
+      bounds.extend({ lat: base.lat, lng: base.lng });
+    }
+
+    activities.forEach((a, idx) => {
+      if (a.lat == null || a.lng == null) return;
+      const m = new g.maps.Marker({
+        position: { lat: a.lat, lng: a.lng },
+        map: mapRef.current,
+        label: String(idx + 1),
+        title: a.text,
+      });
+      markersRef.current.push(m);
+      bounds.extend({ lat: a.lat, lng: a.lng });
+    });
+
+    const allPolylines: string[] = [];
+    if (base?.route_polyline) allPolylines.push(base.route_polyline);
+    activities.forEach((a) => {
+      if (a.route_polyline) allPolylines.push(a.route_polyline);
+    });
+
+    allPolylines.forEach((encoded) => {
+      try {
+        const path = g.maps.geometry.encoding.decodePath(encoded);
+        const poly = new g.maps.Polyline({
+          path,
+          strokeColor: '#2451d4',
+          strokeOpacity: 0.85,
+          strokeWeight: 4,
+        });
+        poly.setMap(mapRef.current);
+        polylinesRef.current.push(poly);
+      } catch (e) {
+        // ignore
+      }
+    });
+
+    try {
+      const newBoundsStr = bounds.toString();
+      if (points.length > 1) {
+        if (lastBoundsRef.current !== newBoundsStr) {
+          mapRef.current.fitBounds(bounds, 48);
+          lastBoundsRef.current = newBoundsStr;
+        }
+      } else {
+        const currentCenter = mapRef.current.getCenter?.();
+        const lat = points[0].lat;
+        const lng = points[0].lng;
+        if (!currentCenter || currentCenter.lat() !== lat || currentCenter.lng() !== lng) {
+          mapRef.current.setCenter(points[0]);
+          mapRef.current.setZoom(11);
+        }
+      }
+    } catch (e) {
+      // ignore
+      mapRef.current.setCenter(points[0]);
+    }
+  }, [fingerprint]);
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -169,3 +225,5 @@ export default function MapView(props: {
     </div>
   );
 }
+
+export default React.memo(MapView);
