@@ -171,6 +171,30 @@ async function authedFetch(url: string, body: any) {
   });
   return res.json();
 }
+// Resolves to real device coordinates if permission is granted and a fix
+// arrives within the timeout, or null otherwise — never rejects, since a
+// denied/unavailable location should fall back to the office/home
+// heuristic, not break the route calculation.
+function getLiveLocation(): Promise<Coords | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    const timeout = setTimeout(() => resolve(null), 8000);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        clearTimeout(timeout);
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => {
+        clearTimeout(timeout);
+        resolve(null);
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+    );
+  });
+}
 
 function sortTasks(
   list: Task[],
@@ -813,6 +837,8 @@ export default function Home() {
   const [driveToBaseMins, setDriveToBaseMins] = useState(0);
   const [recalculatingRoute, setRecalculatingRoute] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [liveCoords, setLiveCoords] = useState<Coords | null>(null);
+  const [liveLocationUnavailable, setLiveLocationUnavailable] = useState(false);
 
   // Gates the first-run welcome/setup screen. Starts false so returning
   // users never see a flash of it before settings load.
@@ -1056,6 +1082,15 @@ export default function Home() {
   // Only meaningful in geo_aware sort mode — every other mode zeroes the
   // route numbers out, since their ordering isn't geographically
   // guaranteed to make sense (the tension flagged when this was designed).
+  // Live device location wins when available; the office/home heuristic
+  // is the fallback for a denied permission or a fix that never arrives —
+  // never the other way around, since "where you actually are" is always
+  // more trustworthy than "where the clock says you should be."
+  function resolveBase() {
+    if (liveCoords) return { coords: liveCoords, label: 'current' as const };
+    return determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords);
+  }
+
   async function recalcRoute() {
     if (sortMode !== 'geo_aware' || !session) {
       setDriveFromBaseMins(0);
@@ -1063,7 +1098,11 @@ export default function Home() {
       return;
     }
 
-    const base = determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords);
+    const fix = await getLiveLocation();
+    setLiveCoords(fix);
+    setLiveLocationUnavailable(!fix);
+
+    const base = fix ? { coords: fix, label: 'current' as const } : determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords);
     if (!base.coords || !base.label) {
       setRouteError('Set a home or work address in Preferences to enable route-aware capacity.');
       setDriveFromBaseMins(0);
@@ -1595,7 +1634,9 @@ export default function Home() {
   const taskCapacity = minutesLeftToday - meetingMins;
 
   const geoAware = sortMode === 'geo_aware';
-  const currentBase = geoAware ? determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords) : { coords: null, label: null };
+  const currentBase = geoAware
+    ? (liveCoords ? { coords: liveCoords, label: 'current' as const } : determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords))
+    : { coords: null, label: null as 'work' | 'home' | 'current' | null };
 
   let ordered: Task[];
   if (geoAware && currentBase.coords) {
@@ -1742,12 +1783,17 @@ export default function Home() {
                   {recalculatingRoute
                     ? 'Recalculating route…'
                     : currentBase.label
-                      ? `Recalculate route (from ${currentBase.label === 'work' ? 'office' : 'home'})`
+                      ? `Recalculate route (from ${currentBase.label === 'work' ? 'office' : currentBase.label === 'home' ? 'home' : 'current location'})`
                       : 'Recalculate route'}
                 </button>
+                {liveLocationUnavailable && !recalculatingRoute && (
+                  <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '4px 0 0' }}>
+                    Couldn't get your current location — using {currentBase.label === 'work' ? 'office' : 'home'} instead.
+                  </p>
+                )}
                 {!recalculatingRoute && currentBase.label && (driveFromBaseMins > 0 || driveToBaseMins > 0) && (
                   <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '4px 0 0' }}>
-                    {fmtMins(driveFromBaseMins)} from {currentBase.label === 'work' ? 'office' : 'home'} to first stop ·{' '}
+                    {fmtMins(driveFromBaseMins)} from {currentBase.label === 'work' ? 'office' : currentBase.label === 'home' ? 'home' : 'here'} to first stop ·{' '}
                     {fmtMins(driveToBaseMins)} back at the end
                   </p>
                 )}
