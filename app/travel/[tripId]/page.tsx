@@ -227,6 +227,57 @@ function LockIcon() {
   );
 }
 
+function HotelIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M3 20V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M21 20v-8a2 2 0 0 0-2-2h-9v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 15h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="7" cy="9.5" r="1.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+function MapIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M12 21s-7-5.4-7-11a7 7 0 0 1 14 0c0 5.6-7 11-7 11Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <circle cx="12" cy="10" r="2.6" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function RefreshIcon({ spinning = false }: { spinning?: boolean }) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      style={spinning ? { animation: 'spin 0.9s linear infinite' } : undefined}
+    >
+      <path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CompassIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path d="m15.5 8.5-2 5-5 2 2-5 5-2Z" fill="currentColor" strokeWidth="1" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function ActivityDetailSheet(props: {
   activity: Activity;
   tripDays: TripDay[];
@@ -912,45 +963,58 @@ export default function TripDayView() {
               </div>
             </div>
 
-            <button
-              className="btn-text"
-              style={{ marginTop: 'var(--space-2)', padding: 0 }}
-              onClick={recalculateDay}
-              disabled={recalculating}
-            >
-              {recalculating ? 'Recalculating drive times…' : 'Recalculate drive times'}
-            </button>
-            {recalcError && (
-              <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', marginTop: 6 }}>
-                {recalcError}
+            {overloaded && (
+              <p
+                style={{
+                  margin: 'var(--space-2) 0 0',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  textAlign: 'center',
+                  color: 'var(--hazard-text, var(--hazard))',
+                }}
+              >
+                {fmtMins(plannedMins - minutesLeftToday)} over — trim or move a stop
               </p>
             )}
           </div>
 
-          {/* Secondary utility row — accommodation status and the map
-              live side by side as a single compact row instead of two
-              stacked full-width elements competing with the capacity
-              card for attention. */}
-          <div style={{ display: 'flex', gap: 'var(--space-2)', margin: 'var(--space-3) 0' }}>
+          {/* Day toolbar — the three setup/route actions in one row.
+              The stay button carries the label (and truncates); map and
+              drive-times are compact icon buttons so the row stays quiet. */}
+          <div className="toolbar-row">
             <button
-              className="btn-ghost"
-              style={{ flex: 1, fontSize: 13, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              className="btn-ghost toolbar-btn toolbar-stay"
               onClick={() => setAccommodationSheetOpen(true)}
+              title={selectedDay.base_location_text || 'Set accommodation'}
             >
-              {selectedDay.base_location_text
-                ? `📍 ${selectedDay.base_location_text}`
-                : 'Set accommodation →'}
+              <HotelIcon />
+              <span>{selectedDay.base_location_text || 'Set stay'}</span>
             </button>
             {activities.length > 0 && (
               <button
-                className="btn-ghost"
-                style={{ flexShrink: 0 }}
+                className="btn-ghost toolbar-btn toolbar-icon-btn"
                 onClick={() => setMapOpen(true)}
+                aria-label="View map"
+                title="View map"
               >
-                View map
+                <MapIcon />
               </button>
             )}
+            <button
+              className="btn-ghost toolbar-btn toolbar-icon-btn"
+              onClick={recalculateDay}
+              disabled={recalculating}
+              aria-label="Recalculate drive times"
+              title="Recalculate drive times"
+            >
+              <RefreshIcon spinning={recalculating} />
+            </button>
           </div>
+          {recalcError && (
+            <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', margin: '0 0 var(--space-2)' }}>
+              {recalcError}
+            </p>
+          )}
 
           {legs.length > 0 && activities.length === 0 && selectedDay.base_lat != null && (
             <div className="empty-state">Add a stop to see what's nearby your base.</div>
@@ -959,25 +1023,26 @@ export default function TripDayView() {
       )}
 
       {activities.length > 0 && (
-        <>
-          <span className="settings-label" style={{ display: 'block', marginBottom: 4 }}>Sort by</span>
-          <div className="segmented" style={{ marginBottom: 'var(--space-2)' }}>
-            <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('manual')}>Manual</button>
-            <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('what_fits')}>What fits</button>
-            <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near stay</button>
-          </div>
-        </>
+        <div className="segmented" style={{ marginBottom: 'var(--space-2)' }}>
+          <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('manual')}>Manual</button>
+          <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('what_fits')}>What fits</button>
+          <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near stay</button>
+        </div>
       )}
 
       <div className="task-list">
         {activities.length === 0 && (
-          <div className="empty-state">Nothing planned for this day yet.<br />Tap + to add a stop.</div>
+          <div className="empty-state">
+            <div className="empty-state-title">Nothing planned for this day yet</div>
+            <div className="empty-state-sub">Tap below or use the + button to add your first stop.</div>
+            <button className="btn btn-steel" onClick={() => setCaptureOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <PlusIcon /> Add a stop
+            </button>
+          </div>
         )}
 
-        {/* Nearby-search availability hint moved out of the capacity card
-            — it's about a different feature and was muddying what that
-            card communicates. Lives here instead, next to the actual
-            "find something nearby" entry points it explains. */}
+        {/* Nearby-search availability hint — it explains the nearby entry
+            points below, so it lives next to them rather than buried. */}
         {legs.length === 0 && activities.length > 0 && (
           <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '0 0 var(--space-2)' }}>
             No nearby suggestions available yet — set accommodation above, or pick at least two stop locations from search suggestions (not just typed).
@@ -989,11 +1054,11 @@ export default function TripDayView() {
             const startLeg = legs.find((l) => l.insertIndex === 0 && l.fromId === null);
             return startLeg ? (
               <button
-                className="btn-text"
-                style={{ padding: '2px 0 6px', fontSize: 12 }}
+                className="nearby-pill"
+                style={{ marginBottom: 'var(--space-2)' }}
                 onClick={() => findNearby(startLeg)}
               >
-                Find something nearby, on the way from your base →
+                <CompassIcon /> Nearby, on the way from base
               </button>
             ) : null;
           })()
@@ -1091,11 +1156,10 @@ export default function TripDayView() {
                     </div>
                     {legAfterThis && (
                       <button
-                        className="btn-text"
-                        style={{ padding: '4px 0 0', fontSize: 12 }}
+                        className="nearby-pill"
                         onClick={(e) => { e.stopPropagation(); findNearby(legAfterThis); }}
                       >
-                        Find something nearby →
+                        <CompassIcon /> Nearby
                       </button>
                     )}
                   </div>
