@@ -1745,6 +1745,12 @@ export default function Home() {
                       ? `Recalculate route (from ${currentBase.label === 'work' ? 'office' : 'home'})`
                       : 'Recalculate route'}
                 </button>
+                {!recalculatingRoute && currentBase.label && (driveFromBaseMins > 0 || driveToBaseMins > 0) && (
+                  <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '4px 0 0' }}>
+                    {fmtMins(driveFromBaseMins)} from {currentBase.label === 'work' ? 'office' : 'home'} to first stop ·{' '}
+                    {fmtMins(driveToBaseMins)} back at the end
+                  </p>
+                )}
                 {routeError && (
                   <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', margin: '4px 0 0' }}>
                     {routeError}
