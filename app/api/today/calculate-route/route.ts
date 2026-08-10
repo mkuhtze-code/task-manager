@@ -73,9 +73,11 @@ export async function POST(req: NextRequest) {
   const byId: Record<string, { id: string; lat: number | null; lng: number | null; text: string }> = {};
   (tasks || []).forEach((t) => (byId[t.id] = t));
 
+  type LocatedTask = { id: string; lat: number; lng: number; text: string };
+
   const located = orderedTaskIds
     .map((id: string) => byId[id])
-    .filter((t: any) => t && t.lat != null && t.lng != null);
+    .filter((t): t is LocatedTask => !!t && t.lat != null && t.lng != null);
 
   if (located.length === 0) {
     return NextResponse.json({ ok: true, driveFromBaseMins: null, driveToBaseMins: null, legsComputed: 0, skipped: [] });
