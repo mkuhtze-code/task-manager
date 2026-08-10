@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
 
 const DAY_OPTIONS: { label: string; value: number }[] = [
   { label: 'M', value: 1 },
@@ -37,9 +38,6 @@ function InfoIcon() {
 
 type Theme = 'light' | 'dark' | 'system';
 
-// Resolves 'system' against the OS preference and flips the data-theme
-// attribute on <html> immediately, so the toggle feels instant rather
-// than waiting on the Supabase round-trip.
 function applyTheme(theme: Theme) {
   if (typeof window === 'undefined') return;
   let resolved: 'light' | 'dark' = theme === 'system'
@@ -64,9 +62,6 @@ export default function Preferences() {
   const [notifStatus, setNotifStatus] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
 
-  // Initialize from whatever the pre-paint script already stored, so the
-  // segmented control shows the right selection on first render instead
-  // of flashing to "system" before Supabase responds.
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'system';
     try {
@@ -77,13 +72,24 @@ export default function Preferences() {
     }
   });
 
-  type SortMode = 'capacity_first' | 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
+  type SortMode = 'capacity_first' | 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first' | 'geo_aware';
   const [sortMode, setSortMode] = useState<SortMode>('capacity_first');
   const [sortSavedMsg, setSortSavedMsg] = useState('');
 
   const [calendarConnection, setCalendarConnection] = useState<{ connected_email: string | null } | null>(null);
   const [calendarMessage, setCalendarMessage] = useState('');
   const [disconnecting, setDisconnecting] = useState(false);
+
+  // ── Home & Work — the "base" pins geo_aware sort mode routes from,
+  // switching automatically between them based on work hours already
+  // set above, same base concept as Travel's accommodation, applied to
+  // an ordinary day instead of a trip.
+  const [homeLocation, setHomeLocation] = useState('');
+  const [homeCoords, setHomeCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [workLocation, setWorkLocation] = useState('');
+  const [workCoords, setWorkCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [placesSavedMsg, setPlacesSavedMsg] = useState('');
+  const [placesSaving, setPlacesSaving] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -113,7 +119,7 @@ export default function Preferences() {
     const userId = session.user.id;
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days, notification_style, sort_mode, theme')
+      .select('work_start, work_end, work_days, notification_style, sort_mode, theme, home_location_text, home_lat, home_lng, work_location_text, work_lat, work_lng')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
@@ -122,12 +128,18 @@ export default function Preferences() {
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : [1, 2, 3, 4, 5]);
       setNotificationStyle(settings.notification_style || 'default');
-      // The stored row is the source of truth once it arrives — it may
-      // differ from another device's localStorage. Apply it so this
-      // device converges to match.
       const storedTheme = (settings.theme as Theme) || 'system';
       setTheme(storedTheme);
       applyTheme(storedTheme);
+
+      setHomeLocation(settings.home_location_text || '');
+      if (settings.home_lat != null && settings.home_lng != null) {
+        setHomeCoords({ lat: settings.home_lat, lng: settings.home_lng });
+      }
+      setWorkLocation(settings.work_location_text || '');
+      if (settings.work_lat != null && settings.work_lng != null) {
+        setWorkCoords({ lat: settings.work_lat, lng: settings.work_lng });
+      }
     }
   }
 
@@ -192,12 +204,30 @@ export default function Preferences() {
   async function saveTheme(next: Theme) {
     const previous = theme;
     setTheme(next);
-    applyTheme(next); // instant visual feedback, doesn't wait on the network
+    applyTheme(next);
     const { error } = await supabase.from('user_settings').update({ theme: next }).eq('user_id', session.user.id);
     if (error) {
       setTheme(previous);
       applyTheme(previous);
     }
+  }
+
+  async function saveHomeWork() {
+    setPlacesSaving(true);
+    const { error } = await supabase
+      .from('user_settings')
+      .update({
+        home_location_text: homeLocation || null,
+        home_lat: homeCoords?.lat ?? null,
+        home_lng: homeCoords?.lng ?? null,
+        work_location_text: workLocation || null,
+        work_lat: workCoords?.lat ?? null,
+        work_lng: workCoords?.lng ?? null,
+      })
+      .eq('user_id', session.user.id);
+    setPlacesSaving(false);
+    setPlacesSavedMsg(error ? 'Could not save: ' + error.message : 'Saved.');
+    setTimeout(() => setPlacesSavedMsg(''), 2000);
   }
 
   async function enableNotifications() {
@@ -302,6 +332,53 @@ export default function Preferences() {
       </div>
 
       <div className="settings-panel">
+        <div className="settings-panel-title">Home &amp; work</div>
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+          Used as the starting and ending point when Dokkit works out drive time for located tasks —
+          your office during work hours (set above), home otherwise, switching automatically.
+        </p>
+
+        <span className="settings-label">Home</span>
+        <LocationAutocomplete
+          value={homeLocation}
+          placeholder="Home address"
+          onChange={setHomeLocation}
+          onPlaceSelected={(result) => {
+            setHomeLocation(result.formattedAddress);
+            setHomeCoords({ lat: result.lat, lng: result.lng });
+          }}
+        />
+        {homeLocation.length > 0 && !homeCoords && (
+          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+            Pick a suggestion from the list so this can anchor drive-time calculations.
+          </p>
+        )}
+
+        <span className="settings-label" style={{ marginTop: 'var(--space-2)' }}>Work / office</span>
+        <LocationAutocomplete
+          value={workLocation}
+          placeholder="Office address"
+          onChange={setWorkLocation}
+          onPlaceSelected={(result) => {
+            setWorkLocation(result.formattedAddress);
+            setWorkCoords({ lat: result.lat, lng: result.lng });
+          }}
+        />
+        {workLocation.length > 0 && !workCoords && (
+          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+            Pick a suggestion from the list so this can anchor drive-time calculations.
+          </p>
+        )}
+
+        <div className="settings-row">
+          <button className="btn btn-ghost" onClick={saveHomeWork} disabled={placesSaving}>
+            {placesSaving ? 'Saving…' : 'Save'}
+          </button>
+          {placesSavedMsg && <span className="settings-saved">{placesSavedMsg}</span>}
+        </div>
+      </div>
+
+      <div className="settings-panel">
         <div className="settings-panel-title">Task order</div>
         <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
           How your task list is arranged. Choose "Manual" to drag tasks into whatever order matters
@@ -311,6 +388,7 @@ export default function Preferences() {
           {([
             { value: 'capacity_first', label: 'Fits today first', desc: 'Tasks that realistically fit in the time you have left float to the top — the rest are flagged, not hidden' },
             { value: 'due_today_first', label: 'Due today first', desc: 'Due-today tasks float to the top' },
+            { value: 'geo_aware', label: 'Route-aware', desc: 'Located tasks are ordered by real drive distance from home or work, whichever applies right now' },
             { value: 'manual', label: 'Manual', desc: 'Drag to arrange exactly how you want' },
             { value: 'oldest_first', label: 'Oldest first', desc: 'By when each task was added' },
             { value: 'newest_first', label: 'Newest first', desc: 'Most recently added on top' },
