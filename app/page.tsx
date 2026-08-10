@@ -5,13 +5,17 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
 import MicButton from '@/components/MicButton';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
 import {
   buildClusters,
   suggestEstimate,
   effectiveEstimate,
   hasMeaningfulDivergence,
+  suggestLocation,
+  suggestsLocation,
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
+import { determineBase, nearestNeighborOrder, weaveGeoOrder, type Coords } from '@/lib/todayRoute';
 import TopSwitcher from '@/components/TopSwitcher';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 
@@ -33,6 +37,13 @@ type Task = {
   // it just appears like any other task/list item — no notification,
   // no "overdue" state if a day is missed.
   surface_date: string | null;
+  // Optional location — mirrors activities in Travel. drive_mins_to_next
+  // is only meaningful in geo_aware sort mode; it's the computed drive
+  // time to whichever located task comes next in the geographic route.
+  location_text: string | null;
+  lat: number | null;
+  lng: number | null;
+  drive_mins_to_next: number;
 };
 
 type Subtask = {
@@ -49,7 +60,7 @@ type Meeting = {
   duration_mins: number;
 };
 
-type SortMode = 'capacity_first' | 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first';
+type SortMode = 'capacity_first' | 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first' | 'geo_aware';
 
 type DragState = {
   id: string;
@@ -145,6 +156,20 @@ function fmtSurfaceDate(dateStr: string): string {
 
 function isScheduledForLater(t: Task, todayStr: string): boolean {
   return !!t.surface_date && t.surface_date > todayStr;
+}
+
+async function authedFetch(url: string, body: any) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  return res.json();
 }
 
 function sortTasks(
@@ -280,6 +305,7 @@ function TaskCard(props: {
   anyActive: boolean;
   subs: Subtask[];
   learnedHint: string | null;
+  showDrive: boolean;
   openSwipeId: string | null;
   setOpenSwipeId: (id: string | null) => void;
   onComplete: (id: string) => void;
@@ -293,7 +319,7 @@ function TaskCard(props: {
   };
 }) {
   const {
-    task: t, remainingForThis, liveLogged, overCap, anyActive, subs, learnedHint,
+    task: t, remainingForThis, liveLogged, overCap, anyActive, subs, learnedHint, showDrive,
     openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen,
     dragHandleProps,
   } = props;
@@ -405,6 +431,9 @@ function TaskCard(props: {
     isListItem ? 'task-list-item' : '',
   ].join(' ').trim();
 
+  const hasExtraTags =
+    t.status === 'active' || subs.length > 0 || t.due_today || learnedHint || t.location_text || (showDrive && t.drive_mins_to_next > 0);
+
   return (
     <div className={rowClass}>
       <div className="swipe-zone">
@@ -452,12 +481,24 @@ function TaskCard(props: {
                   <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
                 </div>
               )}
-              {(t.status === 'active' || subs.length > 0 || t.due_today || learnedHint) && (
+              {hasExtraTags && (
                 <div className="task-tags">
                   {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
                   {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
                   {t.due_today && <span className="tag tag-due">due today</span>}
                   {learnedHint && <span className="tag">usually ~{learnedHint}</span>}
+                  {t.location_text && (
+                    <span
+                      className="tag"
+                      style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}
+                      title={t.location_text}
+                    >
+                      {t.location_text}
+                    </span>
+                  )}
+                  {showDrive && t.drive_mins_to_next > 0 && (
+                    <span className="tag mono">+{fmtMins(t.drive_mins_to_next)} drive</span>
+                  )}
                 </div>
               )}
             </div>
@@ -487,7 +528,7 @@ function TaskDetailSheet(props: {
   liveLogged: number;
   anyActive: boolean;
   onClose: () => void;
-  onSave: (id: string, text: string, mins: number, surfaceDate: string | null) => void;
+  onSave: (id: string, text: string, mins: number, surfaceDate: string | null, locationText: string | null, lat: number | null, lng: number | null) => void;
   onComplete: (id: string) => void;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
@@ -509,12 +550,18 @@ function TaskDetailSheet(props: {
   const [text, setText] = useState(task.text);
   const [timeStr, setTimeStr] = useState(fmtMins(task.estimate_mins));
   const [surfaceDate, setSurfaceDate] = useState(task.surface_date || '');
+  const [locationText, setLocationText] = useState(task.location_text || '');
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(
+    task.lat != null && task.lng != null ? { lat: task.lat, lng: task.lng } : null
+  );
   const [error, setError] = useState('');
 
   useEffect(() => {
     setText(task.text);
     setTimeStr(fmtMins(task.estimate_mins));
     setSurfaceDate(task.surface_date || '');
+    setLocationText(task.location_text || '');
+    setLocationCoords(task.lat != null && task.lng != null ? { lat: task.lat, lng: task.lng } : null);
     setError('');
   }, [task.id]);
 
@@ -532,7 +579,15 @@ function TaskDetailSheet(props: {
       return;
     }
     setError('');
-    onSave(task.id, trimmed, mins, surfaceDate.length > 0 ? surfaceDate : null);
+    onSave(
+      task.id,
+      trimmed,
+      mins,
+      surfaceDate.length > 0 ? surfaceDate : null,
+      locationText.trim().length > 0 ? locationText.trim() : null,
+      locationCoords?.lat ?? null,
+      locationCoords?.lng ?? null
+    );
   }
 
   function handleClose() {
@@ -589,6 +644,22 @@ function TaskDetailSheet(props: {
           </button>
         </div>
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+
+        <span className="settings-label">Location (optional)</span>
+        <LocationAutocomplete
+          value={locationText}
+          placeholder="Where does this happen?"
+          onChange={setLocationText}
+          onPlaceSelected={(result) => {
+            setLocationText(result.formattedAddress);
+            setLocationCoords({ lat: result.lat, lng: result.lng });
+          }}
+        />
+        {locationText.length > 0 && !locationCoords && (
+          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+            Pick a suggestion from the list so this can factor into route-aware capacity.
+          </p>
+        )}
 
         <div className="reminder-date-row">
           <input
@@ -731,6 +802,18 @@ export default function Home() {
   const [sortMode, setSortMode] = useState<SortMode>('capacity_first');
   const [captureOpen, setCaptureOpen] = useState(false);
 
+  // ── Home & Work base pins, and the route state geo_aware sort mode
+  // depends on. driveFromBaseMins/driveToBaseMins are never persisted —
+  // there's no per-day table for Today the way Travel has trip_days, so
+  // these are recomputed fresh each time recalcRoute() runs and held only
+  // in memory, same tradeoff flagged when this was designed.
+  const [homeCoords, setHomeCoords] = useState<Coords | null>(null);
+  const [workCoords, setWorkCoords] = useState<Coords | null>(null);
+  const [driveFromBaseMins, setDriveFromBaseMins] = useState(0);
+  const [driveToBaseMins, setDriveToBaseMins] = useState(0);
+  const [recalculatingRoute, setRecalculatingRoute] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
+
   // Gates the first-run welcome/setup screen. Starts false so returning
   // users never see a flash of it before settings load.
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -740,6 +823,9 @@ export default function Home() {
   const [taskTime, setTaskTime] = useState('');
   const [showReminderField, setShowReminderField] = useState(false);
   const [captureSurfaceDate, setCaptureSurfaceDate] = useState('');
+  const [captureLocation, setCaptureLocation] = useState('');
+  const [captureLocationCoords, setCaptureLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [manualLocationToggle, setManualLocationToggle] = useState(false);
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
 
@@ -748,7 +834,8 @@ export default function Home() {
 
   // ── The "brain": completed-task history feeds fuzzy clustering, which
   // powers both the capture-time suggestion chip and the capacity math's
-  // effective (learned) estimates below.
+  // effective (learned) estimates below. Location suggestions ride the
+  // same clusters now — see suggestLocation in taskIntelligence.ts.
   const [history, setHistory] = useState<HistoricalTask[]>([]);
   const clusters = useMemo(() => buildClusters(history), [history]);
 
@@ -757,6 +844,16 @@ export default function Home() {
     if (trimmed.length === 0) return null;
     return suggestEstimate(trimmed, history, clusters);
   }, [taskText, history, clusters]);
+
+  const captureLocationSuggestion = useMemo(() => {
+    const trimmed = taskText.trim();
+    if (trimmed.length === 0) return null;
+    return suggestLocation(trimmed, history, clusters);
+  }, [taskText, history, clusters]);
+
+  // Deterministic phrase heuristic (see suggestsLocation), not AI — fires
+  // the optional location field without forcing it on every task.
+  const locationFieldVisible = suggestsLocation(taskText) || captureLocation.length > 0 || manualLocationToggle;
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -796,7 +893,7 @@ export default function Home() {
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days, timezone, sort_mode, onboarded')
+      .select('work_start, work_end, work_days, timezone, sort_mode, onboarded, home_lat, home_lng, work_lat, work_lng')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -808,6 +905,12 @@ export default function Home() {
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : DEFAULT_WORK_DAYS);
       setSortMode((settings.sort_mode as SortMode) || 'capacity_first');
+      if (settings.home_lat != null && settings.home_lng != null) {
+        setHomeCoords({ lat: settings.home_lat, lng: settings.home_lng });
+      }
+      if (settings.work_lat != null && settings.work_lng != null) {
+        setWorkCoords({ lat: settings.work_lat, lng: settings.work_lng });
+      }
       if (!settings.timezone && detectedTimezone) {
         supabase.from('user_settings').update({ timezone: detectedTimezone }).eq('user_id', userId);
       }
@@ -855,12 +958,20 @@ export default function Home() {
     // recent 500 so clustering stays cheap even after months of use.
     const { data: historyRows } = await supabase
       .from('tasks')
-      .select('text, actual_mins')
+      .select('text, actual_mins, location_text, lat, lng')
       .eq('status', 'done')
       .not('actual_mins', 'is', null)
       .order('completed_at', { ascending: false })
       .limit(500);
-    setHistory((historyRows || []).map((r: any) => ({ text: r.text, actual_mins: r.actual_mins })));
+    setHistory(
+      (historyRows || []).map((r: any) => ({
+        text: r.text,
+        actual_mins: r.actual_mins,
+        location_text: r.location_text,
+        lat: r.lat,
+        lng: r.lng,
+      }))
+    );
   }
 
   function toggleWorkDay(day: number) {
@@ -939,6 +1050,80 @@ export default function Home() {
     }
   }
 
+  // Recomputes the geographic route: nearest-neighbor order from whichever
+  // base currently applies (client-side, free), then asks the server to
+  // fetch real drive times for that exact sequence and persist them.
+  // Only meaningful in geo_aware sort mode — every other mode zeroes the
+  // route numbers out, since their ordering isn't geographically
+  // guaranteed to make sense (the tension flagged when this was designed).
+  async function recalcRoute() {
+    if (sortMode !== 'geo_aware' || !session) {
+      setDriveFromBaseMins(0);
+      setDriveToBaseMins(0);
+      return;
+    }
+
+    const base = determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords);
+    if (!base.coords || !base.label) {
+      setRouteError('Set a home or work address in Preferences to enable route-aware capacity.');
+      setDriveFromBaseMins(0);
+      setDriveToBaseMins(0);
+      return;
+    }
+
+    const located = tasks
+      .filter((t) => t.status !== 'done' && t.lat != null && t.lng != null)
+      .map((t) => ({ id: t.id, lat: t.lat as number, lng: t.lng as number }));
+
+    if (located.length === 0) {
+      setRouteError(null);
+      setDriveFromBaseMins(0);
+      setDriveToBaseMins(0);
+      return;
+    }
+
+    const orderedIds = nearestNeighborOrder(base.coords, located);
+    setRecalculatingRoute(true);
+    setRouteError(null);
+    try {
+      const json = await authedFetch('/api/today/calculate-route', {
+        orderedTaskIds: orderedIds,
+        baseLabel: base.label,
+      });
+      if (json.error) {
+        setRouteError(json.error);
+      } else {
+        setDriveFromBaseMins(json.driveFromBaseMins || 0);
+        setDriveToBaseMins(json.driveToBaseMins || 0);
+        const { data: taskRows } = await supabase
+          .from('tasks')
+          .select('*')
+          .neq('status', 'done')
+          .order('order_index', { ascending: true });
+        setTasks(taskRows || []);
+      }
+    } catch {
+      setRouteError('Could not reach the server — check your connection and try again.');
+    } finally {
+      setRecalculatingRoute(false);
+    }
+  }
+
+  // Auto-recalculates whenever geo_aware becomes the active sort mode,
+  // and zeroes route numbers out the moment it stops being active — so
+  // switching away never leaves stale drive-time inflating capacity math
+  // in a mode where the order no longer justifies it.
+  useEffect(() => {
+    if (sortMode === 'geo_aware' && session) {
+      recalcRoute();
+    } else {
+      setDriveFromBaseMins(0);
+      setDriveToBaseMins(0);
+      setRouteError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortMode, session]);
+
   async function addTask() {
     const text = taskText.trim();
     if (text.length === 0) return;
@@ -952,35 +1137,56 @@ export default function Home() {
     const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order_index), 0);
     const surfaceDate = showReminderField && captureSurfaceDate.length > 0 ? captureSurfaceDate : null;
     const { data, error } = await supabase
-  .from("tasks")
-  .insert({
-    user_id: userId,
-    text,
-    estimate_mins: mins,
-    source: "came_up",
-    order_index: maxOrder + 1,
-    surface_date: surfaceDate,
-  })
-  .select()
-  .single();
+      .from('tasks')
+      .insert({
+        user_id: userId,
+        text,
+        estimate_mins: mins,
+        source: 'came_up',
+        order_index: maxOrder + 1,
+        surface_date: surfaceDate,
+        location_text: captureLocation.trim().length > 0 ? captureLocation.trim() : null,
+        lat: captureLocationCoords?.lat ?? null,
+        lng: captureLocationCoords?.lng ?? null,
+      })
+      .select()
+      .single();
 
-if (error) {
-  console.error(error);
-  alert(error.message);
-  return;
-}
+    if (error) {
+      console.error(error);
+      alert(error.message);
+      return;
+    }
 
-setTasks(prev => [...prev, data]);
+    setTasks((prev) => [...prev, data]);
     setTaskText('');
     setTaskTime('');
     setShowReminderField(false);
     setCaptureSurfaceDate('');
+    setCaptureLocation('');
+    setCaptureLocationCoords(null);
+    setManualLocationToggle(false);
     setCaptureOpen(false);
+    if (data.lat != null && sortMode === 'geo_aware') recalcRoute();
   }
 
-  async function updateTask(id: string, text: string, mins: number, surfaceDate: string | null) {
-    await supabase.from('tasks').update({ text, estimate_mins: mins, surface_date: surfaceDate }).eq('id', id);
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins, surface_date: surfaceDate } : t)));
+  async function updateTask(
+    id: string,
+    text: string,
+    mins: number,
+    surfaceDate: string | null,
+    locationText: string | null,
+    lat: number | null,
+    lng: number | null
+  ) {
+    await supabase
+      .from('tasks')
+      .update({ text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng })
+      .eq('id', id);
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng } : t))
+    );
+    if (sortMode === 'geo_aware') recalcRoute();
   }
 
   async function toggleDueToday(id: string, current: boolean) {
@@ -1017,16 +1223,29 @@ setTasks(prev => [...prev, data]);
       .eq('id', id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
     // Keep the learning layer current without waiting for a full reload —
-    // this task's outcome should be eligible to inform the very next
-    // suggestion, not just after the next page load.
+    // this task's outcome (duration and location alike) should be
+    // eligible to inform the very next suggestion, not just after the
+    // next page load.
     if (task) {
-      setHistory((prev) => [{ text: task.text, actual_mins: Math.round(finalLogged) }, ...prev]);
+      setHistory((prev) => [
+        {
+          text: task.text,
+          actual_mins: Math.round(finalLogged),
+          location_text: task.location_text,
+          lat: task.lat,
+          lng: task.lng,
+        },
+        ...prev,
+      ]);
     }
+    if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
   }
 
   async function deleteTask(id: string) {
+    const task = tasks.find((t) => t.id === id);
     await supabase.from('tasks').delete().eq('id', id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
   }
 
   async function addSubtask(taskId: string) {
@@ -1375,11 +1594,36 @@ setTasks(prev => [...prev, data]);
   const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
   const taskCapacity = minutesLeftToday - meetingMins;
 
-  const ordered = sortTasks(visibleTasks, sortMode, effectiveRemainingForTask, taskCapacity);
+  const geoAware = sortMode === 'geo_aware';
+  const currentBase = geoAware ? determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords) : { coords: null, label: null };
+
+  let ordered: Task[];
+  if (geoAware && currentBase.coords) {
+    const locatedForOrder = visibleTasks
+      .filter((t) => t.lat != null && t.lng != null)
+      .map((t) => ({ id: t.id, lat: t.lat as number, lng: t.lng as number }));
+    const structuralOrder = [...visibleTasks].sort((a, b) => a.order_index - b.order_index);
+    const geoIds = nearestNeighborOrder(currentBase.coords, locatedForOrder);
+    ordered = weaveGeoOrder(structuralOrder as any, geoIds) as Task[];
+  } else if (geoAware) {
+    // geo_aware selected but no base configured — falls back to manual
+    // order rather than pretending a route exists.
+    ordered = sortTasks(visibleTasks, 'manual');
+  } else {
+    ordered = sortTasks(visibleTasks, sortMode, effectiveRemainingForTask, taskCapacity);
+  }
   const orderedIds = ordered.map((t) => t.id);
 
+  // Route drive time only enters capacity math in geo_aware mode — every
+  // located task's drive_mins_to_next (the between-stop legs the server
+  // persisted) plus the two base legs held in local state.
+  const locatedDriveSum = geoAware
+    ? visibleTasks.filter((t) => t.lat != null && t.lng != null).reduce((sum, t) => sum + (t.drive_mins_to_next || 0), 0)
+    : 0;
+  const routeDriveMins = geoAware ? driveFromBaseMins + driveToBaseMins + locatedDriveSum : 0;
+
   const remainingTaskMins = ordered.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
-  const remainingWorkMins = meetingMins + remainingTaskMins;
+  const remainingWorkMins = meetingMins + remainingTaskMins + routeDriveMins;
 
   const overloaded = isWorkDay && minutesLeftToday > 0 && remainingWorkMins > minutesLeftToday;
 
@@ -1486,6 +1730,28 @@ setTasks(prev => [...prev, data]);
                 <span>{fmtClock(workEnd)}</span>
               </div>
             </div>
+
+            {geoAware && (
+              <div style={{ marginTop: 'var(--space-2)' }}>
+                <button
+                  className="btn-text"
+                  style={{ padding: 0 }}
+                  onClick={(e) => { e.stopPropagation(); recalcRoute(); }}
+                  disabled={recalculatingRoute}
+                >
+                  {recalculatingRoute
+                    ? 'Recalculating route…'
+                    : currentBase.label
+                      ? `Recalculate route (from ${currentBase.label === 'work' ? 'office' : 'home'})`
+                      : 'Recalculate route'}
+                </button>
+                {routeError && (
+                  <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', margin: '4px 0 0' }}>
+                    {routeError}
+                  </p>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <div className="header-off-row">
@@ -1553,6 +1819,7 @@ setTasks(prev => [...prev, data]);
                 anyActive={anyActive}
                 subs={subs}
                 learnedHint={learnedHint}
+                showDrive={geoAware}
                 openSwipeId={openSwipeId}
                 setOpenSwipeId={setOpenSwipeId}
                 onComplete={completeTask}
@@ -1615,6 +1882,52 @@ setTasks(prev => [...prev, data]);
             />
             <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
           </div>
+
+          {!locationFieldVisible ? (
+            <button
+              type="button"
+              className="reveal-reminder-link"
+              onClick={() => setManualLocationToggle(true)}
+            >
+              + Add a location
+            </button>
+          ) : (
+            <>
+              <LocationAutocomplete
+                value={captureLocation}
+                placeholder="Where does this happen?"
+                onChange={setCaptureLocation}
+                onPlaceSelected={(result) => {
+                  setCaptureLocation(result.formattedAddress);
+                  setCaptureLocationCoords({ lat: result.lat, lng: result.lng });
+                }}
+              />
+              {captureLocationSuggestion && !captureLocationCoords && (
+                <button
+                  type="button"
+                  className="estimate-suggestion-chip"
+                  onClick={() => {
+                    setCaptureLocation(captureLocationSuggestion.location.text);
+                    setCaptureLocationCoords({ lat: captureLocationSuggestion.location.lat, lng: captureLocationSuggestion.location.lng });
+                  }}
+                >
+                  📍 {captureLocationSuggestion.location.text} usual ({captureLocationSuggestion.sampleCount}×)
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-text"
+                onClick={() => {
+                  setCaptureLocation('');
+                  setCaptureLocationCoords(null);
+                  setManualLocationToggle(false);
+                }}
+              >
+                Remove location
+              </button>
+            </>
+          )}
+
           {!showReminderField ? (
             <button
               type="button"
