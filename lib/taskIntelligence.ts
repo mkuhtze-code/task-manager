@@ -13,10 +13,22 @@
 //      a learned estimate, with an honest confidence level attached.
 //   3. Blends a typed estimate with the learned one — gently, and only
 //      once there's enough history to trust it.
+//   4. Same clustering also remembers location, when tasks in a cluster
+//      have had one attached — a repeated errand's place doesn't average
+//      the way duration does, so this is last-seen-wins, not a blend.
 
 export type HistoricalTask = {
   text: string;
   actual_mins: number;
+  location_text?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+};
+
+export type ClusterLocation = {
+  text: string;
+  lat: number;
+  lng: number;
 };
 
 export type TaskCluster = {
@@ -25,6 +37,7 @@ export type TaskCluster = {
   count: number;
   totalMins: number;
   avgMins: number;
+  location: ClusterLocation | null; // most recently seen location, if any
 };
 
 export type Confidence = 'low' | 'medium' | 'high';
@@ -32,6 +45,12 @@ export type Confidence = 'low' | 'medium' | 'high';
 export type EstimateSuggestion = {
   suggestedMins: number;
   confidence: Confidence;
+  sampleCount: number;
+  matchedLabel: string;
+};
+
+export type LocationSuggestion = {
+  location: ClusterLocation;
   sampleCount: number;
   matchedLabel: string;
 };
@@ -98,11 +117,20 @@ export function buildClusters(history: HistoricalTask[]): TaskCluster[] {
       }
     }
 
+    const taskLocation: ClusterLocation | null =
+      task.location_text && task.lat != null && task.lng != null
+        ? { text: task.location_text, lat: task.lat, lng: task.lng }
+        : null;
+
     if (bestCluster && bestScore >= GROUP_SIMILARITY_THRESHOLD) {
       bestCluster.tokens = new Set([...bestCluster.tokens, ...taskTokens]);
       bestCluster.count += 1;
       bestCluster.totalMins += task.actual_mins;
       bestCluster.avgMins = bestCluster.totalMins / bestCluster.count;
+      // Last-seen-wins: a place doesn't average the way duration does —
+      // if you've moved which pharmacy you use, the newer one is the
+      // one worth suggesting, not a blend of both.
+      if (taskLocation) bestCluster.location = taskLocation;
     } else {
       clusters.push({
         label: task.text.trim(),
@@ -110,11 +138,33 @@ export function buildClusters(history: HistoricalTask[]): TaskCluster[] {
         count: 1,
         totalMins: task.actual_mins,
         avgMins: task.actual_mins,
+        location: taskLocation,
       });
     }
   }
 
   return clusters;
+}
+
+// ── Shared cluster matching ────────────────────────────────────────
+
+function findBestCluster(
+  inputTokens: Set<string>,
+  clusters: TaskCluster[]
+): { cluster: TaskCluster; score: number } | null {
+  let bestCluster: TaskCluster | null = null;
+  let bestScore = 0;
+
+  for (const cluster of clusters) {
+    const score = jaccardSimilarity(inputTokens, cluster.tokens);
+    if (score > bestScore) {
+      bestScore = score;
+      bestCluster = cluster;
+    }
+  }
+
+  if (!bestCluster || bestScore < MATCH_SIMILARITY_THRESHOLD) return null;
+  return { cluster: bestCluster, score: bestScore };
 }
 
 // ── Suggestion lookup ─────────────────────────────────────────────────
@@ -128,31 +178,61 @@ export function suggestEstimate(
   if (inputTokens.size === 0) return null;
 
   const clusters = precomputedClusters ?? buildClusters(history);
-
-  let bestCluster: TaskCluster | null = null;
-  let bestScore = 0;
-
-  for (const cluster of clusters) {
-    const score = jaccardSimilarity(inputTokens, cluster.tokens);
-    if (score > bestScore) {
-      bestScore = score;
-      bestCluster = cluster;
-    }
-  }
-
-  if (!bestCluster || bestScore < MATCH_SIMILARITY_THRESHOLD) return null;
-  if (bestCluster.count < MIN_SAMPLES_FOR_SUGGESTION) return null;
+  const match = findBestCluster(inputTokens, clusters);
+  if (!match) return null;
+  if (match.cluster.count < MIN_SAMPLES_FOR_SUGGESTION) return null;
 
   let confidence: Confidence = 'low';
-  if (bestCluster.count >= 7) confidence = 'high';
-  else if (bestCluster.count >= 4) confidence = 'medium';
+  if (match.cluster.count >= 7) confidence = 'high';
+  else if (match.cluster.count >= 4) confidence = 'medium';
 
   return {
-    suggestedMins: Math.round(bestCluster.avgMins),
+    suggestedMins: Math.round(match.cluster.avgMins),
     confidence,
-    sampleCount: bestCluster.count,
-    matchedLabel: bestCluster.label,
+    sampleCount: match.cluster.count,
+    matchedLabel: match.cluster.label,
   };
+}
+
+// Same matching logic as suggestEstimate, pointed at location instead of
+// duration. Kept as a separate function (not folded into suggestEstimate)
+// since a task can meaningfully have one without the other — a two-minute
+// phone call has no location; a first-time errand has no learned duration
+// yet even once a location's been entered.
+export function suggestLocation(
+  inputText: string,
+  history: HistoricalTask[],
+  precomputedClusters?: TaskCluster[]
+): LocationSuggestion | null {
+  const inputTokens = tokenize(inputText);
+  if (inputTokens.size === 0) return null;
+
+  const clusters = precomputedClusters ?? buildClusters(history);
+  const match = findBestCluster(inputTokens, clusters);
+  if (!match || !match.cluster.location) return null;
+
+  return {
+    location: match.cluster.location,
+    sampleCount: match.cluster.count,
+    matchedLabel: match.cluster.label,
+  };
+}
+
+// ── Location-trigger heuristic ──────────────────────────────────────
+// Deterministic phrase matching, not AI — the same "genuine intelligence
+// without the AI label" discipline as the rest of this module. Fires on
+// verbs/phrases that typically imply visiting or going somewhere, so the
+// capture sheet knows when to offer an optional location field rather
+// than showing it on every task.
+const LOCATION_TRIGGER_PHRASES = [
+  'pick up', 'pickup', 'drop off', 'dropoff', 'drop something off',
+  'meet at', 'meet with', 'go to', 'deliver', 'collect',
+  'visit', 'swing by', 'stop by', 'head to', 'appointment at',
+];
+
+export function suggestsLocation(inputText: string): boolean {
+  const normalized = normalize(inputText);
+  return LOCATION_TRIGGER_PHRASES.some((phrase) => normalized.includes(phrase));
 }
 
 // ── Blending typed estimates with learned reality ───────────────────
