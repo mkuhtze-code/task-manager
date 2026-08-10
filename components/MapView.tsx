@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 
 type MapActivity = {
   id: string;
   text: string;
+  location_text: string | null;
   lat: number | null;
   lng: number | null;
   route_polyline: string | null;
@@ -16,6 +17,10 @@ type MapBase = {
   lng: number | null;
   route_polyline: string | null;
 };
+
+function mapsUrlFor(query: string): string {
+  return `https://maps.google.com/?q=${encodeURIComponent(query)}&api=1`;
+}
 
 let scriptLoadPromise: Promise<void> | null = null;
 
@@ -55,12 +60,14 @@ function MapView(props: {
   const lastBoundsRef = useRef<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [pendingOpen, setPendingOpen] = useState<{ label: string; url: string } | null>(null);
   // Real state, not just a ref — this is what lets the overlay effect
   // below correctly re-fire the moment the map instance actually exists.
   // A ref alone (mapRef.current becoming non-null) does NOT trigger a
   // re-render or re-run any effect's dependency check, which was the
   // root cause of routes/pins never appearing on first open.
   const [mapReady, setMapReady] = useState(false);
+  const [hitPoints, setHitPoints] = useState<{ key: string; x: number; y: number; text: string; url: string }[]>([]);
 
   const fingerprint = useMemo(() => {
     const basePart = base ? `${base.lat ?? ''},${base.lng ?? ''},${base.route_polyline ?? ''}` : '';
@@ -69,6 +76,45 @@ function MapView(props: {
       .join(';');
     return basePart + '||' + actsPart;
   }, [base, activities]);
+
+  // Positions our own clickable hit-targets over each marker using the
+  // map's projection. Marker 'click' events proved unreliable in some
+  // webviews, so the pins stay visual-only and these overlay buttons do
+  // the tapping.
+  const syncHits = useCallback(() => {
+    if (!mapReady || !mapRef.current) return;
+    const g = (window as any).google;
+    const proj = mapRef.current.getProjection();
+    if (!proj) return;
+
+    const items: { id: string; lat: number; lng: number; text: string; url: string }[] = [];
+    if (base?.lat != null && base?.lng != null) {
+      const query = base.location_text ?? `${base.lat},${base.lng}`;
+      items.push({
+        id: 'base',
+        lat: base.lat,
+        lng: base.lng,
+        text: base.location_text || 'Base',
+        url: mapsUrlFor(query),
+      });
+    }
+    activities.forEach((a) => {
+      if (a.lat == null || a.lng == null) return;
+      const query = a.location_text ?? `${a.lat},${a.lng}`;
+      items.push({ id: a.id, lat: a.lat, lng: a.lng, text: a.location_text || a.text, url: mapsUrlFor(query) });
+    });
+
+    const next = items.map((it) => {
+      const p = proj.fromLatLngToContainerPixel({ lat: it.lat, lng: it.lng });
+      return { key: it.id, x: p.x, y: p.y, text: it.text, url: it.url };
+    });
+    setHitPoints((prev) => {
+      if (prev.length === next.length && prev.every((hp, i) => hp.x === next[i].x && hp.y === next[i].y && hp.key === next[i].key)) {
+        return prev;
+      }
+      return next;
+    });
+  }, [base, activities, mapReady]);
 
   // Load script and initialize the map instance once per mount.
   useEffect(() => {
@@ -121,6 +167,7 @@ function MapView(props: {
 
     if (points.length === 0) {
       setError('Nothing with a location to show yet.');
+      setHitPoints([]);
       return;
     }
     setError('');
@@ -136,6 +183,10 @@ function MapView(props: {
       });
       markersRef.current.push(m);
       bounds.extend({ lat: base.lat, lng: base.lng });
+      m.addListener('click', () => {
+        const query = base.location_text ?? (base.lat != null && base.lng != null ? `${base.lat},${base.lng}` : null);
+        if (query) setPendingOpen({ label: base.location_text || 'Base', url: mapsUrlFor(query) });
+      });
     }
 
     activities.forEach((a, idx) => {
@@ -148,6 +199,10 @@ function MapView(props: {
       });
       markersRef.current.push(m);
       bounds.extend({ lat: a.lat, lng: a.lng });
+      m.addListener('click', () => {
+        const query = a.location_text ?? (a.lat != null && a.lng != null ? `${a.lat},${a.lng}` : null);
+        if (query) setPendingOpen({ label: a.location_text || a.text, url: mapsUrlFor(query) });
+      });
     });
 
     const allPolylines: string[] = [];
@@ -192,7 +247,13 @@ function MapView(props: {
     } catch {
       mapRef.current.setCenter(points[0]);
     }
-  }, [fingerprint, mapReady]);
+
+    syncHits();
+    const idleListener = g.maps.event.addListener(mapRef.current, 'idle', syncHits);
+    return () => {
+      g.maps.event.removeListener(idleListener);
+    };
+  }, [fingerprint, mapReady, syncHits]);
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -210,15 +271,94 @@ function MapView(props: {
         {error && <p style={{ color: 'var(--danger-text, var(--danger))', fontSize: 13 }}>{error}</p>}
 
         <div
-          ref={mapDivRef}
           style={{
             flex: 1,
             minHeight: 0,
-            borderRadius: 'var(--radius-md)',
-            overflow: 'hidden',
+            position: 'relative',
             display: loading || error ? 'none' : 'block',
           }}
-        />
+        >
+          <div
+            ref={mapDivRef}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: 'var(--radius-md)',
+              overflow: 'hidden',
+            }}
+          />
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+            {hitPoints.map((hp) => (
+              <button
+                key={hp.key}
+                type="button"
+                title={hp.text}
+                aria-label={hp.text}
+                onClick={() => setPendingOpen({ label: hp.text, url: hp.url })}
+                style={{
+                  position: 'absolute',
+                  left: hp.x - 20,
+                  top: hp.y - 48,
+                  width: 40,
+                  height: 52,
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  pointerEvents: 'auto',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {pendingOpen && (
+          <div
+            onClick={() => setPendingOpen(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 40,
+              background: 'rgba(var(--shadow-rgb), 0.32)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 'var(--space-4)',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'var(--paper)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 'var(--space-4)',
+                maxWidth: 340,
+                width: '100%',
+                boxShadow: '0 6px 24px rgba(var(--shadow-rgb), 0.25)',
+              }}
+            >
+              <div className="settings-panel-title" style={{ marginBottom: 'var(--space-2)' }}>
+                Open in Google Maps?
+              </div>
+              <p
+                style={{
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--ink-soft)',
+                  marginBottom: 'var(--space-3)',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {pendingOpen.label}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-1)' }}>
+                <button className="btn-text" onClick={() => setPendingOpen(null)}>Cancel</button>
+                <a className="btn-text" href={pendingOpen.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+                  Open
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
