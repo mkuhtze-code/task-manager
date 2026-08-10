@@ -497,7 +497,7 @@ function TaskCard(props: {
                     </span>
                   )}
                   {showDrive && t.drive_mins_to_next > 0 && (
-                    <span className="tag mono">+{fmtMins(t.drive_mins_to_next)} drive</span>
+                    <span className="tag mono">+{fmtMins(t.drive_mins_to_next)} to next stop</span>
                   )}
                 </div>
               )}
