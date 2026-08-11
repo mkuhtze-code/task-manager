@@ -135,6 +135,29 @@ function MapView(props: {
     syncHitsRef.current = syncHits;
   }, [syncHits]);
 
+  // Mobile browsers (Android Chrome especially) resize the viewport as
+  // the URL bar shows/hides or the device rotates, without always firing
+  // an event Google Maps notices on its own. If Maps doesn't recompute
+  // its internal projection after that, our hit-target buttons (computed
+  // from that same projection) drift away from where the visible pins
+  // actually are — the map looks fine, but taps land on nothing. This
+  // nudges Maps to re-layout and re-syncs hit points whenever the
+  // viewport changes size or orientation.
+  useEffect(() => {
+    function handleViewportChange() {
+      if (!mapRef.current) return;
+      const g = (window as any).google;
+      g?.maps?.event.trigger(mapRef.current, 'resize');
+      syncHitsRef.current();
+    }
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('orientationchange', handleViewportChange);
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('orientationchange', handleViewportChange);
+    };
+  }, []);
+
   // Load the Maps script once per mount. We only flip loading off here —
   // the map instance itself is created in the next effect, once the
   // container has actually been laid out with real dimensions.
@@ -361,13 +384,16 @@ function MapView(props: {
                 left: hp.x,
                 top: hp.y,
                 transform: 'translate(-50%, -100%)',
-                width: 34,
-                height: 34,
+                width: 44,
+                height: 44,
                 borderRadius: '50%',
                 border: 'none',
                 background: 'transparent',
                 cursor: 'pointer',
                 padding: 0,
+                zIndex: 5,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'rgba(0,0,0,0.12)',
               }}
             />
           ))}
