@@ -147,54 +147,42 @@ function MapView(props: {
           setLoading(false);
         }
       });
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Create the map instance now that the container is visible and has size.
+  // Update markers & polylines only when the fingerprint changes
   useEffect(() => {
-    if (loading || error || mapRef.current) return;
-    const g = (window as any).google;
-    try {
-      mapRef.current = new g.maps.Map(mapDivRef.current, {
-        zoom: 11,
-        center: { lat: 0, lng: 0 },
-        disableDefaultUI: false,
-        streetViewControl: false,
-      });
-      setMapReady(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not initialize the map');
-    }
-  }, [loading, error]);
-
-  // Draws markers + route polylines. Now re-runs both when the data
-  // changes (fingerprint) AND when the map first becomes ready
-  // (mapReady) — previously only depended on fingerprint, so the very
-  // first paint always ran before the map existed and nothing after
-  // that ever told it to try again.
-  useEffect(() => {
-    if (!mapReady || !mapRef.current) return;
+    if (!mapRef.current) return;
     const g = (window as any).google;
 
+    // Build points list from base + activities
     const points: { lat: number; lng: number }[] = [];
     if (base?.lat != null && base?.lng != null) points.push({ lat: base.lat, lng: base.lng });
     activities.forEach((a) => {
       if (a.lat != null && a.lng != null) points.push({ lat: a.lat, lng: a.lng });
     });
 
+    if (points.length === 0) {
+      // Clear any existing overlays
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+      polylinesRef.current.forEach((p) => p.setMap(null));
+      polylinesRef.current = [];
+
+      setError('Nothing with a location to show yet.');
+      return;
+    }
+
+    setError('');
+
+    // Clear old markers & polylines (but keep the map instance)
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
     polylinesRef.current.forEach((p) => p.setMap(null));
     polylinesRef.current = [];
-
-    if (points.length === 0) {
-      setError('Nothing with a location to show yet.');
-      setHitPoints([]);
-      return;
-    }
-    setError('');
 
     const bounds = new g.maps.LatLngBounds();
 
@@ -207,10 +195,6 @@ function MapView(props: {
       });
       markersRef.current.push(m);
       bounds.extend({ lat: base.lat, lng: base.lng });
-      m.addListener('click', () => {
-        const query = base.location_text ?? (base.lat != null && base.lng != null ? `${base.lat},${base.lng}` : null);
-        if (query) setPendingOpen({ label: base.location_text || 'Base', url: mapsUrlFor(query) });
-      });
     }
 
     activities.forEach((a, idx) => {
@@ -223,24 +207,16 @@ function MapView(props: {
       });
       markersRef.current.push(m);
       bounds.extend({ lat: a.lat, lng: a.lng });
-      m.addListener('click', () => {
-        const query = a.location_text ?? (a.lat != null && a.lng != null ? `${a.lat},${a.lng}` : null);
-        if (query) setPendingOpen({ label: a.location_text || a.text, url: mapsUrlFor(query) });
-      });
     });
 
+    // Draw polylines
     const allPolylines: string[] = [];
     if (base?.route_polyline) allPolylines.push(base.route_polyline);
     activities.forEach((a) => {
       if (a.route_polyline) allPolylines.push(a.route_polyline);
     });
 
-    if (allPolylines.length === 0 && activities.some((a) => a.lat != null)) {
-      setError('Pins are set, but no route has been calculated yet — try "Recalculate drive times" first.');
-    }
-
     allPolylines.forEach((encoded) => {
-      if (!g.maps.geometry?.encoding) return;
       try {
         const path = g.maps.geometry.encoding.decodePath(encoded);
         const poly = new g.maps.Polyline({
@@ -251,12 +227,12 @@ function MapView(props: {
         });
         poly.setMap(mapRef.current);
         polylinesRef.current.push(poly);
-      } catch {
-        // A single malformed polyline shouldn't block the rest of the
-        // map from rendering — skip it silently.
+      } catch (e) {
+        // ignore decode errors for now
       }
     });
 
+    // Only fit bounds if they changed to avoid visual jumps
     try {
       const newBoundsStr = bounds.toString();
       if (points.length > 1) {
@@ -265,21 +241,20 @@ function MapView(props: {
           lastBoundsRef.current = newBoundsStr;
         }
       } else {
-        mapRef.current.setCenter(points[0]);
-        mapRef.current.setZoom(11);
+        // Single point: only recenter if center actually changed
+        const currentCenter = mapRef.current.getCenter?.();
+        const lat = points[0].lat;
+        const lng = points[0].lng;
+        if (!currentCenter || currentCenter.lat() !== lat || currentCenter.lng() !== lng) {
+          mapRef.current.setCenter(points[0]);
+          mapRef.current.setZoom(11);
+        }
       }
-    } catch {
+    } catch (e) {
+      // ignore any bounds errors
       mapRef.current.setCenter(points[0]);
     }
-
-    syncHits();
-    const idleListener = g.maps.event.addListener(mapRef.current, 'idle', syncHits);
-    const projectionChanged = g.maps.event.addListener(mapRef.current, 'projection_changed', syncHits);
-    return () => {
-      g.maps.event.removeListener(idleListener);
-      g.maps.event.removeListener(projectionChanged);
-    };
-  }, [fingerprint, mapReady, syncHits]);
+  }, [fingerprint]);
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -297,94 +272,15 @@ function MapView(props: {
         {error && <p style={{ color: 'var(--danger-text, var(--danger))', fontSize: 13 }}>{error}</p>}
 
         <div
+          ref={mapDivRef}
           style={{
             flex: 1,
             minHeight: 0,
-            position: 'relative',
+            borderRadius: 'var(--radius-md)',
+            overflow: 'hidden',
             display: loading || error ? 'none' : 'block',
           }}
-        >
-          <div
-            ref={mapDivRef}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: 'var(--radius-md)',
-              overflow: 'hidden',
-            }}
-          />
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-            {hitPoints.map((hp) => (
-              <button
-                key={hp.key}
-                type="button"
-                title={hp.text}
-                aria-label={hp.text}
-                onClick={() => setPendingOpen({ label: hp.text, url: hp.url })}
-                style={{
-                  position: 'absolute',
-                  left: hp.x - 20,
-                  top: hp.y - 48,
-                  width: 40,
-                  height: 52,
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  pointerEvents: 'auto',
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {pendingOpen && (
-          <div
-            onClick={() => setPendingOpen(null)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 40,
-              background: 'rgba(var(--shadow-rgb), 0.32)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 'var(--space-4)',
-            }}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: 'var(--paper)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 'var(--space-4)',
-                maxWidth: 340,
-                width: '100%',
-                boxShadow: '0 6px 24px rgba(var(--shadow-rgb), 0.25)',
-              }}
-            >
-              <div className="settings-panel-title" style={{ marginBottom: 'var(--space-2)' }}>
-                Open in Google Maps?
-              </div>
-              <p
-                style={{
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--ink-soft)',
-                  marginBottom: 'var(--space-3)',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {pendingOpen.label}
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-1)' }}>
-                <button className="btn-text" onClick={() => setPendingOpen(null)}>Cancel</button>
-                <a className="btn-text" href={pendingOpen.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                  Open
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
+        />
       </div>
     </div>
   );
