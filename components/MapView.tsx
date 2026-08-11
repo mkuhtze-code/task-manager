@@ -83,56 +83,63 @@ function MapView(props: {
   // the tapping.
   const syncHits = useCallback(() => {
     if (!mapReady || !mapRef.current) return;
-    const g = (window as any).google;
-    const proj = mapRef.current.getProjection();
-    if (!proj) return;
+    try {
+      const g = (window as any).google;
+      const proj = mapRef.current.getProjection();
+      if (!proj) return;
 
-    const items: { id: string; lat: number; lng: number; text: string; url: string }[] = [];
-    if (base?.lat != null && base?.lng != null) {
-      const query = base.location_text ?? `${base.lat},${base.lng}`;
-      items.push({
-        id: 'base',
-        lat: base.lat,
-        lng: base.lng,
-        text: base.location_text || 'Base',
-        url: mapsUrlFor(query),
-      });
-    }
-    activities.forEach((a) => {
-      if (a.lat == null || a.lng == null) return;
-      const query = a.location_text ?? `${a.lat},${a.lng}`;
-      items.push({ id: a.id, lat: a.lat, lng: a.lng, text: a.location_text || a.text, url: mapsUrlFor(query) });
-    });
-
-    const next = items.map((it) => {
-      const p = proj.fromLatLngToContainerPixel({ lat: it.lat, lng: it.lng });
-      return { key: it.id, x: p.x, y: p.y, text: it.text, url: it.url };
-    });
-    setHitPoints((prev) => {
-      if (prev.length === next.length && prev.every((hp, i) => hp.x === next[i].x && hp.y === next[i].y && hp.key === next[i].key)) {
-        return prev;
+      const items: { id: string; lat: number; lng: number; text: string; url: string }[] = [];
+      if (base?.lat != null && base?.lng != null) {
+        const query = base.location_text ?? `${base.lat},${base.lng}`;
+        items.push({
+          id: 'base',
+          lat: base.lat,
+          lng: base.lng,
+          text: base.location_text || 'Base',
+          url: mapsUrlFor(query),
+        });
       }
-      return next;
-    });
+      activities.forEach((a) => {
+        if (a.lat == null || a.lng == null) return;
+        const query = a.location_text ?? `${a.lat},${a.lng}`;
+        items.push({ id: a.id, lat: a.lat, lng: a.lng, text: a.location_text || a.text, url: mapsUrlFor(query) });
+      });
+
+      const next = items
+        .map((it) => {
+          // The projection is only safe to use once the map has finished
+          // laying out — calling this while it's mid-initialization throws,
+          // which would crash the whole sheet. The idle/projection_changed
+          // listeners retry until the map settles.
+          const p = proj.fromLatLngToContainerPixel({ lat: it.lat, lng: it.lng });
+          if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+          return { key: it.id, x: p.x, y: p.y, text: it.text, url: it.url };
+        })
+        .filter((h): h is { key: string; x: number; y: number; text: string; url: string } => h != null);
+      setHitPoints((prev) => {
+        if (prev.length === next.length && prev.every((hp, i) => hp.x === next[i].x && hp.y === next[i].y && hp.key === next[i].key)) {
+          return prev;
+        }
+        return next;
+      });
+    } catch {
+      // Projection isn't ready yet — the idle/projection_changed listener
+      // will re-run this the moment the map finishes initializing.
+    }
   }, [base, activities, mapReady]);
 
-  // Load script and initialize the map instance once per mount.
+  // Load the Maps script once per mount. We only flip the container to
+  // visible here — the map instance itself is created in the effect below,
+  // once the container actually has size. Creating a map inside a
+  // display:none / zero-size div leaves its projection in a half-baked
+  // state where getProjection() returns a non-null but unusable value, and
+  // fromLatLngToContainerPixel throws instead of returning pixel coords.
   useEffect(() => {
     let cancelled = false;
     loadGoogleMapsScript()
       .then(() => {
-        if (cancelled || !mapDivRef.current) return;
-        const g = (window as any).google;
-        if (!mapRef.current) {
-          mapRef.current = new g.maps.Map(mapDivRef.current, {
-            zoom: 11,
-            center: { lat: 0, lng: 0 },
-            disableDefaultUI: false,
-            streetViewControl: false,
-          });
-        }
+        if (cancelled) return;
         setLoading(false);
-        setMapReady(true);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -144,6 +151,23 @@ function MapView(props: {
       cancelled = true;
     };
   }, []);
+
+  // Create the map instance now that the container is visible and has size.
+  useEffect(() => {
+    if (loading || error || mapRef.current) return;
+    const g = (window as any).google;
+    try {
+      mapRef.current = new g.maps.Map(mapDivRef.current, {
+        zoom: 11,
+        center: { lat: 0, lng: 0 },
+        disableDefaultUI: false,
+        streetViewControl: false,
+      });
+      setMapReady(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not initialize the map');
+    }
+  }, [loading, error]);
 
   // Draws markers + route polylines. Now re-runs both when the data
   // changes (fingerprint) AND when the map first becomes ready
@@ -250,8 +274,10 @@ function MapView(props: {
 
     syncHits();
     const idleListener = g.maps.event.addListener(mapRef.current, 'idle', syncHits);
+    const projectionChanged = g.maps.event.addListener(mapRef.current, 'projection_changed', syncHits);
     return () => {
       g.maps.event.removeListener(idleListener);
+      g.maps.event.removeListener(projectionChanged);
     };
   }, [fingerprint, mapReady, syncHits]);
 
