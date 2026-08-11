@@ -181,7 +181,7 @@ export default function TravelHome() {
     return <div className="app-shell" style={{ paddingTop: 40 }}>Sign in to see your trips.</div>;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localDateStr(new Date());
   const upcoming = trips.filter((t) => tripStatus(t.start_date, t.end_date, todayStr) !== 'past');
   const past = trips.filter((t) => tripStatus(t.start_date, t.end_date, todayStr) === 'past');
 
