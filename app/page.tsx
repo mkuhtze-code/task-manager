@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import TopSwitcher from '@/components/TopSwitcher';
@@ -10,6 +10,7 @@ import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import { TodayHeader } from '@/components/TodayHeader';
+import MapView from '@/components/MapView';
 import { AuthScreen, OnboardingScreen } from '@/components/AuthScreen';
 import { useDragReorder } from '@/hooks/useDragReorder';
 import {
@@ -40,6 +41,23 @@ import {
   timeStringToMinutes,
 } from '@/lib/timeFormat';
 
+// One-shot browser geolocation for the route's start point. Resolves to
+// null when the API is unavailable, permission is denied, or the fix
+// doesn't arrive in time — the caller then falls back to Home/Work.
+function getGpsPosition(timeoutMs = 4000): Promise<Coords | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 60000 }
+    );
+  });
+}
+
 export default function Home() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
@@ -69,16 +87,18 @@ export default function Home() {
   const [captureOpen, setCaptureOpen] = useState(false);
 
   // ── Home & Work base pins, and the route state geo_aware sort mode
-  // depends on. driveFromBaseMins/driveToBaseMins are never persisted —
+  // depends on. driveFromBaseMins/basePolyline are never persisted —
   // there's no per-day table for Today the way Travel has trip_days, so
   // these are recomputed fresh each time recalcRoute() runs and held only
   // in memory, same tradeoff flagged when this was designed.
   const [homeCoords, setHomeCoords] = useState<Coords | null>(null);
   const [workCoords, setWorkCoords] = useState<Coords | null>(null);
+  const [gpsCoords, setGpsCoords] = useState<Coords | null>(null);
   const [driveFromBaseMins, setDriveFromBaseMins] = useState(0);
-  const [driveToBaseMins, setDriveToBaseMins] = useState(0);
+  const [basePolyline, setBasePolyline] = useState<string | null>(null);
   const [recalculatingRoute, setRecalculatingRoute] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
 
   // Gates the first-run welcome/setup screen. Starts false so returning
   // users never see a flash of it before settings load.
@@ -318,14 +338,16 @@ export default function Home() {
 
   // Recomputes the geographic route: nearest-neighbor order from whichever
   // base currently applies (client-side, free), then asks the server to
-  // fetch real drive times for that exact sequence and persist them.
-  // Only meaningful in geo_aware sort mode — every other mode zeroes the
-  // route numbers out, since their ordering isn't geographically
-  // guaranteed to make sense (the tension flagged when this was designed).
+  // fetch real drive times + route polylines for that exact sequence and
+  // persist them. The route's start point is the live GPS fix when the
+  // user allows it, with the Home/Work base as the fallback. Only
+  // meaningful in geo_aware sort mode — every other mode zeroes the route
+  // numbers out, since their ordering isn't geographically guaranteed to
+  // make sense (the tension flagged when this was designed).
   async function recalcRoute() {
     if (sortMode !== 'geo_aware' || !session) {
       setDriveFromBaseMins(0);
-      setDriveToBaseMins(0);
+      setBasePolyline(null);
       return;
     }
 
@@ -333,7 +355,7 @@ export default function Home() {
     if (!base.coords || !base.label) {
       setRouteError('Set a home or work address in Preferences to enable route-aware capacity.');
       setDriveFromBaseMins(0);
-      setDriveToBaseMins(0);
+      setBasePolyline(null);
       return;
     }
 
@@ -352,23 +374,32 @@ export default function Home() {
     if (located.length === 0) {
       setRouteError(null);
       setDriveFromBaseMins(0);
-      setDriveToBaseMins(0);
+      setBasePolyline(null);
       return;
     }
 
     const orderedIds = nearestNeighborOrder(base.coords, located);
     setRecalculatingRoute(true);
     setRouteError(null);
+
+    // Ask the browser for a GPS fix up front so the first/last legs start
+    // from where the user actually is. Falls back to the Home/Work base
+    // (resolved server-side from baseLabel) when unavailable/denied.
+    const gps = await getGpsPosition();
+    if (sortMode !== 'geo_aware' || !session) return; // mode changed while waiting
+    setGpsCoords(gps);
+
     try {
       const json = await authedFetch('/api/today/calculate-route', {
         orderedTaskIds: orderedIds,
         baseLabel: base.label,
+        ...(gps ? { origin: { lat: gps.lat, lng: gps.lng } } : {}),
       });
       if (json.error) {
         setRouteError(json.error);
       } else {
         setDriveFromBaseMins(json.driveFromBaseMins || 0);
-        setDriveToBaseMins(json.driveToBaseMins || 0);
+        setBasePolyline(json.basePolyline || null);
         // The server silently returns which legs it couldn't compute
         // (bad geocode, Directions API failure, etc.) — surface that
         // instead of leaving those tasks with a blank/stale drive time
@@ -403,7 +434,8 @@ export default function Home() {
       recalcRoute();
     } else {
       setDriveFromBaseMins(0);
-      setDriveToBaseMins(0);
+      setBasePolyline(null);
+      setGpsCoords(null);
       setRouteError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -680,13 +712,54 @@ export default function Home() {
   }
   const orderedIds = ordered.map((t) => t.id);
 
-  // Route drive time only enters capacity math in geo_aware mode — every
-  // located task's drive_mins_to_next (the between-stop legs the server
-  // persisted) plus the two base legs held in local state.
+  // Route drive time only enters capacity math in geo_aware mode. Each
+  // located task carries its own outgoing leg's drive_mins_to_next (the
+  // last located task carries the return leg back to the start), and the
+  // origin → first leg is held in driveFromBaseMins.
   const locatedDriveSum = geoAware
     ? visibleTasks.filter((t) => t.lat != null && t.lng != null).reduce((sum, t) => sum + (t.drive_mins_to_next || 0), 0)
     : 0;
-  const routeDriveMins = geoAware ? driveFromBaseMins + driveToBaseMins + locatedDriveSum : 0;
+  const routeDriveMins = geoAware ? driveFromBaseMins + locatedDriveSum : 0;
+
+  // The located destinations in on-screen (geo) order. Leg rows and the
+  // route map both render from this sequence.
+  const locatedInOrder = ordered.filter((t) => t.lat != null && t.lng != null);
+  const locatedIndexById: Record<string, number> = {};
+  locatedInOrder.forEach((t, i) => (locatedIndexById[t.id] = i));
+
+  // The route's start point: live GPS when we have a fix, else the
+  // current Home/Work base the order was built from.
+  const routeOrigin = gpsCoords ?? currentBase.coords;
+  const originLabel = gpsCoords
+    ? 'current location'
+    : currentBase.label === 'work'
+      ? 'office'
+      : currentBase.label === 'home'
+        ? 'home'
+        : 'start';
+
+  // "View Map" shows the same ordered geo-aware destinations in MapView,
+  // with the start point as the base marker, its origin→first leg as the
+  // base polyline, and each located task as a pin carrying its own leg
+  // polyline — matching how Travel's trip days hand their route to
+  // MapView, so pin taps keep the Google Maps handoff behaviour.
+  const mapBase = routeOrigin && basePolyline
+    ? {
+        location_text: gpsCoords ? 'Current location' : currentBase.label === 'work' ? 'Office' : 'Home',
+        lat: routeOrigin.lat,
+        lng: routeOrigin.lng,
+        route_polyline: basePolyline,
+      }
+    : null;
+  const mapActivities = locatedInOrder.map((t) => ({
+    id: t.id,
+    text: t.text,
+    location_text: t.location_text,
+    lat: t.lat,
+    lng: t.lng,
+    route_polyline: t.route_polyline,
+  }));
+  const hasRoute = geoAware && locatedInOrder.length > 0 && basePolyline != null;
 
   const remainingTaskMins = ordered.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
   const remainingWorkMins = meetingMins + remainingTaskMins + routeDriveMins;
@@ -750,6 +823,8 @@ export default function Home() {
         currentBaseLabel={currentBase.label}
         onRecalcRoute={recalcRoute}
         routeError={routeError}
+        hasRoute={hasRoute}
+        onViewMap={() => setMapOpen(true)}
       />
 
       <div className="task-list">
@@ -776,34 +851,58 @@ export default function Home() {
               ? fmtMins(suggestion.suggestedMins)
               : null;
 
+          // In geo_aware mode, located tasks render their drive legs as
+          // distinct rows between the destinations they connect — an
+          // origin→first leg before the first located task, a leg between
+          // each located task, and the return leg after the last one.
+          const isLocated = t.lat != null && t.lng != null;
+          const locatedIdx = isLocated ? locatedIndexById[t.id] : -1;
+
           return (
-            <div key={t.id} ref={(el) => { rowElsRef.current[t.id] = el; }} style={dragRowStyle(idx, t.id)}>
-              <TaskCard
-                task={t}
-                remainingForThis={remainingForThis}
-                liveLogged={liveLogged}
-                overCap={overCap}
-                anyActive={anyActive}
-                subs={subs}
-                learnedHint={learnedHint}
-                showDrive={geoAware}
-                openSwipeId={openSwipeId}
-                setOpenSwipeId={setOpenSwipeId}
-                onComplete={completeTask}
-                onStart={startTask}
-                onStop={stopTask}
-                onOpen={setOpenTaskId}
-                dragHandleProps={
-                  sortMode === 'manual'
-                    ? {
-                        onPointerDown: (e) => handleDragHandlePointerDown(e, t.id, orderedIds),
-                        onPointerMove: handleDragHandlePointerMove,
-                        onPointerUp: handleDragHandlePointerUp,
-                      }
-                    : undefined
-                }
-              />
-            </div>
+            <Fragment key={t.id}>
+              {geoAware && isLocated && locatedIdx === 0 && driveFromBaseMins > 0 && (
+                <div className="travel-leg">
+                  <span className="travel-leg-emoji">🚗</span>
+                  <span className="travel-leg-label">{fmtMins(driveFromBaseMins)} from {originLabel}</span>
+                </div>
+              )}
+              <div ref={(el) => { rowElsRef.current[t.id] = el; }} style={dragRowStyle(idx, t.id)}>
+                <TaskCard
+                  task={t}
+                  remainingForThis={remainingForThis}
+                  liveLogged={liveLogged}
+                  overCap={overCap}
+                  anyActive={anyActive}
+                  subs={subs}
+                  learnedHint={learnedHint}
+                  openSwipeId={openSwipeId}
+                  setOpenSwipeId={setOpenSwipeId}
+                  onComplete={completeTask}
+                  onStart={startTask}
+                  onStop={stopTask}
+                  onOpen={setOpenTaskId}
+                  dragHandleProps={
+                    sortMode === 'manual'
+                      ? {
+                          onPointerDown: (e) => handleDragHandlePointerDown(e, t.id, orderedIds),
+                          onPointerMove: handleDragHandlePointerMove,
+                          onPointerUp: handleDragHandlePointerUp,
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+              {geoAware && isLocated && t.drive_mins_to_next > 0 && (
+                <div className="travel-leg">
+                  <span className="travel-leg-emoji">🚗</span>
+                  <span className="travel-leg-label">
+                    {locatedIdx === locatedInOrder.length - 1
+                      ? `${fmtMins(t.drive_mins_to_next)} back to ${originLabel}`
+                      : fmtMins(t.drive_mins_to_next)}
+                  </span>
+                </div>
+              )}
+            </Fragment>
           );
         })}
         {scheduledTasks.length > 0 && (
@@ -872,6 +971,14 @@ export default function Home() {
           tasks={scheduledTasks}
           onClose={() => setScheduledSheetOpen(false)}
           onOpenTask={(id) => setOpenTaskId(id)}
+        />
+      )}
+
+      {mapOpen && (
+        <MapView
+          base={mapBase}
+          activities={mapActivities}
+          onClose={() => setMapOpen(false)}
         />
       )}
     </div>

@@ -27,12 +27,14 @@ export function TodayHeader(props: {
   currentBaseLabel: string | null;
   onRecalcRoute: () => void;
   routeError: string | null;
+  hasRoute: boolean;
+  onViewMap: () => void;
 }) {
   const {
     overloaded, weekdayLabel, dateOnlyLabel, onOpenAnalytics, activeTask, activeOverEstimate,
     activeLiveLogged, onOpenActiveTask, onStopActiveTask, isWorkDay, minutesLeftToday,
     remainingWorkMins, nowPercent, planWidthPercent, workStart, workEnd, geoAware,
-    recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError,
+    recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError, hasRoute, onViewMap,
   } = props;
 
   return (
@@ -107,18 +109,29 @@ export function TodayHeader(props: {
 
           {geoAware && (
             <div style={{ marginTop: 'var(--space-2)' }}>
-              <button
-                className="btn-text"
-                style={{ padding: 0 }}
-                onClick={(e) => { e.stopPropagation(); onRecalcRoute(); }}
-                disabled={recalculatingRoute}
-              >
-                {recalculatingRoute
-                  ? 'Recalculating route…'
-                  : currentBaseLabel
-                    ? `Recalculate route (from ${currentBaseLabel === 'work' ? 'office' : 'home'})`
-                    : 'Recalculate route'}
-              </button>
+              <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  className="btn-text"
+                  style={{ padding: 0 }}
+                  onClick={(e) => { e.stopPropagation(); onRecalcRoute(); }}
+                  disabled={recalculatingRoute}
+                >
+                  {recalculatingRoute
+                    ? 'Recalculating route…'
+                    : currentBaseLabel
+                      ? `Recalculate route (from ${currentBaseLabel === 'work' ? 'office' : 'home'})`
+                      : 'Recalculate route'}
+                </button>
+                {hasRoute && (
+                  <button
+                    className="btn-text"
+                    style={{ padding: 0 }}
+                    onClick={(e) => { e.stopPropagation(); onViewMap(); }}
+                  >
+                    View Map
+                  </button>
+                )}
+              </div>
               {routeError && (
                 <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', margin: '4px 0 0' }}>
                   {routeError}

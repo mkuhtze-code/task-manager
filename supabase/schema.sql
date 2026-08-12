@@ -43,7 +43,9 @@ create table if not exists tasks (
   completed_at timestamptz,
   near_notified boolean not null default false,
   over_notified boolean not null default false,
-  last_overdue_ping_at timestamptz
+  last_overdue_ping_at timestamptz,
+  drive_mins_to_next int not null default 0,
+  route_polyline text
 );
 
 -- ── Subtasks ─────────────────────────────────────────────────────
@@ -194,3 +196,5 @@ create policy "admins can read feedback" on feedback
 -- Safe to rerun; only adds what's missing.
 alter table user_settings add column if not exists timezone text;
 alter table tasks add column if not exists last_overdue_ping_at timestamptz;
+alter table tasks add column if not exists drive_mins_to_next int not null default 0;
+alter table tasks add column if not exists route_polyline text;

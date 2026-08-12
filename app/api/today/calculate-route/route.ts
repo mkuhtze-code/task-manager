@@ -4,14 +4,15 @@ import { verifyUser } from '@/lib/verifyUser';
 import { checkRateLimit } from '@/lib/ratelimit';
 
 type Coords = { lat: number; lng: number };
+type RouteLeg = { mins: number; polyline: string | null };
 
-async function computeRouteLeg(origin: Coords, destination: Coords): Promise<number | null> {
+async function computeRouteLeg(origin: Coords, destination: Coords): Promise<RouteLeg | null> {
   const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY as string,
-      'X-Goog-FieldMask': 'routes.duration',
+      'X-Goog-FieldMask': 'routes.duration,routes.polyline.encodedPolyline',
     },
     body: JSON.stringify({
       origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
@@ -22,7 +23,12 @@ async function computeRouteLeg(origin: Coords, destination: Coords): Promise<num
   const data = await res.json();
   const route = data.routes?.[0];
   if (!route?.duration) return null;
-  return Math.round(parseInt(String(route.duration).replace('s', ''), 10) / 60);
+
+  const seconds = parseInt(String(route.duration).replace('s', ''), 10);
+  return {
+    mins: Math.round(seconds / 60),
+    polyline: route.polyline?.encodedPolyline || null,
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -36,12 +42,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests, try again shortly.' }, { status: 429 });
   }
 
-  const { orderedTaskIds, baseLabel } = await req.json();
+  const { orderedTaskIds, baseLabel, origin } = await req.json();
   if (!Array.isArray(orderedTaskIds) || orderedTaskIds.length === 0) {
     return NextResponse.json({ error: 'orderedTaskIds is required' }, { status: 400 });
   }
   if (baseLabel !== 'work' && baseLabel !== 'home') {
     return NextResponse.json({ error: 'baseLabel must be work or home' }, { status: 400 });
+  }
+
+  // origin is the client's live GPS fix when the user granted location
+  // permission. It is the starting point for the first and last leg; when
+  // absent, those legs fall back to the stored Home/Work base below.
+  let gpsOrigin: Coords | null = null;
+  if (origin != null) {
+    if (typeof origin !== 'object' || !Number.isFinite(origin.lat) || !Number.isFinite(origin.lng)) {
+      return NextResponse.json({ error: 'origin must be { lat, lng }' }, { status: 400 });
+    }
+    gpsOrigin = { lat: origin.lat, lng: origin.lng };
   }
 
   // Base coordinates come from the verified user's own stored settings,
@@ -57,6 +74,11 @@ export async function POST(req: NextRequest) {
     baseLabel === 'work'
       ? (settings?.work_lat != null && settings?.work_lng != null ? { lat: settings.work_lat, lng: settings.work_lng } : null)
       : (settings?.home_lat != null && settings?.home_lng != null ? { lat: settings.home_lat, lng: settings.home_lng } : null);
+
+  // The route starts and ends at the live GPS position when the client
+  // supplied one; otherwise at the Home/Work base. Without either, there
+  // is no origin leg, only the between-stop legs.
+  const originCoords = gpsOrigin ?? baseCoords;
 
   // Fetch tasks fresh, scoped to this user — never trust client-sent
   // coordinates for the actual route legs, only the requested order.
@@ -80,19 +102,23 @@ export async function POST(req: NextRequest) {
     .filter((t): t is LocatedTask => !!t && t.lat != null && t.lng != null);
 
   if (located.length === 0) {
-    return NextResponse.json({ ok: true, driveFromBaseMins: null, driveToBaseMins: null, legsComputed: 0, skipped: [] });
+    return NextResponse.json({ ok: true, driveFromBaseMins: null, basePolyline: null, legsComputed: 0, skipped: [] });
   }
 
   const skipped: string[] = [];
-  const updates: { id: string; drive_mins_to_next: number }[] = [];
+  const updates: { id: string; drive_mins_to_next: number; route_polyline: string | null }[] = [];
   let driveFromBaseMins: number | null = null;
-  let driveToBaseMins: number | null = null;
+  let basePolyline: string | null = null;
 
-  if (baseCoords) {
+  if (originCoords) {
     const first = located[0];
-    const leg = await computeRouteLeg(baseCoords, { lat: first.lat, lng: first.lng });
-    if (leg !== null) driveFromBaseMins = leg;
-    else skipped.push(first.text);
+    const leg = await computeRouteLeg(originCoords, { lat: first.lat, lng: first.lng });
+    if (leg !== null) {
+      driveFromBaseMins = leg.mins;
+      basePolyline = leg.polyline;
+    } else {
+      skipped.push(first.text);
+    }
   }
 
   for (let i = 0; i < located.length - 1; i++) {
@@ -100,21 +126,31 @@ export async function POST(req: NextRequest) {
     const b = located[i + 1];
     const leg = await computeRouteLeg({ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng });
     if (leg !== null) {
-      updates.push({ id: a.id, drive_mins_to_next: leg });
+      updates.push({ id: a.id, drive_mins_to_next: leg.mins, route_polyline: leg.polyline });
     } else {
       skipped.push(b.text);
     }
   }
 
-  if (baseCoords) {
+  // The return leg (last stop back to the origin) rides on the last
+  // located task's own leg fields, mirroring how Travel stores the drive
+  // back to base — so MapView can draw the closing polyline with the same
+  // per-activity route_polyline convention and the Today list can show a
+  // final leg row.
+  if (originCoords) {
     const last = located[located.length - 1];
-    const leg = await computeRouteLeg({ lat: last.lat, lng: last.lng }, baseCoords);
-    driveToBaseMins = leg ?? 0;
+    const leg = await computeRouteLeg({ lat: last.lat, lng: last.lng }, originCoords);
+    updates.push({ id: last.id, drive_mins_to_next: leg?.mins ?? 0, route_polyline: leg?.polyline ?? null });
   }
 
   await Promise.all(
-    updates.map((u) => supabaseAdmin.from('tasks').update({ drive_mins_to_next: u.drive_mins_to_next }).eq('id', u.id))
+    updates.map((u) =>
+      supabaseAdmin
+        .from('tasks')
+        .update({ drive_mins_to_next: u.drive_mins_to_next, route_polyline: u.route_polyline })
+        .eq('id', u.id)
+    )
   );
 
-  return NextResponse.json({ ok: true, driveFromBaseMins, driveToBaseMins, legsComputed: updates.length, skipped });
+  return NextResponse.json({ ok: true, driveFromBaseMins, basePolyline, legsComputed: updates.length, skipped });
 }

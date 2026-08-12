@@ -18,7 +18,6 @@ export function TaskCard(props: {
   anyActive: boolean;
   subs: Subtask[];
   learnedHint: string | null;
-  showDrive: boolean;
   openSwipeId: string | null;
   setOpenSwipeId: (id: string | null) => void;
   onComplete: (id: string) => void;
@@ -32,7 +31,7 @@ export function TaskCard(props: {
   };
 }) {
   const {
-    task: t, remainingForThis, liveLogged, overCap, anyActive, subs, learnedHint, showDrive,
+    task: t, remainingForThis, liveLogged, overCap, anyActive, subs, learnedHint,
     openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen,
     dragHandleProps,
   } = props;
@@ -145,7 +144,7 @@ export function TaskCard(props: {
   ].join(' ').trim();
 
   const hasExtraTags =
-    t.status === 'active' || subs.length > 0 || t.due_today || learnedHint || t.location_text || (showDrive && t.drive_mins_to_next > 0);
+    t.status === 'active' || subs.length > 0 || t.due_today || learnedHint || t.location_text;
 
   return (
     <div className={rowClass}>
@@ -208,9 +207,6 @@ export function TaskCard(props: {
                     >
                       {t.location_text}
                     </span>
-                  )}
-                  {showDrive && t.drive_mins_to_next > 0 && (
-                    <span className="tag mono">+{fmtMins(t.drive_mins_to_next)} drive</span>
                   )}
                 </div>
               )}

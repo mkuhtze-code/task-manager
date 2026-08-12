@@ -723,6 +723,29 @@ button:focus-visible, input:focus-visible {
   color: var(--danger-text, var(--danger));
 }
 
+/* Travel leg between located tasks in geo_aware mode — a quiet divider
+   row showing the real drive time for that segment. */
+.travel-leg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+}
+
+.travel-leg-emoji {
+  opacity: 0.85;
+}
+
+.travel-leg-label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
 .btn-due-today {
   flex-shrink: 0;
   width: 32px;

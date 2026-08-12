@@ -17,12 +17,15 @@ export type Task = {
   // no "overdue" state if a day is missed.
   surface_date: string | null;
   // Optional location — mirrors activities in Travel. drive_mins_to_next
-  // is only meaningful in geo_aware sort mode; it's the computed drive
-  // time to whichever located task comes next in the geographic route.
+  // and route_polyline are only meaningful in geo_aware sort mode; each
+  // located task carries the leg to whichever located task comes next in
+  // the geographic route (the last located task carries the return leg
+  // back to the start point).
   location_text: string | null;
   lat: number | null;
   lng: number | null;
   drive_mins_to_next: number;
+  route_polyline: string | null;
 };
 
 export type Subtask = {
