@@ -84,8 +84,28 @@ function MapView(props: {
   const syncHits = useCallback(() => {
     if (!mapReady || !mapRef.current) return;
     try {
-      const proj = mapRef.current.getProjection();
+      const map = mapRef.current;
+      const proj = map.getProjection();
       if (!proj) return;
+
+      // map.getProjection() no longer exposes fromLatLngToContainerPixel /
+      // fromLatLngToDivPixel in current Google Maps releases, so project
+      // manually: the projection still gives the zoom-0 "world" point, and
+      // the map's current center/zoom turn that into container pixels via a
+      // plain scale + translate.
+      const centerWorld = proj.fromLatLngToPoint(map.getCenter());
+      const scale = Math.pow(2, map.getZoom());
+      const div = map.getDiv();
+      const divWidth = div.clientWidth;
+      const divHeight = div.clientHeight;
+      const toContainerPixel = (lat: number, lng: number) => {
+        const p = proj.fromLatLngToPoint({ lat, lng });
+        if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+        let dx = p.x - centerWorld.x;
+        dx = ((dx + 128) % 256 + 256) % 256 - 128; // nearest wrap across the antimeridian
+        const dy = p.y - centerWorld.y;
+        return { x: dx * scale + divWidth / 2, y: dy * scale + divHeight / 2 };
+      };
 
       const items: { id: string; lat: number; lng: number; text: string; url: string }[] = [];
       if (base?.lat != null && base?.lng != null) {
@@ -110,7 +130,7 @@ function MapView(props: {
           // laying out — calling this while it's mid-initialization throws,
           // which would crash the whole sheet. The idle/bounds_changed
           // listeners retry until the map settles.
-          const p = proj.fromLatLngToContainerPixel({ lat: it.lat, lng: it.lng });
+          const p = toContainerPixel(it.lat, it.lng);
           if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
           return { key: it.id, x: p.x, y: p.y, text: it.text, url: it.url };
         })
