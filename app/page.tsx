@@ -96,6 +96,10 @@ export default function Home() {
   const [gpsCoords, setGpsCoords] = useState<Coords | null>(null);
   const [driveFromBaseMins, setDriveFromBaseMins] = useState(0);
   const [basePolyline, setBasePolyline] = useState<string | null>(null);
+  // Where the final leg returns to, decided server-side from the predicted
+  // arrival vs the workday end — 'Work', 'Home', or the origin fallback
+  // label. Rendered as "→ Work" / "→ Home" on the final leg row.
+  const [returnLabel, setReturnLabel] = useState<string | null>(null);
   const [recalculatingRoute, setRecalculatingRoute] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
@@ -348,6 +352,7 @@ export default function Home() {
     if (sortMode !== 'geo_aware' || !session) {
       setDriveFromBaseMins(0);
       setBasePolyline(null);
+      setReturnLabel(null);
       return;
     }
 
@@ -356,6 +361,7 @@ export default function Home() {
       setRouteError('Set a home or work address in Preferences to enable route-aware capacity.');
       setDriveFromBaseMins(0);
       setBasePolyline(null);
+      setReturnLabel(null);
       return;
     }
 
@@ -367,14 +373,16 @@ export default function Home() {
     // shifting which "next stop" each drive_mins_to_next value refers to
     // and making the numbers look wrong for the tasks around it.
     const todayForRoute = localDateStr(now);
-    const located = tasks
-      .filter((t) => t.status !== 'done' && !isScheduledForLater(t, todayForRoute) && t.lat != null && t.lng != null)
+    const visibleForRoute = tasks.filter((t) => t.status !== 'done' && !isScheduledForLater(t, todayForRoute));
+    const located = visibleForRoute
+      .filter((t) => t.lat != null && t.lng != null)
       .map((t) => ({ id: t.id, lat: t.lat as number, lng: t.lng as number }));
 
     if (located.length === 0) {
       setRouteError(null);
       setDriveFromBaseMins(0);
       setBasePolyline(null);
+      setReturnLabel(null);
       return;
     }
 
@@ -389,10 +397,22 @@ export default function Home() {
     if (sortMode !== 'geo_aware' || !session) return; // mode changed while waiting
     setGpsCoords(gps);
 
+    // Inputs to the server's return-destination decision: the current
+    // local clock (minutes since midnight) and the estimated duration of
+    // every task still ahead before the return leg. The latter blends the
+    // typed estimate with learned history via effectiveRemainingForTask —
+    // that browser-side data is exactly why the server can't compute it
+    // itself, and why longer-than-expected tasks can shift the predicted
+    // return from Work to Home.
+    const nowLocalMins = now.getHours() * 60 + now.getMinutes();
+    const remainingTaskMins = visibleForRoute.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
+
     try {
       const json = await authedFetch('/api/today/calculate-route', {
         orderedTaskIds: orderedIds,
         baseLabel: base.label,
+        nowLocalMins,
+        remainingTaskMins,
         ...(gps ? { origin: { lat: gps.lat, lng: gps.lng } } : {}),
       });
       if (json.error) {
@@ -400,6 +420,7 @@ export default function Home() {
       } else {
         setDriveFromBaseMins(json.driveFromBaseMins || 0);
         setBasePolyline(json.basePolyline || null);
+        setReturnLabel(json.returnLabel || null);
         // The server silently returns which legs it couldn't compute
         // (bad geocode, Directions API failure, etc.) — surface that
         // instead of leaving those tasks with a blank/stale drive time
@@ -436,6 +457,7 @@ export default function Home() {
       setDriveFromBaseMins(0);
       setBasePolyline(null);
       setGpsCoords(null);
+      setReturnLabel(null);
       setRouteError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -897,7 +919,7 @@ export default function Home() {
                   <span className="travel-leg-emoji">🚗</span>
                   <span className="travel-leg-label">
                     {locatedIdx === locatedInOrder.length - 1
-                      ? `${fmtMins(t.drive_mins_to_next)} back to ${originLabel}`
+                      ? `${fmtMins(t.drive_mins_to_next)} → ${returnLabel ?? originLabel}`
                       : fmtMins(t.drive_mins_to_next)}
                   </span>
                 </div>
