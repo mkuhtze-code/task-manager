@@ -3,7 +3,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import TopSwitcher from '@/components/TopSwitcher';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
@@ -44,6 +43,24 @@ import {
 // One-shot browser geolocation for the route's start point. Resolves to
 // null when the API is unavailable, permission is denied, or the fix
 // doesn't arrive in time — the caller then falls back to Home/Work.
+// Quiet connective tissue between two geo-located tasks in geo_aware mode.
+// Renders as a hairline with a tiny drive-time label so the leg reads as a
+// property of the gap rather than a competing row; tapping it reveals the
+// full origin → destination detail without becoming a visual focal point.
+function TravelLeg({ label, detail }: { label: string; detail: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="leg-wrap">
+      <button className="leg-connector" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span className="leg-connector-line" />
+        <span className="leg-connector-label">{label}</span>
+        <span className="leg-connector-line" />
+      </button>
+      {open && <div className="leg-detail">{detail}</div>}
+    </div>
+  );
+}
+
 function getGpsPosition(timeoutMs = 4000): Promise<Coords | null> {
   return new Promise((resolve) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -77,6 +94,7 @@ export default function Home() {
   const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [scheduledSheetOpen, setScheduledSheetOpen] = useState(false);
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -820,7 +838,6 @@ export default function Home() {
 
   return (
     <div className="app-shell">
-      <TopSwitcher active="today" />
       <TravelAwarenessBanner />
 
       <TodayHeader
@@ -883,10 +900,10 @@ export default function Home() {
           return (
             <Fragment key={t.id}>
               {geoAware && isLocated && locatedIdx === 0 && driveFromBaseMins > 0 && (
-                <div className="travel-leg">
-                  <span className="travel-leg-emoji">🚗</span>
-                  <span className="travel-leg-label">{fmtMins(driveFromBaseMins)} from {originLabel}</span>
-                </div>
+                <TravelLeg
+                  label={fmtMins(driveFromBaseMins)}
+                  detail={`Drive from ${originLabel}`}
+                />
               )}
               <div ref={(el) => { rowElsRef.current[t.id] = el; }} style={dragRowStyle(idx, t.id)}>
                 <TaskCard
@@ -899,10 +916,13 @@ export default function Home() {
                   learnedHint={learnedHint}
                   openSwipeId={openSwipeId}
                   setOpenSwipeId={setOpenSwipeId}
+                  expanded={expandedId === t.id}
+                  onToggleExpand={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
+                  onOpenDetails={() => { setExpandedId(null); setOpenTaskId(t.id); }}
                   onComplete={completeTask}
                   onStart={startTask}
                   onStop={stopTask}
-                  onOpen={setOpenTaskId}
+                  onToggleSubtaskDone={toggleSubtaskDone}
                   dragHandleProps={
                     sortMode === 'manual'
                       ? {
@@ -915,14 +935,14 @@ export default function Home() {
                 />
               </div>
               {geoAware && isLocated && t.drive_mins_to_next > 0 && (
-                <div className="travel-leg">
-                  <span className="travel-leg-emoji">🚗</span>
-                  <span className="travel-leg-label">
-                    {locatedIdx === locatedInOrder.length - 1
-                      ? `${fmtMins(t.drive_mins_to_next)} → ${returnLabel ?? originLabel}`
-                      : fmtMins(t.drive_mins_to_next)}
-                  </span>
-                </div>
+                <TravelLeg
+                  label={locatedIdx === locatedInOrder.length - 1
+                    ? `${fmtMins(t.drive_mins_to_next)} → ${returnLabel ?? originLabel}`
+                    : fmtMins(t.drive_mins_to_next)}
+                  detail={locatedIdx === locatedInOrder.length - 1
+                    ? `Drive back to ${returnLabel ?? originLabel}`
+                    : 'Drive to the next stop'}
+                />
               )}
             </Fragment>
           );

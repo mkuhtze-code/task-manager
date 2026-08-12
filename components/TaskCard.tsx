@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { LONG_PRESS_MS, type Subtask, type Task } from '@/lib/taskTypes';
 import { fmtMins } from '@/lib/timeFormat';
-import { CheckIcon, PlayIcon, StopIcon, DragHandleIcon } from '@/components/icons';
+import {
+  CheckIcon,
+  ChevronIcon,
+  DragHandleIcon,
+  MapPinIcon,
+  PlayIcon,
+  StopIcon,
+} from '@/components/icons';
 
 const REVEAL_RIGHT = 92;
 const OPEN_THRESHOLD = 45;
@@ -20,10 +27,13 @@ export function TaskCard(props: {
   learnedHint: string | null;
   openSwipeId: string | null;
   setOpenSwipeId: (id: string | null) => void;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onOpenDetails: () => void;
   onComplete: (id: string) => void;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
-  onOpen: (id: string) => void;
+  onToggleSubtaskDone: (subtaskId: string, taskId: string, current: boolean) => void;
   dragHandleProps?: {
     onPointerDown: (e: React.PointerEvent) => void;
     onPointerMove: (e: React.PointerEvent) => void;
@@ -32,8 +42,8 @@ export function TaskCard(props: {
 }) {
   const {
     task: t, remainingForThis, liveLogged, overCap, anyActive, subs, learnedHint,
-    openSwipeId, setOpenSwipeId, onComplete, onStart, onStop, onOpen,
-    dragHandleProps,
+    openSwipeId, setOpenSwipeId, expanded, onToggleExpand, onOpenDetails,
+    onComplete, onStart, onStop, onToggleSubtaskDone, dragHandleProps,
   } = props;
 
   const [dragX, setDragX] = useState(0);
@@ -55,6 +65,8 @@ export function TaskCard(props: {
 
   const startDisabled = anyActive && t.status !== 'active';
   const isListItem = t.estimate_mins <= 0;
+  const active = t.status === 'active';
+  const timed = t.estimate_mins > 0;
 
   function handlePointerDown(e: React.PointerEvent) {
     startXRef.current.x = e.clientX;
@@ -115,9 +127,21 @@ export function TaskCard(props: {
       setDragX(0);
       if (openSwipeId === t.id) setOpenSwipeId(null);
     } else {
-      onOpen(t.id);
+      onToggleExpand();
     }
   }
+
+  // Stops pointer/click bubbling so inner controls don't start a swipe or
+  // toggle the card, then runs the action. Mirrors the old check-btn
+  // stopPropagation wiring for every control inside the revealed tier.
+  function isolate(action: () => void) {
+    return (e: React.PointerEvent | React.MouseEvent) => {
+      e.stopPropagation();
+      action();
+    };
+  }
+
+  const stopPointer = (e: React.PointerEvent) => e.stopPropagation();
 
   function closeAnd(action: () => void) {
     return (e: React.PointerEvent | React.MouseEvent) => {
@@ -137,30 +161,31 @@ export function TaskCard(props: {
   }
 
   const rowClass = [
-    'task-row',
+    'task-card',
     t.source === 'came_up' ? 'came-up' : '',
     taskColorClass,
     isListItem ? 'task-list-item' : '',
+    expanded ? 'expanded' : '',
   ].join(' ').trim();
 
-  const hasExtraTags =
-    t.status === 'active' || subs.length > 0 || t.due_today || learnedHint || t.location_text;
+  const doneSubs = subs.filter((s) => s.done).length;
+  const glanceRight = active ? fmtMins(liveLogged) : timed ? fmtMins(remainingForThis) : null;
 
   return (
     <div className={rowClass}>
       <div className="swipe-zone">
         <button
           className="swipe-reveal-right start-stop-btn"
-          style={{ background: t.status === 'active' ? 'var(--hazard)' : 'var(--steel)', opacity: startDisabled && t.status !== 'active' ? 0.4 : 1 }}
-          disabled={startDisabled && t.status !== 'active'}
+          style={{ background: active ? 'var(--hazard)' : 'var(--steel)', opacity: startDisabled && !active ? 0.4 : 1 }}
+          disabled={startDisabled && !active}
           onPointerUp={closeAnd(() => {
-            if (t.status === 'active') onStop(t.id);
+            if (active) onStop(t.id);
             else if (!startDisabled) onStart(t.id);
           })}
-          aria-label={t.status === 'active' ? 'Stop' : 'Start'}
+          aria-label={active ? 'Stop' : 'Start'}
         >
-          {t.status === 'active' ? <StopIcon /> : <PlayIcon />}
-          <span>{t.status === 'active' ? 'Stop' : 'Start'}</span>
+          {active ? <StopIcon /> : <PlayIcon />}
+          <span>{active ? 'Stop' : 'Start'}</span>
         </button>
         <div
           className="swipe-foreground"
@@ -173,16 +198,36 @@ export function TaskCard(props: {
           <div className="task-main">
             <button
               className="check-btn"
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); onComplete(t.id); }}
+              onPointerDown={stopPointer}
+              onPointerUp={stopPointer}
+              onClick={isolate(() => onComplete(t.id))}
               aria-label="Complete task"
             >
               <CheckIcon done={false} />
             </button>
-            <div className="task-body" onClick={handleBodyClick}>
+            <div
+              className="task-body"
+              onClick={handleBodyClick}
+              role="button"
+              aria-expanded={expanded}
+              aria-label={`${t.text} — ${expanded ? 'collapse' : 'expand'}`}
+            >
               <div className="task-text">{t.text}</div>
-              {t.estimate_mins > 0 && (
+            </div>
+            <div className="task-card-glance" onClick={handleBodyClick}>
+              {active && <span className="task-card-active-dot" />}
+              {glanceRight && (
+                <span className={active ? 'task-card-elapsed mono' : 'task-card-time mono'}>{glanceRight}</span>
+              )}
+              <span className={expanded ? 'task-card-chevron open' : 'task-card-chevron'} aria-hidden="true">
+                <ChevronIcon size={14} />
+              </span>
+            </div>
+          </div>
+
+          {expanded && (
+            <div className="task-reveal">
+              {timed && (
                 <div className="task-progress-row">
                   <div className="task-progress-track">
                     <div
@@ -190,40 +235,86 @@ export function TaskCard(props: {
                       style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
                     />
                   </div>
-                  <span className="task-progress-label mono">{fmtMins(remainingForThis)}</span>
+                  <span className="task-progress-label mono">{fmtMins(remainingForThis)} left</span>
                 </div>
               )}
-              {hasExtraTags && (
-                <div className="task-tags">
-                  {t.status === 'active' && <span className="tag tag-elapsed mono">elapsed {fmtMins(liveLogged)}</span>}
-                  {subs.length > 0 && <span className="tag">{subs.filter((s) => s.done).length}/{subs.length} sub-tasks</span>}
-                  {t.due_today && <span className="tag tag-due">due today</span>}
-                  {learnedHint && <span className="tag">usually ~{learnedHint}</span>}
-                  {t.location_text && (
-                    <span
-                      className="tag"
-                      style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}
-                      title={t.location_text}
-                    >
-                      {t.location_text}
-                    </span>
-                  )}
+
+              <div className="task-reveal-meta">
+                {active && <span className="task-reveal-chip mono">elapsed {fmtMins(liveLogged)}</span>}
+                {t.due_today && <span className="task-reveal-chip due">due today</span>}
+                {overCap && <span className="task-reveal-chip warn">over today</span>}
+                {learnedHint && <span className="task-reveal-chip">usually ~{learnedHint}</span>}
+                {t.location_text && (
+                  <span className="task-reveal-location" title={t.location_text}>
+                    <MapPinIcon size={13} />
+                    <span className="task-reveal-location-text">{t.location_text}</span>
+                  </span>
+                )}
+              </div>
+
+              {subs.length > 0 && (
+                <div className="task-reveal-subtasks">
+                  <div className="task-reveal-subtasks-head">
+                    Subtasks <span className="mono">{doneSubs}/{subs.length}</span>
+                  </div>
+                  {subs.map((s) => (
+                    <div key={s.id} className="task-reveal-subtask">
+                      <button
+                        className={s.done ? 'subtask-check done' : 'subtask-check'}
+                        onPointerDown={stopPointer}
+                        onPointerUp={stopPointer}
+                        onClick={isolate(() => onToggleSubtaskDone(s.id, t.id, s.done))}
+                        aria-label="Toggle sub-task"
+                      />
+                      <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
+                      {s.mins > 0 && <span className="task-reveal-subtask-mins mono">{fmtMins(s.mins)}</span>}
+                    </div>
+                  ))}
                 </div>
               )}
+
+              <div className="task-actions">
+                <button
+                  className={active ? 'task-action-btn stop' : 'task-action-btn primary'}
+                  disabled={!active && startDisabled}
+                  onPointerDown={stopPointer}
+                  onPointerUp={stopPointer}
+                  onClick={isolate(() => {
+                    if (active) onStop(t.id);
+                    else if (!startDisabled) onStart(t.id);
+                  })}
+                  aria-label={active ? 'Stop timer' : 'Start timer'}
+                >
+                  {active ? <StopIcon /> : <PlayIcon />}
+                  <span>{active ? 'Stop' : 'Start'}</span>
+                </button>
+                <button
+                  className="task-action-btn ghost"
+                  onPointerDown={stopPointer}
+                  onPointerUp={stopPointer}
+                  onClick={isolate(() => onComplete(t.id))}
+                >
+                  <CheckIcon done={false} />
+                  <span>Complete</span>
+                </button>
+                <button className="task-action-link" onClick={isolate(onOpenDetails)}>
+                  Details
+                </button>
+                {dragHandleProps && (
+                  <button
+                    className="drag-handle-btn task-action-drag"
+                    onPointerDown={(e) => { e.stopPropagation(); dragHandleProps.onPointerDown(e); }}
+                    onPointerMove={(e) => { e.stopPropagation(); dragHandleProps.onPointerMove(e); }}
+                    onPointerUp={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
+                    onPointerCancel={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
+                    aria-label="Drag to reorder"
+                  >
+                    <DragHandleIcon />
+                  </button>
+                )}
+              </div>
             </div>
-            {dragHandleProps && (
-              <button
-                className="drag-handle-btn"
-                onPointerDown={(e) => { e.stopPropagation(); dragHandleProps.onPointerDown(e); }}
-                onPointerMove={(e) => { e.stopPropagation(); dragHandleProps.onPointerMove(e); }}
-                onPointerUp={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
-                onPointerCancel={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
-                aria-label="Drag to reorder"
-              >
-                <DragHandleIcon />
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>

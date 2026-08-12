@@ -3,6 +3,7 @@
 import type { Task } from '@/lib/taskTypes';
 import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import GearMenu from '@/components/GearMenu';
+import TopSwitcher from '@/components/TopSwitcher';
 import { FitCheckIcon, FitWarnIcon, StopIcon } from '@/components/icons';
 
 export function TodayHeader(props: {
@@ -47,7 +48,10 @@ export function TodayHeader(props: {
           <div className="today-header-weekday">{weekdayLabel}</div>
           <div className="today-header-date">{dateOnlyLabel}</div>
         </div>
-        <GearMenu />
+        <div className="today-header-top-right">
+          <TopSwitcher active="today" />
+          <GearMenu />
+        </div>
       </div>
 
       {activeTask && (

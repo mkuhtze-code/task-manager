@@ -766,8 +766,6 @@ export default function TripDayView() {
 
   return (
     <div className="app-shell">
-      <TopSwitcher active="travel" />
-
       <div className="app-header">
         <div className="app-header-left">
           <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back"><BackIcon /></button>
@@ -781,6 +779,7 @@ export default function TripDayView() {
           </div>
         </div>
         <div className="app-header-right">
+          <TopSwitcher active="travel" />
           <GearMenu context="travel" />
         </div>
       </div>
