@@ -337,8 +337,16 @@ export default function Home() {
       return;
     }
 
+    // Must match the exact same set the screen actually displays
+    // (visibleTasks below), or the sequence sent to the server won't line
+    // up with what weaveGeoOrder() renders — a future-dated reminder with
+    // a location would otherwise get folded into the route on the server
+    // side while never appearing in the on-screen order, silently
+    // shifting which "next stop" each drive_mins_to_next value refers to
+    // and making the numbers look wrong for the tasks around it.
+    const todayForRoute = localDateStr(now);
     const located = tasks
-      .filter((t) => t.status !== 'done' && t.lat != null && t.lng != null)
+      .filter((t) => t.status !== 'done' && !isScheduledForLater(t, todayForRoute) && t.lat != null && t.lng != null)
       .map((t) => ({ id: t.id, lat: t.lat as number, lng: t.lng as number }));
 
     if (located.length === 0) {
@@ -361,6 +369,17 @@ export default function Home() {
       } else {
         setDriveFromBaseMins(json.driveFromBaseMins || 0);
         setDriveToBaseMins(json.driveToBaseMins || 0);
+        // The server silently returns which legs it couldn't compute
+        // (bad geocode, Directions API failure, etc.) — surface that
+        // instead of leaving those tasks with a blank/stale drive time
+        // and no explanation for why.
+        if (Array.isArray(json.skipped) && json.skipped.length > 0) {
+          setRouteError(
+            json.skipped.length === 1
+              ? `Couldn't get a drive time for "${json.skipped[0]}".`
+              : `Couldn't get drive times for: ${json.skipped.join(', ')}.`
+          );
+        }
         const { data: taskRows } = await supabase
           .from('tasks')
           .select('*')
