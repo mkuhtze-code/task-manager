@@ -84,7 +84,6 @@ function MapView(props: {
   const syncHits = useCallback(() => {
     if (!mapReady || !mapRef.current) return;
     try {
-      const g = (window as any).google;
       const proj = mapRef.current.getProjection();
       if (!proj) return;
 
@@ -109,7 +108,7 @@ function MapView(props: {
         .map((it) => {
           // The projection is only safe to use once the map has finished
           // laying out — calling this while it's mid-initialization throws,
-          // which would crash the whole sheet. The idle/projection_changed
+          // which would crash the whole sheet. The idle/bounds_changed
           // listeners retry until the map settles.
           const p = proj.fromLatLngToContainerPixel({ lat: it.lat, lng: it.lng });
           if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
@@ -123,17 +122,45 @@ function MapView(props: {
         return next;
       });
     } catch {
-      // Projection isn't ready yet — the idle/projection_changed listener
+      // Projection isn't ready yet — the idle/bounds_changed listener
       // will re-run this the moment the map finishes initializing.
     }
   }, [base, activities, mapReady]);
 
-  // Load the Maps script once per mount. We only flip the container to
-  // visible here — the map instance itself is created in the effect below,
-  // once the container actually has size. Creating a map inside a
-  // display:none / zero-size div leaves its projection in a half-baked
-  // state where getProjection() returns a non-null but unusable value, and
-  // fromLatLngToContainerPixel throws instead of returning pixel coords.
+  // Keeps a live reference to the latest syncHits closure so the map's
+  // event listeners (attached once, when the map is created) always call
+  // the current version rather than a stale one captured at creation time.
+  const syncHitsRef = useRef(syncHits);
+  useEffect(() => {
+    syncHitsRef.current = syncHits;
+  }, [syncHits]);
+
+  // Mobile browsers (Android Chrome especially) resize the viewport as
+  // the URL bar shows/hides or the device rotates, without always firing
+  // an event Google Maps notices on its own. If Maps doesn't recompute
+  // its internal projection after that, our hit-target buttons (computed
+  // from that same projection) drift away from where the visible pins
+  // actually are — the map looks fine, but taps land on nothing. This
+  // nudges Maps to re-layout and re-syncs hit points whenever the
+  // viewport changes size or orientation.
+  useEffect(() => {
+    function handleViewportChange() {
+      if (!mapRef.current) return;
+      const g = (window as any).google;
+      g?.maps?.event.trigger(mapRef.current, 'resize');
+      syncHitsRef.current();
+    }
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('orientationchange', handleViewportChange);
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('orientationchange', handleViewportChange);
+    };
+  }, []);
+
+  // Load the Maps script once per mount. We only flip loading off here —
+  // the map instance itself is created in the next effect, once the
+  // container has actually been laid out with real dimensions.
   useEffect(() => {
     let cancelled = false;
     loadGoogleMapsScript()
@@ -147,54 +174,89 @@ function MapView(props: {
           setLoading(false);
         }
       });
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Create the map instance now that the container is visible and has size.
+  // Actually create the map. This was missing entirely before — mapRef
+  // .current never got assigned anywhere, so the marker/polyline effect
+  // below always bailed out on its `if (!mapRef.current) return;` guard,
+  // and nothing ever appeared in the div.
+  //
+  // Runs once loading finishes and the container div exists. Creating a
+  // map inside a display:none / zero-size div leaves its projection in a
+  // half-baked state where getProjection() returns a non-null but unusable
+  // value and fromLatLngToContainerPixel throws instead of returning pixel
+  // coordinates — so this waits one frame after the container becomes
+  // visible (`display: block`) to let layout actually settle first.
   useEffect(() => {
-    if (loading || error || mapRef.current) return;
-    const g = (window as any).google;
-    try {
-      mapRef.current = new g.maps.Map(mapDivRef.current, {
+    if (loading || error) return;
+    if (mapRef.current) return; // already created
+    if (!mapDivRef.current) return;
+
+    let cancelled = false;
+    const frame = requestAnimationFrame(() => {
+      if (cancelled || !mapDivRef.current) return;
+      const g = (window as any).google;
+      if (!g?.maps) return;
+
+      const map = new g.maps.Map(mapDivRef.current, {
         zoom: 11,
         center: { lat: 0, lng: 0 },
         disableDefaultUI: false,
         streetViewControl: false,
       });
-      setMapReady(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not initialize the map');
-    }
+      mapRef.current = map;
+
+      g.maps.event.addListenerOnce(map, 'idle', () => {
+        if (!cancelled) setMapReady(true);
+      });
+      map.addListener('bounds_changed', () => syncHitsRef.current());
+      map.addListener('zoom_changed', () => syncHitsRef.current());
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
   }, [loading, error]);
 
-  // Draws markers + route polylines. Now re-runs both when the data
-  // changes (fingerprint) AND when the map first becomes ready
-  // (mapReady) — previously only depended on fingerprint, so the very
-  // first paint always ran before the map existed and nothing after
-  // that ever told it to try again.
+  // Update markers & polylines once the map exists and whenever the data
+  // changes. Gated on mapReady (not just fingerprint) so this correctly
+  // re-runs the first time the map finishes initializing, rather than only
+  // on future data changes.
   useEffect(() => {
-    if (!mapReady || !mapRef.current) return;
+    if (!mapRef.current) return;
     const g = (window as any).google;
 
+    // Build points list from base + activities
     const points: { lat: number; lng: number }[] = [];
     if (base?.lat != null && base?.lng != null) points.push({ lat: base.lat, lng: base.lng });
     activities.forEach((a) => {
       if (a.lat != null && a.lng != null) points.push({ lat: a.lat, lng: a.lng });
     });
 
+    if (points.length === 0) {
+      // Clear any existing overlays
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+      polylinesRef.current.forEach((p) => p.setMap(null));
+      polylinesRef.current = [];
+      setHitPoints([]);
+
+      setError('Nothing with a location to show yet.');
+      return;
+    }
+
+    setError('');
+
+    // Clear old markers & polylines (but keep the map instance)
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
     polylinesRef.current.forEach((p) => p.setMap(null));
     polylinesRef.current = [];
-
-    if (points.length === 0) {
-      setError('Nothing with a location to show yet.');
-      setHitPoints([]);
-      return;
-    }
-    setError('');
 
     const bounds = new g.maps.LatLngBounds();
 
@@ -207,10 +269,6 @@ function MapView(props: {
       });
       markersRef.current.push(m);
       bounds.extend({ lat: base.lat, lng: base.lng });
-      m.addListener('click', () => {
-        const query = base.location_text ?? (base.lat != null && base.lng != null ? `${base.lat},${base.lng}` : null);
-        if (query) setPendingOpen({ label: base.location_text || 'Base', url: mapsUrlFor(query) });
-      });
     }
 
     activities.forEach((a, idx) => {
@@ -223,24 +281,16 @@ function MapView(props: {
       });
       markersRef.current.push(m);
       bounds.extend({ lat: a.lat, lng: a.lng });
-      m.addListener('click', () => {
-        const query = a.location_text ?? (a.lat != null && a.lng != null ? `${a.lat},${a.lng}` : null);
-        if (query) setPendingOpen({ label: a.location_text || a.text, url: mapsUrlFor(query) });
-      });
     });
 
+    // Draw polylines
     const allPolylines: string[] = [];
     if (base?.route_polyline) allPolylines.push(base.route_polyline);
     activities.forEach((a) => {
       if (a.route_polyline) allPolylines.push(a.route_polyline);
     });
 
-    if (allPolylines.length === 0 && activities.some((a) => a.lat != null)) {
-      setError('Pins are set, but no route has been calculated yet — try "Recalculate drive times" first.');
-    }
-
     allPolylines.forEach((encoded) => {
-      if (!g.maps.geometry?.encoding) return;
       try {
         const path = g.maps.geometry.encoding.decodePath(encoded);
         const poly = new g.maps.Polyline({
@@ -251,12 +301,12 @@ function MapView(props: {
         });
         poly.setMap(mapRef.current);
         polylinesRef.current.push(poly);
-      } catch {
-        // A single malformed polyline shouldn't block the rest of the
-        // map from rendering — skip it silently.
+      } catch (e) {
+        // ignore decode errors for now
       }
     });
 
+    // Only fit bounds if they changed to avoid visual jumps
     try {
       const newBoundsStr = bounds.toString();
       if (points.length > 1) {
@@ -265,21 +315,31 @@ function MapView(props: {
           lastBoundsRef.current = newBoundsStr;
         }
       } else {
-        mapRef.current.setCenter(points[0]);
-        mapRef.current.setZoom(11);
+        // Single point: only recenter if center actually changed
+        const currentCenter = mapRef.current.getCenter?.();
+        const lat = points[0].lat;
+        const lng = points[0].lng;
+        if (!currentCenter || currentCenter.lat() !== lat || currentCenter.lng() !== lng) {
+          mapRef.current.setCenter(points[0]);
+          mapRef.current.setZoom(11);
+        }
       }
-    } catch {
+    } catch (e) {
+      // ignore any bounds errors
       mapRef.current.setCenter(points[0]);
     }
 
+    // fitBounds/setCenter above trigger bounds_changed asynchronously,
+    // which will re-sync hit points on its own — but run it once here
+    // too so pins land correctly even if that event is slow to fire.
+    syncHitsRef.current();
+  }, [fingerprint, mapReady]);
+
+  // Re-sync hit-target positions whenever the underlying data or map
+  // readiness changes (covers the initial paint once mapReady flips true).
+  useEffect(() => {
     syncHits();
-    const idleListener = g.maps.event.addListener(mapRef.current, 'idle', syncHits);
-    const projectionChanged = g.maps.event.addListener(mapRef.current, 'projection_changed', syncHits);
-    return () => {
-      g.maps.event.removeListener(idleListener);
-      g.maps.event.removeListener(projectionChanged);
-    };
-  }, [fingerprint, mapReady, syncHits]);
+  }, [syncHits]);
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -298,9 +358,9 @@ function MapView(props: {
 
         <div
           style={{
+            position: 'relative',
             flex: 1,
             minHeight: 0,
-            position: 'relative',
             display: loading || error ? 'none' : 'block',
           }}
         >
@@ -313,76 +373,55 @@ function MapView(props: {
               overflow: 'hidden',
             }}
           />
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-            {hitPoints.map((hp) => (
-              <button
-                key={hp.key}
-                type="button"
-                title={hp.text}
-                aria-label={hp.text}
-                onClick={() => setPendingOpen({ label: hp.text, url: hp.url })}
-                style={{
-                  position: 'absolute',
-                  left: hp.x - 20,
-                  top: hp.y - 48,
-                  width: 40,
-                  height: 52,
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  pointerEvents: 'auto',
-                }}
-              />
-            ))}
-          </div>
+          {hitPoints.map((hp) => (
+            <button
+              key={hp.key}
+              onClick={() => setPendingOpen({ label: hp.text, url: hp.url })}
+              title={hp.text}
+              aria-label={`Open ${hp.text} in Google Maps`}
+              style={{
+                position: 'absolute',
+                left: hp.x,
+                top: hp.y,
+                transform: 'translate(-50%, -100%)',
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                padding: 0,
+                zIndex: 5,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'rgba(0,0,0,0.12)',
+              }}
+            />
+          ))}
         </div>
 
         {pendingOpen && (
           <div
-            onClick={() => setPendingOpen(null)}
             style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 40,
-              background: 'rgba(var(--shadow-rgb), 0.32)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              padding: 'var(--space-4)',
+              gap: 'var(--space-2)',
+              marginTop: 'var(--space-2)',
             }}
           >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: 'var(--paper)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 'var(--space-4)',
-                maxWidth: 340,
-                width: '100%',
-                boxShadow: '0 6px 24px rgba(var(--shadow-rgb), 0.25)',
+            <span style={{ flex: 1, fontSize: 13, color: 'var(--ink-soft)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              Open "{pendingOpen.label}" in Google Maps?
+            </span>
+            <button className="btn-text" onClick={() => setPendingOpen(null)}>Cancel</button>
+            <button
+              className="btn btn-ghost"
+              style={{ padding: '4px 12px', minHeight: 32, fontSize: 12 }}
+              onClick={() => {
+                window.open(pendingOpen.url, '_blank', 'noopener,noreferrer');
+                setPendingOpen(null);
               }}
             >
-              <div className="settings-panel-title" style={{ marginBottom: 'var(--space-2)' }}>
-                Open in Google Maps?
-              </div>
-              <p
-                style={{
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--ink-soft)',
-                  marginBottom: 'var(--space-3)',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {pendingOpen.label}
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-1)' }}>
-                <button className="btn-text" onClick={() => setPendingOpen(null)}>Cancel</button>
-                <a className="btn-text" href={pendingOpen.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                  Open
-                </a>
-              </div>
-            </div>
+              Open
+            </button>
           </div>
         )}
       </div>

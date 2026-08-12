@@ -58,6 +58,17 @@ function dateDiffDays(fromStr: string, toStr: string): number {
   return Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
 }
 
+// Local (not UTC) YYYY-MM-DD — same implementation as the one in
+// app/page.tsx, duplicated here rather than shared for now since Travel
+// mode still lives on its own branch. Worth moving to a shared
+// lib/dateHelpers.ts once Travel merges into main.
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function daysBetween(start: string, end: string): string[] {
   const [sy, sm, sd] = start.split('-').map((n) => parseInt(n, 10));
   const [ey, em, ed] = end.split('-').map((n) => parseInt(n, 10));
@@ -181,7 +192,7 @@ export default function TravelHome() {
     return <div className="app-shell" style={{ paddingTop: 40 }}>Sign in to see your trips.</div>;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localDateStr(new Date());
   const upcoming = trips.filter((t) => tripStatus(t.start_date, t.end_date, todayStr) !== 'past');
   const past = trips.filter((t) => tripStatus(t.start_date, t.end_date, todayStr) === 'past');
 

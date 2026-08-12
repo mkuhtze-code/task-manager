@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { placeId, sessionToken } = await req.json();
-  if (!placeId || typeof placeId !== 'string') {
+  if (!placeId || typeof placeId !== 'string' || !/^[A-Za-z0-9_-]{1,255}$/.test(placeId)) {
     return NextResponse.json({ error: 'placeId is required' }, { status: 400 });
   }
 
@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
   // a session token from the autocomplete call above. Requesting extra
   // fields (photos, reviews, hours) would push it into a billed tier.
   const res = await fetch(
-    `https://places.googleapis.com/v1/places/${placeId}?sessionToken=${encodeURIComponent(sessionToken || '')}`,
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?sessionToken=${encodeURIComponent(
+      sessionToken || ''
+    )}`,
     {
       headers: {
         'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY as string,
