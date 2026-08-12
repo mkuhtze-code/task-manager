@@ -118,7 +118,7 @@ button:focus-visible, input:focus-visible {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(241, 239, 230, 0.82);
+  background: rgba(var(--glass-rgb), 0.82);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   padding: var(--space-5) 0 var(--space-3);
@@ -136,11 +136,14 @@ button:focus-visible, input:focus-visible {
 }
 
 .back-link {
-  font-size: 24px;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  border: none;
+  background: none;
   color: var(--ink-soft);
   text-decoration: none;
   padding: 4px 4px 4px 0;
+  line-height: 1;
 }
 
 .back-link:hover {
@@ -253,6 +256,13 @@ button:focus-visible, input:focus-visible {
 
 .today-header-card.overloaded {
   background: rgba(255, 242, 224, 0.92);
+}
+
+/* On the travel day view the app header already sticks to the top, so a
+   second sticky card there would slide up over it (same z-index, later in
+   the DOM). Flow the capacity card with the content instead. */
+.today-header-card.flow {
+  position: static;
 }
 
 .today-header-top-row {
@@ -370,6 +380,17 @@ button:focus-visible, input:focus-visible {
   background: var(--steel);
   border-color: var(--steel);
   color: white;
+}
+
+/* Labeled pill variant of the toggle (Today/Travel switcher, the trip's
+   day selector, nearby categories) — same shape as the circular one, but
+   sized to text instead of a fixed circle so it can carry a label. */
+.day-toggle-btn.pill {
+  width: auto;
+  height: 34px;
+  border-radius: 20px;
+  padding: 0 14px;
+  flex-shrink: 0;
 }
 
 @keyframes expand-in {
@@ -672,6 +693,36 @@ button:focus-visible, input:focus-visible {
   color: var(--steel-text, var(--steel-dark));
 }
 
+.tag-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 180px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tag-location svg {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.tag-location-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-nocoords {
+  background: var(--hazard-bg);
+  color: var(--hazard-text, var(--hazard));
+}
+
+.tag-conflict {
+  background: var(--danger-bg);
+  color: var(--danger-text, var(--danger));
+}
+
 .btn-due-today {
   flex-shrink: 0;
   width: 32px;
@@ -785,8 +836,9 @@ button:focus-visible, input:focus-visible {
   background: var(--steel);
   color: white;
   border: none;
-  font-size: 26px;
-  font-weight: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-shadow: 0 4px 14px rgba(var(--shadow-rgb), 0.3);
   z-index: 20;
   transition: transform 0.15s var(--ease), background 0.15s var(--ease);
@@ -2333,7 +2385,7 @@ button:focus-visible, input:focus-visible {
 .trip-hero-card {
   background: linear-gradient(135deg, var(--steel) 0%, var(--steel-dark) 100%);
   border-radius: var(--radius-lg);
-  padding: var(--space-6) var(--space-5);
+  padding: var(--space-5);
   margin: var(--space-4) 0 var(--space-5);
   box-shadow: 0 10px 28px rgba(var(--shadow-rgb), 0.28);
   cursor: pointer;
@@ -2357,10 +2409,10 @@ button:focus-visible, input:focus-visible {
 }
 
 .trip-hero-name {
-  font-size: 22px;
+  font-size: var(--text-lg);
   font-weight: 800;
   letter-spacing: -0.02em;
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
   line-height: 1.15;
 }
 
@@ -2373,7 +2425,7 @@ button:focus-visible, input:focus-visible {
 
 .trip-hero-countdown-number {
   font-family: var(--font-digital);
-  font-size: 52px;
+  font-size: 40px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.01em;

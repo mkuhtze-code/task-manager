@@ -1,5 +1,7 @@
 'use client';
 
+import { CloseIcon } from '@/components/icons';
+
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
   if (mins < 60) return `${mins}m`;
@@ -43,15 +45,16 @@ export default function NearbySheet(props: {
       <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="task-detail-header">
           <div className="settings-panel-title">On the way</div>
-          <button className="btn-text" onClick={onClose}>Close</button>
+          <button className="gear-btn" onClick={onClose} aria-label="Close">
+            <CloseIcon />
+          </button>
         </div>
 
         <div className="day-toggle-row" style={{ overflowX: 'auto', width: '100%' }}>
           {CATEGORIES.map((c) => (
             <button
               key={c.value}
-              className={c.value === selectedCategory ? 'day-toggle-btn active' : 'day-toggle-btn'}
-              style={{ width: 'auto', borderRadius: 20, padding: '0 12px', flexShrink: 0 }}
+              className={c.value === selectedCategory ? 'day-toggle-btn pill active' : 'day-toggle-btn pill'}
               onClick={() => onCategoryChange(c.value)}
             >
               {c.label}

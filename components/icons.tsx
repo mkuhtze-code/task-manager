@@ -63,3 +63,98 @@ export function FitWarnIcon() {
     </svg>
   );
 }
+
+/* ── Travel & app chrome icons ───────────────────────────────
+   Shared line icons, stroke-based, drawn on a 24px grid so they
+   inherit color and scale with their button. Sizes default to the
+   slot each icon most often occupies. */
+
+export function BackIcon({ size = 22 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M15 5.5 8.5 12l6.5 6.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function PlusIcon({ size = 20 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function CloseIcon({ size = 16 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function TrashIcon({ size = 15 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13M10 11v6M14 11v6"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function BedIcon({ size = 16 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M3 20V7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M21 20v-8a2 2 0 0 0-2-2h-9v10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 15h18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <circle cx="7" cy="9.5" r="1.4" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function MapPinIcon({ size = 16 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+export function RefreshIcon({ size = 15, spinning = false }: { size?: number; spinning?: boolean } = {}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      style={spinning ? { animation: 'spin 0.9s linear infinite' } : undefined}
+    >
+      <path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function CompassIcon({ size = 13 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" />
+      <path d="m15.5 8.5-2 5-5 2 2-5 5-2Z" fill="currentColor" strokeWidth="1" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function LockIcon({ size = 16 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}

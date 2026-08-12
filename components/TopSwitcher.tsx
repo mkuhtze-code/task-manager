@@ -7,15 +7,13 @@ export default function TopSwitcher({ active }: { active: 'today' | 'travel' }) 
   return (
     <div className="day-toggle-row" style={{ margin: '0 0 var(--space-3)', width: '100%' }}>
       <button
-        className={active === 'today' ? 'day-toggle-btn active' : 'day-toggle-btn'}
-        style={{ width: 'auto', borderRadius: 20, padding: '0 16px', flexShrink: 0 }}
+        className={active === 'today' ? 'day-toggle-btn pill active' : 'day-toggle-btn pill'}
         onClick={() => router.push('/')}
       >
         Today
       </button>
       <button
-        className={active === 'travel' ? 'day-toggle-btn active' : 'day-toggle-btn'}
-        style={{ width: 'auto', borderRadius: 20, padding: '0 16px', flexShrink: 0 }}
+        className={active === 'travel' ? 'day-toggle-btn pill active' : 'day-toggle-btn pill'}
         onClick={() => router.push('/travel')}
       >
         Travel

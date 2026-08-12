@@ -10,6 +10,21 @@ import MapView from '@/components/MapView';
 import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
 import GearMenu from '@/components/GearMenu';
 import TopSwitcher from '@/components/TopSwitcher';
+import {
+  BackIcon,
+  BedIcon,
+  CheckIcon,
+  CloseIcon,
+  CompassIcon,
+  DragHandleIcon,
+  FitCheckIcon,
+  FitWarnIcon,
+  LockIcon,
+  MapPinIcon,
+  PlusIcon,
+  RefreshIcon,
+  TrashIcon,
+} from '@/components/icons';
 
 type Trip = {
   id: string;
@@ -138,144 +153,6 @@ async function authedFetch(url: string, body: any) {
     body: JSON.stringify(body),
   });
   return res.json();
-}
-
-function FitCheckIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function FitWarnIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 9v4M12 17h.01M10.29 3.86l-8.18 14A2 2 0 0 0 3.82 21h16.36a2 2 0 0 0 1.71-3.14l-8.18-14a2 2 0 0 0-3.42 0Z"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function DragHandleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-      <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" />
-      <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
-      <circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CompleteCheckIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-// Quick-complete affordance on each row — Dokkit's task rows lead with
-// exactly this, one tap to complete, no sheet required. Travel's rows
-// previously had no equivalent, forcing a three-tap detour through the
-// detail sheet just to check something off.
-function RowCheckIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 18 18">
-      <circle cx="9" cy="9" r="7.6" fill="none" stroke="var(--line-strong)" strokeWidth="1.6" />
-      <path
-        d="M5.3 9.3 L7.7 11.8 L12.7 6"
-        fill="none"
-        stroke="var(--moss)"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0"
-      />
-    </svg>
-  );
-}
-
-// Sits in the same slot a drag handle would occupy on a flexible row, so
-// fixed-time rows keep the same right-edge width instead of leaving an
-// empty gap — and gives "this is locked to its time" a visible signal,
-// which the fixed/flexible split never had until now.
-function LockIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function HotelIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <path d="M3 20V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M21 20v-8a2 2 0 0 0-2-2h-9v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M3 15h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="7" cy="9.5" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-function MapIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <path d="M12 21s-7-5.4-7-11a7 7 0 0 1 14 0c0 5.6-7 11-7 11Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="12" cy="10" r="2.6" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  );
-}
-
-function RefreshIcon({ spinning = false }: { spinning?: boolean }) {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      style={spinning ? { animation: 'spin 0.9s linear infinite' } : undefined}
-    >
-      <path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CompassIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-      <path d="m15.5 8.5-2 5-5 2 2-5 5-2Z" fill="currentColor" strokeWidth="1" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-    </svg>
-  );
 }
 
 function ActivityDetailSheet(props: {
@@ -412,7 +289,7 @@ function ActivityDetailSheet(props: {
           }}
           onClick={() => { onComplete(a.id); onClose(); }}
         >
-          <CompleteCheckIcon /> Mark complete
+          <FitCheckIcon /> Mark complete
         </button>
 
         {tripDays.length > 1 && (
@@ -893,7 +770,7 @@ export default function TripDayView() {
 
       <div className="app-header">
         <div className="app-header-left">
-          <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back">‹</button>
+          <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back"><BackIcon /></button>
           <div>
             <h1 className="app-title" style={{ fontSize: 'var(--text-lg)', lineHeight: 1.15 }}>{trip.name}</h1>
             {tripDays.length > 0 && selectedDayIndex >= 0 && (
@@ -914,8 +791,7 @@ export default function TripDayView() {
           return (
             <button
               key={d.id}
-              className={d.id === selectedDayId ? 'day-toggle-btn active' : 'day-toggle-btn'}
-              style={{ width: 'auto', borderRadius: 20, padding: '0 12px', flexShrink: 0 }}
+              className={d.id === selectedDayId ? 'day-toggle-btn pill active' : 'day-toggle-btn pill'}
               onClick={() => setSelectedDayId(d.id)}
             >
               {label.weekday} {label.date}
@@ -930,7 +806,7 @@ export default function TripDayView() {
               Dokkit's own hierarchy — "what fits today" leads, secondary
               utilities (accommodation, map) follow below it rather than
               burying the primary signal under button chrome. */}
-          <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
+          <div className={overloaded ? 'today-header-card flow overloaded' : 'today-header-card flow'}>
             <div className="header-compare-row">
               <div className="header-compare-stat">
                 <div className="header-compare-number mono">{fmtMins(minutesLeftToday)}</div>
@@ -987,7 +863,7 @@ export default function TripDayView() {
               onClick={() => setAccommodationSheetOpen(true)}
               title={selectedDay.base_location_text || 'Set accommodation'}
             >
-              <HotelIcon />
+              <BedIcon />
               <span>{selectedDay.base_location_text || 'Set stay'}</span>
             </button>
             {activities.length > 0 && (
@@ -997,7 +873,7 @@ export default function TripDayView() {
                 aria-label="View map"
                 title="View map"
               >
-                <MapIcon />
+                <MapPinIcon />
               </button>
             )}
             <button
@@ -1036,7 +912,7 @@ export default function TripDayView() {
             <div className="empty-state-title">Nothing planned for this day yet</div>
             <div className="empty-state-sub">Tap below or use the + button to add your first stop.</div>
             <button className="btn btn-steel" onClick={() => setCaptureOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <PlusIcon /> Add a stop
+              <PlusIcon size={16} /> Add a stop
             </button>
           </div>
         )}
@@ -1045,7 +921,7 @@ export default function TripDayView() {
             points below, so it lives next to them rather than buried. */}
         {legs.length === 0 && activities.length > 0 && (
           <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '0 0 var(--space-2)' }}>
-            No nearby suggestions available yet — set accommodation above, or pick at least two stop locations from search suggestions (not just typed).
+            Set accommodation or add stops from suggestions to unlock nearby finds.
           </p>
         )}
 
@@ -1101,7 +977,7 @@ export default function TripDayView() {
                         onClick={(e) => { e.stopPropagation(); completeActivity(a.id); }}
                         aria-label="Mark complete"
                       >
-                        <RowCheckIcon />
+                        <CheckIcon done={false} />
                       </button>
                       <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
                         <div className="task-text">{a.text}</div>
@@ -1109,26 +985,21 @@ export default function TripDayView() {
                           {a.time_type === 'fixed' && a.fixed_time && (
                             <span className="tag tag-due mono">{fmtClock(a.fixed_time)}</span>
                           )}
-                          <span className="tag tag-elapsed mono">{fmtMins(a.estimate_mins)} there</span>
-                          {a.drive_mins_to_next > 0 && (
-                            <span className="tag mono">+{fmtMins(a.drive_mins_to_next)} drive</span>
-                          )}
+                          <span className="tag tag-elapsed mono">
+                            {fmtMins(a.estimate_mins)} there
+                            {a.drive_mins_to_next > 0 ? ` + ${fmtMins(a.drive_mins_to_next)} drive` : ''}
+                          </span>
                           {a.location_text && (
-                            <span
-                              className="tag"
-                              style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}
-                              title={a.location_text}
-                            >
-                              {a.location_text}
+                            <span className="tag tag-location" title={a.location_text}>
+                              <MapPinIcon size={11} />
+                              <span className="tag-location-text">{a.location_text}</span>
                             </span>
                           )}
                           {a.location_text && a.lat == null && (
-                            <span className="tag tag-due">no coords — drive time skipped</span>
+                            <span className="tag tag-nocoords">drive not calculated</span>
                           )}
                           {fixedTimeConflicts[a.id] && (
-                            <span className="tag" style={{ background: 'var(--danger-bg)', color: 'var(--danger-text, var(--danger))' }}>
-                              won't make it in time
-                            </span>
+                            <span className="tag tag-conflict">won't make it</span>
                           )}
                         </div>
                       </div>
@@ -1213,7 +1084,7 @@ export default function TripDayView() {
       )}
 
       {!captureOpen && (
-        <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Add stop">+</button>
+        <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Add stop"><PlusIcon size={24} /></button>
       )}
 
       {openActivity && (

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
 import TopSwitcher from '@/components/TopSwitcher';
+import { BackIcon, CloseIcon, PlusIcon, TrashIcon } from '@/components/icons';
 
 type Trip = {
   id: string;
@@ -13,22 +14,6 @@ type Trip = {
   end_date: string;
   created_at: string;
 };
-
-function CloseIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function fmtDateRange(start: string, end: string): string {
   const [sy, sm, sd] = start.split('-').map((n) => parseInt(n, 10));
@@ -225,7 +210,7 @@ export default function TravelHome() {
 
       <div className="app-header">
         <div className="app-header-left">
-          <button className="back-link" onClick={() => router.push('/')} aria-label="Back">‹</button>
+          <button className="back-link" onClick={() => router.push('/')} aria-label="Back"><BackIcon /></button>
           <h1 className="app-title">Trips</h1>
         </div>
         <div className="app-header-right">
@@ -330,7 +315,7 @@ export default function TravelHome() {
       )}
 
       {trips.length > 0 && !createOpen && (
-        <button className="capture-fab" onClick={() => setCreateOpen(true)} aria-label="New trip">+</button>
+        <button className="capture-fab" onClick={() => setCreateOpen(true)} aria-label="New trip"><PlusIcon size={24} /></button>
       )}
     </div>
   );

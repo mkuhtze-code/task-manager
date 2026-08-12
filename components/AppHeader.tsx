@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import GearMenu from './GearMenu';
+import { BackIcon } from './icons';
 
 export default function AppHeader({
   title,
@@ -17,7 +18,7 @@ export default function AppHeader({
       <div className="app-header-left">
         {backHref && (
           <Link href={backHref} className="back-link" aria-label="Back">
-            ‹
+            <BackIcon />
           </Link>
         )}
         {title && <h1 className="app-title">{title}</h1>}
