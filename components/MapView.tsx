@@ -58,6 +58,13 @@ function MapView(props: {
   const markersRef = useRef<any[]>([]);
   const polylinesRef = useRef<any[]>([]);
   const lastBoundsRef = useRef<string | null>(null);
+  // Google Maps' own gesture layer can swallow the synthesized `click` after
+  // `touchend` on touch devices, so taps are handled directly on touchend.
+  // touchStartRef tracks where the finger went down to tell a tap from a
+  // map-pan drag; touchTapHandledRef lets the follow-up click (which fires
+  // right after a touchend on mobile) be ignored so the action runs once.
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchTapHandledRef = useRef(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [pendingOpen, setPendingOpen] = useState<{ label: string; url: string } | null>(null);
@@ -396,7 +403,23 @@ function MapView(props: {
           {hitPoints.map((hp) => (
             <button
               key={hp.key}
-              onClick={() => setPendingOpen({ label: hp.text, url: hp.url })}
+              onTouchStart={(e) => {
+                const t = e.changedTouches[0];
+                if (t) touchStartRef.current = { x: t.clientX, y: t.clientY };
+              }}
+              onTouchEnd={(e) => {
+                const start = touchStartRef.current;
+                touchStartRef.current = null;
+                if (!start) return;
+                const t = e.changedTouches[0];
+                if (!t || Math.hypot(t.clientX - start.x, t.clientY - start.y) > 10) return;
+                touchTapHandledRef.current = Date.now();
+                setPendingOpen({ label: hp.text, url: hp.url });
+              }}
+              onClick={() => {
+                if (Date.now() - touchTapHandledRef.current < 500) return;
+                setPendingOpen({ label: hp.text, url: hp.url });
+              }}
               title={hp.text}
               aria-label={`Open ${hp.text} in Google Maps`}
               style={{
