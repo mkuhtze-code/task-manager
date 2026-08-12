@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyUser } from '@/lib/verifyUser';
 import { checkRateLimit } from '@/lib/ratelimit';
+import { logError } from '@/lib/logError';
 
 type Coords = { lat: number; lng: number };
 type RouteLeg = { mins: number; polyline: string | null };
@@ -219,7 +220,11 @@ export async function POST(req: NextRequest) {
     updates.push({ id: last.id, drive_mins_to_next: leg?.mins ?? 0, route_polyline: leg?.polyline ?? null });
   }
 
-  await Promise.all(
+  // Persist every leg's drive time and polyline. supabase-js resolves
+  // { data, error } instead of throwing, so each result must be checked —
+  // a failed write (e.g. a missing column) would otherwise return ok:true
+  // while the DB still holds stale drive times and the UI shows them.
+  const results = await Promise.all(
     updates.map((u) =>
       supabaseAdmin
         .from('tasks')
@@ -227,6 +232,14 @@ export async function POST(req: NextRequest) {
         .eq('id', u.id)
     )
   );
+
+  const failedIndex = results.findIndex((r) => r.error);
+  if (failedIndex !== -1) {
+    const failedUpdate = updates[failedIndex];
+    const message = `Failed to persist drive leg${failedUpdate ? ` for task ${failedUpdate.id}` : ''}: ${results[failedIndex].error?.message ?? 'Unknown Supabase error'}`;
+    await logError('server', '/api/today/calculate-route', new Error(message), { failedUpdate }, auth.userId);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,
