@@ -6,6 +6,7 @@ import { fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { PlayIcon, StopIcon } from '@/components/icons';
+import { TaskInfo } from '@/components/TaskInfo';
 
 export function TaskDetailSheet(props: {
   task: Task;
@@ -23,6 +24,7 @@ export function TaskDetailSheet(props: {
   onToggleSubtaskDone: (subId: string, taskId: string, current: boolean) => void;
   onDeleteSubtask: (subId: string, taskId: string) => void;
   onDelete: (id: string) => void;
+  onSaveInfo: (id: string, info: string) => void;
   subDraftText: string;
   subDraftTime: string;
   setSubDraftText: (v: string) => void;
@@ -31,7 +33,7 @@ export function TaskDetailSheet(props: {
   const {
     task, subs, remainingForThis, liveLogged, anyActive, onClose, onSave,
     onComplete, onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
-    onDelete,
+    onDelete, onSaveInfo,
     subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
   } = props;
 
@@ -167,6 +169,13 @@ export function TaskDetailSheet(props: {
             Hidden from your list until {fmtSurfaceDate(surfaceDate)}.
           </p>
         )}
+
+        <span className="settings-label">Information</span>
+        <TaskInfo
+          value={task.info || ''}
+          onSave={(info) => onSaveInfo(task.id, info)}
+          surface="edit"
+        />
 
         <div className="task-detail-actions">
           {task.estimate_mins > 0 && (

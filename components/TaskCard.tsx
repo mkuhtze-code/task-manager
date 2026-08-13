@@ -10,6 +10,7 @@ import {
   PlayIcon,
   StopIcon,
 } from '@/components/icons';
+import { TaskInfo } from '@/components/TaskInfo';
 
 export function TaskCard(props: {
   task: Task;
@@ -26,6 +27,7 @@ export function TaskCard(props: {
   onStart: (id: string) => void;
   onStop: (id: string) => void;
   onToggleSubtaskDone: (subtaskId: string, taskId: string, current: boolean) => void;
+  onSaveInfo: (id: string, info: string) => void;
   dragHandleProps?: {
     onPointerDown: (e: React.PointerEvent) => void;
     onPointerMove: (e: React.PointerEvent) => void;
@@ -35,7 +37,7 @@ export function TaskCard(props: {
   const {
     task: t, remainingForThis, liveLogged, overCap, anyActive, subs, learnedHint,
     expanded, onToggleExpand, onOpenDetails, onComplete, onStart, onStop,
-    onToggleSubtaskDone, dragHandleProps,
+    onToggleSubtaskDone, onSaveInfo, dragHandleProps,
   } = props;
 
   const timed = t.estimate_mins > 0;
@@ -148,6 +150,25 @@ export function TaskCard(props: {
             </div>
           )}
 
+          {(t.due_today || t.location_text || learnedHint) && (
+            <div className="task-reveal-meta">
+              {t.due_today && <span className="task-reveal-line due">Due today</span>}
+              {learnedHint && <span className="task-reveal-line">usually ~{learnedHint}</span>}
+              {t.location_text && (
+                <span className="task-reveal-line location" title={t.location_text}>
+                  <MapPinIcon size={13} />
+                  <span className="task-reveal-location-text">{t.location_text}</span>
+                </span>
+              )}
+            </div>
+          )}
+
+          <TaskInfo
+            value={t.info || ''}
+            onSave={(info) => onSaveInfo(t.id, info)}
+            surface="paper"
+          />
+
           {subs.length > 0 && (
             <div className="task-reveal-subtasks">
               <div className="task-reveal-subtasks-head">
@@ -166,19 +187,6 @@ export function TaskCard(props: {
                   {s.mins > 0 && <span className="task-reveal-subtask-mins mono">{fmtMins(s.mins)}</span>}
                 </div>
               ))}
-            </div>
-          )}
-
-          {(t.due_today || t.location_text || learnedHint) && (
-            <div className="task-reveal-meta">
-              {t.due_today && <span className="task-reveal-line due">Due today</span>}
-              {learnedHint && <span className="task-reveal-line">usually ~{learnedHint}</span>}
-              {t.location_text && (
-                <span className="task-reveal-line location" title={t.location_text}>
-                  <MapPinIcon size={13} />
-                  <span className="task-reveal-location-text">{t.location_text}</span>
-                </span>
-              )}
             </div>
           )}
 

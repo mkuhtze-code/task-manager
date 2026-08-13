@@ -26,6 +26,10 @@ export type Task = {
   lng: number | null;
   drive_mins_to_next: number;
   route_polyline: string | null;
+  // Freeform information the person would write underneath this task on
+  // paper. Plain multiline text; never auto-interpreted into subtasks,
+  // reminders, or any other structure.
+  info: string;
 };
 
 export type Subtask = {

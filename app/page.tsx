@@ -541,6 +541,20 @@ export default function Home() {
     if (sortMode === 'geo_aware') recalcRoute();
   }
 
+  // Freeform information ("what I'd write underneath this task on paper").
+  // A dedicated narrow write path so it never touches the other fields —
+  // saving info mid-capture must never clobber a text/time edit that is
+  // mid-blur elsewhere.
+  async function saveTaskInfo(id: string, info: string) {
+    const { error } = await supabase.from('tasks').update({ info }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not save the information: ' + error.message);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, info } : t)));
+  }
+
   async function toggleDueToday(id: string, current: boolean) {
     const { error } = await supabase.from('tasks').update({ due_today: !current }).eq('id', id);
     if (error) {
@@ -966,6 +980,7 @@ export default function Home() {
                   onStart={startTask}
                   onStop={stopTask}
                   onToggleSubtaskDone={toggleSubtaskDone}
+                  onSaveInfo={saveTaskInfo}
                   dragHandleProps={
                     sortMode === 'manual'
                       ? {
@@ -1067,6 +1082,7 @@ export default function Home() {
           onToggleSubtaskDone={toggleSubtaskDone}
           onDeleteSubtask={deleteSubtask}
           onDelete={deleteTask}
+          onSaveInfo={saveTaskInfo}
           subDraftText={subDraftText[openTask.id] || ''}
           subDraftTime={subDraftTime[openTask.id] || ''}
           setSubDraftText={(v) => setSubDraftText((prev) => ({ ...prev, [openTask.id]: v }))}

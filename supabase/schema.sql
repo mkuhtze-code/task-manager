@@ -59,7 +59,11 @@ create table if not exists tasks (
   over_notified boolean not null default false,
   last_overdue_ping_at timestamptz,
   drive_mins_to_next int not null default 0,
-  route_polyline text
+  route_polyline text,
+  -- Freeform information the person would write underneath this task on
+  -- paper (e.g. "1200 opening / 0.55 BMT / black screws"). Plain text,
+  -- intentionally unstructured. Capture first, interpret later.
+  info text
 );
 
 -- ── Subtasks ─────────────────────────────────────────────────────
@@ -462,6 +466,7 @@ alter table tasks add column if not exists lng double precision;
 alter table tasks add column if not exists last_overdue_ping_at timestamptz;
 alter table tasks add column if not exists drive_mins_to_next int not null default 0;
 alter table tasks add column if not exists route_polyline text;
+alter table tasks add column if not exists info text;
 
 alter table feedback add column if not exists user_last_read_at timestamptz;
 
