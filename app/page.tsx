@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 import { TaskCard } from '@/components/TaskCard';
+import { TravelLeg } from '@/components/TravelLeg';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
@@ -43,24 +44,6 @@ import {
 // One-shot browser geolocation for the route's start point. Resolves to
 // null when the API is unavailable, permission is denied, or the fix
 // doesn't arrive in time — the caller then falls back to Home/Work.
-// Quiet connective tissue between two geo-located tasks in geo_aware mode.
-// Renders as a hairline with a tiny drive-time label so the leg reads as a
-// property of the gap rather than a competing row; tapping it reveals the
-// full origin → destination detail without becoming a visual focal point.
-function TravelLeg({ label, detail }: { label: string; detail: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="leg-wrap">
-      <button className="leg-connector" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <span className="leg-connector-line" />
-        <span className="leg-connector-label">{label}</span>
-        <span className="leg-connector-line" />
-      </button>
-      {open && <div className="leg-detail">{detail}</div>}
-    </div>
-  );
-}
-
 function getGpsPosition(timeoutMs = 4000): Promise<Coords | null> {
   return new Promise((resolve) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -885,7 +868,7 @@ export default function Home() {
     }
   }
 
-  const activeTask = visibleTasks.find((t) => t.status === 'active') || null;
+  const activeTask = visibleTasks.find((t) => t.status === 'active' && t.estimate_mins > 0) || null;
   let activeLiveLogged = 0;
   if (activeTask && activeTask.started_at) {
     activeLiveLogged = activeTask.logged_mins + (Date.now() - new Date(activeTask.started_at).getTime()) / 60000;
@@ -939,7 +922,7 @@ export default function Home() {
           // List items (no estimate) can never be "over capacity" — there's
           // no time on the clock for them to compete for.
           const overCap = t.estimate_mins > 0 && cumulative > taskCapacity;
-          const anyActive = visibleTasks.some((x) => x.status === 'active');
+          const anyActive = visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0);
           const subs = subtasksByTask[t.id] || [];
           let liveLogged = t.logged_mins;
           if (t.status === 'active' && t.started_at) {
@@ -1073,7 +1056,7 @@ export default function Home() {
           subs={subtasksByTask[openTask.id] || []}
           remainingForThis={openTaskRemaining}
           liveLogged={openTaskLiveLogged}
-          anyActive={visibleTasks.some((x) => x.status === 'active')}
+          anyActive={visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0)}
           onClose={() => setOpenTaskId(null)}
           onSave={updateTask}
           onComplete={completeTask}

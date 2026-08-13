@@ -1150,7 +1150,7 @@ export default function TripDayView() {
             lng: selectedDay.base_lng,
             route_polyline: selectedDay.route_polyline,
           } : null}
-          activities={activities}
+          activities={activities.map((a) => ({ ...a, conflict: !!fixedTimeConflicts[a.id] }))}
           onClose={() => setMapOpen(false)}
         />
       )}

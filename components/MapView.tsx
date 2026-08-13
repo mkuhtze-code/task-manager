@@ -9,6 +9,8 @@ type MapActivity = {
   lat: number | null;
   lng: number | null;
   route_polyline: string | null;
+  status?: string;
+  conflict?: boolean;
 };
 
 type MapBase = {
@@ -291,7 +293,15 @@ function MapView(props: {
       const m = new g.maps.Marker({
         position: { lat: base.lat, lng: base.lng },
         map: mapRef.current,
-        label: 'B',
+        icon: {
+          path: g.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: '#2451d4',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
+        label: { text: 'B', color: '#ffffff', fontSize: '11px', fontWeight: '700' },
         title: base.location_text || 'Base',
       });
       markersRef.current.push(m);
@@ -300,11 +310,22 @@ function MapView(props: {
 
     activities.forEach((a, idx) => {
       if (a.lat == null || a.lng == null) return;
+      const markerState = a.conflict ? 'conflict' : a.status === 'done' ? 'done' : 'normal';
+      const markerColor = markerState === 'conflict' ? '#b45309' : markerState === 'done' ? '#93a3ab' : '#2451d4';
       const m = new g.maps.Marker({
         position: { lat: a.lat, lng: a.lng },
         map: mapRef.current,
-        label: String(idx + 1),
-        title: a.text,
+        icon: {
+          path: g.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: markerColor,
+          fillOpacity: markerState === 'done' ? 0.5 : 0.95,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
+        label: { text: String(idx + 1), color: '#ffffff', fontSize: '11px', fontWeight: '700' },
+        title: a.text + (markerState === 'conflict' ? " (won't make it)" : markerState === 'done' ? ' (done)' : ''),
+        opacity: markerState === 'done' ? 0.75 : 1,
       });
       markersRef.current.push(m);
       bounds.extend({ lat: a.lat, lng: a.lng });

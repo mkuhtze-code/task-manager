@@ -38,10 +38,11 @@ export function TaskCard(props: {
     onToggleSubtaskDone, dragHandleProps,
   } = props;
 
-  const startDisabled = anyActive && t.status !== 'active';
-  const isListItem = t.estimate_mins <= 0;
-  const active = t.status === 'active';
   const timed = t.estimate_mins > 0;
+  const isListItem = !timed;
+  const active = t.status === 'active';
+  const running = timed && active;
+  const startDisabled = anyActive && t.status !== 'active';
 
   let taskColorClass = '';
   if (overCap) {
@@ -59,7 +60,24 @@ export function TaskCard(props: {
   ].join(' ').trim();
 
   const doneSubs = subs.filter((s) => s.done).length;
-  const glanceRight = active ? fmtMins(liveLogged) : timed ? fmtMins(remainingForThis) : null;
+
+  // Exactly one quiet glance signal per card:
+  //  - timed + running → elapsed time + active dot
+  //  - timed + idle    → remaining time
+  //  - untimed + subs  → subtask progress (2/4)
+  //  - plain untimed   → nothing (the card is just its name)
+  let glanceRight: string | null = null;
+  let glanceKind: 'elapsed' | 'time' | 'subs' | null = null;
+  if (running) {
+    glanceRight = fmtMins(liveLogged);
+    glanceKind = 'elapsed';
+  } else if (timed) {
+    glanceRight = fmtMins(remainingForThis);
+    glanceKind = 'time';
+  } else if (subs.length > 0) {
+    glanceRight = `${doneSubs}/${subs.length}`;
+    glanceKind = 'subs';
+  }
 
   // Stops pointer/click bubbling so inner controls never toggle the card,
   // then runs the action.
@@ -94,14 +112,26 @@ export function TaskCard(props: {
           <div className="task-text">{t.text}</div>
         </div>
         <div className="task-card-glance" onClick={onToggleExpand}>
-          {active && <span className="task-card-active-dot" />}
+          {running && <span className="task-card-active-dot" />}
           {glanceRight && (
-            <span className={active ? 'task-card-elapsed mono' : 'task-card-time mono'}>{glanceRight}</span>
+            <span className={glanceKind === 'elapsed' ? 'task-card-elapsed mono' : 'task-card-time mono'}>{glanceRight}</span>
           )}
           <span className={expanded ? 'task-card-chevron open' : 'task-card-chevron'} aria-hidden="true">
             <ChevronIcon size={14} />
           </span>
         </div>
+        {dragHandleProps && (
+          <button
+            className="drag-handle-btn"
+            onPointerDown={(e) => { e.stopPropagation(); dragHandleProps.onPointerDown(e); }}
+            onPointerMove={(e) => { e.stopPropagation(); dragHandleProps.onPointerMove(e); }}
+            onPointerUp={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
+            onPointerCancel={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
+            aria-label="Drag to reorder"
+          >
+            <DragHandleIcon />
+          </button>
+        )}
       </div>
 
       {expanded && (
@@ -114,22 +144,9 @@ export function TaskCard(props: {
                   style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
                 />
               </div>
-              <span className="task-progress-label mono">{fmtMins(remainingForThis)} left</span>
+              <span className="task-progress-label mono">{fmtMins(remainingForThis)} remaining</span>
             </div>
           )}
-
-          <div className="task-reveal-meta">
-            {active && <span className="task-reveal-chip mono">elapsed {fmtMins(liveLogged)}</span>}
-            {t.due_today && <span className="task-reveal-chip due">due today</span>}
-            {overCap && <span className="task-reveal-chip warn">over today</span>}
-            {learnedHint && <span className="task-reveal-chip">usually ~{learnedHint}</span>}
-            {t.location_text && (
-              <span className="task-reveal-location" title={t.location_text}>
-                <MapPinIcon size={13} />
-                <span className="task-reveal-location-text">{t.location_text}</span>
-              </span>
-            )}
-          </div>
 
           {subs.length > 0 && (
             <div className="task-reveal-subtasks">
@@ -152,45 +169,39 @@ export function TaskCard(props: {
             </div>
           )}
 
+          {(t.due_today || t.location_text || learnedHint) && (
+            <div className="task-reveal-meta">
+              {t.due_today && <span className="task-reveal-line due">Due today</span>}
+              {learnedHint && <span className="task-reveal-line">usually ~{learnedHint}</span>}
+              {t.location_text && (
+                <span className="task-reveal-line location" title={t.location_text}>
+                  <MapPinIcon size={13} />
+                  <span className="task-reveal-location-text">{t.location_text}</span>
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="task-actions">
-            <button
-              className={active ? 'task-action-btn stop' : 'task-action-btn primary'}
-              disabled={!active && startDisabled}
-              onPointerDown={stopPointer}
-              onPointerUp={stopPointer}
-              onClick={isolate(() => {
-                if (active) onStop(t.id);
-                else if (!startDisabled) onStart(t.id);
-              })}
-              aria-label={active ? 'Stop timer' : 'Start timer'}
-            >
-              {active ? <StopIcon /> : <PlayIcon />}
-              <span>{active ? 'Stop' : 'Start'}</span>
-            </button>
-            <button
-              className="task-action-btn ghost"
-              onPointerDown={stopPointer}
-              onPointerUp={stopPointer}
-              onClick={isolate(() => onComplete(t.id))}
-            >
-              <CheckIcon done={false} />
-              <span>Complete</span>
-            </button>
+            {timed && (
+              <button
+                className={active ? 'task-action-btn stop' : 'task-action-btn primary'}
+                disabled={!active && startDisabled}
+                onPointerDown={stopPointer}
+                onPointerUp={stopPointer}
+                onClick={isolate(() => {
+                  if (active) onStop(t.id);
+                  else if (!startDisabled) onStart(t.id);
+                })}
+                aria-label={active ? 'Stop timer' : 'Start timer'}
+              >
+                {active ? <StopIcon /> : <PlayIcon />}
+                <span>{active ? 'Stop' : 'Start'}</span>
+              </button>
+            )}
             <button className="task-action-link" onClick={isolate(onOpenDetails)}>
               Details
             </button>
-            {dragHandleProps && (
-              <button
-                className="drag-handle-btn task-action-drag"
-                onPointerDown={(e) => { e.stopPropagation(); dragHandleProps.onPointerDown(e); }}
-                onPointerMove={(e) => { e.stopPropagation(); dragHandleProps.onPointerMove(e); }}
-                onPointerUp={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
-                onPointerCancel={(e) => { e.stopPropagation(); dragHandleProps.onPointerUp(e); }}
-                aria-label="Drag to reorder"
-              >
-                <DragHandleIcon />
-              </button>
-            )}
           </div>
         </div>
       )}

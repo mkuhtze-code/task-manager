@@ -169,14 +169,16 @@ export function TaskDetailSheet(props: {
         )}
 
         <div className="task-detail-actions">
-          {task.status === 'active' ? (
-            <button className="btn btn-ghost start-stop-btn" style={{ flex: 1 }} onClick={() => onStop(task.id)}>
-              <StopIcon /> Stop <span className="mono" style={{ fontWeight: 600 }}>{fmtMins(liveLogged)}</span>
-            </button>
-          ) : (
-            <button className="btn btn-steel start-stop-btn" style={{ flex: 1 }} disabled={startDisabled} onClick={() => onStart(task.id)}>
-              <PlayIcon /> Start
-            </button>
+          {task.estimate_mins > 0 && (
+            task.status === 'active' ? (
+              <button className="btn btn-ghost start-stop-btn" style={{ flex: 1 }} onClick={() => onStop(task.id)}>
+                <StopIcon /> Stop <span className="mono" style={{ fontWeight: 600 }}>{fmtMins(liveLogged)}</span>
+              </button>
+            ) : (
+              <button className="btn btn-steel start-stop-btn" style={{ flex: 1 }} disabled={startDisabled} onClick={() => onStart(task.id)}>
+                <PlayIcon /> Start
+              </button>
+            )
           )}
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { onComplete(task.id); onClose(); }}>
             Complete
