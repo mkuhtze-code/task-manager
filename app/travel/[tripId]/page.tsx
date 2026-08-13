@@ -988,72 +988,68 @@ export default function TripDayView() {
           return (
             <div key={a.id} ref={(el) => { rowElsRef.current[a.id] = el; }} style={rowStyle}>
               <div className={a.activity_type === 'stop' ? 'task-row' : 'task-row task-list-item'}>
-                <div className="swipe-zone">
-                  <div className="swipe-foreground">
-                    <div className="task-main">
-                      <button
-                        className="check-btn"
-                        onClick={(e) => { e.stopPropagation(); completeActivity(a.id); }}
-                        aria-label="Mark complete"
-                      >
-                        <CheckIcon done={false} />
-                      </button>
-                      <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
-                        <div className="task-text">{a.text}</div>
-                        <div className="task-tags">
-                          {a.time_type === 'fixed' && a.fixed_time && (
-                            <span className="tag tag-due mono">{fmtClock(a.fixed_time)}</span>
-                          )}
-                          <span className="tag tag-elapsed mono">
-                            {fmtMins(a.estimate_mins)} there
-                            {a.drive_mins_to_next > 0 ? ` + ${fmtMins(a.drive_mins_to_next)} drive` : ''}
-                          </span>
-                          {a.location_text && (
-                            <span className="tag tag-location" title={a.location_text}>
-                              <MapPinIcon size={11} />
-                              <span className="tag-location-text">{a.location_text}</span>
-                            </span>
-                          )}
-                          {a.location_text && a.lat == null && (
-                            <span className="tag tag-nocoords">drive not calculated</span>
-                          )}
-                          {fixedTimeConflicts[a.id] && (
-                            <span className="tag tag-conflict">won't make it</span>
-                          )}
-                        </div>
-                      </div>
-                      {a.time_type === 'flexible' ? (
-                        <button
-                          className="drag-handle-btn"
-                          onPointerDown={(e) => { e.stopPropagation(); handleDragHandlePointerDown(e, a.id, orderedIds); }}
-                          onPointerMove={(e) => { e.stopPropagation(); handleDragHandlePointerMove(e); }}
-                          onPointerUp={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
-                          onPointerCancel={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
-                          aria-label="Drag to reorder"
-                        >
-                          <DragHandleIcon />
-                        </button>
-                      ) : (
-                        <span
-                          className="drag-handle-btn"
-                          style={{ color: 'var(--ink-faint)', cursor: 'default' }}
-                          title="Fixed time — locked in place"
-                          aria-label="Fixed time, locked in place"
-                        >
-                          <LockIcon />
+                <div className="task-main">
+                  <button
+                    className="check-btn"
+                    onClick={(e) => { e.stopPropagation(); completeActivity(a.id); }}
+                    aria-label="Mark complete"
+                  >
+                    <CheckIcon done={false} />
+                  </button>
+                  <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
+                    <div className="task-text">{a.text}</div>
+                    <div className="task-tags">
+                      {a.time_type === 'fixed' && a.fixed_time && (
+                        <span className="tag tag-due mono">{fmtClock(a.fixed_time)}</span>
+                      )}
+                      <span className="tag tag-elapsed mono">
+                        {fmtMins(a.estimate_mins)} there
+                        {a.drive_mins_to_next > 0 ? ` + ${fmtMins(a.drive_mins_to_next)} drive` : ''}
+                      </span>
+                      {a.location_text && (
+                        <span className="tag tag-location" title={a.location_text}>
+                          <MapPinIcon size={11} />
+                          <span className="tag-location-text">{a.location_text}</span>
                         </span>
                       )}
+                      {a.location_text && a.lat == null && (
+                        <span className="tag tag-nocoords">drive not calculated</span>
+                      )}
+                      {fixedTimeConflicts[a.id] && (
+                        <span className="tag tag-conflict">won't make it</span>
+                      )}
                     </div>
-                    {legAfterThis && (
-                      <button
-                        className="nearby-pill"
-                        onClick={(e) => { e.stopPropagation(); findNearby(legAfterThis); }}
-                      >
-                        <CompassIcon /> Nearby
-                      </button>
-                    )}
                   </div>
+                  {a.time_type === 'flexible' ? (
+                    <button
+                      className="drag-handle-btn"
+                      onPointerDown={(e) => { e.stopPropagation(); handleDragHandlePointerDown(e, a.id, orderedIds); }}
+                      onPointerMove={(e) => { e.stopPropagation(); handleDragHandlePointerMove(e); }}
+                      onPointerUp={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
+                      onPointerCancel={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
+                      aria-label="Drag to reorder"
+                    >
+                      <DragHandleIcon />
+                    </button>
+                  ) : (
+                    <span
+                      className="drag-handle-btn"
+                      style={{ color: 'var(--ink-faint)', cursor: 'default' }}
+                      title="Fixed time — locked in place"
+                      aria-label="Fixed time, locked in place"
+                    >
+                      <LockIcon />
+                    </span>
+                  )}
                 </div>
+                {legAfterThis && (
+                  <button
+                    className="nearby-pill"
+                    onClick={(e) => { e.stopPropagation(); findNearby(legAfterThis); }}
+                  >
+                    <CompassIcon /> Nearby
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -1061,44 +1057,46 @@ export default function TripDayView() {
       </div>
 
       {captureOpen && (
-        <div className="capture-sheet">
-          <div className="task-detail-header" style={{ marginBottom: 0 }}>
-            <div className="settings-panel-title">Add stop</div>
-            <button className="gear-btn" onClick={closeCapture} aria-label="Close">
-              <CloseIcon />
-            </button>
-          </div>
-          <input
-            type="text"
-            value={captureText}
-            onChange={(e) => setCaptureText(e.target.value)}
-            placeholder="What's the stop?"
-          />
-          <LocationAutocomplete
-            value={captureLocation}
-            placeholder="Search for a place"
-            onChange={setCaptureLocation}
-            onPlaceSelected={(result) => {
-              setCaptureLocation(result.formattedAddress);
-              setCaptureCoords({ lat: result.lat, lng: result.lng });
-            }}
-          />
-          <div className="segmented">
-            <button className={captureTimeType === 'flexible' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setCaptureTimeType('flexible')}>Flexible</button>
-            <button className={captureTimeType === 'fixed' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setCaptureTimeType('fixed')}>Fixed time</button>
-          </div>
-          {captureTimeType === 'fixed' && (
-            <div>
-              <span className="settings-label">At</span>
-              <input type="time" value={captureFixedTime} onChange={(e) => setCaptureFixedTime(e.target.value)} style={{ width: '100%' }} />
+        <div className="sheet-backdrop" onClick={closeCapture}>
+          <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="task-detail-header" style={{ marginBottom: 0 }}>
+              <div className="settings-panel-title">Add stop</div>
+              <button className="gear-btn" onClick={closeCapture} aria-label="Close">
+                <CloseIcon />
+              </button>
             </div>
-          )}
-          <div>
-            <span className="settings-label">Time there</span>
-            <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} style={{ width: '100%' }} />
+            <input
+              type="text"
+              value={captureText}
+              onChange={(e) => setCaptureText(e.target.value)}
+              placeholder="What's the stop?"
+            />
+            <LocationAutocomplete
+              value={captureLocation}
+              placeholder="Search for a place"
+              onChange={setCaptureLocation}
+              onPlaceSelected={(result) => {
+                setCaptureLocation(result.formattedAddress);
+                setCaptureCoords({ lat: result.lat, lng: result.lng });
+              }}
+            />
+            <div className="segmented">
+              <button className={captureTimeType === 'flexible' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setCaptureTimeType('flexible')}>Flexible</button>
+              <button className={captureTimeType === 'fixed' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setCaptureTimeType('fixed')}>Fixed time</button>
+            </div>
+            {captureTimeType === 'fixed' && (
+              <div>
+                <span className="settings-label">At</span>
+                <input type="time" value={captureFixedTime} onChange={(e) => setCaptureFixedTime(e.target.value)} style={{ width: '100%' }} />
+              </div>
+            )}
+            <div>
+              <span className="settings-label">Time there</span>
+              <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} style={{ width: '100%' }} />
+            </div>
+            {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+            <button className="btn btn-steel" onClick={addActivity}>Add stop</button>
           </div>
-          {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-          <button className="btn btn-steel" onClick={addActivity}>Add stop</button>
         </div>
       )}
 

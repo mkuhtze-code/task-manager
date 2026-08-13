@@ -40,6 +40,7 @@ export type Meeting = {
   id: string;
   text: string;
   duration_mins: number;
+  start_time: string | null;
 };
 
 export type SortMode = 'capacity_first' | 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first' | 'geo_aware';

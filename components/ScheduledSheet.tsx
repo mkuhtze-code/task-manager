@@ -19,7 +19,7 @@ export function ScheduledSheet(props: {
           <button className="btn-text" onClick={onClose}>Close</button>
         </div>
         {sorted.length === 0 ? (
-          <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Nothing scheduled for later.</p>
+          <p className="settings-help">Nothing scheduled for later.</p>
         ) : (
           sorted.map((t) => (
             <div key={t.id} className="scheduled-item">

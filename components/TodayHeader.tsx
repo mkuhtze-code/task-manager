@@ -1,20 +1,15 @@
 'use client';
 
-import type { Task } from '@/lib/taskTypes';
+import { useState } from 'react';
 import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import GearMenu from '@/components/GearMenu';
 import TopSwitcher from '@/components/TopSwitcher';
-import { FitCheckIcon, FitWarnIcon, StopIcon } from '@/components/icons';
+import { ChevronIcon, FitCheckIcon, FitWarnIcon } from '@/components/icons';
 
 export function TodayHeader(props: {
   overloaded: boolean;
   weekdayLabel: string;
   dateOnlyLabel: string;
-  activeTask: Task | null;
-  activeOverEstimate: boolean;
-  activeLiveLogged: number;
-  onOpenActiveTask: () => void;
-  onStopActiveTask: () => void;
   isWorkDay: boolean;
   minutesLeftToday: number;
   remainingWorkMins: number;
@@ -31,16 +26,17 @@ export function TodayHeader(props: {
   onViewMap: () => void;
 }) {
   const {
-    overloaded, weekdayLabel, dateOnlyLabel, activeTask, activeOverEstimate,
-    activeLiveLogged, onOpenActiveTask, onStopActiveTask, isWorkDay, minutesLeftToday,
+    overloaded, weekdayLabel, dateOnlyLabel, isWorkDay, minutesLeftToday,
     remainingWorkMins, nowPercent, planWidthPercent, workStart, workEnd, geoAware,
     recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError, hasRoute, onViewMap,
   } = props;
 
+  const [capacityOpen, setCapacityOpen] = useState(false);
+
+  const overBy = remainingWorkMins - minutesLeftToday;
+
   return (
-    <div
-      className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}
-    >
+    <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
       <div className="today-header-top-row">
         <div className="today-header-date-block">
           <div className="today-header-weekday">{weekdayLabel}</div>
@@ -52,96 +48,100 @@ export function TodayHeader(props: {
         </div>
       </div>
 
-      {activeTask && (
-        <div
-          className={activeOverEstimate ? 'header-active-strip over' : 'header-active-strip'}
-          onClick={(e) => { e.stopPropagation(); onOpenActiveTask(); }}
-        >
-          <span className="header-active-dot" />
-          <span className="header-active-text">{activeTask.text}</span>
-          <span className="header-active-elapsed mono">{fmtMins(activeLiveLogged)}</span>
-          <button
-            className="header-active-stop"
-            onClick={(e) => { e.stopPropagation(); onStopActiveTask(); }}
-            aria-label="Stop timer"
-          >
-            <StopIcon />
-          </button>
-        </div>
-      )}
-
       {isWorkDay ? (
-        <>
-          <div className="header-compare-row">
-            <div className="header-compare-stat">
-              <div className="header-compare-number mono">{fmtMins(minutesLeftToday)}</div>
-              <div className="header-compare-label">time left</div>
-            </div>
-            <div className={overloaded ? 'header-fit-icon over' : 'header-fit-icon fits'}>
-              {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
-            </div>
-            <div className="header-compare-stat">
-              <div className={overloaded ? 'header-compare-number mono over' : 'header-compare-number mono'}>
-                {fmtMins(remainingWorkMins)}
-              </div>
-              <div className="header-compare-label">to get done</div>
-            </div>
-          </div>
+        <div className="today-capacity">
+          <button
+            className={overloaded ? 'today-capacity-toggle over' : 'today-capacity-toggle'}
+            onClick={() => setCapacityOpen((v) => !v)}
+            aria-expanded={capacityOpen}
+            aria-label="Toggle capacity details"
+          >
+            <span className="today-capacity-summary">
+              <span className={overloaded ? 'header-fit-icon over' : 'header-fit-icon fits'}>
+                {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
+              </span>
+              <span className="today-capacity-title">
+                {overloaded
+                  ? `Over by ${fmtMins(overBy)}`
+                  : `On track · ${fmtMins(remainingWorkMins)} to go`}
+              </span>
+            </span>
+            <span
+              className={capacityOpen ? 'today-capacity-chevron open' : 'today-capacity-chevron'}
+              aria-hidden="true"
+            >
+              <ChevronIcon size={14} />
+            </span>
+          </button>
 
-          <div className="day-rail-wrap">
-            <div className="day-rail-track">
-              <div className="day-rail-elapsed" style={{ width: `${nowPercent * 100}%` }} />
-              <div
-                className={overloaded ? 'day-rail-plan over' : 'day-rail-plan'}
-                style={{ left: `${nowPercent * 100}%`, width: `${planWidthPercent * 100}%` }}
-              />
-              <div
-                className={activeTask ? 'day-rail-now-dot active' : 'day-rail-now-dot'}
-                style={{ left: `${nowPercent * 100}%` }}
-              />
-            </div>
-            <div className="day-rail-labels">
-              <span>{fmtClock(workStart)}</span>
-              {overloaded && (
-                <span className="day-rail-overflow-label">+{fmtMins(remainingWorkMins - minutesLeftToday)}</span>
-              )}
-              <span>{fmtClock(workEnd)}</span>
-            </div>
-          </div>
-
-          {geoAware && (
-            <div style={{ marginTop: 'var(--space-2)' }}>
-              <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button
-                  className="btn-text"
-                  style={{ padding: 0 }}
-                  onClick={(e) => { e.stopPropagation(); onRecalcRoute(); }}
-                  disabled={recalculatingRoute}
-                >
-                  {recalculatingRoute
-                    ? 'Recalculating route…'
-                    : currentBaseLabel
-                      ? `Recalculate route (from ${currentBaseLabel === 'work' ? 'office' : 'home'})`
-                      : 'Recalculate route'}
-                </button>
-                {hasRoute && (
-                  <button
-                    className="btn-text"
-                    style={{ padding: 0 }}
-                    onClick={(e) => { e.stopPropagation(); onViewMap(); }}
-                  >
-                    View Map
-                  </button>
-                )}
+          {capacityOpen && (
+            <div className="today-capacity-detail">
+              <div className="header-compare-row">
+                <div className="header-compare-stat">
+                  <div className="header-compare-number mono">{fmtMins(minutesLeftToday)}</div>
+                  <div className="header-compare-label">time left</div>
+                </div>
+                <div className="header-compare-stat">
+                  <div className={overloaded ? 'header-compare-number mono over' : 'header-compare-number mono'}>
+                    {fmtMins(remainingWorkMins)}
+                  </div>
+                  <div className="header-compare-label">to get done</div>
+                </div>
               </div>
-              {routeError && (
-                <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', margin: '4px 0 0' }}>
-                  {routeError}
-                </p>
+
+              <div className="day-rail-wrap">
+                <div className="day-rail-track">
+                  <div className="day-rail-elapsed" style={{ width: `${nowPercent * 100}%` }} />
+                  <div
+                    className={overloaded ? 'day-rail-plan over' : 'day-rail-plan'}
+                    style={{ left: `${nowPercent * 100}%`, width: `${planWidthPercent * 100}%` }}
+                  />
+                  <div className="day-rail-now-dot" style={{ left: `${nowPercent * 100}%` }} />
+                </div>
+                <div className="day-rail-labels">
+                  <span>{fmtClock(workStart)}</span>
+                  {overloaded && (
+                    <span className="day-rail-overflow-label">+{fmtMins(overBy)}</span>
+                  )}
+                  <span>{fmtClock(workEnd)}</span>
+                </div>
+              </div>
+
+              {geoAware && (
+                <div style={{ marginTop: 'var(--space-2)' }}>
+                  <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn-text"
+                      style={{ padding: 0 }}
+                      onClick={(e) => { e.stopPropagation(); onRecalcRoute(); }}
+                      disabled={recalculatingRoute}
+                    >
+                      {recalculatingRoute
+                        ? 'Recalculating route…'
+                        : currentBaseLabel
+                          ? `Recalculate route (from ${currentBaseLabel === 'work' ? 'office' : 'home'})`
+                          : 'Recalculate route'}
+                    </button>
+                    {hasRoute && (
+                      <button
+                        className="btn-text"
+                        style={{ padding: 0 }}
+                        onClick={(e) => { e.stopPropagation(); onViewMap(); }}
+                      >
+                        View Map
+                      </button>
+                    )}
+                  </div>
+                  {routeError && (
+                    <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', margin: '4px 0 0' }}>
+                      {routeError}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}
-        </>
+        </div>
       ) : (
         <div className="header-off-row">
           <div className="header-compare-number mono">Off</div>

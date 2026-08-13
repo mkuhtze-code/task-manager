@@ -380,8 +380,8 @@ function MapView(props: {
           <button className="btn-text" onClick={onClose}>Close</button>
         </div>
 
-        {loading && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Loading map…</p>}
-        {error && <p style={{ color: 'var(--danger-text, var(--danger))', fontSize: 13 }}>{error}</p>}
+        {loading && <p className="settings-help">Loading map…</p>}
+        {error && <p className="settings-help" style={{ color: 'var(--danger-text, var(--danger))' }}>{error}</p>}
 
         <div
           style={{

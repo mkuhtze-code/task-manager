@@ -1,8 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
+import GearMenu from '@/components/GearMenu';
+import TopSwitcher from '@/components/TopSwitcher';
+import { BackIcon } from '@/components/icons';
 import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
 
 type CompletedTask = {
@@ -125,6 +129,7 @@ function confidenceTag(count: number): string {
 }
 
 export default function Analytics() {
+  const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     todayTasks: [],
@@ -223,9 +228,18 @@ export default function Analytics() {
 
   return (
     <div className="app-shell">
-      <AppHeader title="Patterns" backHref="/" />
+      <div className="app-header">
+        <div className="app-header-left">
+          <button className="back-link" onClick={() => router.push('/')} aria-label="Back"><BackIcon /></button>
+          <h1 className="app-title">Patterns</h1>
+        </div>
+        <div className="app-header-right">
+          <TopSwitcher active="patterns" />
+          <GearMenu />
+        </div>
+      </div>
 
-      <p style={{ color: 'var(--ink-soft)', fontSize: 13, lineHeight: 1.5, marginTop: 'var(--space-4)', marginBottom: 0 }}>
+      <p className="settings-help" style={{ marginTop: 'var(--space-4)' }}>
         A quiet look at how your time actually went — not a scoreboard.
       </p>
 

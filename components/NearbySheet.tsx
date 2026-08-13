@@ -62,16 +62,16 @@ export default function NearbySheet(props: {
           ))}
         </div>
 
-        {loading && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Checking real drive times…</p>}
+        {loading && <p className="settings-help">Checking real drive times…</p>}
 
         {!loading && error && (
-          <p style={{ color: 'var(--danger-text, var(--danger))', fontSize: 13 }}>
+          <p className="settings-help" style={{ color: 'var(--danger-text, var(--danger))' }}>
             Search failed: {error}
           </p>
         )}
 
         {!loading && !error && suggestions.length === 0 && (
-          <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Nothing worth a detour found near this drive.</p>
+          <p className="settings-help">Nothing worth a detour found near this drive.</p>
         )}
 
         <div className="priority-option-list">

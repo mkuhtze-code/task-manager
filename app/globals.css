@@ -114,6 +114,10 @@ button:focus-visible, input:focus-visible {
   padding: 0 var(--space-4) 110px;
 }
 
+.app-shell.has-active {
+  padding-bottom: 178px;
+}
+
 .app-header {
   position: sticky;
   top: 0;
@@ -164,12 +168,6 @@ button:focus-visible, input:focus-visible {
   font-weight: 800;
   margin: 0;
   letter-spacing: -0.03em;
-}
-
-.app-date {
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-  font-weight: 500;
 }
 
 .gear-menu-wrap {
@@ -272,59 +270,6 @@ button:focus-visible, input:focus-visible {
   margin-bottom: var(--space-3);
 }
 
-.today-header-date {
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-  font-weight: 600;
-}
-
-.capacity-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.capacity-ring-wrap {
-  position: relative;
-  width: 96px;
-  height: 96px;
-  flex-shrink: 0;
-}
-
-.capacity-ring-wrap svg {
-  transform: rotate(0deg);
-}
-
-.capacity-number-block {
-  flex: 1;
-  min-width: 0;
-}
-
-.capacity-hero-number {
-  font-size: var(--text-display-lg);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  color: var(--ink);
-}
-
-.today-header-card.overloaded .capacity-hero-number {
-  color: var(--hazard-text, var(--hazard));
-}
-
-.capacity-hero-label {
-  font-size: var(--text-xs);
-  color: var(--ink-soft);
-  font-weight: 500;
-}
-
-.capacity-warn-line {
-  font-size: var(--text-xs);
-  color: var(--hazard-text, var(--hazard));
-  font-weight: 700;
-  margin-top: 2px;
-}
-
 .settings-panel {
   background: var(--paper-raised);
   border-radius: var(--radius-md);
@@ -357,6 +302,16 @@ button:focus-visible, input:focus-visible {
   font-size: var(--text-sm);
   color: var(--ink-soft);
   margin-right: 2px;
+}
+
+/* Recurring helper paragraph inside panels and sheets — the "context
+   line" that explains a setting or a sheet's current state. One shared
+   treatment so these never drift from each other via inline styles. */
+.settings-help {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
 }
 
 .day-toggle-row {
@@ -515,7 +470,13 @@ button:focus-visible, input:focus-visible {
     0 4px 12px rgba(var(--shadow-rgb), 0.055),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
   overflow: hidden;
+  background: var(--paper);
+  padding: 10px var(--space-4);
   transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.task-row.task-list-item {
+  background: var(--paper-raised);
 }
 
 .task-row::before {
@@ -544,46 +505,6 @@ button:focus-visible, input:focus-visible {
   background: var(--hazard);
 }
 
-.swipe-zone {
-  position: relative;
-  overflow: hidden;
-}
-
-.swipe-reveal-right {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 92px;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 3px;
-  color: white;
-  font-size: var(--text-2xs);
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-}
-
-.swipe-foreground {
-  position: relative;
-  z-index: 2;
-  background: var(--paper-raised);
-  padding: 12px var(--space-4);
-  touch-action: pan-y;
-  transition: background 0.2s var(--ease);
-}
-
-.task-row.task-overtime .swipe-foreground {
-  background: var(--hazard-bg);
-}
-
-.task-row.task-due-today .swipe-foreground {
-  background: var(--steel-wash);
-}
 
 .task-main {
   display: flex;
@@ -723,29 +644,6 @@ button:focus-visible, input:focus-visible {
   color: var(--danger-text, var(--danger));
 }
 
-/* Travel leg between located tasks in geo_aware mode — a quiet divider
-   row showing the real drive time for that segment. */
-.travel-leg {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 2px 0;
-  font-size: var(--text-2xs);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--ink-soft);
-}
-
-.travel-leg-emoji {
-  opacity: 0.85;
-}
-
-.travel-leg-label {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-}
-
 /* ── Today card system: progressive disclosure ──────────────────
    Resting cards are quiet rows (name + estimate) separated by
    whitespace; tapping expands a reveal tier with progress, metadata,
@@ -791,6 +689,8 @@ button:focus-visible, input:focus-visible {
 .task-card {
   position: relative;
   overflow: hidden;
+  background: var(--paper);
+  padding: 10px var(--space-4);
 }
 
 .task-card::before {
@@ -815,19 +715,15 @@ button:focus-visible, input:focus-visible {
   background: var(--steel);
 }
 
-.task-card .swipe-foreground {
-  background: var(--paper);
-  padding: 10px var(--space-4);
-  touch-action: pan-y;
+.task-card.task-due-today {
+  background: var(--steel-wash);
 }
 
-.task-card.task-overtime .swipe-foreground {
-  background: var(--paper);
+.task-card.task-list-item {
+  background: var(--paper-raised);
 }
 
-.task-card.task-due-today .swipe-foreground {
-  background: var(--paper);
-}
+
 
 .task-card .task-main {
   display: flex;
@@ -1085,36 +981,6 @@ button:focus-visible, input:focus-visible {
   padding: 0 0 6px;
 }
 
-.btn-due-today {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  color: var(--ink-soft);
-  font-size: 16px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: background 0.2s var(--ease), color 0.2s var(--ease);
-  cursor: pointer;
-}
-
-.btn-due-today:hover {
-  background: var(--line);
-  color: var(--ink);
-}
-
-.task-row.task-due-today .btn-due-today {
-  color: var(--steel-text, var(--steel));
-}
-
-.task-row.task-due-today .btn-due-today:hover {
-  background: var(--steel-wash);
-}
-
 .subtask-panel {
   margin-top: var(--space-3);
   padding-top: var(--space-3);
@@ -1231,24 +1097,6 @@ button:focus-visible, input:focus-visible {
 @keyframes slide-up {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
-}
-
-@keyframes slide-down {
-  from { transform: translateY(0); }
-  to { transform: translateY(100%); }
-}
-
-@keyframes fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-
-.capture-sheet.closing {
-  animation: slide-down 0.3s var(--spring) forwards;
-}
-
-.sheet-backdrop.closing {
-  animation: fade-out 0.2s var(--ease) forwards;
 }
 
 .capture-sheet input[type="text"] {
@@ -2110,42 +1958,6 @@ button:focus-visible, input:focus-visible {
   color: var(--ink);
 }
 
-.capacity-ring-wrap {
-  width: 68px;
-  height: 68px;
-}
-
-.capacity-hero-label-emph {
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.capacity-warn-pill {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  background: rgba(180, 83, 9, 0.16);
-  color: var(--hazard-text, var(--hazard));
-  font-size: var(--text-2xs);
-  font-weight: 700;
-}
-
-.day-progress-track {
-  height: 3px;
-  border-radius: 2px;
-  background: var(--line);
-  margin-top: var(--space-4);
-  overflow: hidden;
-}
-
-.day-progress-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--steel);
-  transition: width 1s var(--ease);
-}
-
 .error-boundary-shell {
   min-height: 100vh;
   display: flex;
@@ -2391,28 +2203,19 @@ button:focus-visible, input:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: var(--space-3);
-  padding: 7px 10px;
+  padding: 9px 12px;
   border-radius: 12px;
-  background: var(--steel-wash);
-  cursor: pointer;
-}
-
-.header-active-strip.over {
   background: var(--hazard-bg);
+  cursor: default;
 }
 
 .header-active-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--steel);
+  background: var(--hazard-text, var(--hazard));
   flex-shrink: 0;
   animation: pulse-dot 1.6s ease-in-out infinite;
-}
-
-.header-active-strip.over .header-active-dot {
-  background: var(--hazard);
 }
 
 .header-active-text {
@@ -2426,46 +2229,76 @@ button:focus-visible, input:focus-visible {
   text-overflow: ellipsis;
 }
 
-.header-active-elapsed {
-  font-family: var(--font-digital);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--steel-text, var(--steel-dark));
-  flex-shrink: 0;
+.today-capacity {
+  margin-top: var(--space-2);
 }
 
-.header-active-strip.over .header-active-elapsed {
+.today-capacity-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 8px 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.today-capacity-toggle:focus-visible {
+  outline: 2px solid var(--steel);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.today-capacity-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.today-capacity-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.today-capacity-toggle.over .today-capacity-title {
   color: var(--hazard-text, var(--hazard));
 }
 
-.header-active-stop {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--steel);
-  color: white;
-  border: none;
+.today-capacity-chevron {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0;
+  color: var(--ink-faint);
   flex-shrink: 0;
+  transition: transform 0.2s var(--ease);
 }
 
-.header-active-strip.over .header-active-stop {
-  background: var(--hazard);
+.today-capacity-chevron.open {
+  transform: rotate(180deg);
 }
 
-.header-active-stop svg {
-  width: 12px;
-  height: 12px;
+.today-capacity-detail {
+  animation: today-capacity-reveal 0.2s var(--ease);
 }
 
-.day-rail-now-dot.active {
-  background: var(--steel);
-  animation: pulse-dot 1.6s ease-in-out infinite;
+@keyframes today-capacity-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 
 .capture-text-row {
   display: flex;
@@ -2532,9 +2365,6 @@ button:focus-visible, input:focus-visible {
   font-weight: 500;
 }
 
-.task-row.task-list-item .swipe-foreground {
-  background: var(--paper-raised);
-}
 
 .tag-reminder {
   background: var(--overflow-bg);

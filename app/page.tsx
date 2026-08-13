@@ -10,6 +10,7 @@ import { CaptureSheet } from '@/components/CaptureSheet';
 import { TodayHeader } from '@/components/TodayHeader';
 import MapView from '@/components/MapView';
 import { AuthScreen, OnboardingScreen } from '@/components/AuthScreen';
+import { PlusIcon, StopIcon } from '@/components/icons';
 import { useDragReorder } from '@/hooks/useDragReorder';
 import {
   buildClusters,
@@ -90,7 +91,6 @@ export default function Home() {
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
   const [subDraftText, setSubDraftText] = useState<Record<string, string>>({});
   const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
-  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [scheduledSheetOpen, setScheduledSheetOpen] = useState(false);
@@ -773,7 +773,11 @@ export default function Home() {
   const visibleTasks = tasks.filter((t) => !isScheduledForLater(t, todayStr));
   const scheduledTasks = tasks.filter((t) => isScheduledForLater(t, todayStr));
 
-  const meetingMins = meetings.reduce((sum, m) => sum + m.duration_mins, 0);
+  const todayMeetings = meetings.filter((m) => {
+    if (!m.start_time) return true;
+    return localDateStr(new Date(m.start_time)) === todayStr;
+  });
+  const meetingMins = todayMeetings.reduce((sum, m) => sum + m.duration_mins, 0);
 
   const todayDow = now.getDay();
   const isWorkDay = workDays.includes(todayDow);
@@ -889,18 +893,13 @@ export default function Home() {
   const activeOverEstimate = !!activeTask && activeTask.estimate_mins > 0 && activeLiveLogged > activeTask.estimate_mins;
 
   return (
-    <div className="app-shell">
+    <div className={activeTask ? 'app-shell has-active' : 'app-shell'}>
       <TravelAwarenessBanner />
 
       <TodayHeader
         overloaded={overloaded}
         weekdayLabel={weekdayLabel}
         dateOnlyLabel={dateOnlyLabel}
-        activeTask={activeTask}
-        activeOverEstimate={activeOverEstimate}
-        activeLiveLogged={activeLiveLogged}
-        onOpenActiveTask={() => { if (activeTask) setOpenTaskId(activeTask.id); }}
-        onStopActiveTask={() => { if (activeTask) stopTask(activeTask.id); }}
         isWorkDay={isWorkDay}
         minutesLeftToday={minutesLeftToday}
         remainingWorkMins={remainingWorkMins}
@@ -919,7 +918,19 @@ export default function Home() {
 
       <div className="task-list">
         {ordered.length === 0 && (
-          <div className="empty-state">Nothing on your plate yet.<br />Tap + to add something.</div>
+          <div className="empty-state">
+            <div className="empty-state-title">Nothing on your plate yet.</div>
+            <div className="empty-state-sub">
+              Add something and Dokkit will work out what realistically fits today.
+            </div>
+            <button
+              className="btn btn-steel"
+              onClick={() => setCaptureOpen(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <PlusIcon size={16} /> Add a task
+            </button>
+          </div>
         )}
         {ordered.map((t, idx) => {
           const remainingForThis = remainingForTask(t);
@@ -965,8 +976,6 @@ export default function Home() {
                   anyActive={anyActive}
                   subs={subs}
                   learnedHint={learnedHint}
-                  openSwipeId={openSwipeId}
-                  setOpenSwipeId={setOpenSwipeId}
                   expanded={expandedId === t.id}
                   onToggleExpand={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
                   onOpenDetails={() => { setExpandedId(null); setOpenTaskId(t.id); }}
@@ -1036,6 +1045,28 @@ export default function Home() {
         <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Dock it">+</button>
       )}
 
+      {activeTask && (
+        <div
+          className={activeOverEstimate ? 'active-timer-bar over' : 'active-timer-bar'}
+          onClick={() => { if (activeTask) setOpenTaskId(activeTask.id); }}
+        >
+          <span className="active-timer-info">
+            <span className="active-timer-dot" />
+            <span className="active-timer-text">{activeTask.text}</span>
+          </span>
+          <span className="active-timer-actions">
+            <span className="active-timer-elapsed mono">{fmtMins(activeLiveLogged)}</span>
+            <button
+              className="active-timer-stop"
+              onClick={(e) => { e.stopPropagation(); if (activeTask) stopTask(activeTask.id); }}
+              aria-label="Stop timer"
+            >
+              <StopIcon />
+            </button>
+          </span>
+        </div>
+      )}
+
       {openTask && (
         <TaskDetailSheet
           task={openTask}
@@ -1052,6 +1083,7 @@ export default function Home() {
           onAddSubtask={addSubtask}
           onToggleSubtaskDone={toggleSubtaskDone}
           onDeleteSubtask={deleteSubtask}
+          onDelete={deleteTask}
           subDraftText={subDraftText[openTask.id] || ''}
           subDraftTime={subDraftTime[openTask.id] || ''}
           setSubDraftText={(v) => setSubDraftText((prev) => ({ ...prev, [openTask.id]: v }))}

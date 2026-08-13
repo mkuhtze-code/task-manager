@@ -175,7 +175,7 @@ export default function AccommodationSheet(props: {
         </div>
 
         {stays.length === 0 && !adding && (
-          <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>No accommodation added yet.</p>
+          <p className="settings-help">No accommodation added yet.</p>
         )}
 
         <div className="priority-option-list">

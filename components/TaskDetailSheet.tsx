@@ -22,6 +22,7 @@ export function TaskDetailSheet(props: {
   onAddSubtask: (id: string) => void;
   onToggleSubtaskDone: (subId: string, taskId: string, current: boolean) => void;
   onDeleteSubtask: (subId: string, taskId: string) => void;
+  onDelete: (id: string) => void;
   subDraftText: string;
   subDraftTime: string;
   setSubDraftText: (v: string) => void;
@@ -30,6 +31,7 @@ export function TaskDetailSheet(props: {
   const {
     task, subs, remainingForThis, liveLogged, anyActive, onClose, onSave,
     onComplete, onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
+    onDelete,
     subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
   } = props;
 
@@ -218,6 +220,18 @@ export function TaskDetailSheet(props: {
             <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => onAddSubtask(task.id)}>add</button>
           </div>
         </div>
+
+        <button
+          className="btn btn-ghost danger-btn task-detail-delete"
+          onClick={() => {
+            if (confirm(`Delete "${task.text}"?`)) {
+              onDelete(task.id);
+              onClose();
+            }
+          }}
+        >
+          Delete task
+        </button>
       </div>
     </div>
   );

@@ -339,7 +339,7 @@ export default function Preferences() {
 
       <div className="settings-panel">
         <div className="settings-panel-title">Home &amp; work</div>
-        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+        <p className="settings-help">
           Used as the starting and ending point when Dokkit works out drive time for located tasks —
           your office during work hours (set above), home otherwise, switching automatically.
         </p>
@@ -386,7 +386,7 @@ export default function Preferences() {
 
       <div className="settings-panel">
         <div className="settings-panel-title">Task order</div>
-        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+        <p className="settings-help">
           How your task list is arranged. Choose "Manual" to drag tasks into whatever order matters
           to you — a drag handle appears on each task once this is selected.
         </p>
@@ -417,7 +417,7 @@ export default function Preferences() {
         {calendarMessage && <div className="settings-status">{calendarMessage}</div>}
         {calendarConnection ? (
           <>
-            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+            <p className="settings-help">
               Connected{calendarConnection.connected_email ? ` as ${calendarConnection.connected_email}` : ''}.
               Today's meetings are pulled in automatically and drop off your workload once they end —
               nothing to schedule or manage.
@@ -428,7 +428,7 @@ export default function Preferences() {
           </>
         ) : (
           <>
-            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+            <p className="settings-help">
               Outlook calendar sync is being finalized — Microsoft requires apps like this to go
               through an app verification process before it can connect reliably. This will open up
               in a future update.
@@ -442,7 +442,7 @@ export default function Preferences() {
 
       <div className="settings-panel">
         <div className="settings-panel-title">Notifications</div>
-        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+        <p className="settings-help">
           A nudge when a task is nearing its estimate, and again if it runs over — enough to keep
           you aware, not enough to nag.
         </p>
