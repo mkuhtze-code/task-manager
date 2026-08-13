@@ -10,7 +10,6 @@ export function TodayHeader(props: {
   overloaded: boolean;
   weekdayLabel: string;
   dateOnlyLabel: string;
-  onOpenAnalytics: () => void;
   activeTask: Task | null;
   activeOverEstimate: boolean;
   activeLiveLogged: number;
@@ -32,7 +31,7 @@ export function TodayHeader(props: {
   onViewMap: () => void;
 }) {
   const {
-    overloaded, weekdayLabel, dateOnlyLabel, onOpenAnalytics, activeTask, activeOverEstimate,
+    overloaded, weekdayLabel, dateOnlyLabel, activeTask, activeOverEstimate,
     activeLiveLogged, onOpenActiveTask, onStopActiveTask, isWorkDay, minutesLeftToday,
     remainingWorkMins, nowPercent, planWidthPercent, workStart, workEnd, geoAware,
     recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError, hasRoute, onViewMap,
@@ -41,7 +40,6 @@ export function TodayHeader(props: {
   return (
     <div
       className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}
-      onClick={onOpenAnalytics}
     >
       <div className="today-header-top-row">
         <div className="today-header-date-block">

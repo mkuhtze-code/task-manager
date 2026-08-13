@@ -174,12 +174,12 @@ export default function Preferences() {
   }
 
   async function saveWorkHours() {
-    await supabase
+    const { error } = await supabase
       .from('user_settings')
       .update({ work_start: workStart, work_end: workEnd, work_days: workDays })
       .eq('user_id', session.user.id);
-    setSavedMsg('Work hours saved.');
-    setTimeout(() => setSavedMsg(''), 2000);
+    setSavedMsg(error ? 'Could not save: ' + error.message : 'Work hours saved.');
+    setTimeout(() => setSavedMsg(''), error ? 4000 : 2000);
   }
 
   async function saveSortMode(mode: SortMode) {
@@ -197,8 +197,14 @@ export default function Preferences() {
   }
 
   async function saveNotificationStyle(style: 'default' | 'silent') {
+    const previous = notificationStyle;
     setNotificationStyle(style);
-    await supabase.from('user_settings').update({ notification_style: style }).eq('user_id', session.user.id);
+    const { error } = await supabase.from('user_settings').update({ notification_style: style }).eq('user_id', session.user.id);
+    if (error) {
+      setNotificationStyle(previous);
+      setNotifStatus('Could not save notification setting: ' + error.message);
+      setTimeout(() => setNotifStatus(''), 4000);
+    }
   }
 
   async function saveTheme(next: Theme) {

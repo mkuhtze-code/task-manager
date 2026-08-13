@@ -20,8 +20,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // All rows in tasks, subtasks, meetings, user_settings, push_subscriptions,
-  // and calendar_connections reference auth.users(id) with ON DELETE CASCADE,
-  // so deleting the auth user above already removes everything else.
+  // Cascade is the deliberate contract: every user-owned table references
+  // auth.users(id) with ON DELETE CASCADE — tasks, subtasks, task_types,
+  // time_logs, meetings, user_settings, push_subscriptions,
+  // calendar_connections, trips, trip_days (via trips), activities,
+  // accommodations, admins, error_logs. feedback keeps its rows but
+  // anonymizes them (user_id ON DELETE SET NULL), and feedback_replies
+  // survive alongside the feedback row they belong to. No explicit
+  // per-table cleanup is needed and none is performed, so unrelated or
+  // shared data is never touched.
   return NextResponse.json({ ok: true });
 }

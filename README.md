@@ -13,7 +13,7 @@ index a3f1f66a2793edc62ae24184c6b00859f84c8f9a..5518df6446c766af7d17bfbe4b423189
 +  work_end time not null default '16:00',
 +  work_days int[] not null default '{1,2,3,4,5}',
 +  notification_style text not null default 'default' check (notification_style in ('default', 'silent')),
-+  task_sort_mode text not null default 'manual' check (task_sort_mode in ('manual', 'oldest', 'newest', 'longest', 'shortest')),
++  sort_mode text not null default 'capacity_first' check (sort_mode in ('capacity_first', 'due_today_first', 'manual', 'oldest_first', 'newest_first', 'geo_aware')),
    updated_at timestamptz not null default now()
  );
  
@@ -71,4 +71,4 @@ index a3f1f66a2793edc62ae24184c6b00859f84c8f9a..5518df6446c766af7d17bfbe4b423189
 +alter table user_settings add column if not exists work_end time not null default '16:00';
 +alter table user_settings add column if not exists work_days int[] not null default '{1,2,3,4,5}';
 +alter table user_settings add column if not exists notification_style text not null default 'default';
-+alter table user_settings add column if not exists task_sort_mode text not null default 'manual';
++alter table user_settings add column if not exists sort_mode text not null default 'capacity_first';

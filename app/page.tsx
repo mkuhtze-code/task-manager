@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 import { TaskCard } from '@/components/TaskCard';
@@ -76,7 +75,6 @@ function getGpsPosition(timeoutMs = 4000): Promise<Coords | null> {
 }
 
 export default function Home() {
-  const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -229,7 +227,7 @@ export default function Home() {
         setShowOnboarding(true);
       }
     } else {
-      await supabase.from('user_settings').insert({
+      const { error: settingsError } = await supabase.from('user_settings').insert({
         user_id: userId,
         work_start: '08:00',
         work_end: '16:00',
@@ -238,6 +236,10 @@ export default function Home() {
         sort_mode: 'capacity_first',
         onboarded: false,
       });
+      if (settingsError) {
+        console.error(settingsError);
+        alert('Could not set up your account: ' + settingsError.message);
+      }
       setShowOnboarding(true);
     }
 
@@ -291,11 +293,16 @@ export default function Home() {
   async function completeOnboarding() {
     if (!session) return;
     setOnboardSaving(true);
-    await supabase
+    const { error } = await supabase
       .from('user_settings')
       .update({ work_start: workStart, work_end: workEnd, work_days: workDays, onboarded: true })
       .eq('user_id', session.user.id);
     setOnboardSaving(false);
+    if (error) {
+      console.error(error);
+      alert('Could not save your setup: ' + error.message);
+      return;
+    }
     setShowOnboarding(false);
   }
 
@@ -536,10 +543,15 @@ export default function Home() {
     lat: number | null,
     lng: number | null
   ) {
-    await supabase
+    const { error } = await supabase
       .from('tasks')
       .update({ text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng })
       .eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not save your changes: ' + error.message);
+      return;
+    }
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng } : t))
     );
@@ -547,7 +559,12 @@ export default function Home() {
   }
 
   async function toggleDueToday(id: string, current: boolean) {
-    await supabase.from('tasks').update({ due_today: !current }).eq('id', id);
+    const { error } = await supabase.from('tasks').update({ due_today: !current }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not update the task: ' + error.message);
+      return;
+    }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due_today: !current } : t)));
   }
 
@@ -555,7 +572,12 @@ export default function Home() {
     const alreadyActive = tasks.find((t) => t.status === 'active');
     if (alreadyActive) return;
     const startedAt = new Date().toISOString();
-    await supabase.from('tasks').update({ status: 'active', started_at: startedAt, near_notified: false, over_notified: false, last_overdue_ping_at: null }).eq('id', id);
+    const { error } = await supabase.from('tasks').update({ status: 'active', started_at: startedAt, near_notified: false, over_notified: false, last_overdue_ping_at: null }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not start the task: ' + error.message);
+      return;
+    }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'active', started_at: startedAt } : t)));
   }
 
@@ -564,7 +586,12 @@ export default function Home() {
     if (!task || !task.started_at) return;
     const sessionMins = (Date.now() - new Date(task.started_at).getTime()) / 60000;
     const newLogged = task.logged_mins + sessionMins;
-    await supabase.from('tasks').update({ status: 'pending', started_at: null, logged_mins: newLogged }).eq('id', id);
+    const { error } = await supabase.from('tasks').update({ status: 'pending', started_at: null, logged_mins: newLogged }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not stop the task: ' + error.message);
+      return;
+    }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'pending', started_at: null, logged_mins: newLogged } : t)));
   }
 
@@ -574,10 +601,15 @@ export default function Home() {
     if (task && task.status === 'active' && task.started_at) {
       finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
     }
-    await supabase
+    const { error } = await supabase
       .from('tasks')
       .update({ status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: Math.round(finalLogged), completed_at: new Date().toISOString() })
       .eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not complete the task: ' + error.message);
+      return;
+    }
     setTasks((prev) => prev.filter((t) => t.id !== id));
     // Keep the learning layer current without waiting for a full reload —
     // this task's outcome (duration and location alike) should be
@@ -600,7 +632,12 @@ export default function Home() {
 
   async function deleteTask(id: string) {
     const task = tasks.find((t) => t.id === id);
-    await supabase.from('tasks').delete().eq('id', id);
+    const { error } = await supabase.from('tasks').delete().eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not delete the task: ' + error.message);
+      return;
+    }
     setTasks((prev) => prev.filter((t) => t.id !== id));
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
   }
@@ -611,11 +648,16 @@ export default function Home() {
     const mins = parseMins(subDraftTime[taskId] || '') || 0;
     const userId = session.user.id;
     const existing = subtasksByTask[taskId] || [];
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('subtasks')
       .insert({ user_id: userId, task_id: taskId, text, mins, order_index: existing.length })
       .select()
       .single();
+    if (error) {
+      console.error(error);
+      alert('Could not add the subtask: ' + error.message);
+      return;
+    }
     if (data) {
       setSubtasksByTask((prev) => ({ ...prev, [taskId]: [...(prev[taskId] || []), data] }));
     }
@@ -624,7 +666,12 @@ export default function Home() {
   }
 
   async function toggleSubtaskDone(subtaskId: string, taskId: string, current: boolean) {
-    await supabase.from('subtasks').update({ done: !current }).eq('id', subtaskId);
+    const { error } = await supabase.from('subtasks').update({ done: !current }).eq('id', subtaskId);
+    if (error) {
+      console.error(error);
+      alert('Could not update the subtask: ' + error.message);
+      return;
+    }
     setSubtasksByTask((prev) => ({
       ...prev,
       [taskId]: (prev[taskId] || []).map((s) => (s.id === subtaskId ? { ...s, done: !current } : s)),
@@ -632,7 +679,12 @@ export default function Home() {
   }
 
   async function deleteSubtask(subtaskId: string, taskId: string) {
-    await supabase.from('subtasks').delete().eq('id', subtaskId);
+    const { error } = await supabase.from('subtasks').delete().eq('id', subtaskId);
+    if (error) {
+      console.error(error);
+      alert('Could not delete the subtask: ' + error.message);
+      return;
+    }
     setSubtasksByTask((prev) => ({
       ...prev,
       [taskId]: (prev[taskId] || []).filter((s) => s.id !== subtaskId),
@@ -844,7 +896,6 @@ export default function Home() {
         overloaded={overloaded}
         weekdayLabel={weekdayLabel}
         dateOnlyLabel={dateOnlyLabel}
-        onOpenAnalytics={() => router.push('/analytics')}
         activeTask={activeTask}
         activeOverEstimate={activeOverEstimate}
         activeLiveLogged={activeLiveLogged}

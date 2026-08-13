@@ -504,10 +504,14 @@ export default function TripDayView() {
   }
 
   async function updateActivity(id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null, timeType: 'flexible' | 'fixed', fixedTime: string | null) {
-    await supabase
+    const { error } = await supabase
       .from('activities')
       .update({ text, estimate_mins: estimateMins, location_text: location || null, lat, lng, time_type: timeType, fixed_time: fixedTime })
       .eq('id', id);
+    if (error) {
+      alert('Could not save the stop: ' + error.message);
+      return;
+    }
     setActivities((prev) =>
       prev.map((a) => (a.id === id ? { ...a, text, estimate_mins: estimateMins, location_text: location || null, lat, lng, time_type: timeType, fixed_time: fixedTime } : a))
     );
@@ -515,19 +519,31 @@ export default function TripDayView() {
   }
 
   async function completeActivity(id: string) {
-    await supabase.from('activities').update({ status: 'done' }).eq('id', id);
+    const { error } = await supabase.from('activities').update({ status: 'done' }).eq('id', id);
+    if (error) {
+      alert('Could not complete the stop: ' + error.message);
+      return;
+    }
     setActivities((prev) => prev.filter((a) => a.id !== id));
     recalculateDay();
   }
 
   async function deleteActivity(id: string) {
-    await supabase.from('activities').delete().eq('id', id);
+    const { error } = await supabase.from('activities').delete().eq('id', id);
+    if (error) {
+      alert('Could not delete the stop: ' + error.message);
+      return;
+    }
     setActivities((prev) => prev.filter((a) => a.id !== id));
     recalculateDay();
   }
 
   async function moveActivityToDay(id: string, newTripDayId: string) {
-    await supabase.from('activities').update({ trip_day_id: newTripDayId, order_index: 0 }).eq('id', id);
+    const { error } = await supabase.from('activities').update({ trip_day_id: newTripDayId, order_index: 0 }).eq('id', id);
+    if (error) {
+      alert('Could not move the stop: ' + error.message);
+      return;
+    }
     setActivities((prev) => prev.filter((a) => a.id !== id));
     recalculateDay();
   }
@@ -587,9 +603,13 @@ export default function TripDayView() {
   }
 
   async function changeSortMode(mode: TravelSortMode) {
+    const previous = travelSortMode;
     setTravelSortMode(mode);
-    if (session) {
-      await supabase.from('user_settings').update({ travel_sort_mode: mode }).eq('user_id', session.user.id);
+    if (!session) return;
+    const { error } = await supabase.from('user_settings').update({ travel_sort_mode: mode }).eq('user_id', session.user.id);
+    if (error) {
+      setTravelSortMode(previous);
+      alert('Could not save the order preference: ' + error.message);
     }
   }
 
