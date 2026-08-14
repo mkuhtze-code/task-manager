@@ -7,6 +7,7 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
 import MapView from '@/components/MapView';
+import { TravelLeg } from '@/components/TravelLeg';
 import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
 import GearMenu from '@/components/GearMenu';
 import TopSwitcher from '@/components/TopSwitcher';
@@ -14,8 +15,8 @@ import {
   BackIcon,
   BedIcon,
   CheckIcon,
+  ChevronIcon,
   CloseIcon,
-  CompassIcon,
   DragHandleIcon,
   FitCheckIcon,
   FitWarnIcon,
@@ -93,6 +94,16 @@ type Leg = {
 };
 
 const ROW_GAP = 8;
+
+// Travel day ordering is a quiet preference, not page chrome. The list
+// shows the active mode as one small text toggle; the choices themselves
+// only appear when the user asks for them.
+const SORT_LABELS: Record<TravelSortMode, string> = {
+  manual: 'Manual',
+  what_fits: 'What fits',
+  close_to_accom: 'Near stay',
+  nearby_me: 'Near stay',
+};
 
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
@@ -364,6 +375,7 @@ export default function TripDayView() {
   const nearbyCacheRef = useRef<Record<string, NearbySuggestion[]>>({});
 
   const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
+  const [sortOptionsOpen, setSortOptionsOpen] = useState(false);
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
   const [captureFixedTime, setCaptureFixedTime] = useState('');
 
@@ -918,7 +930,21 @@ export default function TripDayView() {
       )}
 
       {activities.length > 0 && (
-        <div className="segmented" style={{ marginBottom: 'var(--space-2)' }}>
+        <div className="sort-row">
+          <button
+            className="sort-toggle"
+            onClick={() => setSortOptionsOpen((o) => !o)}
+            aria-expanded={sortOptionsOpen}
+          >
+            Order: <span className="sort-toggle-value">{SORT_LABELS[travelSortMode]}</span>
+            <span className={sortOptionsOpen ? 'sort-toggle-chev open' : 'sort-toggle-chev'} aria-hidden="true">
+              <ChevronIcon size={12} />
+            </span>
+          </button>
+        </div>
+      )}
+      {activities.length > 0 && sortOptionsOpen && (
+        <div className="segmented sort-segmented">
           <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('manual')}>Manual</button>
           <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('what_fits')}>What fits</button>
           <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near stay</button>
@@ -947,15 +973,18 @@ export default function TripDayView() {
         {selectedDay && selectedDay.base_lat != null && activities.length > 0 && (
           (() => {
             const startLeg = legs.find((l) => l.insertIndex === 0 && l.fromId === null);
-            return startLeg ? (
-              <button
-                className="nearby-pill"
-                style={{ marginBottom: 'var(--space-2)' }}
-                onClick={() => findNearby(startLeg)}
-              >
-                <CompassIcon /> Nearby, on the way from base
-              </button>
-            ) : null;
+            if (!startLeg || startLeg.directMins <= 0) return null;
+            return (
+              <TravelLeg
+                label={fmtMins(startLeg.directMins)}
+                detail={`Drive from ${selectedDay.base_location_text || 'base'}`}
+                action={
+                  <button onClick={() => findNearby(startLeg)} aria-label="Find something nearby">
+                    Nearby
+                  </button>
+                }
+              />
+            );
           })()
         )}
         {sortedActivities.map((a, idx) => {
@@ -984,10 +1013,14 @@ export default function TripDayView() {
           }
 
           const legAfterThis = legs.find((l) => l.fromId === a.id);
+          const conflict = !!fixedTimeConflicts[a.id];
 
           return (
             <div key={a.id} ref={(el) => { rowElsRef.current[a.id] = el; }} style={rowStyle}>
-              <div className={a.activity_type === 'stop' ? 'task-row' : 'task-row task-list-item'}>
+              <div className={[
+                a.activity_type === 'stop' ? 'task-row' : 'task-row task-list-item',
+                conflict ? 'conflict' : '',
+              ].join(' ').trim()}>
                 <div className="task-main">
                   <button
                     className="check-btn"
@@ -998,29 +1031,22 @@ export default function TripDayView() {
                   </button>
                   <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
                     <div className="task-text">{a.text}</div>
-                    <div className="task-tags">
-                      {a.time_type === 'fixed' && a.fixed_time && (
-                        <span className="tag tag-due mono">{fmtClock(a.fixed_time)}</span>
-                      )}
-                      <span className="tag tag-elapsed mono">
-                        {fmtMins(a.estimate_mins)} there
-                        {a.drive_mins_to_next > 0 ? ` + ${fmtMins(a.drive_mins_to_next)} drive` : ''}
-                      </span>
-                      {a.location_text && (
-                        <span className="tag tag-location" title={a.location_text}>
-                          <MapPinIcon size={11} />
-                          <span className="tag-location-text">{a.location_text}</span>
-                        </span>
-                      )}
-                      {a.location_text && a.lat == null && (
-                        <span className="tag tag-nocoords">drive not calculated</span>
-                      )}
-                      {fixedTimeConflicts[a.id] && (
-                        <span className="tag tag-conflict">won't make it</span>
-                      )}
-                    </div>
+                    {(a.location_text || conflict) && (
+                      <div className="activity-meta">
+                        {a.location_text && (
+                          <span className="activity-meta-loc" title={a.location_text}>
+                            <MapPinIcon size={12} />
+                            <span className="activity-meta-loc-text">{a.location_text}</span>
+                          </span>
+                        )}
+                        {conflict && <span className="activity-meta-conflict">won't make it</span>}
+                      </div>
+                    )}
                   </div>
-                  {a.time_type === 'flexible' ? (
+                  <span className={conflict ? 'activity-glance conflict mono' : 'activity-glance mono'}>
+                    {a.time_type === 'fixed' && a.fixed_time ? fmtClock(a.fixed_time) : fmtMins(a.estimate_mins)}
+                  </span>
+                  {a.time_type === 'flexible' && travelSortMode === 'manual' ? (
                     <button
                       className="drag-handle-btn"
                       onPointerDown={(e) => { e.stopPropagation(); handleDragHandlePointerDown(e, a.id, orderedIds); }}
@@ -1031,7 +1057,7 @@ export default function TripDayView() {
                     >
                       <DragHandleIcon />
                     </button>
-                  ) : (
+                  ) : a.time_type === 'fixed' ? (
                     <span
                       className="drag-handle-btn"
                       style={{ color: 'var(--ink-faint)', cursor: 'default' }}
@@ -1040,15 +1066,18 @@ export default function TripDayView() {
                     >
                       <LockIcon />
                     </span>
-                  )}
+                  ) : null}
                 </div>
-                {legAfterThis && (
-                  <button
-                    className="nearby-pill"
-                    onClick={(e) => { e.stopPropagation(); findNearby(legAfterThis); }}
-                  >
-                    <CompassIcon /> Nearby
-                  </button>
+                {legAfterThis && legAfterThis.directMins > 0 && (
+                  <TravelLeg
+                    label={fmtMins(legAfterThis.directMins)}
+                    detail={`Drive to ${activities.find((x) => x.id === legAfterThis.toId)?.text ?? 'the next stop'}`}
+                    action={
+                      <button onClick={() => findNearby(legAfterThis)} aria-label="Find something nearby">
+                        Nearby
+                      </button>
+                    }
+                  />
                 )}
               </div>
             </div>

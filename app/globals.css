@@ -548,6 +548,61 @@ button:focus-visible, input:focus-visible {
   letter-spacing: -0.006em;
 }
 
+/* Travel day view: quiet per-row meta. Location is dimmed down below the
+   name, and the glance is a single mono numeral (clock for fixed stops,
+   estimate for flexible) so the row reads as name + one number, never a
+   tag storm. Conflicts get their own quiet edge marker instead of a
+   shouting pill. */
+.activity-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+  min-width: 0;
+}
+
+.activity-meta-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.activity-meta-loc svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.activity-meta-loc-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-meta-conflict {
+  color: var(--danger-text, var(--danger));
+}
+
+.activity-glance {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.activity-glance.conflict {
+  color: var(--danger-text, var(--danger));
+}
+
+.task-row.conflict::before {
+  background: var(--danger);
+  opacity: 1;
+}
+
 .task-progress-row {
   display: flex;
   align-items: center;
@@ -585,14 +640,6 @@ button:focus-visible, input:focus-visible {
   flex-shrink: 0;
 }
 
-.task-tags {
-  display: flex;
-  gap: 4px;
-  margin-top: 4px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
 .tag {
   font-size: var(--text-2xs);
   font-weight: 700;
@@ -607,41 +654,6 @@ button:focus-visible, input:focus-visible {
 .tag-due {
   background: var(--hazard-bg);
   color: var(--hazard-text, var(--hazard));
-}
-
-.tag-elapsed {
-  background: var(--steel-wash);
-  color: var(--steel-text, var(--steel-dark));
-}
-
-.tag-location {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 180px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.tag-location svg {
-  flex-shrink: 0;
-  opacity: 0.75;
-}
-
-.tag-location-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tag-nocoords {
-  background: var(--hazard-bg);
-  color: var(--hazard-text, var(--hazard));
-}
-
-.tag-conflict {
-  background: var(--danger-bg);
-  color: var(--danger-text, var(--danger));
 }
 
 /* ── Today card system: progressive disclosure ──────────────────
@@ -1191,6 +1203,51 @@ button:focus-visible, input:focus-visible {
   background: var(--paper-raised);
   color: var(--ink);
   box-shadow: 0 1px 3px rgba(var(--shadow-rgb), 0.15);
+}
+
+/* Travel day view: the sort control rests as a quiet one-line toggle and
+   only expands into the segmented picker on tap — configuration is not a
+   resting-state feature. */
+.sort-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-2);
+}
+
+.sort-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  min-height: 24px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.sort-toggle:hover {
+  color: var(--ink-soft);
+}
+
+.sort-toggle-value {
+  color: var(--ink-soft);
+}
+
+.sort-toggle-chev {
+  display: inline-flex;
+  transition: transform 0.2s var(--ease);
+  opacity: 0.7;
+}
+
+.sort-toggle-chev.open {
+  transform: rotate(180deg);
+}
+
+.sort-segmented {
+  margin-bottom: var(--space-3);
 }
 
 .sheet-backdrop {
@@ -2819,25 +2876,6 @@ button:focus-visible, input:focus-visible {
 .toolbar-btn:disabled {
   opacity: 0.55;
   cursor: default;
-}
-
-.nearby-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--ink-soft);
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: 20px;
-  min-height: 0;
-}
-
-.nearby-pill:hover {
-  background: var(--line);
-  color: var(--ink);
 }
 
 .empty-state-title {
