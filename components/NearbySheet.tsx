@@ -37,8 +37,9 @@ export default function NearbySheet(props: {
   onCategoryChange: (category: string) => void;
   onClose: () => void;
   onPick: (s: NearbySuggestion) => void;
+  context?: string | null;
 }) {
-  const { loading, error, suggestions, selectedCategory, onCategoryChange, onClose, onPick } = props;
+  const { loading, error, suggestions, selectedCategory, onCategoryChange, onClose, onPick, context } = props;
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -49,6 +50,8 @@ export default function NearbySheet(props: {
             <CloseIcon />
           </button>
         </div>
+
+        {context && <p className="nearby-context">{context}</p>}
 
         <div className="day-toggle-row" style={{ overflowX: 'auto', width: '100%' }}>
           {CATEGORIES.map((c) => (
@@ -74,12 +77,11 @@ export default function NearbySheet(props: {
           <p className="settings-help">Nothing worth a detour found near this drive.</p>
         )}
 
-        <div className="priority-option-list">
+        <div className="nearby-result-list">
           {suggestions.map((s) => (
-            <button key={s.placeId} className="priority-option" onClick={() => onPick(s)}>
-              <span className="priority-option-label">{s.name}</span>
-              <span className="priority-option-description">
-                {s.typeLabel ? `${s.typeLabel} · ` : ''}
+            <button key={s.placeId} className="nearby-result" onClick={() => onPick(s)}>
+              <span className="nearby-result-name">{s.name}</span>
+              <span className="nearby-result-meta">
                 {s.detourMins === 0 ? 'Basically on the way' : `+${fmtMins(s.detourMins)} detour`}
                 {s.rating ? ` · ★${s.rating}` : ''}
               </span>

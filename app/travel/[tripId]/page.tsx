@@ -174,6 +174,7 @@ function ActivityDetailSheet(props: {
   );
   const [timeType, setTimeType] = useState<'flexible' | 'fixed'>(a.time_type || 'flexible');
   const [fixedTime, setFixedTime] = useState(a.fixed_time || '');
+  const [moveOpen, setMoveOpen] = useState(false);
   const [error, setError] = useState('');
 
   function commit() {
@@ -209,8 +210,7 @@ function ActivityDetailSheet(props: {
   return (
     <div className="sheet-backdrop" onClick={() => { commit(); onClose(); }}>
       <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="task-detail-header">
-          <div className="settings-panel-title">Edit stop</div>
+        <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
           <button
             className="gear-btn"
             onClick={() => { commit(); onClose(); }}
@@ -228,28 +228,6 @@ function ActivityDetailSheet(props: {
           onBlur={commit}
         />
 
-        <div className="segmented">
-          <button
-            className={timeType === 'flexible' ? 'segmented-btn active' : 'segmented-btn'}
-            onClick={() => { setTimeType('flexible'); }}
-          >
-            Flexible
-          </button>
-          <button
-            className={timeType === 'fixed' ? 'segmented-btn active' : 'segmented-btn'}
-            onClick={() => { setTimeType('fixed'); }}
-          >
-            Fixed time
-          </button>
-        </div>
-
-        {timeType === 'fixed' && (
-          <div>
-            <span className="settings-label">At</span>
-            <input type="time" value={fixedTime} onChange={(e) => setFixedTime(e.target.value)} onBlur={commit} style={{ width: '100%' }} />
-          </div>
-        )}
-
         <LocationAutocomplete
           value={location}
           placeholder="Search for a place"
@@ -265,10 +243,26 @@ function ActivityDetailSheet(props: {
           </p>
         )}
 
-        <div style={{ flex: 1 }}>
-          <span className="settings-label">Duration</span>
-          <input type="text" value={estimateStr} onChange={(e) => setEstimateStr(e.target.value)} onBlur={commit} style={{ width: '100%' }} />
+        <div className="capture-row">
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span className="settings-label">About</span>
+            <input type="text" value={estimateStr} onChange={(e) => setEstimateStr(e.target.value)} onBlur={commit} />
+          </div>
+          <button
+            className={timeType === 'fixed' ? 'capture-fixed-toggle active' : 'capture-fixed-toggle'}
+            onClick={() => setTimeType(timeType === 'fixed' ? 'flexible' : 'fixed')}
+            aria-pressed={timeType === 'fixed'}
+          >
+            {timeType === 'fixed' ? 'Fixed time' : 'Flexible'}
+          </button>
         </div>
+
+        {timeType === 'fixed' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span className="settings-label">At</span>
+            <input type="time" value={fixedTime} onChange={(e) => setFixedTime(e.target.value)} onBlur={commit} />
+          </div>
+        )}
 
         {a.drive_mins_to_next > 0 && (
           <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
@@ -294,32 +288,41 @@ function ActivityDetailSheet(props: {
         </button>
 
         {tripDays.length > 1 && (
-          <div className="subtask-panel">
-            <div className="settings-panel-title">Move to another day</div>
-            <div className="priority-option-list">
-              {tripDays.filter((d) => d.id !== a.trip_day_id).map((d) => {
-                const label = fmtDayLabel(d.date);
-                return (
-                  <button
-                    key={d.id}
-                    className="priority-option"
-                    onClick={() => { onMoveToDay(a.id, d.id); onClose(); }}
-                  >
-                    <span className="priority-option-label">{label.weekday}, {label.date}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <>
+            <button
+              className={moveOpen ? 'detail-reveal active' : 'detail-reveal'}
+              onClick={() => setMoveOpen(!moveOpen)}
+              aria-expanded={moveOpen}
+            >
+              <span>Move to another day</span>
+              <ChevronIcon size={14} />
+            </button>
+            {moveOpen && (
+              <div className="move-day-list">
+                {tripDays.filter((d) => d.id !== a.trip_day_id).map((d) => {
+                  const label = fmtDayLabel(d.date);
+                  return (
+                    <button
+                      key={d.id}
+                      className="move-day-option"
+                      onClick={() => { onMoveToDay(a.id, d.id); onClose(); }}
+                    >
+                      {label.weekday}, {label.date}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
-        <div style={{ borderTop: '1px dashed var(--line-strong)', paddingTop: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
+        <div className="detail-delete">
           <button
             className="btn-text"
             style={{ color: 'var(--danger-text, var(--danger))', display: 'inline-flex', alignItems: 'center', gap: 6, padding: 0 }}
             onClick={handleDeleteClick}
           >
-            <TrashIcon /> Delete this stop
+            <TrashIcon /> Delete stop
           </button>
         </div>
       </div>
@@ -359,6 +362,7 @@ export default function TripDayView() {
   const [nearbyInsertIndex, setNearbyInsertIndex] = useState<number | null>(null);
   const [nearbyCategory, setNearbyCategory] = useState('attraction');
   const [nearbyLeg, setNearbyLeg] = useState<Leg | null>(null);
+  const [nearbyContext, setNearbyContext] = useState<string | null>(null);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
   const [recalcError, setRecalcError] = useState<string | null>(null);
 
@@ -698,6 +702,14 @@ export default function TripDayView() {
   async function findNearby(leg: Leg) {
     setNearbyLeg(leg);
     setNearbyInsertIndex(leg.insertIndex);
+    const fromAct = leg.fromId ? activities.find((x) => x.id === leg.fromId) : null;
+    const toAct = activities.find((x) => x.id === leg.toId);
+    const toName = toAct?.location_text || toAct?.text || 'the next stop';
+    setNearbyContext(
+      fromAct
+        ? `On the way from ${fromAct.location_text || fromAct.text} to ${toName}`
+        : `On the way from ${selectedDay?.base_location_text || 'your base'} to ${toName}`
+    );
     setNearbyOpen(true);
     runNearbySearch(leg, nearbyCategory);
   }
@@ -1064,6 +1076,7 @@ export default function TripDayView() {
           onCategoryChange={handleCategoryChange}
           onClose={() => setNearbyOpen(false)}
           onPick={insertNearbySuggestion}
+          context={nearbyContext}
         />
       )}
 
@@ -1094,9 +1107,6 @@ export default function TripDayView() {
           isToday={isToday}
           nowPercent={nowPercent}
           planWidthPercent={planWidthPercent}
-          projectedFinishMinutes={projectedFinish}
-          effectiveDayStart={effectiveDayStart}
-          effectiveDayEnd={effectiveDayEnd}
           hasRoute={activities.some((a) => a.lat != null) || (selectedDay.base_lat != null)}
           sortMode={travelSortMode}
           onChangeSortMode={changeSortMode}

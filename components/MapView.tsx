@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { CloseIcon } from '@/components/icons';
 
 type MapActivity = {
   id: string;
@@ -394,11 +395,11 @@ function MapView(props: {
       <div
         className="capture-sheet"
         onClick={(e) => e.stopPropagation()}
-        style={{ height: '80vh', display: 'flex', flexDirection: 'column', padding: 'var(--space-3)' }}
+        style={{ height: '80vh', display: 'flex', flexDirection: 'column', padding: 'var(--space-4)' }}
       >
         <div className="task-detail-header" style={{ marginBottom: 'var(--space-2)' }}>
           <div className="settings-panel-title">Map</div>
-          <button className="btn-text" onClick={onClose}>Close</button>
+          <button className="gear-btn" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         </div>
 
         {loading && <p className="settings-help">Loading map…</p>}

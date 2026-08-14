@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
+import { ChevronIcon, CloseIcon, TrashIcon } from '@/components/icons';
 
 type Accommodation = {
   id: string;
@@ -91,6 +92,7 @@ export default function AccommodationSheet(props: {
   const [departureTime, setDepartureTime] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [timesOpen, setTimesOpen] = useState(false);
 
   useEffect(() => {
     loadStays();
@@ -171,25 +173,27 @@ export default function AccommodationSheet(props: {
       <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="task-detail-header">
           <div className="settings-panel-title">Where you're staying</div>
-          <button className="btn-text" onClick={onClose}>Close</button>
+          <button className="gear-btn" onClick={onClose} aria-label="Close">
+            <CloseIcon />
+          </button>
         </div>
 
         {stays.length === 0 && !adding && (
           <p className="settings-help">No accommodation added yet.</p>
         )}
 
-        <div className="priority-option-list">
+        <div className="stay-list">
           {stays.map((s) => (
-            <div key={s.id} className="priority-option" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={s.id} className="stay-row">
               <div>
-                <div className="priority-option-label">{s.location_text}</div>
-                <div className="priority-option-description">
-                  {fmtDate(s.check_in_date)}{s.arrival_time ? ` ${fmtClock(s.arrival_time)}` : ''}
+                <div className="stay-row-title">{s.location_text}</div>
+                <div className="stay-row-meta">
+                  {fmtDate(s.check_in_date)}{s.arrival_time ? ` at ${fmtClock(s.arrival_time)}` : ''}
                   {' – '}
-                  {fmtDate(s.check_out_date)}{s.departure_time ? ` ${fmtClock(s.departure_time)}` : ''}
+                  {fmtDate(s.check_out_date)}{s.departure_time ? ` at ${fmtClock(s.departure_time)}` : ''}
                 </div>
               </div>
-              <button className="icon-btn" onClick={() => deleteStay(s.id)} aria-label="Remove stay">×</button>
+              <button className="icon-btn" onClick={() => deleteStay(s.id)} aria-label="Remove stay"><TrashIcon /></button>
             </div>
           ))}
         </div>
@@ -236,26 +240,36 @@ export default function AccommodationSheet(props: {
               </div>
             </div>
 
-            <div className="capture-row">
-              <div style={{ flex: 1 }}>
-                <span className="settings-label">Expected arrival</span>
-                <input
-                  type="time"
-                  value={arrivalTime}
-                  onChange={(e) => setArrivalTime(e.target.value)}
-                  style={{ width: '100%' }}
-                />
+            <button
+              className={timesOpen ? 'detail-reveal active' : 'detail-reveal'}
+              onClick={() => setTimesOpen(!timesOpen)}
+              aria-expanded={timesOpen}
+            >
+              <span>Set arrival &amp; departure times</span>
+              <ChevronIcon size={14} />
+            </button>
+            {timesOpen && (
+              <div className="capture-row">
+                <div style={{ flex: 1 }}>
+                  <span className="settings-label">Arrival</span>
+                  <input
+                    type="time"
+                    value={arrivalTime}
+                    onChange={(e) => setArrivalTime(e.target.value)}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span className="settings-label">Departure</span>
+                  <input
+                    type="time"
+                    value={departureTime}
+                    onChange={(e) => setDepartureTime(e.target.value)}
+                    style={{ width: '100%' }}
+                  />
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <span className="settings-label">Expected departure</span>
-                <input
-                  type="time"
-                  value={departureTime}
-                  onChange={(e) => setDepartureTime(e.target.value)}
-                  style={{ width: '100%' }}
-                />
-              </div>
-            </div>
+            )}
 
             {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
             <button className="btn btn-steel" onClick={saveStay} disabled={saving}>
@@ -264,7 +278,16 @@ export default function AccommodationSheet(props: {
             <button className="btn-text" onClick={() => setAdding(false)}>Cancel</button>
           </>
         ) : (
-          <button className="btn btn-ghost" onClick={() => setAdding(true)}>+ Add accommodation</button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              setCheckIn(tripStartDate);
+              setCheckOut(tripEndDate);
+              setAdding(true);
+            }}
+          >
+            + Add accommodation
+          </button>
         )}
       </div>
     </div>

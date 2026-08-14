@@ -1,6 +1,6 @@
 'use client';
 
-import { CloseIcon, ChevronIcon, BedIcon, MapPinIcon, FitCheckIcon, FitWarnIcon } from '@/components/icons';
+import { CloseIcon, ChevronIcon, BedIcon, MapPinIcon } from '@/components/icons';
 
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
@@ -18,12 +18,6 @@ function fmtClock(timeStr: string): string {
   h = h % 12;
   if (h === 0) h = 12;
   return m === 0 ? `${h}${ampm}` : `${h}:${String(m).padStart(2, '0')}${ampm}`;
-}
-
-function fmtMinutesClock(mins: number): string {
-  const h = Math.floor(mins / 60) % 24;
-  const m = Math.round(mins % 60);
-  return fmtClock(`${h}:${String(m).padStart(2, '0')}`);
 }
 
 function fmtDayLabel(dateStr: string): { weekday: string; date: string } {
@@ -49,9 +43,6 @@ type DaySheetProps = {
   isToday: boolean;
   nowPercent: number;
   planWidthPercent: number;
-  projectedFinishMinutes: number;
-  effectiveDayStart: string;
-  effectiveDayEnd: string;
 
   hasRoute: boolean;
   sortMode: 'what_fits' | 'close_to_accom' | 'nearby_me' | 'manual';
@@ -62,9 +53,9 @@ type DaySheetProps = {
 };
 
 // The day's overview, reached by tapping the compact day line. Everything
-// that describes the day as a whole — whether it fits, how the sequence is
-// arranged, where the user is staying, and how to see the route — lives
-// here instead of as permanent chrome on the page.
+// that describes the day as a whole — whether it fits, which day you're
+// looking at, how it's arranged, where you're staying, and the route —
+// lives here instead of as permanent chrome on the page.
 export default function DaySheet(props: DaySheetProps) {
   const {
     dayIndex,
@@ -79,9 +70,6 @@ export default function DaySheet(props: DaySheetProps) {
     isToday,
     nowPercent,
     planWidthPercent,
-    projectedFinishMinutes,
-    effectiveDayStart,
-    effectiveDayEnd,
     hasRoute,
     sortMode,
     onChangeSortMode,
@@ -107,31 +95,14 @@ export default function DaySheet(props: DaySheetProps) {
 
         {hasActivities && (
           <div className="day-sheet-cap">
-            <div className="day-sheet-cap-statement">
-              {overloaded ? (
-                <>
-                  <FitWarnIcon />
-                  <span className="over">Over by {fmtMins(-spareMins)}</span>
-                </>
-              ) : (
-                <>
-                  <FitCheckIcon />
-                  <span>Fits — {fmtMins(spareMins)} to spare</span>
-                </>
-              )}
+            <div className="day-sheet-cap-row">
+              <span className={overloaded ? 'day-sheet-cap-status over' : 'day-sheet-cap-status'}>
+                {overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(spareMins)} spare`}
+              </span>
+              <span className="day-sheet-cap-stats mono">
+                {fmtMins(plannedMins)} planned · {fmtMins(minutesLeftToday)} {isToday ? 'left' : 'in the day'}
+              </span>
             </div>
-
-            <div className="day-sheet-cap-numbers">
-              <div className="day-sheet-cap-stat">
-                <span className="mono day-sheet-cap-num">{fmtMins(plannedMins)}</span>
-                <span className="day-sheet-cap-label">planned</span>
-              </div>
-              <div className="day-sheet-cap-stat">
-                <span className="mono day-sheet-cap-num">{fmtMins(minutesLeftToday)}</span>
-                <span className="day-sheet-cap-label">{isToday ? 'time left' : 'day length'}</span>
-              </div>
-            </div>
-
             <div className="day-rail-wrap">
               <div className="day-rail-track">
                 {isToday && <div className="day-rail-elapsed" style={{ width: `${nowPercent * 100}%` }} />}
@@ -141,36 +112,22 @@ export default function DaySheet(props: DaySheetProps) {
                 />
                 {isToday && <div className="day-rail-now-dot" style={{ left: `${nowPercent * 100}%` }} />}
               </div>
-              <div className="day-rail-labels">
-                <span>{fmtClock(effectiveDayStart)}</span>
-                <span>the plan runs to ~{fmtMinutesClock(projectedFinishMinutes)}</span>
-                <span>{fmtClock(effectiveDayEnd)}</span>
-              </div>
             </div>
-
-            {overloaded && (
-              <p className="day-sheet-cap-warn">
-                {fmtMins(-spareMins)} over — trim a stop, shorten a flexible stop, or move something to another day.
-              </p>
-            )}
+            {overloaded && <p className="day-sheet-cap-warn">Trim or move a stop to fit it in.</p>}
           </div>
         )}
 
-        <div className="day-sheet-section day-sheet-section-days">
-          <div className="day-sheet-section-title">Days</div>
-          <div className="priority-option-list">
-            {tripDays.map((d, i) => {
+        <div className="day-sheet-section">
+          <div className="day-toggle-row" style={{ overflowX: 'auto', width: '100%' }}>
+            {tripDays.map((d) => {
               const label = fmtDayLabel(d.date);
               return (
                 <button
                   key={d.id}
-                  className={d.id === selectedDayId ? 'priority-option active day-sheet-day' : 'priority-option day-sheet-day'}
+                  className={d.id === selectedDayId ? 'day-toggle-btn pill active' : 'day-toggle-btn pill'}
                   onClick={() => { onSelectDay(d.id); onClose(); }}
                 >
-                  <span className="priority-option-label">
-                    Day {i + 1} — {label.weekday} {label.date}
-                  </span>
-                  {d.id === selectedDayId && <span className="day-sheet-day-now">open</span>}
+                  {label.weekday} {label.date}
                 </button>
               );
             })}
@@ -178,19 +135,14 @@ export default function DaySheet(props: DaySheetProps) {
         </div>
 
         <div className="day-sheet-section">
-          <div className="day-sheet-section-title">Arrange the day</div>
-          <div className="segmented">
-            <button className={sortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => onChangeSortMode('manual')}>Manual</button>
-            <button className={sortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => onChangeSortMode('what_fits')}>What fits</button>
-            <button className={sortMode === 'close_to_accom' || sortMode === 'nearby_me' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => onChangeSortMode('close_to_accom')}>Near stay</button>
+          <div className="day-sheet-arrange">
+            <span className="day-sheet-arrange-label">Arrange</span>
+            <div className="segmented">
+              <button className={sortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => onChangeSortMode('manual')}>Manual</button>
+              <button className={sortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => onChangeSortMode('what_fits')}>What fits</button>
+              <button className={sortMode === 'close_to_accom' || sortMode === 'nearby_me' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => onChangeSortMode('close_to_accom')}>Near stay</button>
+            </div>
           </div>
-          <p className="settings-help day-sheet-help">
-            {sortMode === 'manual'
-              ? 'Stops stay exactly where you put them.'
-              : sortMode === 'what_fits'
-                ? 'Dokkit leads with the shorter stops so the day fills predictably.'
-                : 'Dokkit leads with the stops closest to where you are staying.'}
-          </p>
         </div>
 
         <div className="day-sheet-links">
