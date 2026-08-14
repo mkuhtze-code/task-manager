@@ -18,6 +18,7 @@ import {
   CheckIcon,
   ChevronIcon,
   CloseIcon,
+  CompassIcon,
   DragHandleIcon,
   FitCheckIcon,
   LockIcon,
@@ -861,8 +862,8 @@ export default function TripDayView() {
                 label={fmtMins(startLeg.directMins)}
                 detail={`Drive from ${selectedDay.base_location_text || 'base'}`}
                 action={
-                  <button onClick={() => findNearby(startLeg)} aria-label="Find something nearby">
-                    Nearby
+                  <button onClick={() => findNearby(startLeg)} aria-label="Find something nearby on this drive">
+                    <CompassIcon size={12} /> Nearby
                   </button>
                 }
               />
@@ -957,8 +958,8 @@ export default function TripDayView() {
                     label={fmtMins(legAfterThis.directMins)}
                     detail={`Drive to ${nextStop?.location_text || nextStop?.text || 'the next stop'}`}
                     action={
-                      <button onClick={() => findNearby(legAfterThis)} aria-label="Find something nearby">
-                        Nearby
+                      <button onClick={() => findNearby(legAfterThis)} aria-label="Find something nearby on this drive">
+                        <CompassIcon size={12} /> Nearby
                       </button>
                     }
                   />

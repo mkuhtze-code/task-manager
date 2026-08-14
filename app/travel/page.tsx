@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
 import TopSwitcher from '@/components/TopSwitcher';
-import { BackIcon, CloseIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import { BackIcon, ChevronIcon, CloseIcon, PlusIcon, TrashIcon } from '@/components/icons';
 
 type Trip = {
   id: string;
@@ -83,6 +83,7 @@ export default function TravelHome() {
   const [endDate, setEndDate] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pastOpen, setPastOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -184,23 +185,15 @@ export default function TravelHome() {
   const heroTrip = upcoming.length > 0 ? upcoming[0] : null;
   const restUpcoming = upcoming.length > 1 ? upcoming.slice(1) : [];
 
-  let heroStatus: 'upcoming' | 'active' | null = null;
-  let heroEyebrow = '';
-  let heroNumber = '';
-  let heroLabel = '';
+  let leadPill = '';
   if (heroTrip) {
-    heroStatus = tripStatus(heroTrip.start_date, heroTrip.end_date, todayStr) as 'upcoming' | 'active';
-    if (heroStatus === 'active') {
+    if (tripStatus(heroTrip.start_date, heroTrip.end_date, todayStr) === 'active') {
       const dayNum = dateDiffDays(heroTrip.start_date, todayStr) + 1;
       const totalDays = dateDiffDays(heroTrip.start_date, heroTrip.end_date) + 1;
-      heroEyebrow = 'Happening now';
-      heroNumber = String(dayNum);
-      heroLabel = `of ${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;
+      leadPill = `Day ${dayNum} of ${totalDays}`;
     } else {
       const days = dateDiffDays(todayStr, heroTrip.start_date);
-      heroEyebrow = 'Next trip';
-      heroNumber = String(days);
-      heroLabel = days === 1 ? 'day to go' : 'days to go';
+      leadPill = days === 1 ? 'In 1 day' : `In ${days} days`;
     }
   }
 
@@ -220,63 +213,70 @@ export default function TravelHome() {
       {loading ? (
         <div className="empty-state">Loading…</div>
       ) : trips.length === 0 ? (
-        <div className="trip-empty-state">
-          <div className="trip-empty-title">Where to next?</div>
-          <p className="trip-empty-sub">
-            Add a trip, block out your days, and Dokkit will help you work out<br />what actually fits.
-          </p>
+        <div className="empty-state">
+          <div className="empty-state-title">Where to next?</div>
+          <div className="empty-state-sub">
+            Add a trip, block out the days, and Dokkit works out what actually fits.
+          </div>
           <button className="btn btn-steel" onClick={() => setCreateOpen(true)}>Plan a trip</button>
         </div>
       ) : (
         <>
           {heroTrip && (
-            <div className="trip-hero-card" onClick={() => router.push(`/travel/${heroTrip.id}`)}>
-              <div className="trip-hero-eyebrow">{heroEyebrow}</div>
-              <div className="trip-hero-name">{heroTrip.name}</div>
-              <div className="trip-hero-countdown-row">
-                <span className="trip-hero-countdown-number mono">{heroNumber}</span>
-                <span className="trip-hero-countdown-label">{heroLabel}</span>
+            <div className="trip-lead" onClick={() => router.push(`/travel/${heroTrip.id}`)}>
+              <div className="trip-lead-top">
+                <span className="trip-lead-name">{heroTrip.name}</span>
+                <span className="trip-lead-right">
+                  <span className="trip-lead-pill">{leadPill}</span>
+                  <span className="trip-lead-chev" aria-hidden="true"><ChevronIcon size={14} /></span>
+                </span>
               </div>
-              <div className="trip-hero-dates">{fmtDateRange(heroTrip.start_date, heroTrip.end_date)}</div>
+              <div className="trip-lead-bottom">
+                <span className="trip-lead-dates">{fmtDateRange(heroTrip.start_date, heroTrip.end_date)}</span>
+                <button className="trip-card-delete" onClick={(e) => deleteTrip(heroTrip.id, e)} aria-label="Delete trip">
+                  <TrashIcon />
+                </button>
+              </div>
             </div>
           )}
 
           {restUpcoming.length > 0 && (
-            <>
-              <div className="trip-section-label">More upcoming</div>
-              {restUpcoming.map((t) => {
-                const days = dateDiffDays(todayStr, t.start_date);
-                return (
-                  <div key={t.id} className="trip-card" onClick={() => router.push(`/travel/${t.id}`)}>
-                    <div className="trip-card-body">
-                      <div className="trip-card-eyebrow">{days === 1 ? 'In 1 day' : `In ${days} days`}</div>
-                      <div className="trip-card-name">{t.name}</div>
-                      <div className="trip-card-dates">{fmtDateRange(t.start_date, t.end_date)}</div>
-                    </div>
-                    <button className="trip-card-delete" onClick={(e) => deleteTrip(t.id, e)} aria-label="Delete trip">
-                      <TrashIcon />
-                    </button>
-                  </div>
-                );
-              })}
-            </>
-          )}
-
-          {past.length > 0 && (
-            <>
-              <div className="trip-section-label">Past trips</div>
-              {past.map((t) => (
-                <div key={t.id} className="trip-card past" onClick={() => router.push(`/travel/${t.id}`)}>
-                  <div className="trip-card-body">
-                    <div className="trip-card-eyebrow">Completed</div>
-                    <div className="trip-card-name">{t.name}</div>
-                    <div className="trip-card-dates">{fmtDateRange(t.start_date, t.end_date)}</div>
-                  </div>
+            <div className="trip-list">
+              {restUpcoming.map((t) => (
+                <div key={t.id} className="trip-row" onClick={() => router.push(`/travel/${t.id}`)}>
+                  <span className="trip-row-name">{t.name}</span>
+                  <span className="trip-row-dates">{fmtDateRange(t.start_date, t.end_date)}</span>
                   <button className="trip-card-delete" onClick={(e) => deleteTrip(t.id, e)} aria-label="Delete trip">
                     <TrashIcon />
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+
+          {past.length > 0 && (
+            <>
+              <button
+                className="trip-past-toggle"
+                onClick={() => setPastOpen((v) => !v)}
+                aria-expanded={pastOpen}
+              >
+                <span>Past trips · {past.length}</span>
+                <ChevronIcon size={14} />
+              </button>
+              {pastOpen && (
+                <div className="trip-list">
+                  {past.map((t) => (
+                    <div key={t.id} className="trip-row past" onClick={() => router.push(`/travel/${t.id}`)}>
+                      <span className="trip-row-name">{t.name}</span>
+                      <span className="trip-row-dates">{fmtDateRange(t.start_date, t.end_date)}</span>
+                      <button className="trip-card-delete" onClick={(e) => deleteTrip(t.id, e)} aria-label="Delete trip">
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </>
