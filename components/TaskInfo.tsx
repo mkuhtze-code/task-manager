@@ -8,11 +8,13 @@ import { useEffect, useState } from 'react';
 // autosaves on blur through the same task-persistence path everything
 // else uses, and the text is never interpreted into structure.
 //
-// Empty state is nearly invisible: just a hairline "+ information"
-// affordance in whatever layer the user is in. Existing information is
-// shown in place — as paper-like text on the expanded card
-// (surface="paper"), or as a ready-to-edit field in the detail sheet
-// (surface="edit"). Tapping either starts editing.
+// Empty state is nearly invisible: on the expanded card (surface="paper")
+// it is a quiet, borderless "information…" line — blank paper, not a
+// feature button; in the detail sheet (surface="edit") it stays a hairline
+// "+ information" control, which is fine at the deliberate editing layer.
+// Existing information is shown in place — as paper-like text on the
+// expanded card, or as a ready-to-edit field in the detail sheet. Tapping
+// either starts editing.
 export function TaskInfo({
   value,
   onSave,
@@ -63,6 +65,13 @@ export function TaskInfo({
         >
           {value}
         </div>
+      );
+    }
+    if (surface === 'paper') {
+      return (
+        <button className="task-info-placeholder" onClick={startEdit} aria-label="Add information">
+          information…
+        </button>
       );
     }
     return (

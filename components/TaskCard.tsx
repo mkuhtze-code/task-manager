@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import type { Subtask, Task } from '@/lib/taskTypes';
 import { fmtMins } from '@/lib/timeFormat';
 import {
@@ -62,6 +63,23 @@ export function TaskCard(props: {
   ].join(' ').trim();
 
   const doneSubs = subs.filter((s) => s.done).length;
+
+  // Subtask rows are a second reveal, not part of the default expanded
+  // state. The header ("SUBTASKS · 2/4") is the glance-level signal;
+  // tapping it unfolds (and re-folds) the actual rows.
+  const [subsOpen, setSubsOpen] = useState(false);
+  useEffect(() => {
+    if (!expanded) setSubsOpen(false);
+  }, [expanded]);
+
+  // Progress is only shown when there is something real to communicate —
+  // the task is running, or it has already logged some progress. An idle,
+  // unstarted timed task gets no decorative bar and no repeated
+  // "X remaining" label (the collapsed glance already carries that).
+  const progressPct = timed
+    ? Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)
+    : 0;
+  const showProgress = timed && (running || progressPct > 0);
 
   // Exactly one quiet glance signal per card:
   //  - timed + running → elapsed time + active dot
@@ -138,15 +156,14 @@ export function TaskCard(props: {
 
       {expanded && (
         <div className="task-reveal">
-          {timed && (
+          {showProgress && (
             <div className="task-progress-row">
               <div className="task-progress-track">
                 <div
                   className="task-progress-fill"
-                  style={{ width: `${Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)}%` }}
+                  style={{ width: `${Math.max(progressPct, 0)}%` }}
                 />
               </div>
-              <span className="task-progress-label mono">{fmtMins(remainingForThis)} remaining</span>
             </div>
           )}
 
@@ -171,10 +188,16 @@ export function TaskCard(props: {
 
           {subs.length > 0 && (
             <div className="task-reveal-subtasks">
-              <div className="task-reveal-subtasks-head">
+              <button
+                className={subsOpen ? 'task-reveal-subtasks-head open' : 'task-reveal-subtasks-head'}
+                onClick={() => setSubsOpen((o) => !o)}
+                aria-expanded={subsOpen}
+                aria-label="Toggle sub-tasks"
+              >
                 Subtasks <span className="mono">{doneSubs}/{subs.length}</span>
-              </div>
-              {subs.map((s) => (
+                <span className="subs-head-chev" aria-hidden="true"><ChevronIcon size={12} /></span>
+              </button>
+              {subsOpen && subs.map((s) => (
                 <div key={s.id} className="task-reveal-subtask">
                   <button
                     className={s.done ? 'subtask-check done' : 'subtask-check'}
@@ -184,7 +207,6 @@ export function TaskCard(props: {
                     aria-label="Toggle sub-task"
                   />
                   <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
-                  {s.mins > 0 && <span className="task-reveal-subtask-mins mono">{fmtMins(s.mins)}</span>}
                 </div>
               ))}
             </div>
@@ -193,7 +215,7 @@ export function TaskCard(props: {
           <div className="task-actions">
             {timed && (
               <button
-                className={active ? 'task-action-btn stop' : 'task-action-btn primary'}
+                className="task-action-link"
                 disabled={!active && startDisabled}
                 onPointerDown={stopPointer}
                 onPointerUp={stopPointer}
