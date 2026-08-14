@@ -2,6 +2,7 @@
 
 import type { Task } from '@/lib/taskTypes';
 import { fmtSurfaceDate } from '@/lib/timeFormat';
+import { CloseIcon } from '@/components/icons';
 
 export function ScheduledSheet(props: {
   tasks: Task[];
@@ -16,7 +17,9 @@ export function ScheduledSheet(props: {
       <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="task-detail-header">
           <div className="settings-panel-title">Scheduled</div>
-          <button className="btn-text" onClick={onClose}>Close</button>
+          <button className="gear-btn" onClick={onClose} aria-label="Close">
+            <CloseIcon />
+          </button>
         </div>
         {sorted.length === 0 ? (
           <p className="settings-help">Nothing scheduled for later.</p>

@@ -272,15 +272,12 @@ function ActivityDetailSheet(props: {
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
 
         <button
-          className="btn-ghost"
+          className="btn btn-ghost"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
-            padding: '8px 14px',
-            minHeight: 36,
             alignSelf: 'flex-start',
-            borderRadius: 'var(--radius-sm)',
           }}
           onClick={() => { onComplete(a.id); onClose(); }}
         >

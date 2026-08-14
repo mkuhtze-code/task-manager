@@ -4,6 +4,7 @@ import type { EstimateSuggestion, LocationSuggestion } from '@/lib/taskIntellige
 import { fmtMins, minsToInput } from '@/lib/timeFormat';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
+import { MapPinIcon } from '@/components/icons';
 
 export function CaptureSheet(props: {
   taskText: string;
@@ -98,7 +99,8 @@ export function CaptureSheet(props: {
                   setCaptureLocationCoords({ lat: captureLocationSuggestion.location.lat, lng: captureLocationSuggestion.location.lng });
                 }}
               >
-                📍 {captureLocationSuggestion.location.text} usual ({captureLocationSuggestion.sampleCount}×)
+                <MapPinIcon size={13} />
+                <span>{captureLocationSuggestion.location.text} usual ({captureLocationSuggestion.sampleCount}×)</span>
               </button>
             )}
             <button

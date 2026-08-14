@@ -5,7 +5,7 @@ import type { Subtask, Task } from '@/lib/taskTypes';
 import { fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
-import { PlayIcon, StopIcon } from '@/components/icons';
+import { CloseIcon, PlayIcon, StopIcon } from '@/components/icons';
 import { TaskInfo } from '@/components/TaskInfo';
 
 export function TaskDetailSheet(props: {
@@ -90,16 +90,13 @@ export function TaskDetailSheet(props: {
   return (
     <div className="sheet-backdrop" onClick={handleClose}>
       <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="task-detail-header">
-          <button className="btn-text" onClick={handleClose}>Close</button>
+        <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
           <button
-            className="btn-text"
-            onClick={() => {
-              commit();
-              onClose();
-            }}
+            className="gear-btn"
+            onClick={handleClose}
+            aria-label="Close"
           >
-            Done
+            <CloseIcon />
           </button>
         </div>
 

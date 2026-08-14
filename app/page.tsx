@@ -1040,7 +1040,7 @@ export default function Home() {
       )}
 
       {!captureOpen && (
-        <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Dock it">+</button>
+        <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Dock it"><PlusIcon size={24} /></button>
       )}
 
       {activeTask && (
