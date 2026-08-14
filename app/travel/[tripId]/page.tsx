@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
+import DaySheet from '@/components/DaySheet';
 import MapView from '@/components/MapView';
 import { TravelLeg } from '@/components/TravelLeg';
 import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
@@ -19,11 +20,9 @@ import {
   CloseIcon,
   DragHandleIcon,
   FitCheckIcon,
-  FitWarnIcon,
   LockIcon,
   MapPinIcon,
   PlusIcon,
-  RefreshIcon,
   TrashIcon,
 } from '@/components/icons';
 
@@ -94,16 +93,6 @@ type Leg = {
 };
 
 const ROW_GAP = 8;
-
-// Travel day ordering is a quiet preference, not page chrome. The list
-// shows the active mode as one small text toggle; the choices themselves
-// only appear when the user asks for them.
-const SORT_LABELS: Record<TravelSortMode, string> = {
-  manual: 'Manual',
-  what_fits: 'What fits',
-  close_to_accom: 'Near stay',
-  nearby_me: 'Near stay',
-};
 
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
@@ -276,7 +265,7 @@ function ActivityDetailSheet(props: {
         )}
 
         <div style={{ flex: 1 }}>
-          <span className="settings-label">Time here</span>
+          <span className="settings-label">Duration</span>
           <input type="text" value={estimateStr} onChange={(e) => setEstimateStr(e.target.value)} onBlur={commit} style={{ width: '100%' }} />
         </div>
 
@@ -375,7 +364,7 @@ export default function TripDayView() {
   const nearbyCacheRef = useRef<Record<string, NearbySuggestion[]>>({});
 
   const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
-  const [sortOptionsOpen, setSortOptionsOpen] = useState(false);
+  const [daySheetOpen, setDaySheetOpen] = useState(false);
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
   const [captureFixedTime, setCaptureFixedTime] = useState('');
 
@@ -768,6 +757,7 @@ export default function TripDayView() {
   const driveFromBase = selectedDay?.drive_from_base_mins || 0;
   const plannedMins = driveFromBase + activities.reduce((sum, a) => sum + a.estimate_mins + a.drive_mins_to_next, 0);
   const overloaded = minutesLeftToday > 0 && plannedMins > minutesLeftToday;
+  const spareMins = minutesLeftToday - plannedMins;
 
   const trackSpan = Math.max(dayEndMinutes - dayStartMinutes, 1);
   const nowPercent = isToday ? Math.min(Math.max((nowMinutesOfDay - dayStartMinutes) / trackSpan, 0), 1) : 0;
@@ -803,11 +793,6 @@ export default function TripDayView() {
           <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back"><BackIcon /></button>
           <div>
             <h1 className="app-title" style={{ fontSize: 'var(--text-lg)', lineHeight: 1.15 }}>{trip.name}</h1>
-            {tripDays.length > 0 && selectedDayIndex >= 0 && (
-              <div style={{ fontSize: 11, color: 'var(--ink-faint)', fontWeight: 600 }}>
-                Day {selectedDayIndex + 1} of {tripDays.length}
-              </div>
-            )}
           </div>
         </div>
         <div className="app-header-right">
@@ -816,158 +801,55 @@ export default function TripDayView() {
         </div>
       </div>
 
-      <div className="day-toggle-row" style={{ margin: 'var(--space-3) 0', overflowX: 'auto', width: '100%' }}>
-        {tripDays.map((d) => {
-          const label = fmtDayLabel(d.date);
-          return (
-            <button
-              key={d.id}
-              className={d.id === selectedDayId ? 'day-toggle-btn pill active' : 'day-toggle-btn pill'}
-              onClick={() => setSelectedDayId(d.id)}
-            >
-              {label.weekday} {label.date}
-            </button>
-          );
-        })}
-      </div>
-
       {selectedDay && (
-        <>
-          {/* Capacity card promoted to the first thing shown, matching
-              Dokkit's own hierarchy — "what fits today" leads, secondary
-              utilities (accommodation, map) follow below it rather than
-              burying the primary signal under button chrome. */}
-          <div className={overloaded ? 'today-header-card flow overloaded' : 'today-header-card flow'}>
-            <div className="header-compare-row">
-              <div className="header-compare-stat">
-                <div className="header-compare-number mono">{fmtMins(minutesLeftToday)}</div>
-                <div className="header-compare-label">{isToday ? 'time left' : 'day length'}</div>
-              </div>
-              <div className={overloaded ? 'header-fit-icon over' : 'header-fit-icon fits'}>
-                {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
-              </div>
-              <div className="header-compare-stat">
-                <div className={overloaded ? 'header-compare-number mono over' : 'header-compare-number mono'}>
-                  {fmtMins(plannedMins)}
-                </div>
-                <div className="header-compare-label">planned + drive</div>
-              </div>
-            </div>
-
-            <div className="day-rail-wrap">
-              <div className="day-rail-track">
-                {isToday && <div className="day-rail-elapsed" style={{ width: `${nowPercent * 100}%` }} />}
-                <div
-                  className={overloaded ? 'day-rail-plan over' : 'day-rail-plan'}
-                  style={{ left: `${nowPercent * 100}%`, width: `${planWidthPercent * 100}%` }}
-                />
-                {isToday && <div className="day-rail-now-dot" style={{ left: `${nowPercent * 100}%` }} />}
-              </div>
-              <div className="day-rail-labels">
-                <span>{fmtClock(effectiveDayStart)}{selectedDay.arrival_time ? ' (arrival)' : ''}</span>
-                {overloaded && <span className="day-rail-overflow-label">+{fmtMins(plannedMins - minutesLeftToday)}</span>}
-                <span>{fmtClock(effectiveDayEnd)}{selectedDay.departure_time ? ' (departure)' : ''}</span>
-              </div>
-            </div>
-
-            {overloaded && (
-              <p
-                style={{
-                  margin: 'var(--space-2) 0 0',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  textAlign: 'center',
-                  color: 'var(--hazard-text, var(--hazard))',
-                }}
-              >
-                {fmtMins(plannedMins - minutesLeftToday)} over — trim or move a stop
-              </p>
+        <button
+          className="day-head"
+          onClick={() => setDaySheetOpen(true)}
+          aria-expanded={daySheetOpen}
+        >
+          <span className="day-head-left">
+            <span className="day-head-label">{fmtDayLabel(selectedDay.date).weekday} {fmtDayLabel(selectedDay.date).date}</span>
+            <span className="day-head-pos">Day {selectedDayIndex + 1} of {tripDays.length}</span>
+          </span>
+          <span className="day-head-right">
+            {activities.length > 0 && minutesLeftToday > 0 && (
+              <span className={overloaded ? 'day-head-fit over' : 'day-head-fit'}>
+                {overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(spareMins)} spare`}
+              </span>
             )}
-          </div>
-
-          {/* Day toolbar — the three setup/route actions in one row.
-              The stay button carries the label (and truncates); map and
-              drive-times are compact icon buttons so the row stays quiet. */}
-          <div className="toolbar-row">
-            <button
-              className="btn-ghost toolbar-btn toolbar-stay"
-              onClick={() => setAccommodationSheetOpen(true)}
-              title={selectedDay.base_location_text || 'Set accommodation'}
-            >
-              <BedIcon />
-              <span>{selectedDay.base_location_text || 'Set stay'}</span>
-            </button>
-            {activities.length > 0 && (
-              <button
-                className="btn-ghost toolbar-btn toolbar-icon-btn"
-                onClick={() => setMapOpen(true)}
-                aria-label="View map"
-                title="View map"
-              >
-                <MapPinIcon />
-              </button>
-            )}
-            <button
-              className="btn-ghost toolbar-btn toolbar-icon-btn"
-              onClick={recalculateDay}
-              disabled={recalculating}
-              aria-label="Recalculate drive times"
-              title="Recalculate drive times"
-            >
-              <RefreshIcon spinning={recalculating} />
-            </button>
-          </div>
-          {recalcError && (
-            <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', margin: '0 0 var(--space-2)' }}>
-              {recalcError}
-            </p>
-          )}
-
-          {legs.length > 0 && activities.length === 0 && selectedDay.base_lat != null && (
-            <div className="empty-state">Add a stop to see what's nearby your base.</div>
-          )}
-        </>
+            <span className="day-head-chev" aria-hidden="true"><ChevronIcon size={14} /></span>
+          </span>
+        </button>
       )}
 
-      {activities.length > 0 && (
-        <div className="sort-row">
-          <button
-            className="sort-toggle"
-            onClick={() => setSortOptionsOpen((o) => !o)}
-            aria-expanded={sortOptionsOpen}
-          >
-            Order: <span className="sort-toggle-value">{SORT_LABELS[travelSortMode]}</span>
-            <span className={sortOptionsOpen ? 'sort-toggle-chev open' : 'sort-toggle-chev'} aria-hidden="true">
-              <ChevronIcon size={12} />
-            </span>
-          </button>
-        </div>
-      )}
-      {activities.length > 0 && sortOptionsOpen && (
-        <div className="segmented sort-segmented">
-          <button className={travelSortMode === 'manual' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('manual')}>Manual</button>
-          <button className={travelSortMode === 'what_fits' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('what_fits')}>What fits</button>
-          <button className={travelSortMode === 'close_to_accom' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => changeSortMode('close_to_accom')}>Near stay</button>
-        </div>
+      {recalcError && (
+        <button className="recalc-error" onClick={recalculateDay} disabled={recalculating}>
+          Drive times couldn't update — tap to retry
+        </button>
       )}
 
       <div className="task-list">
         {activities.length === 0 && (
           <div className="empty-state">
-            <div className="empty-state-title">Nothing planned for this day yet</div>
-            <div className="empty-state-sub">Tap below or use the + button to add your first stop.</div>
+            <div className="empty-state-title">
+              Nothing planned for {selectedDay ? fmtDayLabel(selectedDay.date).weekday : 'this day'} yet
+            </div>
+            <div className="empty-state-sub">Add your first stop — Dokkit works out the route and how the day fits.</div>
             <button className="btn btn-steel" onClick={() => setCaptureOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <PlusIcon size={16} /> Add a stop
             </button>
           </div>
         )}
 
-        {/* Nearby-search availability hint — it explains the nearby entry
-            points below, so it lives next to them rather than buried. */}
-        {legs.length === 0 && activities.length > 0 && (
-          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '0 0 var(--space-2)' }}>
-            Set accommodation or add stops from suggestions to unlock nearby finds.
-          </p>
+        {selectedDay && activities.length > 0 && (selectedDay.base_lat != null || selectedDay.base_location_text) && (
+          <button className="stay-anchor" onClick={() => setAccommodationSheetOpen(true)}>
+            <span className="stay-anchor-icon"><BedIcon /></span>
+            <span className="stay-anchor-text">
+              <span className="stay-anchor-title">{selectedDay.base_location_text || 'Set where you are staying'}</span>
+              {selectedDay.base_location_text && <span className="stay-anchor-sub">your base for the day</span>}
+            </span>
+            <ChevronIcon size={14} />
+          </button>
         )}
 
         {selectedDay && selectedDay.base_lat != null && activities.length > 0 && (
@@ -1013,6 +895,7 @@ export default function TripDayView() {
           }
 
           const legAfterThis = legs.find((l) => l.fromId === a.id);
+          const nextStop = legAfterThis ? activities.find((x) => x.id === legAfterThis.toId) : null;
           const conflict = !!fixedTimeConflicts[a.id];
 
           return (
@@ -1031,12 +914,13 @@ export default function TripDayView() {
                   </button>
                   <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
                     <div className="task-text">{a.text}</div>
-                    {(a.location_text || conflict) && (
+                    {((a.location_text && a.lat == null) || conflict) && (
                       <div className="activity-meta">
-                        {a.location_text && (
+                        {a.location_text && a.lat == null && (
                           <span className="activity-meta-loc" title={a.location_text}>
                             <MapPinIcon size={12} />
                             <span className="activity-meta-loc-text">{a.location_text}</span>
+                            <span className="activity-meta-hint">· not mapped</span>
                           </span>
                         )}
                         {conflict && <span className="activity-meta-conflict">won't make it</span>}
@@ -1071,7 +955,7 @@ export default function TripDayView() {
                 {legAfterThis && legAfterThis.directMins > 0 && (
                   <TravelLeg
                     label={fmtMins(legAfterThis.directMins)}
-                    detail={`Drive to ${activities.find((x) => x.id === legAfterThis.toId)?.text ?? 'the next stop'}`}
+                    detail={`Drive to ${nextStop?.location_text || nextStop?.text || 'the next stop'}`}
                     action={
                       <button onClick={() => findNearby(legAfterThis)} aria-label="Find something nearby">
                         Nearby
@@ -1099,30 +983,41 @@ export default function TripDayView() {
               value={captureText}
               onChange={(e) => setCaptureText(e.target.value)}
               placeholder="What's the stop?"
+              autoFocus
             />
             <LocationAutocomplete
               value={captureLocation}
-              placeholder="Search for a place"
+              placeholder="Search for a place (optional)"
               onChange={setCaptureLocation}
               onPlaceSelected={(result) => {
                 setCaptureLocation(result.formattedAddress);
                 setCaptureCoords({ lat: result.lat, lng: result.lng });
               }}
             />
-            <div className="segmented">
-              <button className={captureTimeType === 'flexible' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setCaptureTimeType('flexible')}>Flexible</button>
-              <button className={captureTimeType === 'fixed' ? 'segmented-btn active' : 'segmented-btn'} onClick={() => setCaptureTimeType('fixed')}>Fixed time</button>
+            <div className="capture-row">
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span className="settings-label">About</span>
+                <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} />
+              </div>
+              <button
+                className={captureTimeType === 'fixed' ? 'capture-fixed-toggle active' : 'capture-fixed-toggle'}
+                onClick={() => setCaptureTimeType(captureTimeType === 'fixed' ? 'flexible' : 'fixed')}
+                aria-pressed={captureTimeType === 'fixed'}
+              >
+                {captureTimeType === 'fixed' ? 'Fixed time' : 'Flexible'}
+              </button>
             </div>
             {captureTimeType === 'fixed' && (
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span className="settings-label">At</span>
-                <input type="time" value={captureFixedTime} onChange={(e) => setCaptureFixedTime(e.target.value)} style={{ width: '100%' }} />
+                <input type="time" value={captureFixedTime} onChange={(e) => setCaptureFixedTime(e.target.value)} />
               </div>
             )}
-            <div>
-              <span className="settings-label">Time there</span>
-              <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} style={{ width: '100%' }} />
-            </div>
+            {captureLocation.length > 0 && !captureCoords && (
+              <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+                Pick a suggestion so drive times can be calculated.
+              </p>
+            )}
             {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
             <button className="btn btn-steel" onClick={addActivity}>Add stop</button>
           </div>
@@ -1181,6 +1076,32 @@ export default function TripDayView() {
           } : null}
           activities={activities.map((a) => ({ ...a, conflict: !!fixedTimeConflicts[a.id] }))}
           onClose={() => setMapOpen(false)}
+        />
+      )}
+
+      {daySheetOpen && selectedDay && (
+        <DaySheet
+          dayIndex={selectedDayIndex}
+          tripDays={tripDays}
+          selectedDayId={selectedDayId || ''}
+          onSelectDay={setSelectedDayId}
+          hasActivities={activities.length > 0}
+          overloaded={overloaded}
+          spareMins={spareMins}
+          plannedMins={plannedMins}
+          minutesLeftToday={minutesLeftToday}
+          isToday={isToday}
+          nowPercent={nowPercent}
+          planWidthPercent={planWidthPercent}
+          projectedFinishMinutes={projectedFinish}
+          effectiveDayStart={effectiveDayStart}
+          effectiveDayEnd={effectiveDayEnd}
+          hasRoute={activities.some((a) => a.lat != null) || (selectedDay.base_lat != null)}
+          sortMode={travelSortMode}
+          onChangeSortMode={changeSortMode}
+          onOpenAccommodation={() => { setDaySheetOpen(false); setAccommodationSheetOpen(true); }}
+          onOpenMap={() => { setDaySheetOpen(false); setMapOpen(true); }}
+          onClose={() => setDaySheetOpen(false)}
         />
       )}
     </div>
