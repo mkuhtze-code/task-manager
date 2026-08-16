@@ -35,6 +35,23 @@ create table if not exists task_types (
   created_at timestamptz not null default now()
 );
 
+-- ── Jobs (a persistent container for one real-world piece of work) ──
+-- A Job groups Tasks across days and carries optional lightweight context
+-- (client, location). It has no dates, status, priority, estimates or
+-- lifecycle of its own — everything shown about a Job is either raw
+-- context here or derived from its Tasks. client and location are
+-- attributes of a Job, not what defines one; no CRM concepts.
+create table if not exists jobs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  client text,
+  location_text text,
+  lat double precision,
+  lng double precision,
+  created_at timestamptz not null default now()
+);
+
 -- ── Tasks ────────────────────────────────────────────────────────
 create table if not exists tasks (
   id uuid primary key default gen_random_uuid(),
@@ -52,6 +69,11 @@ create table if not exists tasks (
   lat double precision,
   lng double precision,
   task_type_id uuid references task_types(id) on delete set null,
+  -- Optional link to a Job. Purely additive: a Task's own scheduling,
+  -- location, status and ordering continue to drive Today/Travel exactly
+  -- as before; a Job is context, never a constraint. On job delete the
+  -- tasks are detached (set null), never deleted.
+  job_id uuid references jobs(id) on delete set null,
   order_index int not null default 0,
   created_at timestamptz not null default now(),
   completed_at timestamptz,
@@ -244,6 +266,7 @@ create table if not exists error_logs (
 -- ── Row Level Security ───────────────────────────────────────────
 alter table user_settings enable row level security;
 alter table task_types enable row level security;
+alter table jobs enable row level security;
 alter table tasks enable row level security;
 alter table subtasks enable row level security;
 alter table meetings enable row level security;
@@ -264,6 +287,7 @@ alter table allowed_signup_emails enable row level security;
 -- ── Policies: reset then recreate so this file can be rerun safely ─
 drop policy if exists "own settings" on user_settings;
 drop policy if exists "own task types" on task_types;
+drop policy if exists "own jobs" on jobs;
 drop policy if exists "own tasks" on tasks;
 drop policy if exists "own subtasks" on subtasks;
 drop policy if exists "own meetings" on meetings;
@@ -293,6 +317,10 @@ create policy "own settings" on user_settings
   with check (auth.uid() = user_id);
 
 create policy "own task types" on task_types
+  for all using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "own jobs" on jobs
   for all using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
@@ -467,6 +495,10 @@ alter table tasks add column if not exists last_overdue_ping_at timestamptz;
 alter table tasks add column if not exists drive_mins_to_next int not null default 0;
 alter table tasks add column if not exists route_polyline text;
 alter table tasks add column if not exists info text;
+alter table tasks add column if not exists job_id uuid references jobs(id) on delete set null;
+
+-- Grouping reads on the Jobs surface (tasks for a given job).
+create index if not exists tasks_job_id_idx on tasks (job_id);
 
 alter table feedback add column if not exists user_last_read_at timestamptz;
 

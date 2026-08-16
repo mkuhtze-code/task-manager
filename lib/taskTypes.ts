@@ -30,6 +30,10 @@ export type Task = {
   // paper. Plain multiline text; never auto-interpreted into subtasks,
   // reminders, or any other structure.
   info: string;
+  // Optional Job this task belongs to. Purely additive context — a Job
+  // never overrides this task's own scheduling, estimate, location,
+  // status or ordering. Null means the task isn't part of a Job.
+  job_id: string | null;
 };
 
 export type Subtask = {

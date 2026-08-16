@@ -33,6 +33,7 @@ import {
   type Subtask,
   type Task,
 } from '@/lib/taskTypes';
+import type { Job } from '@/lib/jobTypes';
 import {
   fmtMins,
   isScheduledForLater,
@@ -115,6 +116,10 @@ export default function Home() {
   const [captureLocation, setCaptureLocation] = useState('');
   const [captureLocationCoords, setCaptureLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [manualLocationToggle, setManualLocationToggle] = useState(false);
+  // The optional Job a captured Task should be filed under, chosen from the
+  // capture sheet's quiet "Add to a job" disclosure. Null = not in any Job.
+  const [captureJobId, setCaptureJobId] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
 
@@ -235,6 +240,14 @@ export default function Home() {
 
     const { data: meetingRows } = await supabase.from('meetings').select('*');
     setMeetings(meetingRows || []);
+
+    // Jobs for the capture sheet's "Add to a job" disclosure — name only,
+    // the detail pages load the rest.
+    const { data: jobRows } = await supabase
+      .from('jobs')
+      .select('id, name')
+      .order('created_at', { ascending: false });
+    setJobs((jobRows as Job[]) || []);
 
     if (taskRows && taskRows.length > 0) {
       const ids = taskRows.map((t: Task) => t.id);
@@ -495,6 +508,7 @@ export default function Home() {
         location_text: captureLocation.trim().length > 0 ? captureLocation.trim() : null,
         lat: captureLocationCoords?.lat ?? null,
         lng: captureLocationCoords?.lng ?? null,
+        job_id: captureJobId,
       })
       .select()
       .single();
@@ -513,6 +527,7 @@ export default function Home() {
     setCaptureLocation('');
     setCaptureLocationCoords(null);
     setManualLocationToggle(false);
+    setCaptureJobId(null);
     setCaptureOpen(false);
     if (data.lat != null && sortMode === 'geo_aware') recalcRoute();
   }
@@ -1034,6 +1049,9 @@ export default function Home() {
           setShowReminderField={setShowReminderField}
           captureSurfaceDate={captureSurfaceDate}
           setCaptureSurfaceDate={setCaptureSurfaceDate}
+          jobs={jobs}
+          captureJobId={captureJobId}
+          setCaptureJobId={setCaptureJobId}
           error={error}
           onClose={() => setCaptureOpen(false)}
         />

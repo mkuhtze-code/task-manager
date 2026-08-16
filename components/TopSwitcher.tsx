@@ -2,13 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 
-// Compact Today / Travel switcher — a quiet inline text control that slots
-// into the existing app/header chrome instead of consuming a full row of
-// pills. Active surface is bold ink, inactive is faint, with a hairline
+// Compact Today / Jobs / Travel switcher — a quiet inline text control that
+// slots into the existing app/header chrome instead of consuming a full row
+// of pills. Active surface is bold ink, inactive is faint, with a hairline
 // divider between items. These are Dokkit's app-level destinations; the
 // switcher sits in the header on every destination so they're always one
 // tap apart and never depend on a back-link chain.
-export default function TopSwitcher({ active }: { active: 'today' | 'travel' | 'patterns' }) {
+export default function TopSwitcher({ active }: { active: 'today' | 'jobs' | 'travel' | 'patterns' }) {
   const router = useRouter();
   return (
     <div className="view-switcher" role="tablist" aria-label="Switch view">
@@ -19,6 +19,15 @@ export default function TopSwitcher({ active }: { active: 'today' | 'travel' | '
         aria-selected={active === 'today'}
       >
         Today
+      </button>
+      <span className="view-switcher-sep" aria-hidden="true" />
+      <button
+        className={active === 'jobs' ? 'view-switcher-item active' : 'view-switcher-item'}
+        onClick={() => router.push('/jobs')}
+        role="tab"
+        aria-selected={active === 'jobs'}
+      >
+        Jobs
       </button>
       <span className="view-switcher-sep" aria-hidden="true" />
       <button
