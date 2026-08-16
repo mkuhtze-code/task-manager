@@ -10,8 +10,12 @@ export default function LocationAutocomplete(props: {
   placeholder?: string;
   onChange: (text: string) => void;
   onPlaceSelected: (result: { lat: number; lng: number; formattedAddress: string }) => void;
+  // Fires the moment a prediction is picked, before the place-details
+  // fetch resolves — lets a caller capture the prediction text (the
+  // "name" of the place) without waiting for coordinates.
+  onPlacePicked?: (place: { placeId: string; text: string }) => void;
 }) {
-  const { value, placeholder, onChange, onPlaceSelected } = props;
+  const { value, placeholder, onChange, onPlaceSelected, onPlacePicked } = props;
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -77,6 +81,7 @@ export default function LocationAutocomplete(props: {
   async function handleSelect(p: Prediction) {
     setOpen(false);
     onChange(p.text);
+    onPlacePicked?.({ placeId: p.placeId, text: p.text });
     setLoading(true);
     setSelectError('');
     try {

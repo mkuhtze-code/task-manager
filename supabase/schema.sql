@@ -234,6 +234,24 @@ create table if not exists accommodations (
   created_at timestamptz not null default now()
 );
 
+-- ── Trip Library (a trip's basket of "maybe we should do this") ───
+-- Deliberately loose: no dates, times, estimates, status or ordering —
+-- those belong to the scheduled activity. A Library item is only a
+-- trip-specific possibility, copied into an activity when scheduled.
+-- activities.library_item_id is pure provenance: deleting a Library
+-- item nulls the link but never deletes the scheduled activities.
+create table if not exists trip_library_items (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  location_text text,
+  lat double precision,
+  lng double precision,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
 -- ── Waitlist signups (requesting access) ─────────────────────────
 create table if not exists waitlist_signups (
   id uuid primary key default gen_random_uuid(),
@@ -280,6 +298,7 @@ alter table trips enable row level security;
 alter table trip_days enable row level security;
 alter table activities enable row level security;
 alter table accommodations enable row level security;
+alter table trip_library_items enable row level security;
 alter table waitlist_signups enable row level security;
 alter table error_logs enable row level security;
 alter table allowed_signup_emails enable row level security;
@@ -303,6 +322,7 @@ drop policy if exists "own trips" on trips;
 drop policy if exists "own trip days" on trip_days;
 drop policy if exists "own activities" on activities;
 drop policy if exists "own accommodations" on accommodations;
+drop policy if exists "own trip library items" on trip_library_items;
 drop policy if exists "admins can manage waitlist" on waitlist_signups;
 drop policy if exists "admins can read errors" on error_logs;
 drop policy if exists "admins can update errors" on error_logs;
@@ -394,6 +414,10 @@ create policy "own activities" on activities
   with check (auth.uid() = user_id);
 
 create policy "own accommodations" on accommodations
+  for all using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "own trip library items" on trip_library_items
   for all using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
@@ -496,6 +520,15 @@ alter table tasks add column if not exists drive_mins_to_next int not null defau
 alter table tasks add column if not exists route_polyline text;
 alter table tasks add column if not exists info text;
 alter table tasks add column if not exists job_id uuid references jobs(id) on delete set null;
+
+-- Trip Library: the "own trip library items" policy above needs the table
+-- to exist for existing installs too; create table if not exists covers it.
+-- Provenance link from a scheduled activity back to the Library item that
+-- spawned it. Purely additive — scheduling copies name/location/coords into
+-- the activity, so the activity stands on its own. Deleting the Library
+-- item detaches the link (set null), never the scheduled activity itself.
+alter table activities add column if not exists library_item_id uuid references trip_library_items(id) on delete set null;
+create index if not exists trip_library_items_trip_id_idx on trip_library_items (trip_id);
 
 -- Grouping reads on the Jobs surface (tasks for a given job).
 create index if not exists tasks_job_id_idx on tasks (job_id);
