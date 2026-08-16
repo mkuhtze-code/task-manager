@@ -518,6 +518,7 @@ export default function JobDetailPage() {
               remainingForThis={openTaskRemaining}
               liveLogged={openTaskLiveLogged}
               anyActive={anyActive}
+              context="job"
               jobs={jobs}
               onClose={() => setOpenTaskId(null)}
               onSave={updateTask}

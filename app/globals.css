@@ -792,6 +792,19 @@ button:focus-visible, input:focus-visible {
   font-weight: 500;
 }
 
+/* Job context inside a Today card — the Job name reads as secondary/faint
+   meta under the task name, the same quiet treatment activity rows give a
+   location: small, faint, truncated. Never a badge or pill. */
+.task-card-job {
+  margin-top: 3px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .task-card-glance {
   display: flex;
   align-items: center;

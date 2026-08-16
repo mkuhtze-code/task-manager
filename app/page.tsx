@@ -1001,6 +1001,7 @@ export default function Home() {
                   anyActive={anyActive}
                   subs={subs}
                   learnedHint={learnedHint}
+                  jobLabel={jobs.find((j) => j.id === t.job_id)?.name ?? null}
                   expanded={expandedId === t.id}
                   onToggleExpand={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
                   onOpenDetails={() => { setExpandedId(null); setOpenTaskId(t.id); }}
@@ -1103,6 +1104,7 @@ export default function Home() {
           remainingForThis={openTaskRemaining}
           liveLogged={openTaskLiveLogged}
           anyActive={visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0)}
+          context="today"
           jobs={jobs}
           onClose={() => setOpenTaskId(null)}
           onSave={updateTask}

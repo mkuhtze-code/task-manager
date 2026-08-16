@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Subtask, Task } from '@/lib/taskTypes';
+import type { Subtask, Task, TaskContext } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
 import { fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
@@ -15,6 +15,7 @@ export function TaskDetailSheet(props: {
   remainingForThis: number;
   liveLogged: number;
   anyActive: boolean;
+  context: TaskContext;
   jobs: Job[];
   onClose: () => void;
   onSave: (id: string, text: string, mins: number, surfaceDate: string | null, locationText: string | null, lat: number | null, lng: number | null) => void;
@@ -34,7 +35,7 @@ export function TaskDetailSheet(props: {
   setSubDraftTime: (v: string) => void;
 }) {
   const {
-    task, subs, remainingForThis, liveLogged, anyActive, jobs, onClose, onSave,
+    task, subs, remainingForThis, liveLogged, anyActive, context, jobs, onClose, onSave,
     onComplete, onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
     onDelete, onSaveInfo, onMoveToJob,
     subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
@@ -153,6 +154,7 @@ export function TaskDetailSheet(props: {
           </p>
         )}
 
+        <span className="settings-label">{context === 'job' ? 'When' : 'Reminder'}</span>
         <div className="reminder-date-row">
           <input
             type="date"
