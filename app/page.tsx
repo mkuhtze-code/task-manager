@@ -570,6 +570,19 @@ export default function Home() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, info } : t)));
   }
 
+  // Assigning a Task to a Job (or moving it between Jobs, or detaching it)
+  // never changes the Task itself or Today's scheduling — a Job is a lens,
+  // not a constraint. The Task stays exactly where Today would show it.
+  async function moveTaskToJob(id: string, jobId: string | null) {
+    const { error } = await supabase.from('tasks').update({ job_id: jobId }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not move the task: ' + error.message);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, job_id: jobId } : t)));
+  }
+
   async function toggleDueToday(id: string, current: boolean) {
     const { error } = await supabase.from('tasks').update({ due_today: !current }).eq('id', id);
     if (error) {
@@ -1090,6 +1103,7 @@ export default function Home() {
           remainingForThis={openTaskRemaining}
           liveLogged={openTaskLiveLogged}
           anyActive={visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0)}
+          jobs={jobs}
           onClose={() => setOpenTaskId(null)}
           onSave={updateTask}
           onComplete={completeTask}
@@ -1101,6 +1115,7 @@ export default function Home() {
           onDeleteSubtask={deleteSubtask}
           onDelete={deleteTask}
           onSaveInfo={saveTaskInfo}
+          onMoveToJob={moveTaskToJob}
           subDraftText={subDraftText[openTask.id] || ''}
           subDraftTime={subDraftTime[openTask.id] || ''}
           setSubDraftText={(v) => setSubDraftText((prev) => ({ ...prev, [openTask.id]: v }))}

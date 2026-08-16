@@ -5,165 +5,24 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import type { Job } from '@/lib/jobTypes';
-import type { Task } from '@/lib/taskTypes';
-import { fmtMins, fmtSurfaceDate, localDateStr, parseMins } from '@/lib/timeFormat';
+import type { Subtask, Task } from '@/lib/taskTypes';
+import { fmtMins, localDateStr, parseMins } from '@/lib/timeFormat';
 import { doneTasksOf, groupJobTasks, isJobDone, jobProgress } from '@/lib/jobUtils';
 import GearMenu from '@/components/GearMenu';
 import TopSwitcher from '@/components/TopSwitcher';
-import LocationAutocomplete from '@/components/LocationAutocomplete';
-import { TaskInfo } from '@/components/TaskInfo';
+import { TaskCard } from '@/components/TaskCard';
+import { TaskDetailSheet } from '@/components/TaskDetailSheet';
+import { CaptureSheet } from '@/components/CaptureSheet';
 import { JobEditSheet } from '@/components/JobSheets';
-import {
-  BackIcon,
-  CheckIcon,
-  ChevronIcon,
-  CloseIcon,
-  FitCheckIcon,
-  MapPinIcon,
-  PlusIcon,
-  TrashIcon,
-} from '@/components/icons';
+import { BackIcon, CheckIcon, ChevronIcon, MapPinIcon, PlusIcon } from '@/components/icons';
 
-// ── The sheet that opens when you tap a Task inside a Job ─────────────
-// Name, estimate and surface date are editable; Complete, Move to another
-// Job, Remove from Job and Delete are the actions. Today keeps scheduling
-// these Tasks entirely on its own — this sheet never touches that.
+// The Job detail page is a LENS over the same Tasks Today shows — it never
+// renders its own task UI. Open Tasks are the exact TaskCard component with
+// the exact TaskDetailSheet behind them; the only Job-specific behaviour is
+// grouping by surface_date, and assigning/moving job_id. Completed Tasks
+// stay visible as a quiet collapsed record, the same way Today lets
+// finished work fade rather than vanish.
 
-function JobTaskSheet(props: {
-  task: Task;
-  jobName: string;
-  otherJobs: Job[];
-  onClose: () => void;
-  onComplete: (id: string) => Promise<void>;
-  onMove: (id: string, jobId: string | null) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-  onSave: (id: string, data: { text: string; estimate_mins: number; surface_date: string | null; info?: string }) => Promise<void>;
-}) {
-  const { task, jobName, otherJobs, onClose, onComplete, onMove, onDelete, onSave } = props;
-
-  const [text, setText] = useState(task.text);
-  const [timeStr, setTimeStr] = useState(fmtMins(task.estimate_mins));
-  const [surfaceDate, setSurfaceDate] = useState(task.surface_date || '');
-  const [showDateField, setShowDateField] = useState(!!task.surface_date);
-  const [moveOpen, setMoveOpen] = useState(false);
-  const [error, setError] = useState('');
-
-  async function commit() {
-    const mins = parseMins(timeStr);
-    if (mins === null) {
-      setError("Couldn't read that time — try 15m or 1.5h");
-      return;
-    }
-    setError('');
-    await onSave(task.id, {
-      text: text.trim(),
-      estimate_mins: mins,
-      surface_date: showDateField && surfaceDate ? surfaceDate : null,
-    });
-  }
-
-  return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="task-detail-header">
-          <div className="settings-panel-title">Task</div>
-          <button className="gear-btn" onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </button>
-        </div>
-
-        {jobName && <p className="settings-help" style={{ marginBottom: 8 }}>In <strong>{jobName}</strong></p>}
-
-        <input
-          type="text"
-          className="task-detail-name"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={commit}
-        />
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="settings-label">Estimate</span>
-          <input
-            type="text"
-            value={timeStr}
-            onChange={(e) => setTimeStr(e.target.value)}
-            onBlur={commit}
-          />
-        </div>
-
-        {!showDateField ? (
-          <button
-            type="button"
-            className="reveal-reminder-link"
-            onClick={() => setShowDateField(true)}
-          >
-            For another day
-          </button>
-        ) : (
-          <div className="reminder-date-row">
-            <input
-              type="date"
-              value={surfaceDate}
-              onChange={(e) => { setSurfaceDate(e.target.value); onSave(task.id, { text: text.trim(), estimate_mins: task.estimate_mins, surface_date: e.target.value || null }); }}
-            />
-            <button
-              type="button"
-              className="btn-text"
-              onClick={() => { setShowDateField(false); setSurfaceDate(''); onSave(task.id, { text: text.trim(), estimate_mins: task.estimate_mins, surface_date: null }); }}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-
-        <TaskInfo value={task.info} surface="edit" onSave={(info) => onSave(task.id, { text: text.trim(), estimate_mins: task.estimate_mins, surface_date: task.surface_date, info })} />
-
-        {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-
-        <button
-          className="btn btn-ghost"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-          onClick={() => { onComplete(task.id); onClose(); }}
-        >
-          <FitCheckIcon /> Complete
-        </button>
-
-        <button className="detail-reveal" onClick={() => setMoveOpen((v) => !v)} aria-expanded={moveOpen}>
-          <span>Move to another job</span>
-          <ChevronIcon size={14} />
-        </button>
-        {moveOpen && (
-          <div className="move-day-list">
-            <button
-              className="move-day-option"
-              onClick={() => { onMove(task.id, null); onClose(); }}
-            >
-              No job
-            </button>
-            {otherJobs.map((j) => (
-              <button key={j.id} className="move-day-option" onClick={() => { onMove(task.id, j.id); onClose(); }}>
-                {j.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="detail-delete">
-          <button
-            className="btn-text"
-            style={{ color: 'var(--danger-text, var(--danger))', display: 'inline-flex', alignItems: 'center', gap: 6, padding: 0 }}
-            onClick={() => { onDelete(task.id); onClose(); }}
-          >
-            <TrashIcon /> Delete task
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Job detail ────────────────────────────────────────────────────────
 export default function JobDetailPage() {
   const router = useRouter();
   const params = useParams<{ jobId: string }>();
@@ -174,17 +33,25 @@ export default function JobDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [otherJobs, setOtherJobs] = useState<Job[]>([]);
+  const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [doneOpen, setDoneOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [subDraftText, setSubDraftText] = useState<Record<string, string>>({});
+  const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
+
+  // Capture state — the shared CaptureSheet, pre-bound to this Job.
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureText, setCaptureText] = useState('');
   const [captureTime, setCaptureTime] = useState('');
   const [captureLocation, setCaptureLocation] = useState('');
-  const [captureCoords, setCaptureCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [captureDate, setCaptureDate] = useState('');
-  const [showCaptureDate, setShowCaptureDate] = useState(false);
+  const [captureLocationCoords, setCaptureLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [manualLocationToggle, setManualLocationToggle] = useState(false);
+  const [showReminderField, setShowReminderField] = useState(false);
+  const [captureSurfaceDate, setCaptureSurfaceDate] = useState('');
+  const [captureJobId, setCaptureJobId] = useState<string | null>(null);
   const [captureError, setCaptureError] = useState('');
 
   useEffect(() => {
@@ -219,6 +86,22 @@ export default function JobDetailPage() {
     }
     setJob(jobRow as Job);
 
+    const { data: jobRows, error: jobsErr } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('user_id', userId)
+      .neq('id', jobId)
+      .order('created_at', { ascending: false });
+    if (jobsErr) {
+      console.error(jobsErr);
+      setError("This job couldn't load — tap to retry");
+      setLoading(false);
+      return;
+    }
+    // The full job list (current job included) powers the shared Task
+    // detail sheet's assign/move picker.
+    setJobs([jobRow as Job, ...((jobRows as Job[]) || [])]);
+
     const { data: taskRows, error: taskErr } = await supabase
       .from('tasks')
       .select('*')
@@ -230,19 +113,24 @@ export default function JobDetailPage() {
       setLoading(false);
       return;
     }
-    setTasks((taskRows as Task[]) || []);
+    const taskList = (taskRows as Task[]) || [];
+    setTasks(taskList);
 
-    const { data: other } = await supabase
-      .from('jobs')
-      .select('*')
-      .eq('user_id', userId)
-      .neq('id', jobId)
-      .order('created_at', { ascending: false });
-    setOtherJobs((other as Job[]) || []);
+    if (taskList.length > 0) {
+      const ids = taskList.map((t) => t.id);
+      const { data: subRows } = await supabase.from('subtasks').select('*').in('task_id', ids).order('order_index', { ascending: true });
+      const grouped: Record<string, Subtask[]> = {};
+      (subRows || []).forEach((s: Subtask) => {
+        if (!grouped[s.task_id]) grouped[s.task_id] = [];
+        grouped[s.task_id].push(s);
+      });
+      setSubtasksByTask(grouped);
+    }
 
     setLoading(false);
   }
 
+  // ── Job write paths ───────────────────────────────────────────────
   async function saveJob(name: string, client: string, locationText: string, lat: number | null, lng: number | null) {
     const { error: err } = await supabase
       .from('jobs')
@@ -266,6 +154,164 @@ export default function JobDetailPage() {
     router.replace('/jobs');
   }
 
+  // ── Task write paths — identical semantics to Today's. The only diff
+  // is that a completed Task stays in local state so it can move into the
+  // collapsed Done group, and a moved/removed Task leaves this job's lens.
+  async function updateTask(id: string, text: string, mins: number, surfaceDate: string | null, locationText: string | null, lat: number | null, lng: number | null) {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng })
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not save your changes: ' + error.message);
+      return;
+    }
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng } : t))
+    );
+  }
+
+  async function saveTaskInfo(id: string, info: string) {
+    const { error } = await supabase.from('tasks').update({ info }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not save the information: ' + error.message);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, info } : t)));
+  }
+
+  async function toggleDueToday(id: string, current: boolean) {
+    const { error } = await supabase.from('tasks').update({ due_today: !current }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not update the task: ' + error.message);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due_today: !current } : t)));
+  }
+
+  async function startTask(id: string) {
+    const alreadyActive = tasks.find((t) => t.status === 'active');
+    if (alreadyActive) return;
+    const startedAt = new Date().toISOString();
+    const { error } = await supabase.from('tasks').update({ status: 'active', started_at: startedAt, near_notified: false, over_notified: false, last_overdue_ping_at: null }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not start the task: ' + error.message);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'active', started_at: startedAt } : t)));
+  }
+
+  async function stopTask(id: string) {
+    const task = tasks.find((t) => t.id === id);
+    if (!task || !task.started_at) return;
+    const sessionMins = (Date.now() - new Date(task.started_at).getTime()) / 60000;
+    const newLogged = task.logged_mins + sessionMins;
+    const { error } = await supabase.from('tasks').update({ status: 'pending', started_at: null, logged_mins: newLogged }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not stop the task: ' + error.message);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'pending', started_at: null, logged_mins: newLogged } : t)));
+  }
+
+  async function completeTask(id: string) {
+    const task = tasks.find((t) => t.id === id);
+    let finalLogged = task ? task.logged_mins : 0;
+    if (task && task.status === 'active' && task.started_at) {
+      finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
+    }
+    const { error } = await supabase
+      .from('tasks')
+      .update({ status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: Math.round(finalLogged), completed_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not complete the task: ' + error.message);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'done', started_at: null, logged_mins: finalLogged } : t)));
+  }
+
+  async function deleteTask(id: string) {
+    const { error } = await supabase.from('tasks').delete().eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not delete the task: ' + error.message);
+      return;
+    }
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    setOpenTaskId(null);
+  }
+
+  async function addSubtask(taskId: string) {
+    const text = (subDraftText[taskId] || '').trim();
+    if (text.length === 0) return;
+    const mins = parseMins(subDraftTime[taskId] || '') || 0;
+    const userId = session.user.id;
+    const existing = subtasksByTask[taskId] || [];
+    const { data, error } = await supabase
+      .from('subtasks')
+      .insert({ user_id: userId, task_id: taskId, text, mins, order_index: existing.length })
+      .select()
+      .single();
+    if (error) {
+      console.error(error);
+      alert('Could not add the subtask: ' + error.message);
+      return;
+    }
+    if (data) {
+      setSubtasksByTask((prev) => ({ ...prev, [taskId]: [...(prev[taskId] || []), data] }));
+    }
+    setSubDraftText((prev) => ({ ...prev, [taskId]: '' }));
+    setSubDraftTime((prev) => ({ ...prev, [taskId]: '' }));
+  }
+
+  async function toggleSubtaskDone(subtaskId: string, taskId: string, current: boolean) {
+    const { error } = await supabase.from('subtasks').update({ done: !current }).eq('id', subtaskId);
+    if (error) {
+      console.error(error);
+      alert('Could not update the subtask: ' + error.message);
+      return;
+    }
+    setSubtasksByTask((prev) => ({
+      ...prev,
+      [taskId]: (prev[taskId] || []).map((s) => (s.id === subtaskId ? { ...s, done: !current } : s)),
+    }));
+  }
+
+  async function deleteSubtask(subtaskId: string, taskId: string) {
+    const { error } = await supabase.from('subtasks').delete().eq('id', subtaskId);
+    if (error) {
+      console.error(error);
+      alert('Could not delete the subtask: ' + error.message);
+      return;
+    }
+    setSubtasksByTask((prev) => ({
+      ...prev,
+      [taskId]: (prev[taskId] || []).filter((s) => s.id !== subtaskId),
+    }));
+  }
+
+  // Moving a Task out of this Job (to another, or to no job) is the same
+  // job_id write the shared sheet performs everywhere — this lens simply
+  // drops the Task from its list once it no longer belongs.
+  async function moveTaskToJob(id: string, targetJobId: string | null) {
+    if (targetJobId === jobId) return;
+    const { error } = await supabase.from('tasks').update({ job_id: targetJobId }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not move the task: ' + error.message);
+      return;
+    }
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    setOpenTaskId(null);
+  }
+
   async function addTask() {
     const text = captureText.trim();
     if (text.length === 0) {
@@ -278,6 +324,7 @@ export default function JobDetailPage() {
       return;
     }
     const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order_index), 0);
+    const surfaceDate = showReminderField && captureSurfaceDate.length > 0 ? captureSurfaceDate : null;
     const { data, error: err } = await supabase
       .from('tasks')
       .insert({
@@ -286,11 +333,11 @@ export default function JobDetailPage() {
         estimate_mins: mins,
         source: 'planned',
         order_index: maxOrder + 1,
-        job_id: jobId,
-        surface_date: showCaptureDate && captureDate ? captureDate : null,
-        location_text: captureLocation.trim() || null,
-        lat: captureCoords?.lat ?? null,
-        lng: captureCoords?.lng ?? null,
+        job_id: captureJobId,
+        surface_date: surfaceDate,
+        location_text: captureLocation.trim().length > 0 ? captureLocation.trim() : null,
+        lat: captureLocationCoords?.lat ?? null,
+        lng: captureLocationCoords?.lng ?? null,
       })
       .select()
       .single();
@@ -304,56 +351,24 @@ export default function JobDetailPage() {
     setCaptureText('');
     setCaptureTime('');
     setCaptureLocation('');
-    setCaptureCoords(null);
-    setCaptureDate('');
-    setShowCaptureDate(false);
+    setCaptureLocationCoords(null);
+    setManualLocationToggle(false);
+    setShowReminderField(false);
+    setCaptureSurfaceDate('');
+    setCaptureJobId(null);
     setCaptureError('');
   }
 
-  async function saveTask(id: string, data: { text: string; estimate_mins: number; surface_date: string | null; info?: string }) {
-    const { error: err } = await supabase.from('tasks').update(data).eq('id', id);
-    if (err) {
-      console.error(err);
-      return;
-    }
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
+  function completedSubtaskMins(taskId: string): number {
+    return (subtasksByTask[taskId] || []).filter((s) => s.done).reduce((sum, s) => sum + s.mins, 0);
   }
 
-  async function completeTask(id: string) {
-    const task = tasks.find((t) => t.id === id);
-    let finalLogged = task ? task.logged_mins : 0;
-    if (task && task.status === 'active' && task.started_at) {
-      finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
+  function remainingForTask(t: Task): number {
+    let logged = t.logged_mins;
+    if (t.status === 'active' && t.started_at) {
+      logged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
     }
-    const { error: err } = await supabase
-      .from('tasks')
-      .update({ status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: Math.round(finalLogged), completed_at: new Date().toISOString() })
-      .eq('id', id);
-    if (err) {
-      console.error(err);
-      return;
-    }
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'done', started_at: null, logged_mins: finalLogged } : t)));
-  }
-
-  async function moveTask(id: string, targetJobId: string | null) {
-    const { error: err } = await supabase.from('tasks').update({ job_id: targetJobId }).eq('id', id);
-    if (err) {
-      console.error(err);
-      return;
-    }
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    setOpenTaskId(null);
-  }
-
-  async function deleteTask(id: string) {
-    const { error: err } = await supabase.from('tasks').delete().eq('id', id);
-    if (err) {
-      console.error(err);
-      return;
-    }
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    setOpenTaskId(null);
+    return Math.max(t.estimate_mins - logged - completedSubtaskMins(t.id), 0);
   }
 
   const todayStr = localDateStr(new Date());
@@ -362,7 +377,19 @@ export default function JobDetailPage() {
   const groups = useMemo(() => groupJobTasks(tasks, todayStr), [tasks, todayStr]);
   const doneTasks = useMemo(() => doneTasksOf(tasks), [tasks]);
   const openTask = tasks.find((t) => t.id === openTaskId) || null;
-  const remainingForTask = (t: Task) => Math.max(t.estimate_mins - t.logged_mins, 0);
+  const anyActive = tasks.some((x) => x.status === 'active' && x.estimate_mins > 0);
+
+  let openTaskRemaining = 0;
+  let openTaskLiveLogged = 0;
+  if (openTask) {
+    openTaskRemaining = remainingForTask(openTask);
+    openTaskLiveLogged = openTask.logged_mins;
+    if (openTask.status === 'active' && openTask.started_at) {
+      openTaskLiveLogged += (Date.now() - new Date(openTask.started_at).getTime()) / 60000;
+    }
+  }
+
+  const captureLocationFieldVisible = captureLocation.length > 0 || manualLocationToggle;
 
   return (
     <div className="app-shell">
@@ -415,7 +442,12 @@ export default function JobDetailPage() {
             <div className="empty-state">
               <div className="empty-state-title">Nothing here yet.</div>
               <div className="empty-state-sub">Add a task to start the job — it'll show up on Today when it's due.</div>
-              <button className="btn btn-steel" onClick={() => setCaptureOpen(true)}>Add a task</button>
+              <button
+                className="btn btn-steel"
+                onClick={() => { setCaptureJobId(jobId); setCaptureOpen(true); }}
+              >
+                Add a task
+              </button>
             </div>
           ) : (
             <div className="task-list">
@@ -423,20 +455,28 @@ export default function JobDetailPage() {
                 <div key={group.label}>
                   <div className="job-group-label">{group.label}</div>
                   {group.tasks.map((t) => (
-                    <div key={t.id} className="task-row">
-                      <div className="task-main">
-                        <button className="check-btn" onClick={() => completeTask(t.id)} aria-label="Complete task">
-                          <CheckIcon done={false} />
-                        </button>
-                        <button className="task-text" onClick={() => setOpenTaskId(t.id)}>
-                          {t.text}
-                          {t.surface_date && t.surface_date < todayStr && (
-                            <span className="task-due-today" style={{ marginLeft: 6 }}>{fmtSurfaceDate(t.surface_date)}</span>
-                          )}
-                        </button>
-                        <span className="activity-glance mono">{fmtMins(remainingForTask(t))}</span>
-                      </div>
-                    </div>
+                    <TaskCard
+                      key={t.id}
+                      task={t}
+                      remainingForThis={remainingForTask(t)}
+                      liveLogged={
+                        t.status === 'active' && t.started_at
+                          ? t.logged_mins + (Date.now() - new Date(t.started_at).getTime()) / 60000
+                          : t.logged_mins
+                      }
+                      overCap={false}
+                      anyActive={anyActive}
+                      subs={subtasksByTask[t.id] || []}
+                      learnedHint={null}
+                      expanded={expandedId === t.id}
+                      onToggleExpand={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
+                      onOpenDetails={() => { setExpandedId(null); setOpenTaskId(t.id); }}
+                      onComplete={completeTask}
+                      onStart={startTask}
+                      onStop={stopTask}
+                      onToggleSubtaskDone={toggleSubtaskDone}
+                      onSaveInfo={saveTaskInfo}
+                    />
                   ))}
                 </div>
               ))}
@@ -472,90 +512,66 @@ export default function JobDetailPage() {
           )}
 
           {openTask && (
-            <JobTaskSheet
+            <TaskDetailSheet
               task={openTask}
-              jobName={job.name}
-              otherJobs={otherJobs}
+              subs={subtasksByTask[openTask.id] || []}
+              remainingForThis={openTaskRemaining}
+              liveLogged={openTaskLiveLogged}
+              anyActive={anyActive}
+              jobs={jobs}
               onClose={() => setOpenTaskId(null)}
+              onSave={updateTask}
               onComplete={completeTask}
-              onMove={moveTask}
+              onStart={startTask}
+              onStop={stopTask}
+              onToggleDue={toggleDueToday}
+              onAddSubtask={addSubtask}
+              onToggleSubtaskDone={toggleSubtaskDone}
+              onDeleteSubtask={deleteSubtask}
               onDelete={deleteTask}
-              onSave={saveTask}
+              onSaveInfo={saveTaskInfo}
+              onMoveToJob={moveTaskToJob}
+              subDraftText={subDraftText[openTask.id] || ''}
+              subDraftTime={subDraftTime[openTask.id] || ''}
+              setSubDraftText={(v) => setSubDraftText((prev) => ({ ...prev, [openTask.id]: v }))}
+              setSubDraftTime={(v) => setSubDraftTime((prev) => ({ ...prev, [openTask.id]: v }))}
             />
           )}
 
           {captureOpen && (
-            <div className="sheet-backdrop" onClick={() => setCaptureOpen(false)}>
-              <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
-                <div className="task-detail-header" style={{ marginBottom: 0 }}>
-                  <div className="settings-panel-title">Add a task</div>
-                  <button className="gear-btn" onClick={() => setCaptureOpen(false)} aria-label="Close">
-                    <CloseIcon />
-                  </button>
-                </div>
-
-                <input
-                  type="text"
-                  value={captureText}
-                  onChange={(e) => setCaptureText(e.target.value)}
-                  placeholder="What needs doing?"
-                />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span className="settings-label">Estimate</span>
-                  <input
-                    type="text"
-                    value={captureTime}
-                    onChange={(e) => setCaptureTime(e.target.value)}
-                    placeholder="15m"
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span className="settings-label">Location (optional)</span>
-                  <LocationAutocomplete
-                    value={captureLocation}
-                    placeholder="Where is the work?"
-                    onChange={(text) => setCaptureLocation(text)}
-                    onPlaceSelected={(result) => {
-                      setCaptureLocation(result.formattedAddress);
-                      setCaptureCoords({ lat: result.lat, lng: result.lng });
-                    }}
-                  />
-                </div>
-
-                {!showCaptureDate ? (
-                  <button
-                    type="button"
-                    className="reveal-reminder-link"
-                    onClick={() => setShowCaptureDate(true)}
-                  >
-                    For another day
-                  </button>
-                ) : (
-                  <div className="reminder-date-row">
-                    <input
-                      type="date"
-                      value={captureDate}
-                      onChange={(e) => setCaptureDate(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="btn-text"
-                      onClick={() => { setShowCaptureDate(false); setCaptureDate(''); }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-
-                {captureError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{captureError}</p>}
-                <button className="btn btn-steel" onClick={addTask}>Add task</button>
-              </div>
-            </div>
+            <CaptureSheet
+              taskText={captureText}
+              setTaskText={setCaptureText}
+              taskTime={captureTime}
+              setTaskTime={setCaptureTime}
+              captureSuggestion={null}
+              captureLocationSuggestion={null}
+              locationFieldVisible={captureLocationFieldVisible}
+              addTask={addTask}
+              captureLocation={captureLocation}
+              setCaptureLocation={setCaptureLocation}
+              captureLocationCoords={captureLocationCoords}
+              setCaptureLocationCoords={setCaptureLocationCoords}
+              manualLocationToggle={manualLocationToggle}
+              setManualLocationToggle={setManualLocationToggle}
+              showReminderField={showReminderField}
+              setShowReminderField={setShowReminderField}
+              captureSurfaceDate={captureSurfaceDate}
+              setCaptureSurfaceDate={setCaptureSurfaceDate}
+              jobs={jobs}
+              captureJobId={captureJobId}
+              setCaptureJobId={setCaptureJobId}
+              error={captureError}
+              onClose={() => setCaptureOpen(false)}
+            />
           )}
 
           {!captureOpen && tasks.length > 0 && (
-            <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Add a task">
+            <button
+              className="capture-fab"
+              onClick={() => { setCaptureJobId(jobId); setCaptureOpen(true); }}
+              aria-label="Add a task"
+            >
               <PlusIcon size={24} />
             </button>
           )}
