@@ -1,0 +1,167 @@
+/* Dokkit splash animation — styles. */
+
+.dokkit-splash-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 900ms ease-out,
+              filter 900ms ease-out,
+              transform 950ms cubic-bezier(.4,0,.2,1);
+  /* camera shake, timed to hit exactly as the mark lands. this runs
+     on the whole backdrop rather than just the logo — a shake that
+     only moves the mark reads as the mark wobbling, not as impact.
+     moving the whole screen a little is what sells "something just
+     hit the ground." uses the standalone `translate` property (not
+     `transform`) specifically so it doesn't fight with the `transform`
+     transition above used for the final exit — they compose instead
+     of overriding each other. */
+  animation: dokkit-shake 340ms cubic-bezier(.36,.07,.19,.97) 670ms 1;
+}
+.dokkit-splash-backdrop.exit {
+  opacity: 0;
+  filter: blur(6px);
+  transform: scale(1.04);
+  pointer-events: none;
+}
+@keyframes dokkit-shake {
+  0%   { translate: 0 0; }
+  14%  { translate: -7px 2px; }
+  28%  { translate: 6px -3px; }
+  42%  { translate: -5px 2px; }
+  56%  { translate: 4px -2px; }
+  70%  { translate: -2px 1px; }
+  84%  { translate: 1px 0; }
+  100% { translate: 0 0; }
+}
+
+.dokkit-splash-scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Theme-aware glow + impact-flash colors. Light theme (the :root
+   default) uses a neutral, uncolored elevation shadow so it reads as
+   intentional depth/weight instead of a washed-out colored halo on
+   light paper, and a soft brand-blue flash tint. Dark theme keeps the
+   original brand-blue glow and a brighter flash, which were tuned
+   against a near-black background and confirmed to look good there. */
+:root {
+  --dokkit-glow-0: drop-shadow(0 0 0 rgba(20,24,31,0));
+  --dokkit-glow-peak: drop-shadow(0 8px 20px rgba(20,24,31,.28));
+  --dokkit-glow-rest: drop-shadow(0 6px 14px rgba(20,24,31,.18));
+  --dokkit-glow-breathe-peak: drop-shadow(0 8px 18px rgba(20,24,31,.24));
+  --dokkit-flash-color: rgba(20, 24, 31, .10);
+}
+[data-theme="dark"] {
+  --dokkit-glow-0: drop-shadow(0 0 0 rgba(44,110,242,0));
+  --dokkit-glow-peak: drop-shadow(0 0 22px rgba(110,161,255,.8));
+  --dokkit-glow-rest: drop-shadow(0 0 10px rgba(44,110,242,.35));
+  --dokkit-glow-breathe-peak: drop-shadow(0 0 18px rgba(110,161,255,.55));
+  --dokkit-flash-color: rgba(110, 161, 255, .55);
+}
+
+/* ---------- scene 1 exit: breathes IN — draws inward and fades,
+   the way an inhale pulls in, rather than dissolving outward ---------- */
+#dokkitLogoScene {
+  transition: opacity 950ms ease-in,
+              filter 950ms ease-in,
+              transform 950ms cubic-bezier(.4,0,1,1);
+}
+#dokkitLogoScene.exit {
+  opacity: 0;
+  filter: blur(4px);
+  transform: scale(.8);
+}
+
+/* a brief, soft impact flash behind the mark, timed to its landing */
+.dokkit-impact {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--dokkit-flash-color) 0%, transparent 70%);
+  opacity: 0;
+  transform: scale(.4);
+  animation: dokkit-impact-flash 620ms ease-out forwards;
+  animation-delay: 430ms; /* synced to land on the squash frame */
+}
+@keyframes dokkit-impact-flash {
+  0%   { opacity: 0; transform: scale(.3); }
+  38%  { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.7); }
+}
+
+#dokkitLogoImg {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: block;
+  opacity: 0;
+  transform: scale(2.6) rotate(-10deg);
+  filter: blur(10px);
+  /* bigger, bolder arrival: starts noticeably oversized and soft,
+     then lands with a squash-and-stretch impact (PS1-game-logo
+     style), rather than growing timidly up from nothing. all three
+     animations are declared together, permanently — do not toggle
+     any of these via a class swap. swapping to a class that only
+     defines one of them would drop the others from the active
+     animation list, and opacity/transform would snap back to their
+     plain declared values above (0 / scale(2.6)) — i.e. the logo
+     would vanish. this exact bug was hit and fixed earlier in this
+     project — do not reintroduce it. */
+  animation:
+    dokkit-logo-land 900ms cubic-bezier(.16,1,.3,1) 220ms forwards,
+    dokkit-glow-bloom 1000ms ease-out 420ms forwards,
+    dokkit-breathe 2200ms ease-in-out 1420ms infinite;
+}
+@keyframes dokkit-logo-land {
+  0%   { opacity: 0; transform: scale(2.6) rotate(-10deg); filter: blur(10px); }
+  38%  { opacity: 1; filter: blur(0); transform: scale(1.15) rotate(-3deg); }
+  50%  { transform: scale(1.06, 0.86) rotate(1deg); }    /* impact: squash — wide, short */
+  60%  { transform: scale(0.93, 1.10) rotate(-1deg); }   /* rebound: stretch — narrow, tall */
+  72%  { transform: scale(1.035, 0.965) rotate(.5deg); } /* smaller second squash */
+  84%  { transform: scale(0.985, 1.02) rotate(0deg); }   /* smaller second stretch */
+  100% { opacity: 1; transform: scale(1, 1) rotate(0deg); filter: blur(0); }
+}
+@keyframes dokkit-glow-bloom {
+  0%   { filter: var(--dokkit-glow-0); }
+  45%  { filter: var(--dokkit-glow-peak); }
+  100% { filter: var(--dokkit-glow-rest); }
+}
+@keyframes dokkit-breathe {
+  0%, 100% { filter: var(--dokkit-glow-rest); }
+  50%      { filter: var(--dokkit-glow-breathe-peak); }
+}
+
+/* ---------- scene 2 entrance: breathes OUT — releases and expands
+   outward into place, the way an exhale opens up, rather than
+   just fading in ---------- */
+#dokkitWordScene {
+  opacity: 0;
+  transform: scale(.85);
+  filter: blur(6px);
+  transition: opacity 950ms ease-out,
+              transform 1000ms cubic-bezier(.16,1,.3,1),
+              filter 950ms ease-out;
+}
+#dokkitWordScene.in {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+}
+
+.dokkit-wordmark {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; /* keep the repo's real font stack from the last round */
+}
