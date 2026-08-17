@@ -603,3 +603,47 @@ end $$;
 -- if pre-existing duplicate rows would violate it.
 create unique index if not exists waitlist_signups_email_key on waitlist_signups (email);
 create unique index if not exists allowed_signup_emails_email_key on allowed_signup_emails (email);
+
+-- ── Prediction log (thinking engine evidence) ────────────────────
+-- Records every estimate the engine made at capture time, plus the
+-- actual outcome when the task completes. This is the feedback loop
+-- that lets the engine measure its own accuracy and calibrate
+-- confidence over time.
+create table if not exists prediction_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  task_text text not null,
+  cluster_label text,
+  cluster_count int not null default 0,
+  estimated_mins int not null,
+  suggested_mins int,
+  confidence text not null default 'low' check (confidence in ('low', 'medium', 'high')),
+  actual_mins int,
+  logged_at timestamptz not null default now(),
+  completed_at timestamptz
+);
+
+alter table prediction_log enable row level security;
+
+-- ── RLS policies for prediction_log ───────────────────────────────
+-- (dropped and recreated idempotently, same pattern as other tables)
+do $$
+begin
+  -- Drop old policies if they exist (safe to rerun)
+  begin
+    drop policy if exists "own prediction logs" on prediction_log;
+  exception when undefined_object then
+    null;
+  end;
+
+  create policy "own prediction logs" on prediction_log
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+-- Index for efficient lookup of predictions by task text (for the
+// evidence buffer's recordOutcome lookup) and by completion time
+// (for the Patterns surface's accuracy queries).
+create index if not exists prediction_log_user_id_idx on prediction_log (user_id);
+create index if not exists prediction_log_task_text_idx on prediction_log (task_text);
+create index if not exists prediction_log_completed_at_idx on prediction_log (completed_at);

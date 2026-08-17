@@ -22,6 +22,7 @@ import {
   suggestsLocation,
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
+import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
 import { determineBase, nearestNeighborOrder, weaveGeoOrder, type Coords } from '@/lib/todayRoute';
 import { sortTasks } from '@/lib/taskSort';
 import { authedFetch } from '@/lib/authedFetch';
@@ -530,6 +531,20 @@ export default function Home() {
     setCaptureJobId(null);
     setCaptureOpen(false);
     if (data.lat != null && sortMode === 'geo_aware') recalcRoute();
+
+    // Log the engine's prediction at capture time so it can be compared
+    // against the actual outcome when the task completes. This is the
+    // first half of the evidence feedback loop.
+    const suggestion = suggestEstimate(text, history, clusters);
+    logCapturePrediction({
+      userId,
+      taskText: text,
+      clusterLabel: suggestion?.matchedLabel ?? null,
+      clusterCount: suggestion?.sampleCount ?? 0,
+      estimatedMins: mins,
+      suggestedMins: suggestion?.suggestedMins ?? null,
+      confidence: suggestion?.confidence ?? 'low',
+    }).catch(() => {}); // fire-and-forget; evidence logging is best-effort
   }
 
   async function updateTask(
@@ -651,6 +666,21 @@ export default function Home() {
         },
         ...prev,
       ]);
+      // Log the prediction outcome for the thinking engine's evidence
+      // loop. This records what the engine predicted vs what actually
+      // happened, so the Patterns surface can show calibration data
+      // and the engine can measure its own accuracy over time.
+      const suggestion = suggestEstimate(task.text, history, clusters);
+      logCompletionOutcome({
+        userId: session.user.id,
+        taskText: task.text,
+        clusterLabel: suggestion?.matchedLabel ?? null,
+        clusterCount: suggestion?.sampleCount ?? 0,
+        estimatedMins: task.estimate_mins,
+        suggestedMins: suggestion?.suggestedMins ?? null,
+        confidence: suggestion?.confidence ?? 'low',
+        actualMins: Math.round(finalLogged),
+      }).catch(() => {}); // fire-and-forget; evidence logging is best-effort
     }
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
   }

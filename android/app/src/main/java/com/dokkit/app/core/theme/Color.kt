@@ -1,6 +1,8 @@
 package com.dokkit.app.core.theme
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 
 /**
  * Dokkit color tokens, ported from the web app's design system
@@ -15,7 +17,16 @@ import androidx.compose.ui.graphics.Color
  *  - Only the wash backgrounds and the text-only accent variants change.
  *  - Every accent the app draws as *text* must use the dedicated
  *    xxxText token, never the fill directly.
+ *
+ * Contrast rule (the single most important one): **text colour follows the
+ * surface, not the global theme**. Dark mode means the *surface* changes.
+ * A genuinely light surface (e.g. a fixed-white raised card, or the glass
+ * sheet in the light theme) must always carry dark ink text, even while
+ * the rest of the app is dark. [DokkitColors.contrastFor] is the one
+ * authority for "what text colour sits on this surface"; screens never
+ * pick text colours by hand based on the mode.
  */
+@Immutable
 data class DokkitColors(
     val paper: Color,
     val paperRaised: Color,
@@ -45,6 +56,22 @@ data class DokkitColors(
 ) {
     /** ink tinted by alpha, matching the web's rgba(shadow-rgb, …). */
     fun inkWithAlpha(alpha: Float): Color = ink.copy(alpha = alpha)
+
+    /**
+     * The text colour to use on [surface]. This is luminance-based, so it is
+     * immune to theme confusion: a light surface always yields dark text and
+     * a dark surface always yields light text, regardless of which mode is
+     * active. Bright accents also resolve here — a steel fill is bright
+     * enough to demand white text while steelWash (light blue) demands dark.
+     */
+    fun contrastFor(surface: Color): Color =
+        if (surface.luminance() > 0.5f) ink else ink.copy(alpha = 1f).let { Color(0xFFF1EFE6) }
+
+    /** The dark text colour for light surfaces — same value in both themes. */
+    val inkOnLight: Color = Color(0xFF1A2933)
+
+    /** The light text colour for dark surfaces — the cream ink. */
+    val inkOnDark: Color = Color(0xFFF1EFE6)
 }
 
 /** Light theme — the unmarked default, matching :root. */

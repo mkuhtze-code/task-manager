@@ -1,4 +1,6 @@
 import './globals.css';
+import './dokkit-splash.css';
+import DokkitSplash from '@/components/DokkitSplash';
 
 export const metadata = {
   title: 'Dokkit',
@@ -73,7 +75,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <DokkitSplash />
+        {children}
+      </body>
     </html>
   );
 }

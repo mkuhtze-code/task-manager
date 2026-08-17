@@ -1,10 +1,10 @@
 // lib/taskIntelligence.ts
 //
-// The quiet learning layer behind Dokkit's capacity math. This module never
-// talks to Supabase directly — it's pure functions over data the caller
-// already has, so it can be used from the capture sheet, the capacity
-// calculation on the home page, and the Patterns page without duplicating
-// logic in three places.
+// The quiet learning layer behind Dokkit's capacity math. This module
+// never talks to Supabase directly — it's pure functions over data the
+// caller already has, so it can be used from the capture sheet, the
+// capacity calculation on the home page, and the Patterns page without
+// duplicating logic in three places.
 //
 // What it does:
 //   1. Groups a user's completed-task history into fuzzy clusters (so
@@ -16,6 +16,17 @@
 //   4. Same clustering also remembers location, when tasks in a cluster
 //      have had one attached — a repeated errand's place doesn't average
 //      the way duration does, so this is last-seen-wins, not a blend.
+//
+// Estimation logic (effectiveEstimate, hasMeaningfulDivergence) now
+// delegates to lib/thinking/decisions/effectiveEstimate.ts, which carries
+// the full decision context for the thinking engine. The functions here
+// remain as backward-compatible wrappers.
+
+import {
+  computeEffectiveEstimate as _computeEffectiveEstimate,
+  hasMeaningfulDivergence as _hasMeaningfulDivergence,
+  type Confidence,
+} from '@/lib/thinking/decisions/effectiveEstimate';
 
 export type HistoricalTask = {
   text: string;
@@ -40,7 +51,9 @@ export type TaskCluster = {
   location: ClusterLocation | null; // most recently seen location, if any
 };
 
-export type Confidence = 'low' | 'medium' | 'high';
+// Re-export Confidence from the thinking engine so existing imports
+// from this file continue to work.
+export type { Confidence } from '@/lib/thinking/decisions/effectiveEstimate';
 
 export type EstimateSuggestion = {
   suggestedMins: number;
@@ -236,32 +249,24 @@ export function suggestsLocation(inputText: string): boolean {
 }
 
 // ── Blending typed estimates with learned reality ───────────────────
-// This is the part that actually changes behavior, not just suggests it:
-// when computing what capacity math should use, don't take a typed
-// estimate at total face value if history disagrees — but don't override
-// it wholesale either, especially on thin data. The blend weight grows
-// with sample count, so a couple of matches nudge gently and a long track
-// record speaks louder.
-
-const BLEND_WEIGHTS: Record<Confidence, number> = {
-  low: 0.25,
-  medium: 0.5,
-  high: 0.75,
-};
+// Delegates to the thinking engine's computeEffectiveEstimate for the
+// actual blending logic. The wrappers here maintain backward compatibility
+// with all existing call sites.
 
 // Exposed on its own (not just inlined in effectiveEstimate) because the UI
 // needs the same "is this actually worth mentioning" judgment call to
 // decide whether to show a quiet hint next to a task.
 export function hasMeaningfulDivergence(typedMins: number, suggestedMins: number): boolean {
-  const diff = Math.abs(suggestedMins - typedMins);
-  return diff >= 5 && diff / Math.max(typedMins, 1) >= 0.15;
+  return _hasMeaningfulDivergence(typedMins, suggestedMins);
 }
 
 export function effectiveEstimate(typedMins: number, suggestion: EstimateSuggestion | null): number {
   if (!suggestion) return typedMins;
-  if (!hasMeaningfulDivergence(typedMins, suggestion.suggestedMins)) return typedMins;
-
-  const weight = BLEND_WEIGHTS[suggestion.confidence];
-  const blended = typedMins * (1 - weight) + suggestion.suggestedMins * weight;
-  return Math.round(blended);
+  const decision = _computeEffectiveEstimate({
+    typedMins,
+    suggestedMins: suggestion.suggestedMins,
+    confidence: suggestion.confidence,
+    clusterCount: suggestion.sampleCount,
+  });
+  return decision.blendedMins;
 }

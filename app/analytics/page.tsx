@@ -8,6 +8,8 @@ import GearMenu from '@/components/GearMenu';
 import TopSwitcher from '@/components/TopSwitcher';
 import { BackIcon } from '@/components/icons';
 import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
+import { summarizeAccuracy, type EstimateAccuracyObservation } from '@/lib/thinking/observations/estimateAccuracy';
+import { summarizeCluster, type Confidence } from '@/lib/thinking';
 
 type CompletedTask = {
   id: string;
@@ -24,6 +26,13 @@ type AnalyticsData = {
   weekTasks: CompletedTask[];
   monthTasks: CompletedTask[];
   allTasks: CompletedTask[];
+  predictions: {
+    task_text: string;
+    estimated_mins: number;
+    actual_mins: number | null;
+    confidence: string;
+    completed_at: string | null;
+  }[];
 };
 
 type LearnedPattern = {
@@ -136,6 +145,7 @@ export default function Analytics() {
     weekTasks: [],
     monthTasks: [],
     allTasks: [],
+    predictions: [],
   });
   const [loading, setLoading] = useState(true);
   const [timePeriod, setTimePeriod] = useState<'today' | 'week' | 'month'>('week');
@@ -172,7 +182,17 @@ export default function Analytics() {
     const weekTasks = allTasks.filter((t) => new Date(t.completed_at) >= weekStart);
     const monthTasks = allTasks.filter((t) => new Date(t.completed_at) >= monthStart);
 
-    setAnalytics({ todayTasks, weekTasks, monthTasks, allTasks });
+    // Query prediction log for accuracy data from the thinking engine.
+    const { data: predictionData } = await supabase
+      .from('prediction_log')
+      .select('task_text, estimated_mins, actual_mins, confidence, completed_at')
+      .eq('user_id', userId)
+      .order('logged_at', { ascending: false })
+      .limit(200);
+
+    const predictions = predictionData || [];
+
+    setAnalytics({ todayTasks, weekTasks, monthTasks, allTasks, predictions });
     setLoading(false);
   }
 
@@ -189,7 +209,7 @@ export default function Analytics() {
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const currentData = analytics[`${timePeriod}Tasks` as keyof AnalyticsData];
+  const currentData: CompletedTask[] = analytics[`${timePeriod}Tasks` as keyof AnalyticsData] as CompletedTask[];
 
   const totalCompleted = currentData.length;
   const totalActualMins = currentData.reduce((sum, t) => sum + (t.actual_mins || 0), 0);
@@ -328,6 +348,44 @@ export default function Analytics() {
               </div>
             </div>
           )}
+
+          {/* Thinking engine: prediction accuracy */}
+          {analytics.predictions.length > 0 && (() => {
+            const completedPredictions = analytics.predictions.filter((p) => p.actual_mins !== null);
+            if (completedPredictions.length === 0) return null;
+            const accuracyObs: EstimateAccuracyObservation[] = completedPredictions.map((p) => ({
+              kind: 'estimate_accuracy' as const,
+              taskText: p.task_text,
+              clusterLabel: null,
+              clusterCount: 0,
+              estimatedMins: p.estimated_mins,
+              actualMins: p.actual_mins!,
+              ratio: p.actual_mins! / Math.max(p.estimated_mins, 1),
+              confidence: (p.confidence as Confidence) || 'low',
+              observedAt: p.completed_at || new Date().toISOString(),
+            }));
+            const acc = summarizeAccuracy(accuracyObs);
+            const overCount = completedPredictions.filter((p) => p.actual_mins! > p.estimated_mins).length;
+            const underCount = completedPredictions.filter((p) => p.actual_mins! < p.estimated_mins).length;
+            return (
+              <div className="settings-panel">
+                <div className="settings-panel-title">Prediction accuracy</div>
+                <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.5, margin: '-4px 0 4px' }}>
+                  How well the estimate suggestions match what actually happened, based on {completedPredictions.length} completed task{completedPredictions.length === 1 ? '' : 's'}.
+                </p>
+                <div className="hero-stat-row">
+                  <div className="hero-stat-number mono">{acc.accuracyPercent}%</div>
+                  <div className="hero-stat-sub">
+                    average accuracy · {fmtMins(acc.averageRatio * 15)} per 15m planned
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 12, color: 'var(--ink-soft)', marginTop: 4 }}>
+                  <span>{overCount} took longer</span>
+                  <span>{underCount} took shorter</span>
+                </div>
+              </div>
+            );
+          })()}
         </>
       )}
     </div>

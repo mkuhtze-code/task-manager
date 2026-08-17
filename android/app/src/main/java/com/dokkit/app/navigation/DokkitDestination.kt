@@ -11,10 +11,9 @@ import com.dokkit.app.core.icon.DokkitIcons
 enum class DokkitDestination(
     val route: String,
     val label: String,
-    val selectedIcon: ImageVector,
-    val contentDescription: String,
+    val icon: ImageVector,
 ) {
-    Today("today", "Today", DokkitIcons.Today, "Today"),
-    Jobs("jobs", "Jobs", DokkitIcons.Jobs, "Jobs"),
-    Travel("travel", "Travel", DokkitIcons.Travel, "Travel"),
+    Today("today", "Today", DokkitIcons.Today),
+    Jobs("jobs", "Jobs", DokkitIcons.Jobs),
+    Travel("travel", "Travel", DokkitIcons.Travel),
 }
