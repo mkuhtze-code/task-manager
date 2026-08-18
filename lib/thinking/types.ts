@@ -223,3 +223,40 @@ export type UserPatterns = {
   infoUsageRate: number;
   timerUsageRate: number;
 };
+
+// ── Decision authority (Scope 3E) ────────────────────────────────
+// What Dokkit is permitted to do with the evidence. Related to
+// confidence but not identical: confidence measures "how much
+// evidence exists?", authority measures "what may Dokkit do?"
+
+export type DecisionAuthority = 'observe' | 'suggest' | 'strong';
+
+// ── Contextual decisions (Scope 3E) ──────────────────────────────
+// Decisions that consume contextual evidence to make small, useful,
+// deterministic suggestions. Each decision carries enough context
+// to explain itself — why this job, not some other.
+
+export type JobContextDecision = {
+  kind: 'job_context';
+  jobId: string;
+  confidence: Confidence;
+  authority: DecisionAuthority;
+  evidence: {
+    direct: { count: number; total: number };
+    spatial: { count: number; total: number };
+    temporal: { count: number; total: number };
+    sequence: { count: number; total: number };
+  };
+  agreeingDimensions: ('direct' | 'spatial' | 'temporal' | 'sequence')[];
+};
+
+export type LocationMemoryDecision = {
+  kind: 'location_memory';
+  locationText: string;
+  lat: number;
+  lng: number;
+  confidence: Confidence;
+  authority: DecisionAuthority;
+  occurrenceCount: number;
+  ratio: number;
+};

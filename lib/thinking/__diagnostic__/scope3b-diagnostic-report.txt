@@ -1,0 +1,319 @@
+
+══════════════════════════════════════════════════════════════════════
+  DOKKIT THINKING ENGINE — SCOPE 3B DIAGNOSTIC
+══════════════════════════════════════════════════════════════════════
+
+  Fixture: 150 completed tasks
+  Period:  2026-01-06 → 2026-08-06
+  Clusters analyzed: 30 (with ≥2 tasks)
+
+══════════════════════════════════════════════════════════════════════
+  THRESHOLDS
+══════════════════════════════════════════════════════════════════════
+
+  Cluster × Place:
+    Min observations (totalWithCoordinates): 3
+    Min ratio:                               0.5 (50%)
+  Cluster × Time:
+    Min observations (totalWithTimestamp):   3
+    Min ratio:                               0.6 (60%)
+  Cluster × Job:
+    Min total tasks in cluster:              4
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SCHOOL RUN (14 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    
+      14/14 tasks at this place (100%)
+      Confidence: RELIABLE
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      14/14 tasks in this period (100%)
+      Confidence: RELIABLE
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: UPDATE ACCOUNTS SPREADSHEET (7 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Home workshop
+      7/7 tasks at this place (100%)
+      Confidence: RELIABLE
+
+  ── Time Associations (Period) ──────────────────────────────────
+    afternoon
+      7/7 tasks in this period (100%)
+      Confidence: RELIABLE
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: FILE RECEIPTS (7 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Home workshop
+      7/7 tasks at this place (100%)
+      Confidence: RELIABLE
+
+  ── Time Associations (Period) ──────────────────────────────────
+    afternoon
+      7/7 tasks in this period (100%)
+      Confidence: RELIABLE
+
+  ── Time Associations (Day of Week) ─────────────────────────────
+    Sat
+      7/7 tasks on this day (100%)
+      Confidence: RELIABLE
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT HENDERSON REROOF ASSESSMENT (5 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Henderson
+      5/5 tasks at this place (100%)
+      Confidence: INDICATIVE
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      5/5 tasks in this period (100%)
+      Confidence: INDICATIVE
+
+  ── Time Associations (Day of Week) ─────────────────────────────
+    Thu
+      3/5 tasks on this day (60%)
+      Confidence: INSUFFICIENT
+
+  ── Job Associations ────────────────────────────────────────────
+    Job: job-henderson
+      Direct:    5/5 tasks
+      Spatial:   0/0 unlinked near job
+      Temporal:  0/0 unlinked on same day
+      Sequence:  0/0 unlinked adjacent
+      Confidence: INDICATIVE
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: GARDEN MOWING (5 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Home workshop
+      5/5 tasks at this place (100%)
+      Confidence: INDICATIVE
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      5/5 tasks in this period (100%)
+      Confidence: INDICATIVE
+
+  ── Time Associations (Day of Week) ─────────────────────────────
+    Sat
+      5/5 tasks on this day (100%)
+      Confidence: INDICATIVE
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: COLLECT KIDS FOOTBALL (4 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    
+      4/4 tasks at this place (100%)
+      Confidence: INDICATIVE
+
+  ── Time Associations (Period) ──────────────────────────────────
+    afternoon
+      4/4 tasks in this period (100%)
+      Confidence: INDICATIVE
+
+  ── Time Associations (Day of Week) ─────────────────────────────
+    Sat
+      4/4 tasks on this day (100%)
+      Confidence: INDICATIVE
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT JONES FLAT ROOF (4 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Jones
+      3/4 tasks at this place (75%)
+      Confidence: INSUFFICIENT
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      3/4 tasks in this period (75%)
+      Confidence: INSUFFICIENT
+
+  ── Time Associations (Day of Week) ─────────────────────────────
+    Mon
+      4/4 tasks on this day (100%)
+      Confidence: INDICATIVE
+
+  ── Job Associations ────────────────────────────────────────────
+    Job: job-jones
+      Direct:    4/4 tasks
+      Spatial:   0/0 unlinked near job
+      Temporal:  0/0 unlinked on same day
+      Sequence:  0/0 unlinked adjacent
+      Confidence: INDICATIVE
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT PATEL OFFICE ROOF SURVEY (4 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Patel office
+      4/4 tasks at this place (100%)
+      Confidence: INDICATIVE
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      4/4 tasks in this period (100%)
+      Confidence: INDICATIVE
+
+  ── Time Associations (Day of Week) ─────────────────────────────
+    Mon
+      3/4 tasks on this day (75%)
+      Confidence: INSUFFICIENT
+
+  ── Job Associations ────────────────────────────────────────────
+    Job: job-patel
+      Direct:    4/4 tasks
+      Spatial:   0/0 unlinked near job
+      Temporal:  0/0 unlinked on same day
+      Sequence:  0/0 unlinked adjacent
+      Confidence: INDICATIVE
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT TAYLOR GARAGE (4 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Taylor
+      4/4 tasks at this place (100%)
+      Confidence: INDICATIVE
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      4/4 tasks in this period (100%)
+      Confidence: INDICATIVE
+
+  ── Time Associations (Day of Week) ─────────────────────────────
+    Tue
+      3/4 tasks on this day (75%)
+      Confidence: INSUFFICIENT
+
+  ── Job Associations ────────────────────────────────────────────
+    Job: job-taylor
+      Direct:    4/4 tasks
+      Spatial:   0/0 unlinked near job
+      Temporal:  0/0 unlinked on same day
+      Sequence:  0/0 unlinked adjacent
+      Confidence: INDICATIVE
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: COLLECT MATERIALS HENDERSON (3 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Roofing supplier
+      2/3 tasks at this place (67%)
+      Confidence: INSUFFICIENT
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      3/3 tasks in this period (100%)
+      Confidence: INSUFFICIENT
+
+  ── Time Associations (Day of Week) ─────────────────────────────
+    Wed
+      2/3 tasks on this day (67%)
+      Confidence: INSUFFICIENT
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: COLLECT MATERIALS JONES (3 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Roofing supplier
+      2/3 tasks at this place (67%)
+      Confidence: INSUFFICIENT
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      3/3 tasks in this period (100%)
+      Confidence: INSUFFICIENT
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: BUY PAINT FOR HALLWAY (3 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Home workshop
+      2/3 tasks at this place (67%)
+      Confidence: INSUFFICIENT
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      2/3 tasks in this period (67%)
+      Confidence: INSUFFICIENT
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT WILLIAMS BASE (3 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Williams
+      3/3 tasks at this place (100%)
+      Confidence: INSUFFICIENT
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      3/3 tasks in this period (100%)
+      Confidence: INSUFFICIENT
+
+  ── Time Associations (Day of Week) ─────────────────────────────
+    Tue
+      3/3 tasks on this day (100%)
+      Confidence: INSUFFICIENT
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT BROWN CHIMNEY (3 tasks)
+══════════════════════════════════════════════════════════════════════
+
+  ── Place Associations ──────────────────────────────────────────
+    Brown
+      3/3 tasks at this place (100%)
+      Confidence: INSUFFICIENT
+
+  ── Time Associations (Period) ──────────────────────────────────
+    morning
+      3/3 tasks in this period (100%)
+      Confidence: INSUFFICIENT
+
+  ── Time Associations (Day of Week) ─────────────────────────────
+    Tue
+      3/3 tasks on this day (100%)
+      Confidence: INSUFFICIENT
+
+══════════════════════════════════════════════════════════════════════
+  SUMMARY
+══════════════════════════════════════════════════════════════════════
+
+  Cluster × Place associations:  14
+  Cluster × Time (period):       14
+  Cluster × Time (day_of_week):  10
+  Cluster × Job associations:    4
+  Total associations:            42
+
+══════════════════════════════════════════════════════════════════════
+  VALIDATION CHECKS
+══════════════════════════════════════════════════════════════════════
+
+  [OK] All place associations have ratio ≥ 0.5
+  [OK] All time associations have ratio ≥ 0.6
+  [OK] Single-place 7/7 is a valid association (ratio 1.0 ≥ 0.5)
+  [INFO] 0 job association(s) with unlinked evidence (spatial/temporal/sequence)
+         Dimensions are reported independently — caller must not sum them

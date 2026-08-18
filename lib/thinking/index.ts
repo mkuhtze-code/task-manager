@@ -21,6 +21,9 @@ export type {
   ClusterStats,
   ActivityProfile,
   UserPatterns,
+  DecisionAuthority,
+  JobContextDecision,
+  LocationMemoryDecision,
 } from './types';
 
 export {
@@ -90,6 +93,21 @@ export {
   effectiveEstimate,
   hasMeaningfulDivergence,
 } from './decisions/effectiveEstimate';
+
+// Decisions — Scope 3E
+export {
+  decideJobContext,
+  MIN_SPATIAL_COUNT,
+  MIN_TEMPORAL_COUNT,
+  MIN_SEQUENCE_COUNT,
+  MIN_AGREEING_DIMENSIONS,
+} from './decisions/jobContext';
+
+export {
+  decideLocationMemory,
+  MIN_OCCURRENCES_FOR_LOCATION,
+  MIN_RATIO_FOR_LOCATION,
+} from './decisions/locationMemory';
 
 // Relationships — Scope 3A
 export {
