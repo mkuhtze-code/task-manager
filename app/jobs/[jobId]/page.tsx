@@ -547,6 +547,8 @@ export default function JobDetailPage() {
               setTaskTime={setCaptureTime}
               captureSuggestion={null}
               captureLocationSuggestion={null}
+              captureLocationMemorySuggestion={null}
+              captureJobSuggestion={null}
               locationFieldVisible={captureLocationFieldVisible}
               addTask={addTask}
               captureLocation={captureLocation}

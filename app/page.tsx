@@ -20,6 +20,8 @@ import {
   hasMeaningfulDivergence,
   suggestLocation,
   suggestsLocation,
+  suggestJob,
+  suggestLocationMemory,
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
 import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
@@ -146,6 +148,18 @@ export default function Home() {
     return suggestLocation(trimmed, history, clusters);
   }, [taskText, history, clusters]);
 
+  const captureJobSuggestion = useMemo(() => {
+    const trimmed = taskText.trim();
+    if (trimmed.length === 0) return null;
+    return suggestJob(trimmed, history, clusters);
+  }, [taskText, history, clusters]);
+
+  const captureLocationMemorySuggestion = useMemo(() => {
+    const trimmed = taskText.trim();
+    if (trimmed.length === 0) return null;
+    return suggestLocationMemory(trimmed, history, clusters);
+  }, [taskText, history, clusters]);
+
   // Deterministic phrase heuristic (see suggestsLocation), not AI — fires
   // the optional location field without forcing it on every task.
   const locationFieldVisible = suggestsLocation(taskText) || captureLocation.length > 0 || manualLocationToggle;
@@ -265,7 +279,7 @@ export default function Home() {
     // recent 500 so clustering stays cheap even after months of use.
     const { data: historyRows } = await supabase
       .from('tasks')
-      .select('text, actual_mins, location_text, lat, lng')
+      .select('text, actual_mins, location_text, lat, lng, job_id, created_at')
       .eq('status', 'done')
       .not('actual_mins', 'is', null)
       .order('completed_at', { ascending: false })
@@ -277,6 +291,8 @@ export default function Home() {
         location_text: r.location_text,
         lat: r.lat,
         lng: r.lng,
+        job_id: r.job_id,
+        created_at: r.created_at,
       }))
     );
   }
@@ -1081,6 +1097,8 @@ export default function Home() {
           setTaskTime={setTaskTime}
           captureSuggestion={captureSuggestion}
           captureLocationSuggestion={captureLocationSuggestion}
+          captureLocationMemorySuggestion={captureLocationMemorySuggestion}
+          captureJobSuggestion={captureJobSuggestion}
           locationFieldVisible={locationFieldVisible}
           addTask={addTask}
           captureLocation={captureLocation}

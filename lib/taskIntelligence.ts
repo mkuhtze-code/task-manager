@@ -27,6 +27,19 @@ import {
   hasMeaningfulDivergence as _hasMeaningfulDivergence,
   type Confidence,
 } from '@/lib/thinking/decisions/effectiveEstimate';
+import {
+  decideJobContext,
+} from '@/lib/thinking/decisions/jobContext';
+import {
+  findClusterJobAssociations,
+} from '@/lib/thinking/associations/clusterJob';
+import {
+  findClusterPlaceAssociations,
+} from '@/lib/thinking/associations/clusterPlace';
+import {
+  decideLocationMemory,
+} from '@/lib/thinking/decisions/locationMemory';
+import type { CompletedTaskFacts, DecisionAuthority } from '@/lib/thinking/types';
 
 export type HistoricalTask = {
   text: string;
@@ -34,6 +47,8 @@ export type HistoricalTask = {
   location_text?: string | null;
   lat?: number | null;
   lng?: number | null;
+  job_id?: string | null;
+  created_at?: string | null;
 };
 
 export type ClusterLocation = {
@@ -66,6 +81,23 @@ export type LocationSuggestion = {
   location: ClusterLocation;
   sampleCount: number;
   matchedLabel: string;
+};
+
+export type JobSuggestion = {
+  jobId: string;
+  confidence: Confidence;
+  authority: DecisionAuthority;
+  agreeingDimensions: string[];
+};
+
+export type LocationMemorySuggestion = {
+  locationText: string;
+  lat: number;
+  lng: number;
+  confidence: Confidence;
+  authority: DecisionAuthority;
+  occurrenceCount: number;
+  ratio: number;
 };
 
 // ── Tuning knobs ───────────────────────────────────────────────────
@@ -228,6 +260,203 @@ export function suggestLocation(
     location: match.cluster.location,
     sampleCount: match.cluster.count,
     matchedLabel: match.cluster.label,
+  };
+}
+
+// ── Cluster membership ──────────────────────────────────────────────
+// Reconstructs which tasks belong to which cluster by re-running the
+// clustering assignment logic. Needed because buildClusters() doesn't
+// store the task-to-cluster mapping.
+
+function groupTasksByCluster(
+  history: HistoricalTask[],
+  clusters: TaskCluster[]
+): Map<string, HistoricalTask[]> {
+  const groups = new Map<string, HistoricalTask[]>();
+
+  for (const task of history) {
+    const taskTokens = tokenize(task.text);
+    if (taskTokens.size === 0) continue;
+
+    let bestCluster: TaskCluster | null = null;
+    let bestScore = 0;
+
+    for (const cluster of clusters) {
+      const score = jaccardSimilarity(taskTokens, cluster.tokens);
+      if (score > bestScore) {
+        bestScore = score;
+        bestCluster = cluster;
+      }
+    }
+
+    const key = bestCluster && bestScore >= GROUP_SIMILARITY_THRESHOLD
+      ? bestCluster.label
+      : '__unmatched__';
+
+    const existing = groups.get(key) ?? [];
+    existing.push(task);
+    groups.set(key, existing);
+  }
+
+  return groups;
+}
+
+// ── Convert HistoricalTask to CompletedTaskFacts ────────────────────
+// The thinking engine operates on CompletedTaskFacts. We reconstruct
+// partial objects from the historical data we have.
+
+function historicalToFacts(h: HistoricalTask): CompletedTaskFacts {
+  return {
+    text: h.text,
+    status: 'done',
+    source: 'planned',
+    estimate_mins: h.actual_mins,
+    actual_mins: h.actual_mins,
+    logged_mins: h.actual_mins,
+    created_at: h.created_at || '',
+    completed_at: null,
+    started_at: null,
+    surface_date: null,
+    location_text: h.location_text ?? null,
+    lat: h.lat ?? null,
+    lng: h.lng ?? null,
+    job_id: h.job_id ?? null,
+    info: null,
+    subtaskCount: 0,
+    subtaskDoneCount: 0,
+    subtaskTotalMins: 0,
+  };
+}
+
+// ── Job Context Suggestion ──────────────────────────────────────────
+// Given typed text, finds the best-matching cluster and evaluates
+// whether the engine can suggest a job assignment. Uses the Scope 3E
+// decision module (decideJobContext) which requires ≥2 independent
+// evidence dimensions to agree.
+
+export function suggestJob(
+  inputText: string,
+  history: HistoricalTask[],
+  precomputedClusters?: TaskCluster[]
+): JobSuggestion | null {
+  const inputTokens = tokenize(inputText);
+  if (inputTokens.size === 0) return null;
+
+  // Need job_id in history to compute job associations
+  const hasJobData = history.some((h) => h.job_id);
+  if (!hasJobData) return null;
+
+  const clusters = precomputedClusters ?? buildClusters(history);
+  const match = findBestCluster(inputTokens, clusters);
+  if (!match) return null;
+
+  // Get all tasks in the matched cluster
+  const grouped = groupTasksByCluster(history, clusters);
+  const clusterTasks = grouped.get(match.cluster.label) ?? [];
+  if (clusterTasks.length < 4) return null; // MIN_TOTAL_FOR_JOB
+
+  // Convert to CompletedTaskFacts for the thinking engine
+  const facts = clusterTasks.map(historicalToFacts);
+
+  // Compute job associations for this cluster
+  const jobAssoc = findClusterJobAssociations(match.cluster.label, facts);
+  if (jobAssoc.length === 0) return null;
+
+  // Create a minimal input task for the decision
+  const inputTask: CompletedTaskFacts = {
+    text: inputText,
+    status: 'done',
+    source: 'planned',
+    estimate_mins: 0,
+    actual_mins: 0,
+    logged_mins: 0,
+    created_at: new Date().toISOString(),
+    completed_at: null,
+    started_at: null,
+    surface_date: null,
+    location_text: null,
+    lat: null,
+    lng: null,
+    job_id: null,
+    info: null,
+    subtaskCount: 0,
+    subtaskDoneCount: 0,
+    subtaskTotalMins: 0,
+  };
+
+  const decision = decideJobContext(inputTask, facts, jobAssoc);
+  if (!decision) return null;
+
+  return {
+    jobId: decision.jobId,
+    confidence: decision.confidence,
+    authority: decision.authority,
+    agreeingDimensions: decision.agreeingDimensions,
+  };
+}
+
+// ── Location Memory Suggestion ──────────────────────────────────────
+// Enhanced version of suggestLocation that uses the Scope 3E decision
+// module for authority/confidence. Returns authority information so
+// the UI can decide how aggressively to use the memory.
+
+export function suggestLocationMemory(
+  inputText: string,
+  history: HistoricalTask[],
+  precomputedClusters?: TaskCluster[]
+): LocationMemorySuggestion | null {
+  const inputTokens = tokenize(inputText);
+  if (inputTokens.size === 0) return null;
+
+  const clusters = precomputedClusters ?? buildClusters(history);
+  const match = findBestCluster(inputTokens, clusters);
+  if (!match) return null;
+
+  // Get all tasks in the matched cluster
+  const grouped = groupTasksByCluster(history, clusters);
+  const clusterTasks = grouped.get(match.cluster.label) ?? [];
+  if (clusterTasks.length < 4) return null;
+
+  // Convert to CompletedTaskFacts for the thinking engine
+  const facts = clusterTasks.map(historicalToFacts);
+
+  // Compute place associations for this cluster
+  const placeAssoc = findClusterPlaceAssociations(match.cluster.label, facts);
+  if (placeAssoc.length === 0) return null;
+
+  // Create a minimal input task (no location)
+  const inputTask: CompletedTaskFacts = {
+    text: inputText,
+    status: 'done',
+    source: 'planned',
+    estimate_mins: 0,
+    actual_mins: 0,
+    logged_mins: 0,
+    created_at: new Date().toISOString(),
+    completed_at: null,
+    started_at: null,
+    surface_date: null,
+    location_text: null,
+    lat: null,
+    lng: null,
+    job_id: null,
+    info: null,
+    subtaskCount: 0,
+    subtaskDoneCount: 0,
+    subtaskTotalMins: 0,
+  };
+
+  const decision = decideLocationMemory(inputTask, facts, placeAssoc);
+  if (!decision) return null;
+
+  return {
+    locationText: decision.locationText,
+    lat: decision.lat,
+    lng: decision.lng,
+    confidence: decision.confidence,
+    authority: decision.authority,
+    occurrenceCount: decision.occurrenceCount,
+    ratio: decision.ratio,
   };
 }
 

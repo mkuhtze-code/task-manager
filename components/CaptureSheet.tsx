@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import type { EstimateSuggestion, LocationSuggestion } from '@/lib/taskIntelligence';
+import { useEffect, useState } from 'react';
+import type { EstimateSuggestion, LocationSuggestion, JobSuggestion, LocationMemorySuggestion } from '@/lib/taskIntelligence';
 import { fmtMins, minsToInput } from '@/lib/timeFormat';
 import type { Job } from '@/lib/jobTypes';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
@@ -15,6 +15,8 @@ export function CaptureSheet(props: {
   setTaskTime: (v: string) => void;
   captureSuggestion: EstimateSuggestion | null;
   captureLocationSuggestion: LocationSuggestion | null;
+  captureLocationMemorySuggestion: LocationMemorySuggestion | null;
+  captureJobSuggestion: JobSuggestion | null;
   locationFieldVisible: boolean;
   addTask: () => void;
   captureLocation: string;
@@ -35,14 +37,42 @@ export function CaptureSheet(props: {
 }) {
   const {
     taskText, setTaskText, taskTime, setTaskTime, captureSuggestion, captureLocationSuggestion,
-    locationFieldVisible, addTask, captureLocation, setCaptureLocation, captureLocationCoords,
-    setCaptureLocationCoords, manualLocationToggle, setManualLocationToggle, showReminderField,
-    setShowReminderField, captureSurfaceDate, setCaptureSurfaceDate, jobs, captureJobId,
-    setCaptureJobId, error, onClose,
+    captureLocationMemorySuggestion, captureJobSuggestion, locationFieldVisible, addTask,
+    captureLocation, setCaptureLocation, captureLocationCoords, setCaptureLocationCoords,
+    manualLocationToggle, setManualLocationToggle, showReminderField, setShowReminderField,
+    captureSurfaceDate, setCaptureSurfaceDate, jobs, captureJobId, setCaptureJobId, error, onClose,
   } = props;
 
   const [showJobField, setShowJobField] = useState(false);
   const chosenJob = jobs.find((j) => j.id === captureJobId);
+
+  // Auto-fill job from engine suggestion when authority >= 'suggest'.
+  // Only fires when no job is currently selected — explicit user input
+  // always takes precedence. The user can remove the auto-fill at any time.
+  useEffect(() => {
+    if (captureJobId) return;
+    if (captureJobSuggestion && captureJobSuggestion.authority !== 'observe') {
+      const suggestedJob = jobs.find((j) => j.id === captureJobSuggestion.jobId);
+      if (suggestedJob) {
+        setCaptureJobId(captureJobSuggestion.jobId);
+      }
+    }
+  }, [captureJobSuggestion, captureJobId, jobs, setCaptureJobId]);
+
+  // Auto-fill location from strong engine memory. When the location field
+  // is visible and the engine has strong confidence, fill it silently.
+  // The user can always override by typing a different location.
+  useEffect(() => {
+    if (!locationFieldVisible) return;
+    if (captureLocationCoords) return; // already has a location
+    if (captureLocationMemorySuggestion && captureLocationMemorySuggestion.authority === 'strong') {
+      setCaptureLocation(captureLocationMemorySuggestion.locationText);
+      setCaptureLocationCoords({
+        lat: captureLocationMemorySuggestion.lat,
+        lng: captureLocationMemorySuggestion.lng,
+      });
+    }
+  }, [locationFieldVisible, captureLocationCoords, captureLocationMemorySuggestion, setCaptureLocation, setCaptureLocationCoords]);
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -99,7 +129,20 @@ export function CaptureSheet(props: {
                 setCaptureLocationCoords({ lat: result.lat, lng: result.lng });
               }}
             />
-            {captureLocationSuggestion && !captureLocationCoords && (
+            {captureLocationMemorySuggestion && !captureLocationCoords && captureLocationMemorySuggestion.authority !== 'strong' && (
+              <button
+                type="button"
+                className="estimate-suggestion-chip"
+                onClick={() => {
+                  setCaptureLocation(captureLocationMemorySuggestion.locationText);
+                  setCaptureLocationCoords({ lat: captureLocationMemorySuggestion.lat, lng: captureLocationMemorySuggestion.lng });
+                }}
+              >
+                <MapPinIcon size={13} />
+                <span>{captureLocationMemorySuggestion.locationText} ({captureLocationMemorySuggestion.occurrenceCount}×)</span>
+              </button>
+            )}
+            {!captureLocationMemorySuggestion && captureLocationSuggestion && !captureLocationCoords && (
               <button
                 type="button"
                 className="estimate-suggestion-chip"
