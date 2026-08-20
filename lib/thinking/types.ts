@@ -260,3 +260,49 @@ export type LocationMemoryDecision = {
   occurrenceCount: number;
   ratio: number;
 };
+
+// ── Surface type (Personal Gravity, Scope 3G) ────────────────────
+// The three primary surfaces the user navigates between. Navigation
+// events reference these identifiers; the decision layer aggregates
+// them to discover demonstrated surface preference.
+
+export type Surface = 'today' | 'jobs' | 'travel';
+
+// ── Surface event (Personal Gravity observation) ─────────────────
+// A lightweight observation of which surface the user opened and
+// how they got there. 'active' means they deliberately navigated
+// to this surface (e.g. tapped TopSwitcher). Passive exposure
+// (landing on Today by default) sets active = false.
+
+export type SurfaceEvent = {
+  id: string;
+  user_id: string;
+  surface: Surface;
+  active: boolean;
+  created_at: string;
+};
+
+// ── Personal Gravity decision (Scope 3G) ────────────────────────
+// The result of the personal gravity decision layer. Determines
+// whether the user has demonstrated a meaningful, persistent
+// preference for a particular surface. Authority follows the
+// existing observe/suggest/strong model:
+//
+//   observe  — evidence exists but is insufficient for action
+//   suggest  — emerging preference, may inform subtle defaults
+//   strong   — clear demonstrated preference, surface may adapt
+//
+// When no decision can be made (insufficient evidence, competing
+// surfaces, too-close margins), preferredSurface is null.
+
+export type PersonalGravityDecision = {
+  kind: 'personal_gravity';
+  preferredSurface: Surface | null;
+  authority: DecisionAuthority;
+  evidence: {
+    bySurface: Record<Surface, { active: number; passive: number }>;
+    totalEvents: number;
+    daysObserved: number;
+  };
+  margin: number; // score difference between top two surfaces (0-1)
+};

@@ -24,6 +24,9 @@ export type {
   DecisionAuthority,
   JobContextDecision,
   LocationMemoryDecision,
+  Surface,
+  SurfaceEvent,
+  PersonalGravityDecision,
 } from './types';
 
 export {
@@ -108,6 +111,18 @@ export {
   MIN_OCCURRENCES_FOR_LOCATION,
   MIN_RATIO_FOR_LOCATION,
 } from './decisions/locationMemory';
+
+// Decisions — Scope 3G (Personal Gravity)
+export {
+  decidePersonalGravity,
+  MIN_TOTAL_EVENTS,
+  MIN_DAYS_OBSERVED,
+  ACTIVE_WEIGHT,
+  PASSIVE_WEIGHT,
+  STRONG_MARGIN,
+  SUGGEST_MARGIN,
+  LOOKBACK_DAYS,
+} from './decisions/personalGravity';
 
 // Relationships — Scope 3A
 export {

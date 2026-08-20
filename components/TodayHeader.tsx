@@ -5,6 +5,7 @@ import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import GearMenu from '@/components/GearMenu';
 import TopSwitcher from '@/components/TopSwitcher';
 import { ChevronIcon, FitCheckIcon, FitWarnIcon } from '@/components/icons';
+import type { Surface } from '@/lib/thinking/types';
 
 export function TodayHeader(props: {
   overloaded: boolean;
@@ -24,11 +25,13 @@ export function TodayHeader(props: {
   routeError: string | null;
   hasRoute: boolean;
   onViewMap: () => void;
+  onNavigate?: (surface: Surface) => void;
 }) {
   const {
     overloaded, weekdayLabel, dateOnlyLabel, isWorkDay, minutesLeftToday,
     remainingWorkMins, nowPercent, planWidthPercent, workStart, workEnd, geoAware,
     recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError, hasRoute, onViewMap,
+    onNavigate,
   } = props;
 
   const [capacityOpen, setCapacityOpen] = useState(false);
@@ -43,7 +46,7 @@ export function TodayHeader(props: {
           <div className="today-header-date">{dateOnlyLabel}</div>
         </div>
         <div className="today-header-top-right">
-          <TopSwitcher active="today" />
+          <TopSwitcher active="today" onNavigate={onNavigate} />
           <GearMenu />
         </div>
       </div>

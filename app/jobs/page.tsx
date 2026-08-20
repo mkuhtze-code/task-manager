@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
@@ -11,6 +11,7 @@ import GearMenu from '@/components/GearMenu';
 import TopSwitcher from '@/components/TopSwitcher';
 import { NewJobSheet } from '@/components/JobSheets';
 import { BackIcon, CheckIcon, MapPinIcon, PlusIcon } from '@/components/icons';
+import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 
 export default function JobsHome() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function JobsHome() {
   const [tasksByJob, setTasksByJob] = useState<Record<string, Task[]>>({});
   const [newJobOpen, setNewJobOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const recordEvent = useRecordSurfaceEvent();
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -116,7 +118,7 @@ export default function JobsHome() {
           <h1 className="app-title">Jobs</h1>
         </div>
         <div className="app-header-right">
-          <TopSwitcher active="jobs" />
+          <TopSwitcher active="jobs" onNavigate={(s) => recordEvent(s, true)} />
           <GearMenu context="jobs" />
         </div>
       </div>

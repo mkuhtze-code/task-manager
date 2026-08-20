@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
 import TopSwitcher from '@/components/TopSwitcher';
 import { BackIcon, ChevronIcon, CloseIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 
 type Trip = {
   id: string;
@@ -76,6 +77,7 @@ export default function TravelHome() {
   const [session, setSession] = useState<any>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const recordEvent = useRecordSurfaceEvent();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
@@ -205,7 +207,7 @@ export default function TravelHome() {
           <h1 className="app-title">Trips</h1>
         </div>
         <div className="app-header-right">
-          <TopSwitcher active="travel" />
+          <TopSwitcher active="travel" onNavigate={(s) => recordEvent(s, true)} />
           <GearMenu context="travel" />
         </div>
       </div>

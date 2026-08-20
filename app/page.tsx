@@ -1,6 +1,7 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 import { TaskCard } from '@/components/TaskCard';
@@ -13,6 +14,7 @@ import MapView from '@/components/MapView';
 import { AuthScreen, OnboardingScreen } from '@/components/AuthScreen';
 import { PlusIcon, StopIcon } from '@/components/icons';
 import { useDragReorder } from '@/hooks/useDragReorder';
+import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import {
   buildClusters,
   suggestEstimate,
@@ -25,6 +27,8 @@ import {
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
 import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
+import { decidePersonalGravity } from '@/lib/thinking/decisions/personalGravity';
+import type { SurfaceEvent, Surface } from '@/lib/thinking/types';
 import { determineBase, nearestNeighborOrder, weaveGeoOrder, type Coords } from '@/lib/todayRoute';
 import { sortTasks } from '@/lib/taskSort';
 import { authedFetch } from '@/lib/authedFetch';
@@ -63,6 +67,7 @@ function getGpsPosition(timeoutMs = 4000): Promise<Coords | null> {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -125,6 +130,19 @@ export default function Home() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
+  const recordEvent = useRecordSurfaceEvent();
+  const hasRedirected = useRef(false);
+
+  // ── Personal Gravity (Scope 3G) ────────────────────────────────
+  // Surface events drive the gravity decision — which surface the
+  // user naturally gravitates toward. The decision is computed once
+  // when the session loads, and a strong preference for a non-Today
+  // surface triggers a quiet redirect on initial page load.
+  const [surfaceEvents, setSurfaceEvents] = useState<SurfaceEvent[]>([]);
+  const gravityDecision = useMemo(
+    () => decidePersonalGravity(surfaceEvents),
+    [surfaceEvents]
+  );
 
   const { rowElsRef, handleDragHandlePointerDown, handleDragHandlePointerMove, handleDragHandlePointerUp, dragRowStyle } =
     useDragReorder(setTasks);
@@ -192,6 +210,44 @@ export default function Home() {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // ── Load surface events for Personal Gravity ────────────────────
+  // Fetches recent navigation events so the gravity decision can
+  // be computed. Also records a passive "landed on Today" event —
+  // this is the default surface, so landing here is passive exposure,
+  // not active preference. The gravity engine weights this lightly.
+  useEffect(() => {
+    if (!session) return;
+    const userId = session.user.id;
+
+    supabase
+      .from('surface_events')
+      .select('id, user_id, surface, active, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(200)
+      .then(({ data }) => {
+        if (data) setSurfaceEvents(data as SurfaceEvent[]);
+      });
+
+    // Record passive landing on Today (default surface)
+    recordEvent('today', false);
+  }, [session]);
+
+  // ── Personal Gravity redirect ───────────────────────────────────
+  // If the engine has strong evidence that the user prefers a
+  // different surface, redirect on initial page load. The redirect
+  // only fires once per mount — if the user explicitly navigates
+  // back to Today, they stay on Today.
+  useEffect(() => {
+    if (hasRedirected.current) return;
+    if (!session) return;
+    if (gravityDecision.preferredSurface && gravityDecision.preferredSurface !== 'today' && gravityDecision.authority === 'strong') {
+      hasRedirected.current = true;
+      const target = gravityDecision.preferredSurface === 'jobs' ? '/jobs' : '/travel';
+      router.replace(target);
+    }
+  }, [session, gravityDecision]);
 
   useEffect(() => {
     if (session) loadEverything();
@@ -985,6 +1041,7 @@ export default function Home() {
         routeError={routeError}
         hasRoute={hasRoute}
         onViewMap={() => setMapOpen(true)}
+        onNavigate={(s: Surface) => recordEvent(s, true)}
       />
 
       <div className="task-list">

@@ -647,3 +647,34 @@ end $$;
 create index if not exists prediction_log_user_id_idx on prediction_log (user_id);
 create index if not exists prediction_log_task_text_idx on prediction_log (task_text);
 create index if not exists prediction_log_completed_at_idx on prediction_log (completed_at);
+
+-- ── Surface events (Personal Gravity evidence) ──────────────────
+-- Lightweight log of which surfaces the user opened and how. The
+-- thinking engine uses this to discover which part of Dokkit the
+-- user naturally gravitates toward — without inferring intent from
+-- passive exposure. Only deliberate navigation carries real weight.
+create table if not exists surface_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  surface text not null check (surface in ('today', 'jobs', 'travel')),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+alter table surface_events enable row level security;
+
+do $$
+begin
+  begin
+    drop policy if exists "own surface events" on surface_events;
+  exception when undefined_object then
+    null;
+  end;
+
+  create policy "own surface events" on surface_events
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+create index if not exists surface_events_user_id_idx on surface_events (user_id);
+create index if not exists surface_events_created_at_idx on surface_events (created_at);
