@@ -129,7 +129,7 @@ export function TaskDetailSheet(props: {
         <div className="capture-row">
           <input type="text" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} onBlur={commit} style={{ width: 90 }} />
           <button
-            className={task.due_today ? 'btn btn-steel' : 'btn btn-ghost'}
+            className={task.due_today ? 'btn-quiet active' : 'btn-quiet'}
             style={{ flex: 1 }}
             onClick={() => onToggleDue(task.id, task.due_today)}
           >
@@ -231,7 +231,14 @@ export function TaskDetailSheet(props: {
         </div>
 
         <div className="subtask-panel">
-          <div className="settings-panel-title">Sub-tasks</div>
+          <div className="subtask-header">
+            <div className="settings-panel-title">Sub-tasks</div>
+            <button
+              className="subtask-add-btn"
+              aria-label="Add sub-task"
+              onClick={() => onAddSubtask(task.id)}
+            >+</button>
+          </div>
           {subs.map((s) => (
             <div key={s.id} className="subtask-row">
               <button

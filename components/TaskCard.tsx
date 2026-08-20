@@ -235,7 +235,7 @@ export function TaskCard(props: {
               </button>
             )}
             <button className="task-action-link" onClick={isolate(onOpenDetails)}>
-              Details
+              Edit
             </button>
           </div>
         </div>

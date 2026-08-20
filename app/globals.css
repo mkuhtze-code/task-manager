@@ -445,6 +445,29 @@ button:focus-visible, input:focus-visible {
   padding: 0 var(--space-2);
 }
 
+/* Quiet toggle — no border, no background, just ink-soft text.
+   Use for state toggles that should not compete with inputs. */
+.btn-quiet {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  min-height: 40px;
+  padding: 0 var(--space-2);
+  cursor: pointer;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.btn-quiet:hover {
+  color: var(--ink);
+  border-color: var(--line);
+}
+.btn-quiet.active {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
 .btn-google {
   width: 100%;
   background: white;
@@ -1076,6 +1099,31 @@ button:focus-visible, input:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+.subtask-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 36px;
+  flex-shrink: 0;
+}
+
+.subtask-add-btn {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s var(--ease);
+}
+.subtask-add-btn:hover {
+  color: var(--ink);
 }
 
 .subtask-row {
@@ -3274,6 +3322,8 @@ button:focus-visible, input:focus-visible {
   border-bottom: 1px solid rgba(var(--shadow-rgb), 0.06);
   padding: var(--space-3) var(--space-2);
   cursor: pointer;
+  text-decoration: none;
+  color: inherit;
 }
 
 .job-row:last-child {
