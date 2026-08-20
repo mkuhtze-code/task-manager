@@ -15,6 +15,18 @@ import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import { JobEditSheet } from '@/components/JobSheets';
 import { BackIcon, CheckIcon, ChevronIcon, MapPinIcon, PlusIcon } from '@/components/icons';
+import {
+  buildClusters,
+  suggestEstimate,
+  suggestLocation,
+  suggestsLocation,
+  suggestJob,
+  suggestLocationMemory,
+  type HistoricalTask,
+} from '@/lib/taskIntelligence';
+import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
+import { decidePersonalGravity } from '@/lib/thinking/decisions/personalGravity';
+import type { SurfaceEvent } from '@/lib/thinking/types';
 
 // The Job detail page is a LENS over the same Tasks Today shows — it never
 // renders its own task UI. Open Tasks are the exact TaskCard component with
@@ -53,6 +65,54 @@ export default function JobDetailPage() {
   const [captureSurfaceDate, setCaptureSurfaceDate] = useState('');
   const [captureJobId, setCaptureJobId] = useState<string | null>(null);
   const [captureError, setCaptureError] = useState('');
+
+  // ── Intelligence layer (Scope 3H) ───────────────────────────────
+  // Completed-task history for this job feeds the learning layer.
+  // Also loads global surface events for Personal Gravity, which
+  // provides supporting context for capture decisions.
+  const [history, setHistory] = useState<HistoricalTask[]>([]);
+  const clusters = useMemo(() => buildClusters(history), [history]);
+  const [surfaceEvents, setSurfaceEvents] = useState<SurfaceEvent[]>([]);
+  const gravityDecision = useMemo(
+    () => decidePersonalGravity(surfaceEvents),
+    [surfaceEvents]
+  );
+
+  const captureSuggestion = useMemo(() => {
+    const trimmed = captureText.trim();
+    if (trimmed.length === 0) return null;
+    return suggestEstimate(trimmed, history, clusters);
+  }, [captureText, history, clusters]);
+
+  const captureLocationSuggestion = useMemo(() => {
+    const trimmed = captureText.trim();
+    if (trimmed.length === 0) return null;
+    return suggestLocation(trimmed, history, clusters);
+  }, [captureText, history, clusters]);
+
+  const captureJobSuggestion = useMemo(() => {
+    const trimmed = captureText.trim();
+    if (trimmed.length === 0) return null;
+    return suggestJob(trimmed, history, clusters);
+  }, [captureText, history, clusters]);
+
+  const captureLocationMemorySuggestion = useMemo(() => {
+    const trimmed = captureText.trim();
+    if (trimmed.length === 0) return null;
+    return suggestLocationMemory(trimmed, history, clusters);
+  }, [captureText, history, clusters]);
+
+  const captureContext = useMemo(() => {
+    const trimmed = captureText.trim();
+    return decideCaptureContext({
+      surface: 'jobs',
+      currentJobId: jobId,
+      taskText: trimmed,
+      jobDecision: captureJobSuggestion,
+      locationDecision: captureLocationMemorySuggestion,
+      gravityDecision,
+    });
+  }, [captureText, jobId, captureJobSuggestion, captureLocationMemorySuggestion, gravityDecision]);
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -126,6 +186,37 @@ export default function JobDetailPage() {
       });
       setSubtasksByTask(grouped);
     }
+
+    // Completed-task history for this job — powers the learning layer's
+    // estimate and location suggestions within this job context.
+    const { data: historyRows } = await supabase
+      .from('tasks')
+      .select('text, actual_mins, location_text, lat, lng, job_id, created_at')
+      .eq('job_id', jobId)
+      .eq('status', 'done')
+      .not('actual_mins', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(200);
+    setHistory(
+      (historyRows || []).map((r: any) => ({
+        text: r.text,
+        actual_mins: r.actual_mins,
+        location_text: r.location_text,
+        lat: r.lat,
+        lng: r.lng,
+        job_id: r.job_id,
+        created_at: r.created_at,
+      }))
+    );
+
+    // Surface events for Personal Gravity — supporting context.
+    const { data: eventRows } = await supabase
+      .from('surface_events')
+      .select('id, user_id, surface, active, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (eventRows) setSurfaceEvents(eventRows as SurfaceEvent[]);
 
     setLoading(false);
   }
@@ -389,7 +480,7 @@ export default function JobDetailPage() {
     }
   }
 
-  const captureLocationFieldVisible = captureLocation.length > 0 || manualLocationToggle;
+  const captureLocationFieldVisible = suggestsLocation(captureText) || captureLocation.length > 0 || manualLocationToggle;
 
   return (
     <div className="app-shell">
@@ -545,10 +636,11 @@ export default function JobDetailPage() {
               setTaskText={setCaptureText}
               taskTime={captureTime}
               setTaskTime={setCaptureTime}
-              captureSuggestion={null}
-              captureLocationSuggestion={null}
-              captureLocationMemorySuggestion={null}
-              captureJobSuggestion={null}
+              captureSuggestion={captureSuggestion}
+              captureLocationSuggestion={captureLocationSuggestion}
+              captureLocationMemorySuggestion={captureLocationMemorySuggestion}
+              captureJobSuggestion={captureJobSuggestion}
+              captureContext={captureContext}
               locationFieldVisible={captureLocationFieldVisible}
               addTask={addTask}
               captureLocation={captureLocation}

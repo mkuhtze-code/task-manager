@@ -27,6 +27,7 @@ export type {
   Surface,
   SurfaceEvent,
   PersonalGravityDecision,
+  CaptureContextDecision,
 } from './types';
 
 export {
@@ -123,6 +124,12 @@ export {
   SUGGEST_MARGIN,
   LOOKBACK_DAYS,
 } from './decisions/personalGravity';
+
+// Decisions — Scope 3H (Capture Context)
+export {
+  decideCaptureContext,
+} from './decisions/captureContext';
+export type { CaptureContextInput } from './decisions/captureContext';
 
 // Relationships — Scope 3A
 export {

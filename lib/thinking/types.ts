@@ -306,3 +306,25 @@ export type PersonalGravityDecision = {
   };
   margin: number; // score difference between top two surfaces (0-1)
 };
+
+// ── Capture context decision (Scope 3H) ─────────────────────────
+// A composed decision that unifies all capture-time signals into a
+// single context. This is the Thinking Engine's output at capture
+// time — the UI consumes it without needing to understand individual
+// decision layers.
+//
+// The authority follows the existing observe/suggest/strong model:
+//   observe  — weak or no context, do not auto-fill
+//   suggest  — emerging context, may show suggestion chips
+//   strong   — confident context, auto-fill silently
+//
+// source explains where the context came from, for inspection and
+// testability — not exposed in the UI.
+
+export type CaptureContextDecision = {
+  kind: 'capture_context';
+  suggestedJobId: string | null;
+  suggestedLocation: { text: string; lat: number; lng: number } | null;
+  authority: DecisionAuthority;
+  source: 'explicit_job' | 'text_match' | 'location_memory' | 'gravity' | null;
+};

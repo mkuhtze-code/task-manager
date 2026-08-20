@@ -28,6 +28,7 @@ import {
 } from '@/lib/taskIntelligence';
 import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
 import { decidePersonalGravity } from '@/lib/thinking/decisions/personalGravity';
+import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
 import type { SurfaceEvent, Surface } from '@/lib/thinking/types';
 import { determineBase, nearestNeighborOrder, weaveGeoOrder, type Coords } from '@/lib/todayRoute';
 import { sortTasks } from '@/lib/taskSort';
@@ -177,6 +178,21 @@ export default function Home() {
     if (trimmed.length === 0) return null;
     return suggestLocationMemory(trimmed, history, clusters);
   }, [taskText, history, clusters]);
+
+  // ── Capture context (Scope 3H) ─────────────────────────────────
+  // Composes all capture-time signals into a unified context decision.
+  // The UI consumes this rather than interpreting individual decisions.
+  const captureContext = useMemo(() => {
+    const trimmed = taskText.trim();
+    return decideCaptureContext({
+      surface: 'today',
+      currentJobId: captureJobId,
+      taskText: trimmed,
+      jobDecision: captureJobSuggestion,
+      locationDecision: captureLocationMemorySuggestion,
+      gravityDecision,
+    });
+  }, [taskText, captureJobId, captureJobSuggestion, captureLocationMemorySuggestion, gravityDecision]);
 
   // Deterministic phrase heuristic (see suggestsLocation), not AI — fires
   // the optional location field without forcing it on every task.
@@ -1156,6 +1172,7 @@ export default function Home() {
           captureLocationSuggestion={captureLocationSuggestion}
           captureLocationMemorySuggestion={captureLocationMemorySuggestion}
           captureJobSuggestion={captureJobSuggestion}
+          captureContext={captureContext}
           locationFieldVisible={locationFieldVisible}
           addTask={addTask}
           captureLocation={captureLocation}
