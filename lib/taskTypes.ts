@@ -30,6 +30,10 @@ export type Task = {
   // paper. Plain multiline text; never auto-interpreted into subtasks,
   // reminders, or any other structure.
   info: string;
+  // Optional Job this task belongs to. Purely additive context — a Job
+  // never overrides this task's own scheduling, estimate, location,
+  // status or ordering. Null means the task isn't part of a Job.
+  job_id: string | null;
 };
 
 export type Subtask = {
@@ -48,6 +52,12 @@ export type Meeting = {
 };
 
 export type SortMode = 'capacity_first' | 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first' | 'geo_aware';
+
+// Which surface is rendering the Task. Purely contextual — the underlying
+// Task model and behaviour never change, only the presentation language.
+// 'today' renders scheduling as "Reminder"; 'job' renders the same control
+// as "When".
+export type TaskContext = 'today' | 'job';
 
 export type DragState = {
   id: string;

@@ -1,6 +1,7 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 import { TaskCard } from '@/components/TaskCard';
@@ -10,9 +11,11 @@ import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import { TodayHeader } from '@/components/TodayHeader';
 import MapView from '@/components/MapView';
+import SurfaceNav from '@/components/SurfaceNav';
 import { AuthScreen, OnboardingScreen } from '@/components/AuthScreen';
 import { PlusIcon, StopIcon } from '@/components/icons';
 import { useDragReorder } from '@/hooks/useDragReorder';
+import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import {
   buildClusters,
   suggestEstimate,
@@ -20,8 +23,14 @@ import {
   hasMeaningfulDivergence,
   suggestLocation,
   suggestsLocation,
+  suggestJob,
+  suggestLocationMemory,
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
+import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
+import { decidePersonalGravity } from '@/lib/thinking/decisions/personalGravity';
+import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
+import type { SurfaceEvent, Surface } from '@/lib/thinking/types';
 import { determineBase, nearestNeighborOrder, weaveGeoOrder, type Coords } from '@/lib/todayRoute';
 import { sortTasks } from '@/lib/taskSort';
 import { authedFetch } from '@/lib/authedFetch';
@@ -33,6 +42,7 @@ import {
   type Subtask,
   type Task,
 } from '@/lib/taskTypes';
+import type { Job } from '@/lib/jobTypes';
 import {
   fmtMins,
   isScheduledForLater,
@@ -59,6 +69,7 @@ function getGpsPosition(timeoutMs = 4000): Promise<Coords | null> {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -115,8 +126,25 @@ export default function Home() {
   const [captureLocation, setCaptureLocation] = useState('');
   const [captureLocationCoords, setCaptureLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [manualLocationToggle, setManualLocationToggle] = useState(false);
+  // The optional Job a captured Task should be filed under, chosen from the
+  // capture sheet's quiet "Add to a job" disclosure. Null = not in any Job.
+  const [captureJobId, setCaptureJobId] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
+  const recordEvent = useRecordSurfaceEvent();
+  const hasRedirected = useRef(false);
+
+  // ── Personal Gravity (Scope 3G) ────────────────────────────────
+  // Surface events drive the gravity decision — which surface the
+  // user naturally gravitates toward. The decision is computed once
+  // when the session loads, and a strong preference for a non-Today
+  // surface triggers a quiet redirect on initial page load.
+  const [surfaceEvents, setSurfaceEvents] = useState<SurfaceEvent[]>([]);
+  const gravityDecision = useMemo(
+    () => decidePersonalGravity(surfaceEvents),
+    [surfaceEvents]
+  );
 
   const { rowElsRef, handleDragHandlePointerDown, handleDragHandlePointerMove, handleDragHandlePointerUp, dragRowStyle } =
     useDragReorder(setTasks);
@@ -139,6 +167,33 @@ export default function Home() {
     if (trimmed.length === 0) return null;
     return suggestLocation(trimmed, history, clusters);
   }, [taskText, history, clusters]);
+
+  const captureJobSuggestion = useMemo(() => {
+    const trimmed = taskText.trim();
+    if (trimmed.length === 0) return null;
+    return suggestJob(trimmed, history, clusters);
+  }, [taskText, history, clusters]);
+
+  const captureLocationMemorySuggestion = useMemo(() => {
+    const trimmed = taskText.trim();
+    if (trimmed.length === 0) return null;
+    return suggestLocationMemory(trimmed, history, clusters);
+  }, [taskText, history, clusters]);
+
+  // ── Capture context (Scope 3H) ─────────────────────────────────
+  // Composes all capture-time signals into a unified context decision.
+  // The UI consumes this rather than interpreting individual decisions.
+  const captureContext = useMemo(() => {
+    const trimmed = taskText.trim();
+    return decideCaptureContext({
+      surface: 'today',
+      currentJobId: captureJobId,
+      taskText: trimmed,
+      jobDecision: captureJobSuggestion,
+      locationDecision: captureLocationMemorySuggestion,
+      gravityDecision,
+    });
+  }, [taskText, captureJobId, captureJobSuggestion, captureLocationMemorySuggestion, gravityDecision]);
 
   // Deterministic phrase heuristic (see suggestsLocation), not AI — fires
   // the optional location field without forcing it on every task.
@@ -172,6 +227,44 @@ export default function Home() {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // ── Load surface events for Personal Gravity ────────────────────
+  // Fetches recent navigation events so the gravity decision can
+  // be computed. Also records a passive "landed on Today" event —
+  // this is the default surface, so landing here is passive exposure,
+  // not active preference. The gravity engine weights this lightly.
+  useEffect(() => {
+    if (!session) return;
+    const userId = session.user.id;
+
+    supabase
+      .from('surface_events')
+      .select('id, user_id, surface, active, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(200)
+      .then(({ data }) => {
+        if (data) setSurfaceEvents(data as SurfaceEvent[]);
+      });
+
+    // Record passive landing on Today (default surface)
+    recordEvent('today', false);
+  }, [session]);
+
+  // ── Personal Gravity redirect ───────────────────────────────────
+  // If the engine has strong evidence that the user prefers a
+  // different surface, redirect on initial page load. The redirect
+  // only fires once per mount — if the user explicitly navigates
+  // back to Today, they stay on Today.
+  useEffect(() => {
+    if (hasRedirected.current) return;
+    if (!session) return;
+    if (gravityDecision.preferredSurface && gravityDecision.preferredSurface !== 'today' && gravityDecision.authority === 'strong') {
+      hasRedirected.current = true;
+      const target = gravityDecision.preferredSurface === 'jobs' ? '/jobs' : '/travel';
+      router.replace(target);
+    }
+  }, [session, gravityDecision]);
 
   useEffect(() => {
     if (session) loadEverything();
@@ -236,6 +329,14 @@ export default function Home() {
     const { data: meetingRows } = await supabase.from('meetings').select('*');
     setMeetings(meetingRows || []);
 
+    // Jobs for the capture sheet's "Add to a job" disclosure — name only,
+    // the detail pages load the rest.
+    const { data: jobRows } = await supabase
+      .from('jobs')
+      .select('id, name')
+      .order('created_at', { ascending: false });
+    setJobs((jobRows as Job[]) || []);
+
     if (taskRows && taskRows.length > 0) {
       const ids = taskRows.map((t: Task) => t.id);
       const { data: subRows } = await supabase.from('subtasks').select('*').in('task_id', ids).order('order_index', { ascending: true });
@@ -251,7 +352,7 @@ export default function Home() {
     // recent 500 so clustering stays cheap even after months of use.
     const { data: historyRows } = await supabase
       .from('tasks')
-      .select('text, actual_mins, location_text, lat, lng')
+      .select('text, actual_mins, location_text, lat, lng, job_id, created_at')
       .eq('status', 'done')
       .not('actual_mins', 'is', null)
       .order('completed_at', { ascending: false })
@@ -263,6 +364,8 @@ export default function Home() {
         location_text: r.location_text,
         lat: r.lat,
         lng: r.lng,
+        job_id: r.job_id,
+        created_at: r.created_at,
       }))
     );
   }
@@ -495,6 +598,7 @@ export default function Home() {
         location_text: captureLocation.trim().length > 0 ? captureLocation.trim() : null,
         lat: captureLocationCoords?.lat ?? null,
         lng: captureLocationCoords?.lng ?? null,
+        job_id: captureJobId,
       })
       .select()
       .single();
@@ -513,8 +617,23 @@ export default function Home() {
     setCaptureLocation('');
     setCaptureLocationCoords(null);
     setManualLocationToggle(false);
+    setCaptureJobId(null);
     setCaptureOpen(false);
     if (data.lat != null && sortMode === 'geo_aware') recalcRoute();
+
+    // Log the engine's prediction at capture time so it can be compared
+    // against the actual outcome when the task completes. This is the
+    // first half of the evidence feedback loop.
+    const suggestion = suggestEstimate(text, history, clusters);
+    logCapturePrediction({
+      userId,
+      taskText: text,
+      clusterLabel: suggestion?.matchedLabel ?? null,
+      clusterCount: suggestion?.sampleCount ?? 0,
+      estimatedMins: mins,
+      suggestedMins: suggestion?.suggestedMins ?? null,
+      confidence: suggestion?.confidence ?? 'low',
+    }).catch(() => {}); // fire-and-forget; evidence logging is best-effort
   }
 
   async function updateTask(
@@ -553,6 +672,19 @@ export default function Home() {
       return;
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, info } : t)));
+  }
+
+  // Assigning a Task to a Job (or moving it between Jobs, or detaching it)
+  // never changes the Task itself or Today's scheduling — a Job is a lens,
+  // not a constraint. The Task stays exactly where Today would show it.
+  async function moveTaskToJob(id: string, jobId: string | null) {
+    const { error } = await supabase.from('tasks').update({ job_id: jobId }).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Could not move the task: ' + error.message);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, job_id: jobId } : t)));
   }
 
   async function toggleDueToday(id: string, current: boolean) {
@@ -623,6 +755,21 @@ export default function Home() {
         },
         ...prev,
       ]);
+      // Log the prediction outcome for the thinking engine's evidence
+      // loop. This records what the engine predicted vs what actually
+      // happened, so the Patterns surface can show calibration data
+      // and the engine can measure its own accuracy over time.
+      const suggestion = suggestEstimate(task.text, history, clusters);
+      logCompletionOutcome({
+        userId: session.user.id,
+        taskText: task.text,
+        clusterLabel: suggestion?.matchedLabel ?? null,
+        clusterCount: suggestion?.sampleCount ?? 0,
+        estimatedMins: task.estimate_mins,
+        suggestedMins: suggestion?.suggestedMins ?? null,
+        confidence: suggestion?.confidence ?? 'low',
+        actualMins: Math.round(finalLogged),
+      }).catch(() => {}); // fire-and-forget; evidence logging is best-effort
     }
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
   }
@@ -973,6 +1120,7 @@ export default function Home() {
                   anyActive={anyActive}
                   subs={subs}
                   learnedHint={learnedHint}
+                  jobLabel={jobs.find((j) => j.id === t.job_id)?.name ?? null}
                   expanded={expandedId === t.id}
                   onToggleExpand={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
                   onOpenDetails={() => { setExpandedId(null); setOpenTaskId(t.id); }}
@@ -1022,6 +1170,9 @@ export default function Home() {
           setTaskTime={setTaskTime}
           captureSuggestion={captureSuggestion}
           captureLocationSuggestion={captureLocationSuggestion}
+          captureLocationMemorySuggestion={captureLocationMemorySuggestion}
+          captureJobSuggestion={captureJobSuggestion}
+          captureContext={captureContext}
           locationFieldVisible={locationFieldVisible}
           addTask={addTask}
           captureLocation={captureLocation}
@@ -1034,6 +1185,9 @@ export default function Home() {
           setShowReminderField={setShowReminderField}
           captureSurfaceDate={captureSurfaceDate}
           setCaptureSurfaceDate={setCaptureSurfaceDate}
+          jobs={jobs}
+          captureJobId={captureJobId}
+          setCaptureJobId={setCaptureJobId}
           error={error}
           onClose={() => setCaptureOpen(false)}
         />
@@ -1072,6 +1226,8 @@ export default function Home() {
           remainingForThis={openTaskRemaining}
           liveLogged={openTaskLiveLogged}
           anyActive={visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0)}
+          context="today"
+          jobs={jobs}
           onClose={() => setOpenTaskId(null)}
           onSave={updateTask}
           onComplete={completeTask}
@@ -1083,6 +1239,7 @@ export default function Home() {
           onDeleteSubtask={deleteSubtask}
           onDelete={deleteTask}
           onSaveInfo={saveTaskInfo}
+          onMoveToJob={moveTaskToJob}
           subDraftText={subDraftText[openTask.id] || ''}
           subDraftTime={subDraftTime[openTask.id] || ''}
           setSubDraftText={(v) => setSubDraftText((prev) => ({ ...prev, [openTask.id]: v }))}
@@ -1105,6 +1262,8 @@ export default function Home() {
           onClose={() => setMapOpen(false)}
         />
       )}
+
+      <SurfaceNav active="today" onNavigate={(s: Surface) => recordEvent(s, true)} />
     </div>
   );
 }

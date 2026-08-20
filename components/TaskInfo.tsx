@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import MicButton from './MicButton';
 
 // Freeform information on a task — the thing a person would write
 // underneath the task on paper. Deliberately just one plain multiline
@@ -82,17 +83,26 @@ export function TaskInfo({
   }
 
   return (
-    <textarea
-      className="task-info-input"
-      value={draft}
-      onChange={(e) => {
-        setDraft(e.target.value);
-        setDirty(true);
-      }}
-      onBlur={commit}
-      placeholder="Write it here…"
-      autoFocus={editing}
-      rows={Math.min(10, Math.max(3, draft.split('\n').length))}
-    />
+    <div className="task-info-input-wrap">
+      <textarea
+        className="task-info-input"
+        value={draft}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          setDirty(true);
+        }}
+        onBlur={commit}
+        placeholder="Write it here…"
+        autoFocus={editing}
+        rows={Math.min(10, Math.max(3, draft.split('\n').length))}
+      />
+      <MicButton
+        size="small"
+        onResult={(text) => {
+          setDraft(draft.trim().length > 0 ? `${draft.trim()} ${text}` : text);
+          setDirty(true);
+        }}
+      />
+    </div>
   );
 }

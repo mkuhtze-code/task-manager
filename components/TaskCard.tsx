@@ -21,6 +21,10 @@ export function TaskCard(props: {
   anyActive: boolean;
   subs: Subtask[];
   learnedHint: string | null;
+  // Job name shown as faint secondary context under the task name (Today).
+  // Purely presentational — null/undefined renders exactly like an
+  // unassigned task.
+  jobLabel?: string | null;
   expanded: boolean;
   onToggleExpand: () => void;
   onOpenDetails: () => void;
@@ -38,7 +42,7 @@ export function TaskCard(props: {
   const {
     task: t, remainingForThis, liveLogged, overCap, anyActive, subs, learnedHint,
     expanded, onToggleExpand, onOpenDetails, onComplete, onStart, onStop,
-    onToggleSubtaskDone, onSaveInfo, dragHandleProps,
+    onToggleSubtaskDone, onSaveInfo, dragHandleProps, jobLabel,
   } = props;
 
   const timed = t.estimate_mins > 0;
@@ -130,6 +134,7 @@ export function TaskCard(props: {
           aria-label={`${t.text} — ${expanded ? 'collapse' : 'expand'}`}
         >
           <div className="task-text">{t.text}</div>
+          {jobLabel && <div className="task-card-job">{jobLabel}</div>}
         </div>
         <div className="task-card-glance" onClick={onToggleExpand}>
           {running && <span className="task-card-active-dot" />}
@@ -230,7 +235,7 @@ export function TaskCard(props: {
               </button>
             )}
             <button className="task-action-link" onClick={isolate(onOpenDetails)}>
-              Details
+              Edit
             </button>
           </div>
         </div>

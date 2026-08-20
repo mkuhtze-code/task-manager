@@ -13,7 +13,7 @@ function GearIcon() {
   );
 }
 
-export default function GearMenu({ context = 'work' }: { context?: 'work' | 'travel' }) {
+export default function GearMenu({ context = 'work' }: { context?: 'work' | 'travel' | 'jobs' }) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -66,7 +66,7 @@ export default function GearMenu({ context = 'work' }: { context?: 'work' | 'tra
       </button>
       {menuOpen && (
         <div className="gear-dropdown">
-          {context === 'work' && (
+          {context !== 'travel' && (
             <>
               <Link href="/analytics" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
                 Patterns

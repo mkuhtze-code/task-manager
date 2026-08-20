@@ -1,6 +1,6 @@
 'use client';
 
-import { CloseIcon, ChevronIcon, BedIcon, MapPinIcon } from '@/components/icons';
+import { CloseIcon, ChevronIcon, BedIcon, MapPinIcon, CompassIcon } from '@/components/icons';
 
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
@@ -49,6 +49,7 @@ type DaySheetProps = {
   onChangeSortMode: (mode: 'what_fits' | 'close_to_accom' | 'nearby_me' | 'manual') => void;
   onOpenAccommodation: () => void;
   onOpenMap: () => void;
+  onOpenLibrary: () => void;
   onClose: () => void;
 };
 
@@ -75,6 +76,7 @@ export default function DaySheet(props: DaySheetProps) {
     onChangeSortMode,
     onOpenAccommodation,
     onOpenMap,
+    onOpenLibrary,
     onClose,
   } = props;
 
@@ -151,9 +153,14 @@ export default function DaySheet(props: DaySheetProps) {
             <span>Where you&apos;re staying</span>
             <ChevronIcon size={14} />
           </button>
-          <button className="day-sheet-link" onClick={hasRoute ? onOpenMap : undefined} disabled={!hasRoute}>
+          <button className="day-sheet-link" onClick={onOpenMap} disabled={!hasRoute}>
             <MapPinIcon />
             <span>{hasRoute ? 'Map of the day' : 'Add a location to see the map'}</span>
+            <ChevronIcon size={14} />
+          </button>
+          <button className="day-sheet-link" onClick={onOpenLibrary}>
+            <CompassIcon />
+            <span>Library</span>
             <ChevronIcon size={14} />
           </button>
         </div>

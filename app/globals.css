@@ -112,11 +112,11 @@ button:focus-visible, input:focus-visible {
   max-width: 560px;
   margin: 0 auto;
   min-height: 100vh;
-  padding: 0 var(--space-4) 110px;
+  padding: 0 var(--space-4) 160px;
 }
 
 .app-shell.has-active {
-  padding-bottom: 178px;
+  padding-bottom: 228px;
 }
 
 .app-header {
@@ -445,6 +445,29 @@ button:focus-visible, input:focus-visible {
   padding: 0 var(--space-2);
 }
 
+/* Quiet toggle — no border, no background, just ink-soft text.
+   Use for state toggles that should not compete with inputs. */
+.btn-quiet {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  min-height: 40px;
+  padding: 0 var(--space-2);
+  cursor: pointer;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.btn-quiet:hover {
+  color: var(--ink);
+  border-color: var(--line);
+}
+.btn-quiet.active {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
 .btn-google {
   width: 100%;
   background: white;
@@ -699,35 +722,57 @@ button:focus-visible, input:focus-visible {
    whitespace; tapping expands a reveal tier with progress, metadata,
    and actions. Controls appear only when relevant. */
 
-.view-switcher {
+/* ── Surface navigation ─────────────────────────────────────────
+   Persistent bottom bar — Today · Jobs · Travel. The GROUP
+   provides structural weight; individual labels stay restrained.
+   Quiet but unmistakable. */
+.surface-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 52px;
+  background: rgba(var(--glass-rgb), 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid var(--line);
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--ink-faint);
+  justify-content: center;
+  gap: var(--space-6);
+  z-index: 15;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-.view-switcher-item {
+.surface-nav-item {
   background: none;
   border: none;
-  padding: 2px 0;
-  font-size: inherit;
-  font-weight: inherit;
-  color: inherit;
-  min-height: 28px;
-  line-height: 1;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-faint);
+  padding: 6px 0;
+  position: relative;
+  transition: color 0.15s var(--ease);
 }
 
-.view-switcher-item.active {
+.surface-nav-item:hover {
+  color: var(--ink-soft);
+}
+
+.surface-nav-item.active {
   color: var(--ink);
+  font-weight: 700;
 }
 
-.view-switcher-sep {
-  width: 1px;
-  height: 12px;
-  background: var(--line-strong);
-  flex-shrink: 0;
+.surface-nav-item.active::after {
+  content: '';
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ink);
 }
 
 .today-header-top-right {
@@ -790,6 +835,19 @@ button:focus-visible, input:focus-visible {
 
 .task-card.task-list-item .task-text {
   font-weight: 500;
+}
+
+/* Job context inside a Today card — the Job name reads as secondary/faint
+   meta under the task name, the same quiet treatment activity rows give a
+   location: small, faint, truncated. Never a badge or pill. */
+.task-card-job {
+  margin-top: 3px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .task-card-glance {
@@ -945,6 +1003,7 @@ button:focus-visible, input:focus-visible {
 .task-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
 }
 
@@ -1065,6 +1124,31 @@ button:focus-visible, input:focus-visible {
   gap: var(--space-2);
 }
 
+.subtask-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 36px;
+  flex-shrink: 0;
+}
+
+.subtask-add-btn {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s var(--ease);
+}
+.subtask-add-btn:hover {
+  color: var(--ink);
+}
+
 .subtask-row {
   display: flex;
   align-items: center;
@@ -1132,7 +1216,7 @@ button:focus-visible, input:focus-visible {
 .capture-fab {
   position: fixed;
   right: var(--space-5);
-  bottom: var(--space-6);
+  bottom: calc(52px + var(--space-5));
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -1702,7 +1786,7 @@ button:focus-visible, input:focus-visible {
   position: fixed;
   left: var(--space-4);
   right: var(--space-4);
-  bottom: calc(var(--space-6) + 66px);
+  bottom: calc(52px + var(--space-6) + 66px);
   max-width: 560px;
   margin: 0 auto;
   background: var(--steel);
@@ -3074,6 +3158,72 @@ button:focus-visible, input:focus-visible {
   margin-top: 2px;
 }
 
+/* Trip Library sheet — the same quiet hairline-list language as the
+   accommodation sheet: name + one secondary line, a single trailing
+   action, nothing else at rest. */
+.library-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.library-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.library-row:last-child {
+  border-bottom: none;
+}
+
+.library-row-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.library-row-title {
+  max-width: 100%;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-row-meta {
+  max-width: 100%;
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-row .btn-text {
+  flex-shrink: 0;
+  color: var(--steel-text, var(--steel-dark));
+  font-weight: 600;
+}
+
+.library-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+
 .empty-state-title {
   font-size: var(--text-md);
   font-weight: 800;
@@ -3152,6 +3302,16 @@ button:focus-visible, input:focus-visible {
   outline-offset: 2px;
 }
 
+.task-info-input-wrap {
+  position: relative;
+}
+
+.task-info-input-wrap .mic-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+}
+
 .task-info-input {
   width: 100%;
   border: 1px solid var(--line-strong);
@@ -3171,3 +3331,236 @@ button:focus-visible, input:focus-visible {
   outline: 1px solid var(--ink-soft);
   outline-offset: 1px;
 }
+
+/* ── Jobs ────────────────────────────────────────────────────────
+   The Jobs surface speaks the same language as Today and Travel:
+   hairline rows, one mono numeral per row, progressive disclosure,
+   and derived (never stored) progress. A Job is context, not a
+   project manager — these classes only shape how that context reads. */
+
+.job-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-2);
+}
+
+.job-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(var(--shadow-rgb), 0.06);
+  padding: var(--space-3) var(--space-2);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.job-row:last-child {
+  border-bottom: none;
+}
+
+.job-row.completed {
+  opacity: 0.55;
+}
+
+.job-row-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.job-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-row-done-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--moss-text, var(--moss));
+}
+
+.job-row-numeral {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.job-row-map-icon {
+  flex-shrink: 0;
+  color: var(--ink-faint);
+  opacity: 0.7;
+}
+
+.job-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-row-meta svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* The detail head — client/location on the left, derived progress in mono
+   on the right. Tapping it opens the edit sheet. Mirrors the travel
+   day-head so the two detail surfaces read as siblings. */
+.job-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  text-align: left;
+  background: var(--paper);
+  border: 1px solid rgba(var(--shadow-rgb), 0.055);
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 1px 2px rgba(var(--shadow-rgb), 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  padding: var(--space-3) var(--space-4);
+  margin: var(--space-3) 0;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.job-head:hover {
+  background: var(--paper-raised);
+}
+
+.job-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.job-head-context {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-head-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  min-width: 0;
+}
+
+.job-head-location svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.job-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.job-head-progress {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.job-head-progress.done {
+  color: var(--moss-text, var(--moss));
+}
+
+.job-head-progress.warn {
+  color: var(--hazard-text, var(--hazard));
+}
+
+.job-head-chev {
+  display: inline-flex;
+  color: var(--ink-faint);
+}
+
+/* Quiet group labels inside a Job — uppercase, faint, so the date grouping
+   reads as structure rather than as extra rows. */
+.job-group-label {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  margin: var(--space-3) 0 var(--space-1);
+  padding: 0 var(--space-1);
+}
+
+/* Completed Tasks, collapsed — the same disclosure language as the past
+   trips toggle on the Travel list. */
+.job-done-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--line);
+  padding: var(--space-3) 0;
+  margin-top: var(--space-2);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.job-done-toggle svg {
+  color: var(--ink-faint);
+  transition: transform 0.2s var(--ease);
+}
+
+.job-done-toggle[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.job-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.job-picker-hint {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+  padding: 2px 4px;
+}
+
+/* Completed Tasks inside a Job detail stay visible but quiet — same
+   treatment Today gives its finished rows. */
+.job-done-task {
+  opacity: 0.55;
+}
+

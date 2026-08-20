@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Subtask, Task } from '@/lib/taskTypes';
+import type { Subtask, Task, TaskContext } from '@/lib/taskTypes';
+import type { Job } from '@/lib/jobTypes';
 import { fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
-import { CloseIcon, PlayIcon, StopIcon } from '@/components/icons';
+import { CheckIcon, ChevronIcon, CloseIcon, PlayIcon, StopIcon } from '@/components/icons';
 import { TaskInfo } from '@/components/TaskInfo';
 
 export function TaskDetailSheet(props: {
@@ -14,6 +15,8 @@ export function TaskDetailSheet(props: {
   remainingForThis: number;
   liveLogged: number;
   anyActive: boolean;
+  context: TaskContext;
+  jobs: Job[];
   onClose: () => void;
   onSave: (id: string, text: string, mins: number, surfaceDate: string | null, locationText: string | null, lat: number | null, lng: number | null) => void;
   onComplete: (id: string) => void;
@@ -25,15 +28,16 @@ export function TaskDetailSheet(props: {
   onDeleteSubtask: (subId: string, taskId: string) => void;
   onDelete: (id: string) => void;
   onSaveInfo: (id: string, info: string) => void;
+  onMoveToJob: (id: string, jobId: string | null) => void;
   subDraftText: string;
   subDraftTime: string;
   setSubDraftText: (v: string) => void;
   setSubDraftTime: (v: string) => void;
 }) {
   const {
-    task, subs, remainingForThis, liveLogged, anyActive, onClose, onSave,
+    task, subs, remainingForThis, liveLogged, anyActive, context, jobs, onClose, onSave,
     onComplete, onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
-    onDelete, onSaveInfo,
+    onDelete, onSaveInfo, onMoveToJob,
     subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
   } = props;
 
@@ -44,6 +48,8 @@ export function TaskDetailSheet(props: {
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(
     task.lat != null && task.lng != null ? { lat: task.lat, lng: task.lng } : null
   );
+  const [jobMoveOpen, setJobMoveOpen] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -52,6 +58,7 @@ export function TaskDetailSheet(props: {
     setSurfaceDate(task.surface_date || '');
     setLocationText(task.location_text || '');
     setLocationCoords(task.lat != null && task.lng != null ? { lat: task.lat, lng: task.lng } : null);
+    setJobMoveOpen(false);
     setError('');
   }, [task.id]);
 
@@ -123,11 +130,11 @@ export function TaskDetailSheet(props: {
         <div className="capture-row">
           <input type="text" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} onBlur={commit} style={{ width: 90 }} />
           <button
-            className={task.due_today ? 'btn btn-steel' : 'btn btn-ghost'}
+            className={task.due_today ? 'btn-quiet active' : 'btn-quiet'}
             style={{ flex: 1 }}
             onClick={() => onToggleDue(task.id, task.due_today)}
           >
-            {task.due_today ? '✓ Due today' : 'Due today'}
+            {task.due_today ? '✓ Important' : 'Important'}
           </button>
         </div>
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
@@ -148,6 +155,7 @@ export function TaskDetailSheet(props: {
           </p>
         )}
 
+        <span className="settings-label">{context === 'job' ? 'When' : 'Reminder'}</span>
         <div className="reminder-date-row">
           <input
             type="date"
@@ -174,6 +182,38 @@ export function TaskDetailSheet(props: {
           surface="edit"
         />
 
+        <button
+          className={jobMoveOpen ? 'detail-reveal active' : 'detail-reveal'}
+          onClick={() => setJobMoveOpen((v) => !v)}
+          aria-expanded={jobMoveOpen}
+        >
+          <span>{task.job_id ? `In job: ${jobs.find((j) => j.id === task.job_id)?.name || ''}` : 'Job'}</span>
+          <ChevronIcon size={14} />
+        </button>
+        {jobMoveOpen && (
+          <div className="move-day-list">
+            <button
+              className="move-day-option"
+              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+              onClick={() => { onMoveToJob(task.id, null); setJobMoveOpen(false); }}
+            >
+              No job
+              {!task.job_id && <span style={{ marginLeft: 'auto' }}><CheckIcon done /></span>}
+            </button>
+            {jobs.map((j) => (
+              <button
+                key={j.id}
+                className="move-day-option"
+                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                onClick={() => { onMoveToJob(task.id, j.id); setJobMoveOpen(false); }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.name}</span>
+                {task.job_id === j.id && <span style={{ marginLeft: 'auto' }}><CheckIcon done /></span>}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="task-detail-actions">
           {task.estimate_mins > 0 && (
             task.status === 'active' ? (
@@ -192,7 +232,38 @@ export function TaskDetailSheet(props: {
         </div>
 
         <div className="subtask-panel">
-          <div className="settings-panel-title">Sub-tasks</div>
+          <div className="subtask-header">
+            <div className="settings-panel-title">Sub-tasks</div>
+            <button
+              className="subtask-add-btn"
+              aria-label="Add sub-task"
+              onClick={() => setShowAddForm(!showAddForm)}
+            >+</button>
+          </div>
+          {showAddForm && (
+            <div className="subtask-add-row">
+              <input
+                type="text"
+                placeholder="Sub-task"
+                value={subDraftText}
+                onChange={(e) => setSubDraftText(e.target.value)}
+              />
+              <MicButton
+                size="small"
+                onResult={(text) =>
+                  setSubDraftText(subDraftText.trim().length > 0 ? `${subDraftText.trim()} ${text}` : text)
+                }
+              />
+              <input
+                type="text"
+                placeholder="15m"
+                style={{ width: 60 }}
+                value={subDraftTime}
+                onChange={(e) => setSubDraftTime(e.target.value)}
+              />
+              <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => { onAddSubtask(task.id); setShowAddForm(false); }}>add</button>
+            </div>
+          )}
           {subs.map((s) => (
             <div key={s.id} className="subtask-row">
               <button
@@ -205,28 +276,6 @@ export function TaskDetailSheet(props: {
               <button className="icon-btn" onClick={() => onDeleteSubtask(s.id, task.id)} aria-label="Delete sub-task">×</button>
             </div>
           ))}
-          <div className="subtask-add-row">
-            <input
-              type="text"
-              placeholder="Sub-task"
-              value={subDraftText}
-              onChange={(e) => setSubDraftText(e.target.value)}
-            />
-            <MicButton
-              size="small"
-              onResult={(text) =>
-                setSubDraftText(subDraftText.trim().length > 0 ? `${subDraftText.trim()} ${text}` : text)
-              }
-            />
-            <input
-              type="text"
-              placeholder="15m"
-              style={{ width: 60 }}
-              value={subDraftTime}
-              onChange={(e) => setSubDraftTime(e.target.value)}
-            />
-            <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => onAddSubtask(task.id)}>add</button>
-          </div>
         </div>
 
         <button

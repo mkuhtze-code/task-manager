@@ -1,10 +1,10 @@
 // lib/taskIntelligence.ts
 //
-// The quiet learning layer behind Dokkit's capacity math. This module never
-// talks to Supabase directly — it's pure functions over data the caller
-// already has, so it can be used from the capture sheet, the capacity
-// calculation on the home page, and the Patterns page without duplicating
-// logic in three places.
+// The quiet learning layer behind Dokkit's capacity math. This module
+// never talks to Supabase directly — it's pure functions over data the
+// caller already has, so it can be used from the capture sheet, the
+// capacity calculation on the home page, and the Patterns page without
+// duplicating logic in three places.
 //
 // What it does:
 //   1. Groups a user's completed-task history into fuzzy clusters (so
@@ -16,6 +16,30 @@
 //   4. Same clustering also remembers location, when tasks in a cluster
 //      have had one attached — a repeated errand's place doesn't average
 //      the way duration does, so this is last-seen-wins, not a blend.
+//
+// Estimation logic (effectiveEstimate, hasMeaningfulDivergence) now
+// delegates to lib/thinking/decisions/effectiveEstimate.ts, which carries
+// the full decision context for the thinking engine. The functions here
+// remain as backward-compatible wrappers.
+
+import {
+  computeEffectiveEstimate as _computeEffectiveEstimate,
+  hasMeaningfulDivergence as _hasMeaningfulDivergence,
+  type Confidence,
+} from '@/lib/thinking/decisions/effectiveEstimate';
+import {
+  decideJobContext,
+} from '@/lib/thinking/decisions/jobContext';
+import {
+  findClusterJobAssociations,
+} from '@/lib/thinking/associations/clusterJob';
+import {
+  findClusterPlaceAssociations,
+} from '@/lib/thinking/associations/clusterPlace';
+import {
+  decideLocationMemory,
+} from '@/lib/thinking/decisions/locationMemory';
+import type { CompletedTaskFacts, DecisionAuthority } from '@/lib/thinking/types';
 
 export type HistoricalTask = {
   text: string;
@@ -23,6 +47,8 @@ export type HistoricalTask = {
   location_text?: string | null;
   lat?: number | null;
   lng?: number | null;
+  job_id?: string | null;
+  created_at?: string | null;
 };
 
 export type ClusterLocation = {
@@ -40,7 +66,9 @@ export type TaskCluster = {
   location: ClusterLocation | null; // most recently seen location, if any
 };
 
-export type Confidence = 'low' | 'medium' | 'high';
+// Re-export Confidence from the thinking engine so existing imports
+// from this file continue to work.
+export type { Confidence } from '@/lib/thinking/decisions/effectiveEstimate';
 
 export type EstimateSuggestion = {
   suggestedMins: number;
@@ -53,6 +81,23 @@ export type LocationSuggestion = {
   location: ClusterLocation;
   sampleCount: number;
   matchedLabel: string;
+};
+
+export type JobSuggestion = {
+  jobId: string;
+  confidence: Confidence;
+  authority: DecisionAuthority;
+  agreeingDimensions: string[];
+};
+
+export type LocationMemorySuggestion = {
+  locationText: string;
+  lat: number;
+  lng: number;
+  confidence: Confidence;
+  authority: DecisionAuthority;
+  occurrenceCount: number;
+  ratio: number;
 };
 
 // ── Tuning knobs ───────────────────────────────────────────────────
@@ -218,6 +263,203 @@ export function suggestLocation(
   };
 }
 
+// ── Cluster membership ──────────────────────────────────────────────
+// Reconstructs which tasks belong to which cluster by re-running the
+// clustering assignment logic. Needed because buildClusters() doesn't
+// store the task-to-cluster mapping.
+
+function groupTasksByCluster(
+  history: HistoricalTask[],
+  clusters: TaskCluster[]
+): Map<string, HistoricalTask[]> {
+  const groups = new Map<string, HistoricalTask[]>();
+
+  for (const task of history) {
+    const taskTokens = tokenize(task.text);
+    if (taskTokens.size === 0) continue;
+
+    let bestCluster: TaskCluster | null = null;
+    let bestScore = 0;
+
+    for (const cluster of clusters) {
+      const score = jaccardSimilarity(taskTokens, cluster.tokens);
+      if (score > bestScore) {
+        bestScore = score;
+        bestCluster = cluster;
+      }
+    }
+
+    const key = bestCluster && bestScore >= GROUP_SIMILARITY_THRESHOLD
+      ? bestCluster.label
+      : '__unmatched__';
+
+    const existing = groups.get(key) ?? [];
+    existing.push(task);
+    groups.set(key, existing);
+  }
+
+  return groups;
+}
+
+// ── Convert HistoricalTask to CompletedTaskFacts ────────────────────
+// The thinking engine operates on CompletedTaskFacts. We reconstruct
+// partial objects from the historical data we have.
+
+function historicalToFacts(h: HistoricalTask): CompletedTaskFacts {
+  return {
+    text: h.text,
+    status: 'done',
+    source: 'planned',
+    estimate_mins: h.actual_mins,
+    actual_mins: h.actual_mins,
+    logged_mins: h.actual_mins,
+    created_at: h.created_at || '',
+    completed_at: null,
+    started_at: null,
+    surface_date: null,
+    location_text: h.location_text ?? null,
+    lat: h.lat ?? null,
+    lng: h.lng ?? null,
+    job_id: h.job_id ?? null,
+    info: null,
+    subtaskCount: 0,
+    subtaskDoneCount: 0,
+    subtaskTotalMins: 0,
+  };
+}
+
+// ── Job Context Suggestion ──────────────────────────────────────────
+// Given typed text, finds the best-matching cluster and evaluates
+// whether the engine can suggest a job assignment. Uses the Scope 3E
+// decision module (decideJobContext) which requires ≥2 independent
+// evidence dimensions to agree.
+
+export function suggestJob(
+  inputText: string,
+  history: HistoricalTask[],
+  precomputedClusters?: TaskCluster[]
+): JobSuggestion | null {
+  const inputTokens = tokenize(inputText);
+  if (inputTokens.size === 0) return null;
+
+  // Need job_id in history to compute job associations
+  const hasJobData = history.some((h) => h.job_id);
+  if (!hasJobData) return null;
+
+  const clusters = precomputedClusters ?? buildClusters(history);
+  const match = findBestCluster(inputTokens, clusters);
+  if (!match) return null;
+
+  // Get all tasks in the matched cluster
+  const grouped = groupTasksByCluster(history, clusters);
+  const clusterTasks = grouped.get(match.cluster.label) ?? [];
+  if (clusterTasks.length < 4) return null; // MIN_TOTAL_FOR_JOB
+
+  // Convert to CompletedTaskFacts for the thinking engine
+  const facts = clusterTasks.map(historicalToFacts);
+
+  // Compute job associations for this cluster
+  const jobAssoc = findClusterJobAssociations(match.cluster.label, facts);
+  if (jobAssoc.length === 0) return null;
+
+  // Create a minimal input task for the decision
+  const inputTask: CompletedTaskFacts = {
+    text: inputText,
+    status: 'done',
+    source: 'planned',
+    estimate_mins: 0,
+    actual_mins: 0,
+    logged_mins: 0,
+    created_at: new Date().toISOString(),
+    completed_at: null,
+    started_at: null,
+    surface_date: null,
+    location_text: null,
+    lat: null,
+    lng: null,
+    job_id: null,
+    info: null,
+    subtaskCount: 0,
+    subtaskDoneCount: 0,
+    subtaskTotalMins: 0,
+  };
+
+  const decision = decideJobContext(inputTask, facts, jobAssoc);
+  if (!decision) return null;
+
+  return {
+    jobId: decision.jobId,
+    confidence: decision.confidence,
+    authority: decision.authority,
+    agreeingDimensions: decision.agreeingDimensions,
+  };
+}
+
+// ── Location Memory Suggestion ──────────────────────────────────────
+// Enhanced version of suggestLocation that uses the Scope 3E decision
+// module for authority/confidence. Returns authority information so
+// the UI can decide how aggressively to use the memory.
+
+export function suggestLocationMemory(
+  inputText: string,
+  history: HistoricalTask[],
+  precomputedClusters?: TaskCluster[]
+): LocationMemorySuggestion | null {
+  const inputTokens = tokenize(inputText);
+  if (inputTokens.size === 0) return null;
+
+  const clusters = precomputedClusters ?? buildClusters(history);
+  const match = findBestCluster(inputTokens, clusters);
+  if (!match) return null;
+
+  // Get all tasks in the matched cluster
+  const grouped = groupTasksByCluster(history, clusters);
+  const clusterTasks = grouped.get(match.cluster.label) ?? [];
+  if (clusterTasks.length < 4) return null;
+
+  // Convert to CompletedTaskFacts for the thinking engine
+  const facts = clusterTasks.map(historicalToFacts);
+
+  // Compute place associations for this cluster
+  const placeAssoc = findClusterPlaceAssociations(match.cluster.label, facts);
+  if (placeAssoc.length === 0) return null;
+
+  // Create a minimal input task (no location)
+  const inputTask: CompletedTaskFacts = {
+    text: inputText,
+    status: 'done',
+    source: 'planned',
+    estimate_mins: 0,
+    actual_mins: 0,
+    logged_mins: 0,
+    created_at: new Date().toISOString(),
+    completed_at: null,
+    started_at: null,
+    surface_date: null,
+    location_text: null,
+    lat: null,
+    lng: null,
+    job_id: null,
+    info: null,
+    subtaskCount: 0,
+    subtaskDoneCount: 0,
+    subtaskTotalMins: 0,
+  };
+
+  const decision = decideLocationMemory(inputTask, facts, placeAssoc);
+  if (!decision) return null;
+
+  return {
+    locationText: decision.locationText,
+    lat: decision.lat,
+    lng: decision.lng,
+    confidence: decision.confidence,
+    authority: decision.authority,
+    occurrenceCount: decision.occurrenceCount,
+    ratio: decision.ratio,
+  };
+}
+
 // ── Location-trigger heuristic ──────────────────────────────────────
 // Deterministic phrase matching, not AI — the same "genuine intelligence
 // without the AI label" discipline as the rest of this module. Fires on
@@ -236,32 +478,24 @@ export function suggestsLocation(inputText: string): boolean {
 }
 
 // ── Blending typed estimates with learned reality ───────────────────
-// This is the part that actually changes behavior, not just suggests it:
-// when computing what capacity math should use, don't take a typed
-// estimate at total face value if history disagrees — but don't override
-// it wholesale either, especially on thin data. The blend weight grows
-// with sample count, so a couple of matches nudge gently and a long track
-// record speaks louder.
-
-const BLEND_WEIGHTS: Record<Confidence, number> = {
-  low: 0.25,
-  medium: 0.5,
-  high: 0.75,
-};
+// Delegates to the thinking engine's computeEffectiveEstimate for the
+// actual blending logic. The wrappers here maintain backward compatibility
+// with all existing call sites.
 
 // Exposed on its own (not just inlined in effectiveEstimate) because the UI
 // needs the same "is this actually worth mentioning" judgment call to
 // decide whether to show a quiet hint next to a task.
 export function hasMeaningfulDivergence(typedMins: number, suggestedMins: number): boolean {
-  const diff = Math.abs(suggestedMins - typedMins);
-  return diff >= 5 && diff / Math.max(typedMins, 1) >= 0.15;
+  return _hasMeaningfulDivergence(typedMins, suggestedMins);
 }
 
 export function effectiveEstimate(typedMins: number, suggestion: EstimateSuggestion | null): number {
   if (!suggestion) return typedMins;
-  if (!hasMeaningfulDivergence(typedMins, suggestion.suggestedMins)) return typedMins;
-
-  const weight = BLEND_WEIGHTS[suggestion.confidence];
-  const blended = typedMins * (1 - weight) + suggestion.suggestedMins * weight;
-  return Math.round(blended);
+  const decision = _computeEffectiveEstimate({
+    typedMins,
+    suggestedMins: suggestion.suggestedMins,
+    confidence: suggestion.confidence,
+    clusterCount: suggestion.sampleCount,
+  });
+  return decision.blendedMins;
 }

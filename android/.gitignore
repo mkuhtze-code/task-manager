@@ -1,0 +1,32 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration (SDK path + public app keys). Never commit real keys.
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Android Studio project files
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keystore
+*.keystore
+*.jks
+signing.properties
+
+# Firebase / notifications (deferred to a later stage)
+google-services.json
+
+# Logs
+*.log

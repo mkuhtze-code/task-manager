@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import GearMenu from '@/components/GearMenu';
-import TopSwitcher from '@/components/TopSwitcher';
 import { ChevronIcon, FitCheckIcon, FitWarnIcon } from '@/components/icons';
 
 export function TodayHeader(props: {
@@ -43,7 +42,6 @@ export function TodayHeader(props: {
           <div className="today-header-date">{dateOnlyLabel}</div>
         </div>
         <div className="today-header-top-right">
-          <TopSwitcher active="today" />
           <GearMenu />
         </div>
       </div>

@@ -1,0 +1,1513 @@
+
+══════════════════════════════════════════════════════════════════════
+  DOKKIT THINKING ENGINE — SCOPE 2.5 DIAGNOSTIC
+══════════════════════════════════════════════════════════════════════
+
+  Fixture: 150 completed tasks
+  Period:  2026-01-06 → 2026-08-06 (7 months)
+  Clusters discovered: 30 (with ≥2 tasks)
+
+══════════════════════════════════════════════════════════════════════
+  USER PATTERNS — GLOBAL
+══════════════════════════════════════════════════════════════════════
+
+  Total completed tasks: 150
+
+  Planning style:
+    Came up (reactive):      18%
+    Planned:                 82%
+    Has estimate:            82%
+    Has scheduled date:      0%
+    Has location:            79%
+    Attached to job:         60%
+    Has notes/info:          19%
+    Timer used:              78%
+
+  Estimate accuracy:
+    Avg actual/estimated:    1.1x
+    → Estimates roughly accurate on average
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SCHOOL RUN
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 14 tasks
+  Confidence: RELIABLE
+  Date range: 2026-01-06 → 2026-01-23
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     25.0 min
+    Median:      25 min
+    Range:       25–25 min
+    Total:       350 min (5.8 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     0%
+    Job tied:    0%
+    Has notes:   0%
+    Timer used:  0%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.0 days
+    Avg age:     0.0 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     207.5 days
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day; quick tasks.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: UPDATE ACCOUNTS SPREADSHEET
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 7 tasks
+  Confidence: RELIABLE
+  Date range: 2026-01-10 → 2026-07-10
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     69.0 min
+    Median:      60 min
+    Range:       55–90 min
+    Total:       485 min (8.1 hours)
+    Trend:       worsening
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    0%
+    Has notes:   57%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.1 days
+    Avg age:     0.1 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     123.3 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Home workshop             7 visits
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: FILE RECEIPTS
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 7 tasks
+  Confidence: RELIABLE
+  Date range: 2026-01-17 → 2026-07-18
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     27.0 min
+    Median:      25 min
+    Range:       25–30 min
+    Total:       190 min (3.2 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    0%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.0 days
+    Avg age:     0.0 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     116.8 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Home workshop             7 visits
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day; quick tasks.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT HENDERSON REROOF ASSESSMENT
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 5 tasks
+  Confidence: INDICATIVE
+  Date range: 2026-01-08 → 2026-01-26
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     408.0 min
+    Median:      480 min
+    Range:       90–510 min
+    Total:       2040 min (34.0 hours)
+    Trend:       worsening
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   60%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.3 days
+    Avg age:     0.3 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  60%
+    Avg subtasks:3.0
+    Avg sub mins:276
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     204.2 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Henderson                 5 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-henderson             5 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; usually decomposed into subtasks (avg 3.0); typically completed same day; substantial multi-hour work.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: GARDEN MOWING
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 5 tasks
+  Confidence: INDICATIVE
+  Date range: 2026-03-28 → 2026-07-25
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     57.0 min
+    Median:      55 min
+    Range:       55–60 min
+    Total:       285 min (4.8 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    0%
+    Has notes:   0%
+    Timer used:  0%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.0 days
+    Avg age:     0.0 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     74.9 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Home workshop             5 visits
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: COLLECT KIDS FOOTBALL
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 4 tasks
+  Confidence: INDICATIVE
+  Date range: 2026-01-10 → 2026-01-31
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     58.0 min
+    Median:      60 min
+    Range:       55–60 min
+    Total:       230 min (3.8 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     0%
+    Job tied:    0%
+    Has notes:   0%
+    Timer used:  0%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.0 days
+    Avg age:     0.0 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     201.4 days
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT JONES FLAT ROOF
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 4 tasks
+  Confidence: INDICATIVE
+  Date range: 2026-03-16 → 2026-03-30
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     140.0 min
+    Median:      180 min
+    Range:       50–270 min
+    Total:       560 min (9.3 hours)
+    Trend:       worsening
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   25%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.1 days
+    Avg age:     0.1 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  25%
+    Avg subtasks:0.8
+    Avg sub mins:63
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     141.8 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Jones                     3 visits
+    Home workshop             1 visit
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-jones                 4 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT PATEL OFFICE ROOF SURVEY
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 4 tasks
+  Confidence: INDICATIVE
+  Date range: 2026-04-14 → 2026-05-11
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     473.0 min
+    Median:      570 min
+    Range:       180–570 min
+    Total:       1890 min (31.5 hours)
+    Trend:       worsening
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   50%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.3 days
+    Avg age:     0.3 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  75%
+    Avg subtasks:4.0
+    Avg sub mins:408
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     103.2 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Patel office              4 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-patel                 4 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; usually decomposed into subtasks (avg 4.0); typically completed same day; substantial multi-hour work.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT TAYLOR GARAGE
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 4 tasks
+  Confidence: INDICATIVE
+  Date range: 2026-07-08 → 2026-07-28
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     390.0 min
+    Median:      480 min
+    Range:       90–510 min
+    Total:       1560 min (26.0 hours)
+    Trend:       worsening
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   25%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.3 days
+    Avg age:     0.3 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  50%
+    Avg subtasks:2.3
+    Avg sub mins:235
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     23.4 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Taylor                    4 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-taylor                4 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; typically completed same day; substantial multi-hour work.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: COLLECT MATERIALS HENDERSON
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 3 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-01-16 → 2026-03-04
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     92.0 min
+    Median:      85 min
+    Range:       80–110 min
+    Total:       275 min (4.6 hours)
+    Trend:       worsening
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   33%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.1 days
+    Avg age:     0.1 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     181.8 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Roofing supplier          2 visits
+    Local merchants           1 visit
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-henderson             1 tasks
+    job-smith                 2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: COLLECT MATERIALS JONES
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 3 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-03-23 → 2026-05-22
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     80.0 min
+    Median:      80 min
+    Range:       40–120 min
+    Total:       240 min (4.0 hours)
+    Trend:       worsening
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.1 days
+    Avg age:     0.1 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     108.2 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Roofing supplier          2 visits
+    Local merchants           1 visit
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-jones                 1 tasks
+    job-patel                 2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: BUY PAINT FOR HALLWAY
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 3 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-05-01 → 2026-05-03
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     253.0 min
+    Median:      240 min
+    Range:       40–480 min
+    Total:       760 min (12.7 hours)
+    Trend:       worsening
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     33% reactive
+    Estimated:   67%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    0%
+    Has notes:   67%
+    Timer used:  0%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.2 days
+    Avg age:     0.2 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     100.0 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Home workshop             2 visits
+    Local merchants           1 visit
+
+  ── Insight ─────────────────────────────────────────────────────
+    mix of planned and reactive; handled as single tasks; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT WILLIAMS BASE
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 3 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-05-19 → 2026-06-02
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     490.0 min
+    Median:      480 min
+    Range:       480–510 min
+    Total:       1470 min (24.5 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.3 days
+    Avg age:     0.3 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  67%
+    Avg subtasks:3.0
+    Avg sub mins:310
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     76.2 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Williams                  3 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-williams              3 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; usually decomposed into subtasks (avg 3.0); typically completed same day; substantial multi-hour work.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT BROWN CHIMNEY
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 3 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-06-16 → 2026-06-30
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     193.0 min
+    Median:      180 min
+    Range:       40–360 min
+    Total:       580 min (9.7 hours)
+    Trend:       worsening
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   33%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.1 days
+    Avg age:     0.1 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  33%
+    Avg subtasks:1.0
+    Avg sub mins:113
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     48.2 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Brown                     3 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-brown                 3 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: QUOTE REROOF HENDERSON
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-01-08 → 2026-01-09
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     95.0 min
+    Median:      180 min
+    Range:       10–180 min
+    Total:       190 min (3.2 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   50%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    50%
+    Carryover:   50%
+    Avg to done: 0.4 days
+    Avg age:     0.4 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     213.4 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Home workshop             2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-henderson             2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: ORDER SCAFFOLDING HENDERSON
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-01-12 → 2026-04-20
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     30.0 min
+    Median:      35 min
+    Range:       25–35 min
+    Total:       60 min (1.0 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.0 days
+    Avg age:     0.0 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     161.1 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Home workshop             2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-henderson             1 tasks
+    job-patel                 1 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: COLLECT MEMBRANE AND TIMBER
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-01-20 → 2026-05-19
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     75.0 min
+    Median:      80 min
+    Range:       70–80 min
+    Total:       150 min (2.5 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.1 days
+    Avg age:     0.1 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     142.7 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Roofing supplier          2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-henderson             1 tasks
+    job-williams              1 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SCAFFOLD COLLECTION HENDERSON
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-02-02 → 2026-07-02
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     75.0 min
+    Median:      90 min
+    Range:       60–90 min
+    Total:       150 min (2.5 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.1 days
+    Avg age:     0.1 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     114.1 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Henderson                 1 visit
+    Patel office              1 visit
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-henderson             1 tasks
+    job-patel                 1 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT SMITH EXTENSION LAYOUT
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-02-03 → 2026-02-10
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     300.0 min
+    Median:      480 min
+    Range:       120–480 min
+    Total:       600 min (10.0 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   50%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.2 days
+    Avg age:     0.2 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  50%
+    Avg subtasks:2.0
+    Avg sub mins:225
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     184.6 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Smith                     2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-smith                 2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: QUOTE EXTENSION SMITH
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-02-04 → 2026-04-01
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     140.0 min
+    Median:      240 min
+    Range:       40–240 min
+    Total:       280 min (4.7 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    50%
+    Carryover:   50%
+    Avg to done: 0.4 days
+    Avg age:     0.4 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     159.0 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Home workshop             2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-smith                 2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT SMITH BLOCKWORK
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-02-17 → 2026-02-24
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     495.0 min
+    Median:      510 min
+    Range:       480–510 min
+    Total:       990 min (16.5 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.3 days
+    Avg age:     0.3 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  50%
+    Avg subtasks:2.5
+    Avg sub mins:240
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     170.7 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Smith                     2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-smith                 2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; typically completed same day; substantial multi-hour work.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT SMITH LINTELS AND ROOF
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-03-03 → 2026-03-10
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     495.0 min
+    Median:      510 min
+    Range:       480–510 min
+    Total:       990 min (16.5 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.3 days
+    Avg age:     0.3 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  50%
+    Avg subtasks:3.0
+    Avg sub mins:245
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     156.7 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Smith                     2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-smith                 2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; typically completed same day; substantial multi-hour work.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: QUOTE PATEL OFFICE REFURB
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-04-15 → 2026-07-04
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     345.0 min
+    Median:      600 min
+    Range:       90–600 min
+    Total:       690 min (11.5 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   100%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    50%
+    Carryover:   50%
+    Avg to done: 0.7 days
+    Avg age:     0.7 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     77.1 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Home workshop             2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-patel                 2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; substantial multi-hour work.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: CALL PATEL ABOUT DRAINAGE
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-05-05 → 2026-05-14
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     18.0 min
+    Median:      20 min
+    Range:       15–20 min
+    Total:       35 min (0.6 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     100% reactive
+    Estimated:   0%
+    Scheduled:   0%
+    Located:     0%
+    Job tied:    100%
+    Has notes:   50%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.0 days
+    Avg age:     0.0 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     92.6 days
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-patel                 2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    predominantly reactive; handled as single tasks; typically completed same day; quick tasks.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT WILLIAMS GARDEN ROOM
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-05-06 → 2026-05-07
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     165.0 min
+    Median:      240 min
+    Range:       90–240 min
+    Total:       330 min (5.5 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   50%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    50%
+    Carryover:   50%
+    Avg to done: 0.5 days
+    Avg age:     0.5 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     95.5 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Williams                  1 visit
+    Home workshop             1 visit
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-williams              2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT PATEL OFFICE DAY 4
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-05-18 → 2026-05-21
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     555.0 min
+    Median:      570 min
+    Range:       540–570 min
+    Total:       1110 min (18.5 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.4 days
+    Avg age:     0.4 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  50%
+    Avg subtasks:2.0
+    Avg sub mins:265
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     82.7 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Patel office              2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-patel                 2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; typically completed same day; substantial multi-hour work.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: COLLECT MATERIALS WILLIAMS
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-05-20 → 2026-07-15
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     80.0 min
+    Median:      80 min
+    Range:       80–80 min
+    Total:       160 min (2.7 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.1 days
+    Avg age:     0.1 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     54.2 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Local merchants           2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-williams              1 tasks
+    job-taylor                1 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: SITE VISIT WILLIAMS CLADDING
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-06-09 → 2026-06-12
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     390.0 min
+    Median:      420 min
+    Range:       360–420 min
+    Total:       780 min (13.0 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.3 days
+    Avg age:     0.3 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  50%
+    Avg subtasks:1.5
+    Avg sub mins:200
+    Sub complete:100%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     60.7 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Williams                  2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-williams              2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; typically completed same day; substantial multi-hour work.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: QUOTE CHIMNEY BROWN
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-06-16 → 2026-07-01
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     23.0 min
+    Median:      35 min
+    Range:       10–35 min
+    Total:       45 min (0.8 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     0% reactive
+    Estimated:   100%
+    Scheduled:   0%
+    Located:     100%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.0 days
+    Avg age:     0.0 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     47.5 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Home workshop             2 visits
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-brown                 2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    almost always planned; handled as single tasks; typically completed same day; quick tasks.
+
+══════════════════════════════════════════════════════════════════════
+  CLUSTER: CALL TAYLOR GARAGE
+══════════════════════════════════════════════════════════════════════
+
+  Evidence: 2 tasks
+  Confidence: INSUFFICIENT
+  Date range: 2026-07-11 → 2026-08-06
+
+  ── Duration ────────────────────────────────────────────────────
+    Average:     19.0 min
+    Median:      25 min
+    Range:       12–25 min
+    Total:       37 min (0.6 hours)
+    Trend:       stable
+
+  ── Planning ────────────────────────────────────────────────────
+    Came up:     50% reactive
+    Estimated:   50%
+    Scheduled:   0%
+    Located:     50%
+    Job tied:    100%
+    Has notes:   0%
+    Timer used:  100%
+
+  ── Lifecycle ───────────────────────────────────────────────────
+    Same day:    100%
+    Carryover:   0%
+    Avg to done: 0.0 days
+    Avg age:     0.0 days
+
+  ── Decomposition ───────────────────────────────────────────────
+    Decomposed:  0%
+    Avg subtasks:0.0
+    Avg sub mins:0
+    Sub complete:0%
+
+  ── Staleness ───────────────────────────────────────────────────
+    Stale rate:  0% of pending
+    Old→done:    100% completed when old
+    Avg age:     17.1 days
+
+  ── Locations ───────────────────────────────────────────────────
+    Home workshop             1 visit
+
+  ── Jobs ────────────────────────────────────────────────────────
+    job-taylor                2 tasks
+
+  ── Insight ─────────────────────────────────────────────────────
+    mix of planned and reactive; handled as single tasks; typically completed same day; quick tasks.

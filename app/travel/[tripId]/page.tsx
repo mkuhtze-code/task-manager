@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
+import LibrarySheet from '@/components/LibrarySheet';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
 import DaySheet from '@/components/DaySheet';
@@ -11,7 +12,6 @@ import MapView from '@/components/MapView';
 import { TravelLeg } from '@/components/TravelLeg';
 import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
 import GearMenu from '@/components/GearMenu';
-import TopSwitcher from '@/components/TopSwitcher';
 import {
   BackIcon,
   BedIcon,
@@ -26,6 +26,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from '@/components/icons';
+import SurfaceNav from '@/components/SurfaceNav';
 
 type Trip = {
   id: string;
@@ -342,6 +343,7 @@ export default function TripDayView() {
 
   const [openActivityId, setOpenActivityId] = useState<string | null>(null);
   const [accommodationSheetOpen, setAccommodationSheetOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureText, setCaptureText] = useState('');
@@ -416,12 +418,13 @@ export default function TripDayView() {
     if (selectedDayId) loadActivities();
   }, [selectedDayId]);
 
-  async function loadActivities() {
-    if (!selectedDayId) return;
+  async function loadActivities(dayIdOverride?: string) {
+    const dayId = dayIdOverride || selectedDayId;
+    if (!dayId) return;
     const { data } = await supabase
       .from('activities')
       .select('*')
-      .eq('trip_day_id', selectedDayId)
+      .eq('trip_day_id', dayId)
       .neq('status', 'done')
       .order('order_index', { ascending: true });
     setActivities(data || []);
@@ -435,12 +438,13 @@ export default function TripDayView() {
     }
   }
 
-  async function recalculateDay() {
-    if (!selectedDayId) return;
+  async function recalculateDay(dayIdOverride?: string) {
+    const dayId = dayIdOverride || selectedDayId;
+    if (!dayId) return;
     setRecalculating(true);
     setRecalcError(null);
     try {
-      const json = await authedFetch('/api/travel/calculate-day', { trip_day_id: selectedDayId });
+      const json = await authedFetch('/api/travel/calculate-day', { trip_day_id: dayId });
       if (json.error) {
         setRecalcError(json.error);
       } else {
@@ -549,6 +553,16 @@ export default function TripDayView() {
     }
     setActivities((prev) => prev.filter((a) => a.id !== id));
     recalculateDay();
+  }
+
+  // A Library item was scheduled into tripDayId by the LibrarySheet, which
+  // already inserted the activity (copied name/location/coords). Switch to
+  // that day, reload it, and let the normal route engine take over.
+  async function handleLibraryScheduled(tripDayId: string) {
+    setLibraryOpen(false);
+    setSelectedDayId(tripDayId);
+    await loadActivities(tripDayId);
+    recalculateDay(tripDayId);
   }
 
   // ── Manual drag-to-reorder — same mechanic as Dokkit's task list ────
@@ -806,7 +820,6 @@ export default function TripDayView() {
           </div>
         </div>
         <div className="app-header-right">
-          <TopSwitcher active="travel" />
           <GearMenu context="travel" />
         </div>
       </div>
@@ -833,7 +846,7 @@ export default function TripDayView() {
       )}
 
       {recalcError && (
-        <button className="recalc-error" onClick={recalculateDay} disabled={recalculating}>
+        <button className="recalc-error" onClick={() => recalculateDay()} disabled={recalculating}>
           Drive times couldn't update — tap to retry
         </button>
       )}
@@ -1064,6 +1077,16 @@ export default function TripDayView() {
         />
       )}
 
+      {libraryOpen && (
+        <LibrarySheet
+          tripId={tripId}
+          tripName={trip.name}
+          tripDays={tripDays}
+          onClose={() => setLibraryOpen(false)}
+          onScheduled={handleLibraryScheduled}
+        />
+      )}
+
       {nearbyOpen && (
         <NearbySheet
           loading={nearbyLoading}
@@ -1109,9 +1132,12 @@ export default function TripDayView() {
           onChangeSortMode={changeSortMode}
           onOpenAccommodation={() => { setDaySheetOpen(false); setAccommodationSheetOpen(true); }}
           onOpenMap={() => { setDaySheetOpen(false); setMapOpen(true); }}
+          onOpenLibrary={() => { setDaySheetOpen(false); setLibraryOpen(true); }}
           onClose={() => setDaySheetOpen(false)}
         />
       )}
+
+      <SurfaceNav active="travel" />
     </div>
   );
 }

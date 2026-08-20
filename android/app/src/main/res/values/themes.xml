@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base theme. All real styling comes from Compose's DokkitTheme;
+         this just gives the system window a paper background so there is
+         no white flash before first Compose frame. Values mirror the web
+         tokens (light theme defaults). -->
+    <style name="Theme.Dokkit" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/dokkit_paper</item>
+        <item name="android:statusBarColor">@color/dokkit_paper</item>
+        <item name="android:navigationBarColor">@color/dokkit_paper</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

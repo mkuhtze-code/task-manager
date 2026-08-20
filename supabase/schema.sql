@@ -35,6 +35,23 @@ create table if not exists task_types (
   created_at timestamptz not null default now()
 );
 
+-- ── Jobs (a persistent container for one real-world piece of work) ──
+-- A Job groups Tasks across days and carries optional lightweight context
+-- (client, location). It has no dates, status, priority, estimates or
+-- lifecycle of its own — everything shown about a Job is either raw
+-- context here or derived from its Tasks. client and location are
+-- attributes of a Job, not what defines one; no CRM concepts.
+create table if not exists jobs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  client text,
+  location_text text,
+  lat double precision,
+  lng double precision,
+  created_at timestamptz not null default now()
+);
+
 -- ── Tasks ────────────────────────────────────────────────────────
 create table if not exists tasks (
   id uuid primary key default gen_random_uuid(),
@@ -52,6 +69,11 @@ create table if not exists tasks (
   lat double precision,
   lng double precision,
   task_type_id uuid references task_types(id) on delete set null,
+  -- Optional link to a Job. Purely additive: a Task's own scheduling,
+  -- location, status and ordering continue to drive Today/Travel exactly
+  -- as before; a Job is context, never a constraint. On job delete the
+  -- tasks are detached (set null), never deleted.
+  job_id uuid references jobs(id) on delete set null,
   order_index int not null default 0,
   created_at timestamptz not null default now(),
   completed_at timestamptz,
@@ -212,6 +234,24 @@ create table if not exists accommodations (
   created_at timestamptz not null default now()
 );
 
+-- ── Trip Library (a trip's basket of "maybe we should do this") ───
+-- Deliberately loose: no dates, times, estimates, status or ordering —
+-- those belong to the scheduled activity. A Library item is only a
+-- trip-specific possibility, copied into an activity when scheduled.
+-- activities.library_item_id is pure provenance: deleting a Library
+-- item nulls the link but never deletes the scheduled activities.
+create table if not exists trip_library_items (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  location_text text,
+  lat double precision,
+  lng double precision,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
 -- ── Waitlist signups (requesting access) ─────────────────────────
 create table if not exists waitlist_signups (
   id uuid primary key default gen_random_uuid(),
@@ -244,6 +284,7 @@ create table if not exists error_logs (
 -- ── Row Level Security ───────────────────────────────────────────
 alter table user_settings enable row level security;
 alter table task_types enable row level security;
+alter table jobs enable row level security;
 alter table tasks enable row level security;
 alter table subtasks enable row level security;
 alter table meetings enable row level security;
@@ -257,6 +298,7 @@ alter table trips enable row level security;
 alter table trip_days enable row level security;
 alter table activities enable row level security;
 alter table accommodations enable row level security;
+alter table trip_library_items enable row level security;
 alter table waitlist_signups enable row level security;
 alter table error_logs enable row level security;
 alter table allowed_signup_emails enable row level security;
@@ -264,6 +306,7 @@ alter table allowed_signup_emails enable row level security;
 -- ── Policies: reset then recreate so this file can be rerun safely ─
 drop policy if exists "own settings" on user_settings;
 drop policy if exists "own task types" on task_types;
+drop policy if exists "own jobs" on jobs;
 drop policy if exists "own tasks" on tasks;
 drop policy if exists "own subtasks" on subtasks;
 drop policy if exists "own meetings" on meetings;
@@ -279,6 +322,7 @@ drop policy if exists "own trips" on trips;
 drop policy if exists "own trip days" on trip_days;
 drop policy if exists "own activities" on activities;
 drop policy if exists "own accommodations" on accommodations;
+drop policy if exists "own trip library items" on trip_library_items;
 drop policy if exists "admins can manage waitlist" on waitlist_signups;
 drop policy if exists "admins can read errors" on error_logs;
 drop policy if exists "admins can update errors" on error_logs;
@@ -293,6 +337,10 @@ create policy "own settings" on user_settings
   with check (auth.uid() = user_id);
 
 create policy "own task types" on task_types
+  for all using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "own jobs" on jobs
   for all using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
@@ -366,6 +414,10 @@ create policy "own activities" on activities
   with check (auth.uid() = user_id);
 
 create policy "own accommodations" on accommodations
+  for all using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "own trip library items" on trip_library_items
   for all using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
@@ -467,6 +519,19 @@ alter table tasks add column if not exists last_overdue_ping_at timestamptz;
 alter table tasks add column if not exists drive_mins_to_next int not null default 0;
 alter table tasks add column if not exists route_polyline text;
 alter table tasks add column if not exists info text;
+alter table tasks add column if not exists job_id uuid references jobs(id) on delete set null;
+
+-- Trip Library: the "own trip library items" policy above needs the table
+-- to exist for existing installs too; create table if not exists covers it.
+-- Provenance link from a scheduled activity back to the Library item that
+-- spawned it. Purely additive — scheduling copies name/location/coords into
+-- the activity, so the activity stands on its own. Deleting the Library
+-- item detaches the link (set null), never the scheduled activity itself.
+alter table activities add column if not exists library_item_id uuid references trip_library_items(id) on delete set null;
+create index if not exists trip_library_items_trip_id_idx on trip_library_items (trip_id);
+
+-- Grouping reads on the Jobs surface (tasks for a given job).
+create index if not exists tasks_job_id_idx on tasks (job_id);
 
 alter table feedback add column if not exists user_last_read_at timestamptz;
 
@@ -538,3 +603,78 @@ end $$;
 -- if pre-existing duplicate rows would violate it.
 create unique index if not exists waitlist_signups_email_key on waitlist_signups (email);
 create unique index if not exists allowed_signup_emails_email_key on allowed_signup_emails (email);
+
+-- ── Prediction log (thinking engine evidence) ────────────────────
+-- Records every estimate the engine made at capture time, plus the
+-- actual outcome when the task completes. This is the feedback loop
+-- that lets the engine measure its own accuracy and calibrate
+-- confidence over time.
+create table if not exists prediction_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  task_text text not null,
+  cluster_label text,
+  cluster_count int not null default 0,
+  estimated_mins int not null,
+  suggested_mins int,
+  confidence text not null default 'low' check (confidence in ('low', 'medium', 'high')),
+  actual_mins int,
+  logged_at timestamptz not null default now(),
+  completed_at timestamptz
+);
+
+alter table prediction_log enable row level security;
+
+-- ── RLS policies for prediction_log ───────────────────────────────
+-- (dropped and recreated idempotently, same pattern as other tables)
+do $$
+begin
+  -- Drop old policies if they exist (safe to rerun)
+  begin
+    drop policy if exists "own prediction logs" on prediction_log;
+  exception when undefined_object then
+    null;
+  end;
+
+  create policy "own prediction logs" on prediction_log
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+-- Index for efficient lookup of predictions by task text (for the
+// evidence buffer's recordOutcome lookup) and by completion time
+// (for the Patterns surface's accuracy queries).
+create index if not exists prediction_log_user_id_idx on prediction_log (user_id);
+create index if not exists prediction_log_task_text_idx on prediction_log (task_text);
+create index if not exists prediction_log_completed_at_idx on prediction_log (completed_at);
+
+-- ── Surface events (Personal Gravity evidence) ──────────────────
+-- Lightweight log of which surfaces the user opened and how. The
+-- thinking engine uses this to discover which part of Dokkit the
+-- user naturally gravitates toward — without inferring intent from
+-- passive exposure. Only deliberate navigation carries real weight.
+create table if not exists surface_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  surface text not null check (surface in ('today', 'jobs', 'travel')),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+alter table surface_events enable row level security;
+
+do $$
+begin
+  begin
+    drop policy if exists "own surface events" on surface_events;
+  exception when undefined_object then
+    null;
+  end;
+
+  create policy "own surface events" on surface_events
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+create index if not exists surface_events_user_id_idx on surface_events (user_id);
+create index if not exists surface_events_created_at_idx on surface_events (created_at);
