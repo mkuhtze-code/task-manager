@@ -141,23 +141,18 @@ export default function JobsHome() {
           {sorted.map((job) => {
             const tasks = tasksByJob[job.id] || [];
             const done = isJobDone(tasks);
-            const meta = [job.client, job.location_text].filter(Boolean).join(' · ');
             return (
               <Link key={job.id} href={`/jobs/${job.id}`} className={done ? 'job-row completed' : 'job-row'}>
                 <div className="job-row-top">
                   <span className="job-row-name">{job.name}</span>
                   {done ? (
                     <span className="job-row-done-mark" aria-label="Complete"><CheckIcon done /></span>
+                  ) : job.location_text ? (
+                    <span className="job-row-map-icon" aria-label="Has location"><MapPinIcon size={14} /></span>
                   ) : (
                     <span className="job-row-numeral">{jobNumeral(tasks)}</span>
                   )}
                 </div>
-                {meta && (
-                  <div className="job-row-meta">
-                    {job.location_text && <MapPinIcon size={12} />}
-                    {meta}
-                  </div>
-                )}
               </Link>
             );
           })}

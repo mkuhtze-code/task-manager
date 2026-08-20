@@ -1003,6 +1003,7 @@ button:focus-visible, input:focus-visible {
 .task-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
 }
 
@@ -3301,6 +3302,16 @@ button:focus-visible, input:focus-visible {
   outline-offset: 2px;
 }
 
+.task-info-input-wrap {
+  position: relative;
+}
+
+.task-info-input-wrap .mic-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+}
+
 .task-info-input {
   width: 100%;
   border: 1px solid var(--line-strong);
@@ -3387,6 +3398,12 @@ button:focus-visible, input:focus-visible {
   font-weight: 700;
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
+}
+
+.job-row-map-icon {
+  flex-shrink: 0;
+  color: var(--ink-faint);
+  opacity: 0.7;
 }
 
 .job-row-meta {

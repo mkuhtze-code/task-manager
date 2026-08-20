@@ -49,6 +49,7 @@ export function TaskDetailSheet(props: {
     task.lat != null && task.lng != null ? { lat: task.lat, lng: task.lng } : null
   );
   const [jobMoveOpen, setJobMoveOpen] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -133,7 +134,7 @@ export function TaskDetailSheet(props: {
             style={{ flex: 1 }}
             onClick={() => onToggleDue(task.id, task.due_today)}
           >
-            {task.due_today ? '✓ Due today' : 'Due today'}
+            {task.due_today ? '✓ Important' : 'Important'}
           </button>
         </div>
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
@@ -236,9 +237,33 @@ export function TaskDetailSheet(props: {
             <button
               className="subtask-add-btn"
               aria-label="Add sub-task"
-              onClick={() => onAddSubtask(task.id)}
+              onClick={() => setShowAddForm(!showAddForm)}
             >+</button>
           </div>
+          {showAddForm && (
+            <div className="subtask-add-row">
+              <input
+                type="text"
+                placeholder="Sub-task"
+                value={subDraftText}
+                onChange={(e) => setSubDraftText(e.target.value)}
+              />
+              <MicButton
+                size="small"
+                onResult={(text) =>
+                  setSubDraftText(subDraftText.trim().length > 0 ? `${subDraftText.trim()} ${text}` : text)
+                }
+              />
+              <input
+                type="text"
+                placeholder="15m"
+                style={{ width: 60 }}
+                value={subDraftTime}
+                onChange={(e) => setSubDraftTime(e.target.value)}
+              />
+              <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => { onAddSubtask(task.id); setShowAddForm(false); }}>add</button>
+            </div>
+          )}
           {subs.map((s) => (
             <div key={s.id} className="subtask-row">
               <button
@@ -251,28 +276,6 @@ export function TaskDetailSheet(props: {
               <button className="icon-btn" onClick={() => onDeleteSubtask(s.id, task.id)} aria-label="Delete sub-task">×</button>
             </div>
           ))}
-          <div className="subtask-add-row">
-            <input
-              type="text"
-              placeholder="Sub-task"
-              value={subDraftText}
-              onChange={(e) => setSubDraftText(e.target.value)}
-            />
-            <MicButton
-              size="small"
-              onResult={(text) =>
-                setSubDraftText(subDraftText.trim().length > 0 ? `${subDraftText.trim()} ${text}` : text)
-              }
-            />
-            <input
-              type="text"
-              placeholder="15m"
-              style={{ width: 60 }}
-              value={subDraftTime}
-              onChange={(e) => setSubDraftTime(e.target.value)}
-            />
-            <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => onAddSubtask(task.id)}>add</button>
-          </div>
         </div>
 
         <button
