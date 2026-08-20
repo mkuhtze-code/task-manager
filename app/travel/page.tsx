@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
-import TopSwitcher from '@/components/TopSwitcher';
 import { BackIcon, ChevronIcon, CloseIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import SurfaceNav from '@/components/SurfaceNav';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 
 type Trip = {
@@ -207,7 +207,6 @@ export default function TravelHome() {
           <h1 className="app-title">Trips</h1>
         </div>
         <div className="app-header-right">
-          <TopSwitcher active="travel" onNavigate={(s) => recordEvent(s, true)} />
           <GearMenu context="travel" />
         </div>
       </div>
@@ -318,6 +317,8 @@ export default function TravelHome() {
       {trips.length > 0 && !createOpen && (
         <button className="capture-fab" onClick={() => setCreateOpen(true)} aria-label="New trip"><PlusIcon size={24} /></button>
       )}
+
+      <SurfaceNav active="travel" onNavigate={(s) => recordEvent(s, true)} />
     </div>
   );
 }

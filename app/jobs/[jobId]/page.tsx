@@ -9,11 +9,11 @@ import type { Subtask, Task } from '@/lib/taskTypes';
 import { fmtMins, localDateStr, parseMins } from '@/lib/timeFormat';
 import { doneTasksOf, groupJobTasks, isJobDone, jobProgress } from '@/lib/jobUtils';
 import GearMenu from '@/components/GearMenu';
-import TopSwitcher from '@/components/TopSwitcher';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import { JobEditSheet } from '@/components/JobSheets';
+import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, CheckIcon, ChevronIcon, MapPinIcon, PlusIcon } from '@/components/icons';
 import {
   buildClusters,
@@ -492,7 +492,6 @@ export default function JobDetailPage() {
           <h1 className="app-title">{job ? job.name : 'Job'}</h1>
         </div>
         <div className="app-header-right">
-          <TopSwitcher active="jobs" />
           <GearMenu context="jobs" />
         </div>
       </div>
@@ -672,6 +671,8 @@ export default function JobDetailPage() {
           )}
         </>
       ) : null}
+
+      <SurfaceNav active="jobs" />
     </div>
   );
 }

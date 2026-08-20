@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
 import GearMenu from '@/components/GearMenu';
-import TopSwitcher from '@/components/TopSwitcher';
 import { BackIcon } from '@/components/icons';
 import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
 import { summarizeAccuracy, type EstimateAccuracyObservation } from '@/lib/thinking/observations/estimateAccuracy';
@@ -254,7 +253,6 @@ export default function Analytics() {
           <h1 className="app-title">Patterns</h1>
         </div>
         <div className="app-header-right">
-          <TopSwitcher active="patterns" />
           <GearMenu />
         </div>
       </div>

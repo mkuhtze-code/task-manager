@@ -12,7 +12,6 @@ import MapView from '@/components/MapView';
 import { TravelLeg } from '@/components/TravelLeg';
 import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
 import GearMenu from '@/components/GearMenu';
-import TopSwitcher from '@/components/TopSwitcher';
 import {
   BackIcon,
   BedIcon,
@@ -27,6 +26,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from '@/components/icons';
+import SurfaceNav from '@/components/SurfaceNav';
 
 type Trip = {
   id: string;
@@ -820,7 +820,6 @@ export default function TripDayView() {
           </div>
         </div>
         <div className="app-header-right">
-          <TopSwitcher active="travel" />
           <GearMenu context="travel" />
         </div>
       </div>
@@ -1137,6 +1136,8 @@ export default function TripDayView() {
           onClose={() => setDaySheetOpen(false)}
         />
       )}
+
+      <SurfaceNav active="travel" />
     </div>
   );
 }

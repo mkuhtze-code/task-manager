@@ -8,8 +8,8 @@ import type { Job } from '@/lib/jobTypes';
 import type { Task } from '@/lib/taskTypes';
 import { isJobDone, jobNumeral, sortJobsForOverview } from '@/lib/jobUtils';
 import GearMenu from '@/components/GearMenu';
-import TopSwitcher from '@/components/TopSwitcher';
 import { NewJobSheet } from '@/components/JobSheets';
+import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, CheckIcon, MapPinIcon, PlusIcon } from '@/components/icons';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 
@@ -118,7 +118,6 @@ export default function JobsHome() {
           <h1 className="app-title">Jobs</h1>
         </div>
         <div className="app-header-right">
-          <TopSwitcher active="jobs" onNavigate={(s) => recordEvent(s, true)} />
           <GearMenu context="jobs" />
         </div>
       </div>
@@ -178,6 +177,8 @@ export default function JobsHome() {
           <PlusIcon size={24} />
         </button>
       )}
+
+      <SurfaceNav active="jobs" onNavigate={(s) => recordEvent(s, true)} />
     </div>
   );
 }

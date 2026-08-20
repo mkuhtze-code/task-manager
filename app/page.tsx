@@ -11,6 +11,7 @@ import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import { TodayHeader } from '@/components/TodayHeader';
 import MapView from '@/components/MapView';
+import SurfaceNav from '@/components/SurfaceNav';
 import { AuthScreen, OnboardingScreen } from '@/components/AuthScreen';
 import { PlusIcon, StopIcon } from '@/components/icons';
 import { useDragReorder } from '@/hooks/useDragReorder';
@@ -1057,7 +1058,6 @@ export default function Home() {
         routeError={routeError}
         hasRoute={hasRoute}
         onViewMap={() => setMapOpen(true)}
-        onNavigate={(s: Surface) => recordEvent(s, true)}
       />
 
       <div className="task-list">
@@ -1262,6 +1262,8 @@ export default function Home() {
           onClose={() => setMapOpen(false)}
         />
       )}
+
+      <SurfaceNav active="today" onNavigate={(s: Surface) => recordEvent(s, true)} />
     </div>
   );
 }
