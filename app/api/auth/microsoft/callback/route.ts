@@ -7,7 +7,7 @@ import { checkRateLimit, getClientIp } from '@/lib/ratelimit';
 export async function GET(req: NextRequest) {
   const { allowed } = await checkRateLimit(`ip:${getClientIp(req)}:ms-callback`);
   if (!allowed) {
-    return NextResponse.redirect(`${req.nextUrl.origin}/preferences?calendar=error`);
+    return NextResponse.redirect(`${req.nextUrl.origin}/settings?calendar=error`);
   }
 
   const code = req.nextUrl.searchParams.get('code');
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const redirectUri = `${req.nextUrl.origin}/api/auth/microsoft/callback`;
 
   if (oauthError || !code || !userId) {
-    return NextResponse.redirect(`${req.nextUrl.origin}/preferences?calendar=error`);
+    return NextResponse.redirect(`${req.nextUrl.origin}/settings?calendar=error`);
   }
 
   try {
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
     // Best-effort lookup of the connected account's email, just for display
-    // on the Preferences page — sync still works fine if this fails.
+    // on the Settings page — sync still works fine if this fails.
     let connectedEmail: string | null = null;
     try {
       const meRes = await fetch('https://graph.microsoft.com/v1.0/me', {
@@ -52,8 +52,8 @@ export async function GET(req: NextRequest) {
       { onConflict: 'user_id' }
     );
 
-    return NextResponse.redirect(`${req.nextUrl.origin}/preferences?calendar=connected`);
+    return NextResponse.redirect(`${req.nextUrl.origin}/settings?calendar=connected`);
   } catch (e) {
-    return NextResponse.redirect(`${req.nextUrl.origin}/preferences?calendar=error`);
+    return NextResponse.redirect(`${req.nextUrl.origin}/settings?calendar=error`);
   }
 }

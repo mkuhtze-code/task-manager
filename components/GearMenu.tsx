@@ -68,11 +68,11 @@ export default function GearMenu({ context = 'work' }: { context?: 'work' | 'tra
         <div className="gear-dropdown">
           {context !== 'travel' && (
             <>
-              <Link href="/analytics" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+              <Link href="/patterns" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
                 Patterns
               </Link>
-              <Link href="/preferences" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-                Preferences
+              <Link href="/settings" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
+                Settings
               </Link>
             </>
           )}

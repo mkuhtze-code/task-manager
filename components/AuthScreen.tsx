@@ -240,7 +240,7 @@ export function OnboardingScreen(props: {
           {onboardSaving ? 'Setting up…' : "Let's go"}
         </button>
         <p style={{ fontSize: 12, color: 'var(--ink-faint)', textAlign: 'center', marginTop: 'var(--space-2)' }}>
-          You can change these anytime in Preferences.
+          You can change these anytime in Settings.
         </p>
       </div>
     </div>

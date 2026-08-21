@@ -74,8 +74,8 @@ export const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
 export const LONG_PRESS_MS = 500;
 export const ROW_GAP = 8;
 
-// Same day-label set used on the Preferences page, so onboarding and
-// Preferences look and behave identically rather than as two slightly
+// Same day-label set used on the Settings page, so onboarding and
+// Settings look and behave identically rather than as two slightly
 // different implementations of the same control.
 export const DAY_OPTIONS: { label: string; value: number }[] = [
   { label: 'M', value: 1 },

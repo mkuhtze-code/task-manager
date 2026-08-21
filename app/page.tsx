@@ -469,7 +469,7 @@ export default function Home() {
 
     const base = determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords);
     if (!base.coords || !base.label) {
-      setRouteError('Set a home or work address in Preferences to enable route-aware capacity.');
+      setRouteError('Set a home or work address in Settings to enable route-aware capacity.');
       setDriveFromBaseMins(0);
       setBasePolyline(null);
       setReturnLabel(null);

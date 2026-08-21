@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
   if (failures.length === results.length) {
     const hint = staleRemoved > 0
-      ? 'That subscription was stale and has been removed — go to Preferences and tap "Enable notifications" again to reconnect.'
+      ? 'That subscription was stale and has been removed — go to Settings and tap "Enable notifications" again to reconnect.'
       : 'Check the Error Log for details.';
     return NextResponse.json({ error: `All deliveries failed. ${hint}` }, { status: 502 });
   }
