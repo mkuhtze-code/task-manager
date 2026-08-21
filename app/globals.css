@@ -1776,70 +1776,6 @@ button:focus-visible, input:focus-visible {
 
 /* ── Patterns page ───────────────────────────────────────────── */
 
-.analytics-task-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.analytics-task-item:last-child {
-  border-bottom: none;
-}
-
-.analytics-task-text {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--ink);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.analytics-task-badge {
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  font-family: var(--font-mono);
-  flex-shrink: 0;
-}
-
-.analytics-task-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.analytics-task-row:last-child {
-  border-bottom: none;
-}
-
-.analytics-task-info {
-  min-width: 0;
-  flex: 1;
-}
-
-.analytics-task-name {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.analytics-task-time {
-  font-size: var(--text-2xs);
-  color: var(--ink-soft);
-  margin-top: 2px;
-}
-
 .learned-pattern-count {
   font-size: var(--text-2xs);
   font-weight: 700;
@@ -1849,8 +1785,6 @@ button:focus-visible, input:focus-visible {
   background: var(--moss-bg);
   color: var(--moss-text, #0f5c2a);
 }
-
-/* ── Patterns (new) ─────────────────────────────────────────── */
 
 .patterns-empty {
   text-align: center;
@@ -1864,16 +1798,31 @@ button:focus-visible, input:focus-visible {
   margin: 0 0 var(--space-2);
 }
 
+.patterns-subtitle {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  margin: var(--space-2) 0 0;
+  font-weight: 400;
+}
+
 .patterns-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
   margin-top: var(--space-4);
 }
 
 .patterns-section {
   display: flex;
   flex-direction: column;
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-5);
+  margin-top: var(--space-5);
+}
+
+.patterns-section:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .patterns-section-title {
@@ -1883,7 +1832,7 @@ button:focus-visible, input:focus-visible {
   letter-spacing: 0.04em;
   color: var(--ink-faint);
   margin-bottom: var(--space-3);
-  padding: 0 var(--space-4);
+  padding: 0;
 }
 
 .pattern-row {
@@ -1895,11 +1844,13 @@ button:focus-visible, input:focus-visible {
 }
 
 .pattern-text {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
   background: none;
   border: none;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) 0;
   font-size: var(--text-sm);
   color: var(--ink);
   text-align: left;
@@ -1908,22 +1859,91 @@ button:focus-visible, input:focus-visible {
 }
 
 .pattern-text:hover {
-  background: var(--overflow-bg);
+  opacity: 0.7;
+}
+
+.pattern-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-faint);
+  flex-shrink: 0;
+  margin-left: var(--space-2);
+  transition: transform 0.15s var(--ease);
+}
+
+.pattern-chevron.open {
+  transform: rotate(90deg);
 }
 
 .pattern-detail {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  padding: 0 var(--space-4) var(--space-3);
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  line-height: 1.5;
 }
 
-.pattern-detail-item {
-  font-size: var(--text-xs);
+.pattern-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.pattern-detail-label {
+  color: var(--ink-faint);
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.pattern-detail-value {
+  color: var(--ink-soft);
+}
+
+.pattern-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.pattern-tag {
+  font-size: var(--text-2xs);
   color: var(--ink-faint);
   background: var(--overflow-bg);
   border-radius: 20px;
-  padding: 2px 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* ── Patterns: estimate examples ──────────────────────────────── */
+
+.pattern-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.pattern-example {
+  font-size: var(--text-2xs);
+  font-family: var(--font-mono);
+  color: var(--ink-faint);
+  background: var(--overflow-bg);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+/* ── Patterns: quiet footer ──────────────────────────────────── */
+
+.patterns-footer {
+  padding: var(--space-6) 0 var(--space-4);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  font-style: italic;
 }
 
 .feedback-textarea {
