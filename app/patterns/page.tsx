@@ -42,25 +42,6 @@ function pct(r: number): string {
   return `${Math.round(r * 100)}%`;
 }
 
-function ratioWord(ratio: number): string {
-  if (ratio < 0.9) return 'faster than expected';
-  if (ratio > 1.1) return 'longer than expected';
-  return 'close to your estimate';
-}
-
-/* ── Types ──────────────────────────────────────────────────── */
-
-type Pattern = {
-  text: string;
-  expandable?: boolean;
-  detail?: React.ReactNode;
-};
-
-type Section = {
-  title: string;
-  patterns: Pattern[];
-};
-
 /* ── Component ──────────────────────────────────────────────── */
 
 export default function Patterns() {
@@ -98,7 +79,7 @@ export default function Patterns() {
     setLoading(true);
     const userId = session.user.id;
 
-    const [taskRows, subtaskRows, predictionRows, surfaceRows, settingsRow] = await Promise.all([
+    const [taskRows, subtaskRows, predictionRows, surfaceRows] = await Promise.all([
       supabase
         .from('tasks')
         .select('id, text, status, source, estimate_mins, actual_mins, logged_mins, created_at, completed_at, started_at, surface_date, location_text, lat, lng, job_id, info')
@@ -125,11 +106,6 @@ export default function Patterns() {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(200),
-      supabase
-        .from('user_settings')
-        .select('work_start, work_end, work_days')
-        .eq('user_id', userId)
-        .single(),
     ]);
 
     const rows: any[] = taskRows.data || [];
@@ -259,13 +235,6 @@ export default function Patterns() {
       }
     }
 
-    const settings = settingsRow.data;
-    if (settings) {
-      const workStart = settings.work_start || 8;
-      const workEnd = settings.work_end || 17;
-      const hoursAvailable = workEnd - workStart;
-    }
-
     setLoading(false);
   }
 
@@ -273,117 +242,84 @@ export default function Patterns() {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  const sections = useMemo(() => {
-    const result: Section[] = [];
+  /* ── Compute all sections ─────────────────────────────────── */
 
-    if (facts.length === 0) return result;
-
+  const workload = useMemo(() => {
+    if (facts.length === 0) return null;
     const totalMins = facts.reduce((s, f) => s + (f.actual_mins ?? 0), 0);
-    const avgMins = facts.length > 0 ? totalMins / facts.length : 0;
-
+    const avgMins = totalMins / facts.length;
     const dateSet = new Set<string>();
     for (const f of facts) {
       if (f.completed_at) dateSet.add(f.completed_at.slice(0, 10));
     }
     const distinctDays = dateSet.size || 1;
-    const dailyAvgMins = totalMins / distinctDays;
+    return {
+      count: facts.length,
+      totalMins,
+      avgMins,
+      dailyAvgMins: totalMins / distinctDays,
+    };
+  }, [facts]);
 
-    const workload: Pattern[] = [
-      { text: `${facts.length} tasks completed.`, expandable: false },
-      { text: `${fmtMins(totalMins)} of completed work.`, expandable: false },
-      { text: `Typical day · ~${fmtMins(dailyAvgMins)}.`, expandable: false },
-      { text: `Average task · ~${fmtMins(avgMins)}.`, expandable: false },
-    ];
-    result.push({ title: 'Workload', patterns: workload });
-
-    const timePatterns: Pattern[] = [];
-    for (const dm of durationMemories.slice(0, 6)) {
+  const timePatterns = useMemo(() => {
+    return durationMemories.slice(0, 6).map((dm) => {
       const trendWord =
         dm.trend === 'improving' ? 'getting faster' : dm.trend === 'worsening' ? 'taking longer' : 'consistent';
-      timePatterns.push({
-        text: `${dm.clusterLabel} usually takes about ${fmtMins(dm.avgMins)}.`,
+      return {
+        label: dm.clusterLabel,
+        avgMins: dm.avgMins,
+        count: dm.clusterCount,
+        trend: trendWord,
         expandable: dm.clusterCount >= 3,
         detail: (
-          <div className="pattern-detail">
-            <div className="pattern-detail-row">
-              <span className="pattern-detail-label">Completed</span>
-              <span className="pattern-detail-value">{dm.clusterCount} times</span>
+          <div className="pe-detail">
+            <div className="pe-detail-row">
+              <span className="pe-detail-label">Completed</span>
+              <span className="pe-detail-value">{dm.clusterCount} times</span>
             </div>
-            <div className="pattern-detail-row">
-              <span className="pattern-detail-label">Trend</span>
-              <span className="pattern-detail-value">{trendWord}</span>
+            <div className="pe-detail-row">
+              <span className="pe-detail-label">Trend</span>
+              <span className="pe-detail-value">{trendWord}</span>
             </div>
           </div>
         ),
-      });
-    }
-    if (timePatterns.length > 0) result.push({ title: 'Time', patterns: timePatterns });
+      };
+    });
+  }, [durationMemories]);
 
-    const estPatterns: Pattern[] = [];
-    if (estimateSummary && estimateSummary.total > 0) {
-      const ratio = estimateSummary.averageRatio;
-      let headline: string;
-      if (ratio < 0.9) headline = 'Your estimates tend to be generous — tasks usually finish quicker.';
-      else if (ratio > 1.1) headline = 'Tasks often take a little longer than expected.';
-      else headline = 'Your estimates are usually close.';
+  const estimation = useMemo(() => {
+    if (!estimateSummary || estimateSummary.total === 0) return null;
+    const ratio = estimateSummary.averageRatio;
+    let headline: string;
+    if (ratio < 0.9) headline = 'Your estimates tend to be generous — tasks usually finish quicker.';
+    else if (ratio > 1.1) headline = 'Tasks often take a little longer than expected.';
+    else headline = 'Your estimates are usually close.';
+    return {
+      headline,
+      total: estimateSummary.total,
+      examples: estimateSummary.examples,
+    };
+  }, [estimateSummary]);
 
-      estPatterns.push({
-        text: headline,
-        expandable: estimateSummary.examples.length > 0,
-        detail: (
-          <div className="pattern-detail">
-            <div className="pattern-detail-row">
-              <span className="pattern-detail-label">Based on</span>
-              <span className="pattern-detail-value">{estimateSummary.total} estimated tasks</span>
-            </div>
-            {estimateSummary.examples.length > 0 && (
-              <div className="pattern-examples">
-                {estimateSummary.examples.map((ex, i) => (
-                  <span key={i} className="pattern-example">
-                    {fmtMins(ex.estimated)} → {fmtMins(ex.actual)}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        ),
-      });
-    }
-    if (estPatterns.length > 0) result.push({ title: 'Estimation', patterns: estPatterns });
-
-    const rhythmPatterns: Pattern[] = [];
+  const rhythm = useMemo(() => {
+    const rows: { text: string; expandable: boolean; detail?: React.ReactNode }[] = [];
     if (lifecycle) {
       if (lifecycle.sameDayRate >= 0.6) {
-        rhythmPatterns.push({
-          text: 'Most tasks clear the same day.',
-          expandable: true,
-          detail: (
-            <div className="pattern-detail">
-              <div className="pattern-detail-row">
-                <span className="pattern-detail-label">Same day</span>
-                <span className="pattern-detail-value">{pct(lifecycle.sameDayRate)}</span>
-              </div>
-              <div className="pattern-detail-row">
-                <span className="pattern-detail-label">Carry over</span>
-                <span className="pattern-detail-value">{pct(lifecycle.carryoverRate)}</span>
-              </div>
-            </div>
-          ),
-        });
+        rows.push({ text: 'Most tasks clear the same day.', expandable: false });
       }
       if (lifecycle.carryoverRate >= 0.3) {
-        rhythmPatterns.push({
+        rows.push({
           text: 'Some work regularly carries over across days.',
           expandable: true,
           detail: (
-            <div className="pattern-detail">
-              <div className="pattern-detail-row">
-                <span className="pattern-detail-label">Carry over</span>
-                <span className="pattern-detail-value">{pct(lifecycle.carryoverRate)} of tasks</span>
+            <div className="pe-detail">
+              <div className="pe-detail-row">
+                <span className="pe-detail-label">Carry over</span>
+                <span className="pe-detail-value">{pct(lifecycle.carryoverRate)} of tasks</span>
               </div>
-              <div className="pattern-detail-row">
-                <span className="pattern-detail-label">Avg age</span>
-                <span className="pattern-detail-value">{lifecycle.avgAgeDays.toFixed(1)} days</span>
+              <div className="pe-detail-row">
+                <span className="pe-detail-label">Avg age</span>
+                <span className="pe-detail-value">{lifecycle.avgAgeDays.toFixed(1)} days</span>
               </div>
             </div>
           ),
@@ -392,111 +328,69 @@ export default function Patterns() {
     }
     if (planning) {
       if (planning.cameUpRate > 0.25) {
-        rhythmPatterns.push({
-          text: 'Work often appears during the day rather than being planned ahead.',
-          expandable: true,
-          detail: (
-            <div className="pattern-detail">
-              <div className="pattern-detail-row">
-                <span className="pattern-detail-label">Came up</span>
-                <span className="pattern-detail-value">{pct(planning.cameUpRate)} of tasks</span>
-              </div>
-            </div>
-          ),
-        });
+        rows.push({ text: 'Work often appears during the day rather than being planned ahead.', expandable: false });
       }
       if (planning.scheduledRate > 0.5) {
-        rhythmPatterns.push({
-          text: 'You usually schedule work for specific days.',
-          expandable: true,
-          detail: (
-            <div className="pattern-detail">
-              <div className="pattern-detail-row">
-                <span className="pattern-detail-label">Scheduled</span>
-                <span className="pattern-detail-value">{pct(planning.scheduledRate)} of tasks</span>
-              </div>
-            </div>
-          ),
-        });
+        rows.push({ text: 'You usually schedule work for specific days.', expandable: false });
       }
       if (planning.timerUsedRate > 0.5) {
-        rhythmPatterns.push({
-          text: 'You usually time your work.',
-          expandable: true,
-          detail: (
-            <div className="pattern-detail">
-              <div className="pattern-detail-row">
-                <span className="pattern-detail-label">Timer used</span>
-                <span className="pattern-detail-value">{pct(planning.timerUsedRate)} of tasks</span>
-              </div>
-            </div>
-          ),
-        });
+        rows.push({ text: 'You usually time your work.', expandable: false });
       }
     }
     if (decomposition && decomposition.sampleCount >= 5 && decomposition.decomposeRate > 0.2) {
-      rhythmPatterns.push({
+      rows.push({
         text: 'You tend to break larger tasks into subtasks.',
         expandable: true,
         detail: (
-          <div className="pattern-detail">
-            <div className="pattern-detail-row">
-              <span className="pattern-detail-label">Decomposed</span>
-              <span className="pattern-detail-value">{pct(decomposition.decomposeRate)} of tasks</span>
+          <div className="pe-detail">
+            <div className="pe-detail-row">
+              <span className="pe-detail-label">Decomposed</span>
+              <span className="pe-detail-value">{pct(decomposition.decomposeRate)} of tasks</span>
             </div>
-            <div className="pattern-detail-row">
-              <span className="pattern-detail-label">Avg subtasks</span>
-              <span className="pattern-detail-value">{decomposition.avgSubtaskCount.toFixed(1)}</span>
+            <div className="pe-detail-row">
+              <span className="pe-detail-label">Avg subtasks</span>
+              <span className="pe-detail-value">{decomposition.avgSubtaskCount.toFixed(1)}</span>
             </div>
           </div>
         ),
       });
     }
-    if (rhythmPatterns.length > 0) result.push({ title: 'Your rhythm', patterns: rhythmPatterns });
+    return rows;
+  }, [lifecycle, planning, decomposition]);
 
-    const contextPatterns: Pattern[] = [];
+  const context = useMemo(() => {
+    const rows: { text: string; expandable: boolean; detail?: React.ReactNode }[] = [];
     if (userPatterns) {
       if (userPatterns.jobAttachedRate > 0.35) {
-        contextPatterns.push({
+        rows.push({
           text: 'You usually attach work to a Job.',
           expandable: true,
           detail: (
-            <div className="pattern-detail">
-              <div className="pattern-detail-row">
-                <span className="pattern-detail-label">Job linked</span>
-                <span className="pattern-detail-value">{pct(userPatterns.jobAttachedRate)} of tasks</span>
+            <div className="pe-detail">
+              <div className="pe-detail-row">
+                <span className="pe-detail-label">Job linked</span>
+                <span className="pe-detail-value">{pct(userPatterns.jobAttachedRate)} of tasks</span>
               </div>
             </div>
           ),
         });
       }
       if (userPatterns.locatedRate > 0.3) {
-        contextPatterns.push({
+        rows.push({
           text: 'Location is usually recorded with your work.',
           expandable: true,
           detail: (
-            <div className="pattern-detail">
-              <div className="pattern-detail-row">
-                <span className="pattern-detail-label">Located</span>
-                <span className="pattern-detail-value">{pct(userPatterns.locatedRate)} of tasks</span>
+            <div className="pe-detail">
+              <div className="pe-detail-row">
+                <span className="pe-detail-label">Located</span>
+                <span className="pe-detail-value">{pct(userPatterns.locatedRate)} of tasks</span>
               </div>
             </div>
           ),
         });
       }
       if (userPatterns.infoUsageRate > 0.3) {
-        contextPatterns.push({
-          text: 'You often add notes to your tasks.',
-          expandable: true,
-          detail: (
-            <div className="pattern-detail">
-              <div className="pattern-detail-row">
-                <span className="pattern-detail-label">With notes</span>
-                <span className="pattern-detail-value">{pct(userPatterns.infoUsageRate)} of tasks</span>
-              </div>
-            </div>
-          ),
-        });
+        rows.push({ text: 'You often add notes to your tasks.', expandable: false });
       }
     }
     const locCount = new Map<string, number>();
@@ -510,13 +404,13 @@ export default function Patterns() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
     if (topLocs.length > 0 && topLocs[0][1] >= 3) {
-      contextPatterns.push({
+      rows.push({
         text: `You often work from ${topLocs[0][0]}.`,
         expandable: topLocs.length > 1,
         detail: (
-          <div className="pattern-detail-tags">
+          <div className="pe-detail-tags">
             {topLocs.map(([loc, count]) => (
-              <span key={loc} className="pattern-tag">
+              <span key={loc} className="pe-tag">
                 {loc} · {count}×
               </span>
             ))}
@@ -524,69 +418,40 @@ export default function Patterns() {
         ),
       });
     }
-    const jobCount = new Map<string, number>();
-    for (const f of facts) {
-      if (f.job_id) jobCount.set(f.job_id, (jobCount.get(f.job_id) || 0) + 1);
-    }
-    if (contextPatterns.length > 0) result.push({ title: 'Context', patterns: contextPatterns });
+    return rows;
+  }, [facts, userPatterns]);
 
-    const memoryPatterns: Pattern[] = [];
-    for (const profile of profiles.slice(0, 8)) {
-      if (profile.count < 2) continue;
-      const trendWord =
-        profile.trend === 'improving'
-          ? 'getting faster'
-          : profile.trend === 'worsening'
-          ? 'taking longer'
-          : 'consistent';
-      const traits: string[] = [];
-      if (profile.sameDayRate >= 0.7) traits.push('usually same day');
-      if (profile.carryoverRate >= 0.4) traits.push('often carries over');
-      if (profile.cameUpRate >= 0.4) traits.push('often unplanned');
-      if (profile.jobRate >= 0.6) traits.push('usually attached to a job');
-      if (profile.locatedRate >= 0.6) traits.push('usually located');
-      if (profile.decomposeRate >= 0.3) traits.push('often broken down');
+  const memories = useMemo(() => {
+    return profiles
+      .filter((p) => p.count >= 2)
+      .slice(0, 8)
+      .map((profile) => {
+        const trendWord =
+          profile.trend === 'improving'
+            ? 'getting faster'
+            : profile.trend === 'worsening'
+            ? 'taking longer'
+            : 'consistent';
 
-      memoryPatterns.push({
-        text: `${profile.clusterLabel} · ${profile.count} completed · ~${fmtMins(profile.avgMins)}`,
-        expandable: true,
-        detail: (
-          <div className="pattern-detail">
-            <div className="pattern-detail-row">
-              <span className="pattern-detail-label">Duration</span>
-              <span className="pattern-detail-value">
-                ~{fmtMins(profile.avgMins)} · {trendWord}
-              </span>
-            </div>
-            {traits.length > 0 && (
-              <div className="pattern-detail-tags">
-                {traits.map((t) => (
-                  <span key={t} className="pattern-tag">{t}</span>
-                ))}
-              </div>
-            )}
-          </div>
-        ),
+        const traits: string[] = [];
+        if (profile.sameDayRate >= 0.7) traits.push('usually same day');
+        if (profile.carryoverRate >= 0.4) traits.push('often carries over');
+        if (profile.cameUpRate >= 0.4) traits.push('often unplanned');
+        if (profile.jobRate >= 0.6) traits.push('usually attached to a job');
+        if (profile.locatedRate >= 0.6) traits.push('usually located');
+        if (profile.decomposeRate >= 0.3) traits.push('often broken down');
+
+        return {
+          label: profile.clusterLabel,
+          count: profile.count,
+          avgMins: profile.avgMins,
+          trend: trendWord,
+          traits,
+        };
       });
-    }
-    if (memoryPatterns.length > 0) result.push({ title: 'What Dokkit remembers', patterns: memoryPatterns });
+  }, [profiles]);
 
-    if (gravitySurface) {
-      const surfaceLabel =
-        gravitySurface === 'today' ? 'Today' : gravitySurface === 'jobs' ? 'Jobs' : 'Travel';
-      result.push({
-        title: 'How you use Dokkit',
-        patterns: [
-          {
-            text: `You tend to start from ${surfaceLabel}.`,
-            expandable: false,
-          },
-        ],
-      });
-    }
-
-    return result;
-  }, [facts, clusters, profiles, planning, lifecycle, decomposition, durationMemories, userPatterns, estimateSummary, gravitySurface]);
+  /* ── Render ────────────────────────────────────────────────── */
 
   const hasContent = !loading && (facts.length > 0 || clusters.length > 0);
 
@@ -625,30 +490,185 @@ export default function Patterns() {
           <p>As you use it, things you do regularly will begin to appear here.</p>
         </div>
       ) : (
-        <div className="patterns-content">
-          {sections.map((section) => (
-            <div key={section.title} className="patterns-section">
-              <div className="patterns-section-title">{section.title}</div>
-              {section.patterns.map((pattern, i) => {
-                const key = `${section.title}-${i}`;
+        <div className="patterns-body">
+
+          {/* ── Workload ──────────────────────────────────── */}
+          {workload && (
+            <div className="pw-section">
+              <div className="pw-section-title">Workload</div>
+              <div className="pw-stats">
+                <div className="pw-stat">
+                  <span className="pw-stat-value">{workload.count}</span>
+                  <span className="pw-stat-label">tasks</span>
+                </div>
+                <div className="pw-stat">
+                  <span className="pw-stat-value">{fmtMins(workload.totalMins)}</span>
+                  <span className="pw-stat-label">completed</span>
+                </div>
+                <div className="pw-stat">
+                  <span className="pw-stat-value">~{fmtMins(workload.dailyAvgMins)}</span>
+                  <span className="pw-stat-label">typical day</span>
+                </div>
+                <div className="pw-stat">
+                  <span className="pw-stat-value">~{fmtMins(workload.avgMins)}</span>
+                  <span className="pw-stat-label">per task</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Time ──────────────────────────────────────── */}
+          {timePatterns.length > 0 && (
+            <div className="pw-section">
+              <div className="pw-section-title">Time</div>
+              {timePatterns.map((tp, i) => {
+                const key = `time-${i}`;
                 const isOpen = !!expanded[key];
                 return (
-                  <div key={key} className="pattern-row">
+                  <div key={key} className="pw-activity">
                     <button
-                      className="pattern-text"
-                      onClick={() => pattern.expandable && toggle(key)}
+                      className="pw-activity-btn"
+                      onClick={() => tp.expandable && toggle(key)}
                     >
-                      <span>{pattern.text}</span>
-                      {pattern.expandable && (
-                        <ChevronRightIcon className={`pattern-chevron${isOpen ? ' open' : ''}`} />
-                      )}
+                      <span className="pw-activity-name">{tp.label}</span>
+                      <span className="pw-activity-meta">
+                        <span className="pw-activity-duration">~{fmtMins(tp.avgMins)}</span>
+                        {tp.expandable && (
+                          <ChevronRightIcon className={`pw-chevron${isOpen ? ' open' : ''}`} />
+                        )}
+                      </span>
                     </button>
-                    {pattern.expandable && isOpen && pattern.detail}
+                    {tp.expandable && isOpen && tp.detail}
                   </div>
                 );
               })}
             </div>
-          ))}
+          )}
+
+          {/* ── Estimation ────────────────────────────────── */}
+          {estimation && (
+            <div className="pw-section">
+              <div className="pw-section-title">Estimation</div>
+              <div className="pw-observation">
+                <button
+                  className="pw-observation-btn"
+                  onClick={() => toggle('est')}
+                >
+                  <span>{estimation.headline}</span>
+                  <ChevronRightIcon className={`pw-chevron${expanded['est'] ? ' open' : ''}`} />
+                </button>
+                {expanded['est'] && (
+                  <div className="pe-detail">
+                    <div className="pe-detail-row">
+                      <span className="pe-detail-label">Based on</span>
+                      <span className="pe-detail-value">{estimation.total} estimated tasks</span>
+                    </div>
+                    {estimation.examples.length > 0 && (
+                      <div className="pe-examples">
+                        {estimation.examples.map((ex, i) => (
+                          <span key={i} className="pe-example">
+                            {fmtMins(ex.estimated)} → {fmtMins(ex.actual)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Your rhythm ───────────────────────────────── */}
+          {rhythm.length > 0 && (
+            <div className="pw-section">
+              <div className="pw-section-title">Your rhythm</div>
+              {rhythm.map((r, i) => {
+                const key = `rhythm-${i}`;
+                const isOpen = !!expanded[key];
+                return (
+                  <div key={key} className="pw-observation">
+                    <button
+                      className="pw-observation-btn"
+                      onClick={() => r.expandable && toggle(key)}
+                    >
+                      <span>{r.text}</span>
+                      {r.expandable && (
+                        <ChevronRightIcon className={`pw-chevron${isOpen ? ' open' : ''}`} />
+                      )}
+                    </button>
+                    {r.expandable && isOpen && r.detail}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Context ───────────────────────────────────── */}
+          {context.length > 0 && (
+            <div className="pw-section">
+              <div className="pw-section-title">Context</div>
+              {context.map((c, i) => {
+                const key = `ctx-${i}`;
+                const isOpen = !!expanded[key];
+                return (
+                  <div key={key} className="pw-observation">
+                    <button
+                      className="pw-observation-btn"
+                      onClick={() => c.expandable && toggle(key)}
+                    >
+                      <span>{c.text}</span>
+                      {c.expandable && (
+                        <ChevronRightIcon className={`pw-chevron${isOpen ? ' open' : ''}`} />
+                      )}
+                    </button>
+                    {c.expandable && isOpen && c.detail}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── What Dokkit remembers ─────────────────────── */}
+          {memories.length > 0 && (
+            <div className="pw-section">
+              <div className="pw-section-title">What Dokkit remembers</div>
+              <div className="pw-memories">
+                {memories.map((m, i) => (
+                  <div key={i} className="pw-memory">
+                    <div className="pw-memory-head">
+                      <span className="pw-memory-name">{m.label}</span>
+                      <span className="pw-memory-meta">
+                        {m.count} completed · ~{fmtMins(m.avgMins)}
+                      </span>
+                    </div>
+                    <div className="pw-memory-detail">
+                      <span className="pw-memory-trend">{m.trend}</span>
+                    </div>
+                    {m.traits.length > 0 && (
+                      <div className="pw-memory-traits">
+                        {m.traits.map((t) => (
+                          <span key={t} className="pw-trait">{t}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── How you use Dokkit ────────────────────────── */}
+          {gravitySurface && (
+            <div className="pw-section pw-section--quiet">
+              <div className="pw-observation pw-observation--standalone">
+                {gravitySurface === 'today'
+                  ? 'You tend to start from Today.'
+                  : gravitySurface === 'jobs'
+                  ? 'You tend to start from Jobs.'
+                  : 'You tend to start from Travel.'}
+              </div>
+            </div>
+          )}
 
           <div className="patterns-footer">
             Dokkit learns from the way you work.
