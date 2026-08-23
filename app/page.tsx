@@ -110,7 +110,9 @@ export default function Home() {
   // there's no per-day table for Today the way Travel has trip_days, so
   // these are recomputed fresh each time recalcRoute() runs and held only
   // in memory, same tradeoff flagged when this was designed.
+  const [homeLocation, setHomeLocation] = useState('');
   const [homeCoords, setHomeCoords] = useState<Coords | null>(null);
+  const [workLocation, setWorkLocation] = useState('');
   const [workCoords, setWorkCoords] = useState<Coords | null>(null);
   const [gpsCoords, setGpsCoords] = useState<Coords | null>(null);
   const [driveFromBaseMins, setDriveFromBaseMins] = useState(0);
@@ -323,10 +325,22 @@ export default function Home() {
 
   async function loadEverything() {
     const userId = session.user.id;
+    const initResponse = await fetch('/app/api/account/initialize', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!initResponse.ok) {
+      const payload = await initResponse.json().catch(() => null);
+      const accessError = payload?.error || 'Could not verify account access.';
+      setError(accessError);
+      setSignInError(accessError);
+      if (initResponse.status === 403) await supabase.auth.signOut();
+      return;
+    }
 
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days, timezone, sort_mode, onboarded, home_lat, home_lng, work_lat, work_lng')
+      .select('work_start, work_end, work_days, timezone, sort_mode, onboarded, home_location_text, home_lat, home_lng, work_location_text, work_lat, work_lng')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -338,9 +352,11 @@ export default function Home() {
       setWorkEnd(settings.work_end || '16:00');
       setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : DEFAULT_WORK_DAYS);
       setSortMode((settings.sort_mode as SortMode) || 'capacity_first');
+      setHomeLocation(settings.home_location_text || '');
       if (settings.home_lat != null && settings.home_lng != null) {
         setHomeCoords({ lat: settings.home_lat, lng: settings.home_lng });
       }
+      setWorkLocation(settings.work_location_text || '');
       if (settings.work_lat != null && settings.work_lng != null) {
         setWorkCoords({ lat: settings.work_lat, lng: settings.work_lng });
       }
@@ -353,21 +369,6 @@ export default function Home() {
       if (settings.onboarded === false) {
         setShowOnboarding(true);
       }
-    } else {
-      const { error: settingsError } = await supabase.from('user_settings').insert({
-        user_id: userId,
-        work_start: '08:00',
-        work_end: '16:00',
-        work_days: DEFAULT_WORK_DAYS,
-        timezone: detectedTimezone,
-        sort_mode: 'capacity_first',
-        onboarded: false,
-      });
-      if (settingsError) {
-        console.error(settingsError);
-        alert('Could not set up your account: ' + settingsError.message);
-      }
-      setShowOnboarding(true);
     }
 
     const { data: taskRows } = await supabase
@@ -427,12 +428,33 @@ export default function Home() {
     );
   }
 
+  function handleHomeSelected(result: { formattedAddress: string; lat: number; lng: number }) {
+    setHomeLocation(result.formattedAddress);
+    setHomeCoords({ lat: result.lat, lng: result.lng });
+  }
+
+  function handleWorkSelected(result: { formattedAddress: string; lat: number; lng: number }) {
+    setWorkLocation(result.formattedAddress);
+    setWorkCoords({ lat: result.lat, lng: result.lng });
+  }
+
   async function completeOnboarding() {
     if (!session) return;
     setOnboardSaving(true);
     const { error } = await supabase
       .from('user_settings')
-      .update({ work_start: workStart, work_end: workEnd, work_days: workDays, onboarded: true })
+      .update({
+        work_start: workStart,
+        work_end: workEnd,
+        work_days: workDays,
+        home_location_text: homeLocation || null,
+        home_lat: homeCoords?.lat ?? null,
+        home_lng: homeCoords?.lng ?? null,
+        work_location_text: workLocation || null,
+        work_lat: workCoords?.lat ?? null,
+        work_lng: workCoords?.lng ?? null,
+        onboarded: true,
+      })
       .eq('user_id', session.user.id);
     setOnboardSaving(false);
     if (error) {
@@ -469,19 +491,15 @@ export default function Home() {
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setSignInError('');
-    // Explicit shouldCreateUser: false as a second layer on top of the
-    // "Allow new users to sign up" toggle in the Supabase dashboard — if
-    // that setting ever gets flipped back on by accident, magic-link
-    // sign-in still won't silently create new accounts.
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        shouldCreateUser: false,
+        shouldCreateUser: true,
         emailRedirectTo: `${window.location.origin}/app`,
       },
     });
     if (error) {
-      setSignInError("Could not send a sign-in link. If you're not on the invite list yet, reach out and we'll get you set up.");
+      setSignInError('Could not send a sign-in link. Please check the email address and try again.');
       return;
     }
     setMagicLinkSent(true);
@@ -949,6 +967,12 @@ export default function Home() {
         setWorkEnd={setWorkEnd}
         workDays={workDays}
         onToggleWorkDay={toggleWorkDay}
+        homeLocation={homeLocation}
+        setHomeLocation={setHomeLocation}
+        onHomeSelected={handleHomeSelected}
+        workLocation={workLocation}
+        setWorkLocation={setWorkLocation}
+        onWorkSelected={handleWorkSelected}
         onboardSaving={onboardSaving}
         onComplete={completeOnboarding}
       />

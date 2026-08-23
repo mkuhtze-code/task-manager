@@ -1,6 +1,7 @@
 'use client';
 
 import { DAY_OPTIONS } from '@/lib/taskTypes';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
 
 export function AuthScreen(props: {
   hasSignedInBefore: boolean;
@@ -194,10 +195,21 @@ export function OnboardingScreen(props: {
   setWorkEnd: (v: string) => void;
   workDays: number[];
   onToggleWorkDay: (day: number) => void;
+  homeLocation: string;
+  setHomeLocation: (value: string) => void;
+  onHomeSelected: (result: { formattedAddress: string; lat: number; lng: number }) => void;
+  workLocation: string;
+  setWorkLocation: (value: string) => void;
+  onWorkSelected: (result: { formattedAddress: string; lat: number; lng: number }) => void;
   onboardSaving: boolean;
   onComplete: () => void;
 }) {
-  const { workStart, setWorkStart, workEnd, setWorkEnd, workDays, onToggleWorkDay, onboardSaving, onComplete } = props;
+  const {
+    workStart, setWorkStart, workEnd, setWorkEnd, workDays, onToggleWorkDay,
+    homeLocation, setHomeLocation, onHomeSelected,
+    workLocation, setWorkLocation, onWorkSelected,
+    onboardSaving, onComplete,
+  } = props;
 
   return (
     <div className="auth-shell">
@@ -230,6 +242,22 @@ export function OnboardingScreen(props: {
             </button>
           ))}
         </div>
+
+        <div className="settings-panel-title" style={{ marginTop: 'var(--space-5)', marginBottom: 'var(--space-2)' }}>Base locations <span style={{ color: 'var(--ink-faint)', fontWeight: 400 }}>(optional)</span></div>
+        <span className="settings-label">Home</span>
+        <LocationAutocomplete
+          value={homeLocation}
+          placeholder="Home address"
+          onChange={setHomeLocation}
+          onPlaceSelected={onHomeSelected}
+        />
+        <span className="settings-label" style={{ display: 'block', marginTop: 'var(--space-3)' }}>Work / office</span>
+        <LocationAutocomplete
+          value={workLocation}
+          placeholder="Work address"
+          onChange={setWorkLocation}
+          onPlaceSelected={onWorkSelected}
+        />
 
         <button
           className="btn btn-steel"
