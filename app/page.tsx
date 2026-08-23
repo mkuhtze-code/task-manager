@@ -270,7 +270,7 @@ export default function Home() {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/app/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(() => {});
     }
   }, []);
 
