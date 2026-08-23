@@ -1,14 +1,13 @@
-const CACHE_VERSION = 'dokkit-v1';
+const CACHE_VERSION = 'dokkit-v2';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL_URLS = [
-  '/app/',
+  '/app',
   '/app/offline.html',
   '/app/manifest.json',
-  '/app/icons/android-chrome-192.png',
-  '/app/icons/android-chrome-512.png',
-  '/app/icons/notification-badge-96.png',
+  '/app/android-chrome-192.png',
+  '/app/android-chrome-512.png',
 ];
 
 self.addEventListener('install', function (event) {
@@ -88,8 +87,8 @@ self.addEventListener('push', function(event) {
   }
   var options = {
     body: data.body,
-    icon: '/app/icons/android-chrome-192.png',
-    badge: '/app/icons/notification-badge-96.png',
+    icon: '/app/android-chrome-192.png',
+    badge: '/app/favicon-192.png',
     silent: !!data.silent,
   };
   event.waitUntil(

@@ -8,15 +8,15 @@ export const metadata = {
   manifest: '/app/manifest.json',
   icons: {
     icon: [
-      { url: '/icons/favicon-16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icons/android-chrome-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/android-chrome-512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/app/favicon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/app/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/app/android-chrome-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/app/android-chrome-512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/app/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
-    shortcut: ['/favicon.ico'],
+    shortcut: ['/app/favicon.ico'],
   },
 };
 
@@ -64,7 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function () {
-                    navigator.serviceWorker.register('/app/sw.js').then(function (reg) {
+                    navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).then(function (reg) {
                     console.log('SW registered:', reg.scope);
                   }).catch(function (err) {
                     console.error('SW registration failed:', err);
