@@ -37,7 +37,7 @@ export default function WaitlistInbox() {
     setApproving((prev) => ({ ...prev, [item.id]: true }));
     setApproveError((prev) => ({ ...prev, [item.id]: '' }));
 
-    const res = await fetch('/api/admin/approve-waitlist', {
+    const res = await fetch('/app/api/admin/approve-waitlist', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

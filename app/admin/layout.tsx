@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
 import { AdminContext } from './AdminContext';
@@ -80,7 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {TABS.map((tab) => {
             const active = pathname === tab.href;
             return (
-              <a
+              <Link
                 key={tab.href}
                 href={tab.href}
                 style={{
@@ -94,7 +95,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 }}
               >
                 {tab.label}
-              </a>
+              </Link>
             );
           })}
         </nav>

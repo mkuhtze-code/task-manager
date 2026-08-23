@@ -63,7 +63,7 @@ export default function LocationAutocomplete(props: {
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await authedFetch('/api/travel/autocomplete', {
+        const res = await authedFetch('/app/api/travel/autocomplete', {
           input: text,
           sessionToken: ensureSessionToken(),
         });
@@ -85,7 +85,7 @@ export default function LocationAutocomplete(props: {
     setLoading(true);
     setSelectError('');
     try {
-      const res = await authedFetch('/api/travel/place-details', {
+      const res = await authedFetch('/app/api/travel/place-details', {
         placeId: p.placeId,
         sessionToken: sessionTokenRef.current,
       });

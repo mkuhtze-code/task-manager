@@ -170,7 +170,7 @@ export default function Settings() {
 
   async function disconnectCalendar() {
     setDisconnecting(true);
-    await fetch('/api/auth/microsoft/disconnect', {
+    await fetch('/app/api/auth/microsoft/disconnect', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -256,7 +256,7 @@ export default function Settings() {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string) as BufferSource,
       });
-      await fetch('/api/subscribe', {
+      await fetch('/app/api/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -272,7 +272,7 @@ export default function Settings() {
 
   async function sendTestNotification() {
     setNotifStatus('Sending test notification...');
-    const res = await fetch('/api/send-test-notification', {
+    const res = await fetch('/app/api/send-test-notification', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

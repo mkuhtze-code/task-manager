@@ -7,17 +7,17 @@ import { checkRateLimit, getClientIp } from '@/lib/ratelimit';
 export async function GET(req: NextRequest) {
   const { allowed } = await checkRateLimit(`ip:${getClientIp(req)}:ms-callback`);
   if (!allowed) {
-    return NextResponse.redirect(`${req.nextUrl.origin}/settings?calendar=error`);
+    return NextResponse.redirect(`${req.nextUrl.origin}/app/settings?calendar=error`);
   }
 
   const code = req.nextUrl.searchParams.get('code');
   const userId = req.nextUrl.searchParams.get('state');
   const oauthError = req.nextUrl.searchParams.get('error');
 
-  const redirectUri = `${req.nextUrl.origin}/api/auth/microsoft/callback`;
+  const redirectUri = `${req.nextUrl.origin}/app/api/auth/microsoft/callback`;
 
   if (oauthError || !code || !userId) {
-    return NextResponse.redirect(`${req.nextUrl.origin}/settings?calendar=error`);
+    return NextResponse.redirect(`${req.nextUrl.origin}/app/settings?calendar=error`);
   }
 
   try {
@@ -52,8 +52,8 @@ export async function GET(req: NextRequest) {
       { onConflict: 'user_id' }
     );
 
-    return NextResponse.redirect(`${req.nextUrl.origin}/settings?calendar=connected`);
+    return NextResponse.redirect(`${req.nextUrl.origin}/app/settings?calendar=connected`);
   } catch (e) {
-    return NextResponse.redirect(`${req.nextUrl.origin}/settings?calendar=error`);
+    return NextResponse.redirect(`${req.nextUrl.origin}/app/settings?calendar=error`);
   }
 }

@@ -5,7 +5,7 @@ import DokkitSplash from '@/components/DokkitSplash';
 export const metadata = {
   title: 'Dokkit',
   description: 'A personal thinking tool that understands time',
-  manifest: '/manifest.json',
+  manifest: '/app/manifest.json',
   icons: {
     icon: [
       { url: '/icons/favicon-16.png', sizes: '16x16', type: 'image/png' },
@@ -64,7 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function () {
-                  navigator.serviceWorker.register('/sw.js').then(function (reg) {
+                    navigator.serviceWorker.register('/app/sw.js').then(function (reg) {
                     console.log('SW registered:', reg.scope);
                   }).catch(function (err) {
                     console.error('SW registration failed:', err);

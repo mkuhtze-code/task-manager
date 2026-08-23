@@ -444,7 +444,7 @@ export default function TripDayView() {
     setRecalculating(true);
     setRecalcError(null);
     try {
-      const json = await authedFetch('/api/travel/calculate-day', { trip_day_id: dayId });
+      const json = await authedFetch('/app/api/travel/calculate-day', { trip_day_id: dayId });
       if (json.error) {
         setRecalcError(json.error);
       } else {
@@ -688,7 +688,7 @@ export default function TripDayView() {
     setNearbySuggestions([]);
     setNearbyError(null);
     try {
-      const json = await authedFetch('/api/travel/nearby-on-route', {
+      const json = await authedFetch('/app/api/travel/nearby-on-route', {
         originLat: leg.fromLat,
         originLng: leg.fromLng,
         destLat: leg.toLat,

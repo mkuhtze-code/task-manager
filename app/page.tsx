@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
@@ -50,6 +50,15 @@ import {
   parseMins,
   timeStringToMinutes,
 } from '@/lib/timeFormat';
+
+async function isNativePlatform(): Promise<boolean> {
+  try {
+    const { Capacitor } = await import('@capacitor/core');
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
 
 // One-shot browser geolocation for the route's start point. Resolves to
 // null when the API is unavailable, permission is denied, or the fix
@@ -211,6 +220,48 @@ export default function Home() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // Capacitor: listen for the custom URL scheme redirect from Google OAuth.
+  // When Chrome Custom Tabs redirect back to space.dokkit.app://auth/callback,
+  // this catches it, exchanges the auth code for a Supabase session, and
+  // completes the sign-in.
+  useEffect(() => {
+    isNativePlatform().then((native) => {
+      if (!native) return;
+      import('@capacitor/app').then(({ App }) => {
+        const handler = App.addListener('appUrlOpen', async ({ url }) => {
+          if (!url.includes('auth/callback')) return;
+          try {
+            const redirectUrl = new URL(url);
+            const code = redirectUrl.searchParams.get('code');
+            const hashParams = new URLSearchParams(redirectUrl.hash.substring(1));
+            const hashToken = hashParams.get('access_token');
+            const hashType = hashParams.get('type');
+
+            if (code) {
+              await supabase.auth.exchangeCodeForSession(code);
+            } else if (hashToken && hashType === 'signup') {
+              // Supabase may return the token in the fragment for some flows
+              await supabase.auth.setSession({
+                access_token: hashToken,
+                refresh_token: hashParams.get('refresh_token') ?? '',
+              });
+            }
+          } catch (e) {
+            console.error('Capacitor auth callback error:', e);
+          } finally {
+            setSigningInWithGoogle(false);
+            window.location.href = '/app';
+          }
+        });
+        // Store handle for cleanup
+        (window as any).__capAuthListener = handler;
+      });
+    });
+    return () => {
+      (window as any).__capAuthListener?.then?.((h: any) => h.remove());
+    };
+  }, []);
+
   useEffect(() => {
     if (session && typeof window !== 'undefined') {
       window.localStorage.setItem(HAS_SIGNED_IN_KEY, 'true');
@@ -219,7 +270,7 @@ export default function Home() {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/app/sw.js').catch(() => {});
     }
   }, []);
 
@@ -406,7 +457,7 @@ export default function Home() {
     e.preventDefault();
     setSignInError('');
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/app/reset-password`,
     });
     if (error) {
       setSignInError('Could not send reset email. Please check the email address.');
@@ -426,7 +477,7 @@ export default function Home() {
       email,
       options: {
         shouldCreateUser: false,
-        emailRedirectTo: `${window.location.origin}`,
+        emailRedirectTo: `${window.location.origin}/app`,
       },
     });
     if (error) {
@@ -439,10 +490,38 @@ export default function Home() {
   async function signInWithGoogle() {
     setSigningInWithGoogle(true);
     setSignInError('');
+
+    const native = await isNativePlatform();
+
+    if (native) {
+      // In Capacitor: get the OAuth URL from Supabase, then open it in
+      // Chrome Custom Tabs (not the WebView — Google blocks OAuth in
+      // plain WebViews). The redirect comes back via the custom URL
+      // scheme (space.dokkit.app://) handled by the appUrlOpen listener.
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'space.dokkit.app://auth/callback',
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error || !data?.url) {
+        setSignInError('Failed to sign in with Google.');
+        setSigningInWithGoogle(false);
+        return;
+      }
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.open({ url: data.url });
+      // Session exchange happens in the appUrlOpen useEffect — don't
+      // reset signingInWithGoogle here; the listener will handle it.
+      return;
+    }
+
+    // Web: standard redirect flow (unchanged)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}`,
+        redirectTo: `${window.location.origin}/app`,
       },
     });
     if (error) {
@@ -519,7 +598,7 @@ export default function Home() {
     const remainingTaskMins = visibleForRoute.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
 
     try {
-      const json = await authedFetch('/api/today/calculate-route', {
+      const json = await authedFetch('/app/api/today/calculate-route', {
         orderedTaskIds: orderedIds,
         baseLabel: base.label,
         nowLocalMins,

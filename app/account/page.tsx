@@ -140,7 +140,7 @@ export default function Account() {
     setDeleting(true);
     setDeleteError('');
 
-    const res = await fetch('/api/account/delete-account', {
+    const res = await fetch('/app/api/account/delete-account', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -256,7 +256,7 @@ export default function Account() {
       <div className="settings-panel">
         <div className="settings-panel-title">Your Data</div>
         <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-          Download everything Dokkit has stored for you — tasks, sub-tasks, meetings, and preferences —
+          Download everything Dokkit has stored for you — tasks, sub-tasks, meetings, and settings —
           as a single file you keep.
         </p>
         {exportError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{exportError}</p>}
@@ -280,7 +280,7 @@ export default function Account() {
         ) : (
           <>
             <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-              This permanently deletes your account, all tasks, sub-tasks, meetings, and preferences.
+              This permanently deletes your account, all tasks, sub-tasks, meetings, and settings.
               Type <strong>DELETE</strong> to confirm.
             </p>
             <input

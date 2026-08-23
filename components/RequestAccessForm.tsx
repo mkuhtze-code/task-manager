@@ -14,7 +14,7 @@ export default function RequestAccessForm() {
     setStatus('sending');
     setError('');
     try {
-      const res = await fetch('/api/request-access', {
+      const res = await fetch('/app/api/request-access', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, marketingOptIn: optIn }),

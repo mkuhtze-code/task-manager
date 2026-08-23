@@ -28,7 +28,7 @@ export default function AdminOverview() {
   async function loadAnalytics() {
     setLoading(true);
     setError('');
-    const res = await fetch('/api/admin/analytics', {
+    const res = await fetch('/app/api/admin/analytics', {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (!res.ok) {

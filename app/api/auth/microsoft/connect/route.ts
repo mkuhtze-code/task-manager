@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   }
 
   const tenant = process.env.MICROSOFT_TENANT_ID || 'common';
-  const redirectUri = `${req.nextUrl.origin}/api/auth/microsoft/callback`;
+  const redirectUri = `${req.nextUrl.origin}/app/api/auth/microsoft/callback`;
 
   const authUrl = new URL(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`);
   authUrl.searchParams.set('client_id', process.env.MICROSOFT_CLIENT_ID as string);

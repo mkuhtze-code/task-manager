@@ -3,12 +3,12 @@ const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL_URLS = [
-  '/',
-  '/offline.html',
-  '/manifest.json',
-  '/icons/android-chrome-192.png',
-  '/icons/android-chrome-512.png',
-  '/icons/notification-badge-96.png',
+  '/app/',
+  '/app/offline.html',
+  '/app/manifest.json',
+  '/app/icons/android-chrome-192.png',
+  '/app/icons/android-chrome-512.png',
+  '/app/icons/notification-badge-96.png',
 ];
 
 self.addEventListener('install', function (event) {
@@ -34,7 +34,7 @@ self.addEventListener('activate', function (event) {
 });
 
 // Only same-origin GET requests are touched at all. Supabase calls (a
-// different origin) pass straight through, and /api/* routes are always
+// different origin) pass straight through, and /app/api/* routes are always
 // skipped — this app's data must never come back stale from cache.
 self.addEventListener('fetch', function (event) {
   var req = event.request;
@@ -42,7 +42,7 @@ self.addEventListener('fetch', function (event) {
 
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.indexOf('/api/') === 0) return;
+  if (url.pathname.indexOf('/app/api/') === 0) return;
 
   // Page navigations: network first, fall back to cached shell, then offline page
   if (req.mode === 'navigate') {
@@ -55,7 +55,7 @@ self.addEventListener('fetch', function (event) {
         })
         .catch(function () {
           return caches.match(req).then(function (cached) {
-            return cached || caches.match('/offline.html');
+            return cached || caches.match('/app/offline.html');
           });
         })
     );
@@ -88,8 +88,8 @@ self.addEventListener('push', function(event) {
   }
   var options = {
     body: data.body,
-    icon: '/icons/android-chrome-192.png',
-    badge: '/icons/notification-badge-96.png',
+    icon: '/app/icons/android-chrome-192.png',
+    badge: '/app/icons/notification-badge-96.png',
     silent: !!data.silent,
   };
   event.waitUntil(
@@ -113,7 +113,7 @@ self.addEventListener('notificationclick', function(event) {
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow('/app/');
       }
     })
   );

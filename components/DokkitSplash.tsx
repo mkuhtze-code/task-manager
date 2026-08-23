@@ -65,7 +65,7 @@ export default function DokkitSplash() {
     <div className={backdropClass}>
       <div className={logoClass} id="dokkitLogoScene">
         <div className="dokkit-impact" />
-        <img id="dokkitLogoImg" src="/android-chrome-512.png" alt="Dokkit logo" />
+        <img id="dokkitLogoImg" src="/app/android-chrome-512.png" alt="Dokkit logo" />
       </div>
 
       <div className={wordClass} id="dokkitWordScene">
