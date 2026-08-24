@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { verifyUser } from '@/lib/verifyUser';
 import webpush, { HIGH_PRIORITY_OPTIONS } from '@/lib/webpush';
 import { logError } from '@/lib/logError';
 
@@ -46,21 +45,38 @@ async function notifyAdminsOnce(userId: string, email: string | null) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await verifyUser(req);
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const authHeader = req.headers.get('authorization');
+  const token = authHeader?.replace(/^Bearer\s+/i, '');
+  if (!token) return NextResponse.json({ error: 'Missing authorization token' }, { status: 401 });
+
+  const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
+  if (authError || !data.user) {
+    return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 });
+  }
+
+  const userId = data.user.id;
+  const email = data.user.email ?? null;
+
+  // Open signup: every successfully authenticated Supabase user receives
+  // an active Dokkit account on first initialization. Admins retain the
+  // ability to change account status afterwards.
+  const { error: statusError } = await supabaseAdmin
+    .from('account_status')
+    .upsert({ user_id: userId, status: 'active' }, { onConflict: 'user_id', ignoreDuplicates: true });
+  if (statusError) return NextResponse.json({ error: 'Could not initialize account' }, { status: 500 });
 
   const { error: insertError } = await supabaseAdmin
     .from('user_settings')
-    .upsert({ user_id: auth.userId }, { onConflict: 'user_id', ignoreDuplicates: true });
+    .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true });
   if (insertError) return NextResponse.json({ error: 'Could not initialize account' }, { status: 500 });
 
   const { data: settings, error: settingsError } = await supabaseAdmin
     .from('user_settings')
     .select('onboarded')
-    .eq('user_id', auth.userId)
+    .eq('user_id', userId)
     .single();
   if (settingsError || !settings) return NextResponse.json({ error: 'Could not load account settings' }, { status: 500 });
 
-  await notifyAdminsOnce(auth.userId, auth.email);
+  await notifyAdminsOnce(userId, email);
   return NextResponse.json({ onboarded: settings.onboarded });
 }
