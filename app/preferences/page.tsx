@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { apiUrl } from '@/lib/authedFetch';
 import AppHeader from '@/components/AppHeader';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 
@@ -154,7 +155,7 @@ export default function Preferences() {
 
   async function disconnectCalendar() {
     setDisconnecting(true);
-    await fetch('/api/auth/microsoft/disconnect', {
+    await fetch(apiUrl('/api/auth/microsoft/disconnect'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -249,7 +250,7 @@ export default function Preferences() {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string) as BufferSource,
       });
-      await fetch('/api/subscribe', {
+      await fetch(apiUrl('/api/subscribe'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -265,7 +266,7 @@ export default function Preferences() {
 
   async function sendTestNotification() {
     setNotifStatus('Sending test notification...');
-    const res = await fetch('/api/send-test-notification', {
+    const res = await fetch(apiUrl('/api/send-test-notification'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

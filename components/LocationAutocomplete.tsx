@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { authedFetch } from '@/lib/authedFetch';
 
 type Prediction = { placeId: string; text: string };
 
@@ -37,19 +37,6 @@ export default function LocationAutocomplete(props: {
     return sessionTokenRef.current;
   }
 
-  async function authedFetch(url: string, body: any) {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    return fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-  }
-
   function handleInputChange(text: string) {
     onChange(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -63,11 +50,10 @@ export default function LocationAutocomplete(props: {
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await authedFetch('/api/travel/autocomplete', {
+        const json = await authedFetch('/api/travel/autocomplete', {
           input: text,
           sessionToken: ensureSessionToken(),
         });
-        const json = await res.json();
         setPredictions(json.predictions || []);
         setOpen(true);
       } catch {
@@ -85,11 +71,10 @@ export default function LocationAutocomplete(props: {
     setLoading(true);
     setSelectError('');
     try {
-      const res = await authedFetch('/api/travel/place-details', {
+      const json = await authedFetch('/api/travel/place-details', {
         placeId: p.placeId,
         sessionToken: sessionTokenRef.current,
       });
-      const json = await res.json();
       if (json.lat != null && json.lng != null) {
         onPlaceSelected({ lat: json.lat, lng: json.lng, formattedAddress: json.formattedAddress });
       } else {

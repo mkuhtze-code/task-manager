@@ -1,6 +1,7 @@
 'use client';
 
 import { Component, ReactNode, ErrorInfo } from 'react';
+import { apiUrl } from '@/lib/authedFetch';
 
 type Props = { children: ReactNode };
 type State = { hasError: boolean };
@@ -13,7 +14,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    fetch('/api/log-client-error', {
+    fetch(apiUrl('/api/log-client-error'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

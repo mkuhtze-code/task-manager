@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAdminSession } from './AdminContext';
+import { apiUrl } from '@/lib/authedFetch';
 
 type Analytics = {
   users: {
@@ -28,7 +29,7 @@ export default function AdminOverview() {
   async function loadAnalytics() {
     setLoading(true);
     setError('');
-    const res = await fetch('/app/api/admin/analytics', {
+    const res = await fetch(apiUrl('/api/admin/analytics'), {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (!res.ok) {
