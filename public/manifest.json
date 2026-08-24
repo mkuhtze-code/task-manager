@@ -1,10 +1,10 @@
 {
-  "id": "/",
+  "id": "/app",
   "name": "Dokkit",
   "short_name": "Dokkit",
   "description": "A personal thinking tool that understands time",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/app",
+  "scope": "/app",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
@@ -35,7 +35,7 @@
       "name": "Add a task",
       "short_name": "Add task",
       "description": "Quickly capture something new",
-      "url": "/?action=capture",
+      "url": "/app?action=capture",
       "icons": [{ "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
