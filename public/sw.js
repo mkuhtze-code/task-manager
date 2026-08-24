@@ -1,14 +1,13 @@
-const CACHE_VERSION = 'dokkit-v1';
+const CACHE_VERSION = 'dokkit-v2';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL_URLS = [
-  '/',
-  '/offline.html',
-  '/manifest.json',
-  '/icons/android-chrome-192.png',
-  '/icons/android-chrome-512.png',
-  '/icons/notification-badge-96.png',
+  '/app',
+  '/app/offline.html',
+  '/app/manifest.json',
+  '/app/android-chrome-192.png',
+  '/app/android-chrome-512.png',
 ];
 
 self.addEventListener('install', function (event) {
@@ -33,9 +32,6 @@ self.addEventListener('activate', function (event) {
   );
 });
 
-// Only same-origin GET requests are touched at all. Supabase calls (a
-// different origin) pass straight through, and /api/* routes are always
-// skipped — this app's data must never come back stale from cache.
 self.addEventListener('fetch', function (event) {
   var req = event.request;
   if (req.method !== 'GET') return;
@@ -43,8 +39,8 @@ self.addEventListener('fetch', function (event) {
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.indexOf('/api/') === 0) return;
+  if (url.pathname.indexOf('/app/') !== 0 && url.pathname !== '/app') return;
 
-  // Page navigations: network first, fall back to cached shell, then offline page
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
@@ -55,14 +51,13 @@ self.addEventListener('fetch', function (event) {
         })
         .catch(function () {
           return caches.match(req).then(function (cached) {
-            return cached || caches.match('/offline.html');
+            return cached || caches.match('/app/offline.html');
           });
         })
     );
     return;
   }
 
-  // Static assets: cache-first, refresh in the background
   if (['image', 'style', 'script', 'font'].indexOf(req.destination) !== -1) {
     event.respondWith(
       caches.match(req).then(function (cached) {
@@ -88,8 +83,8 @@ self.addEventListener('push', function(event) {
   }
   var options = {
     body: data.body,
-    icon: '/icons/android-chrome-192.png',
-    badge: '/icons/notification-badge-96.png',
+    icon: '/app/android-chrome-192.png',
+    badge: '/app/android-chrome-192.png',
     silent: !!data.silent,
   };
   event.waitUntil(
@@ -108,12 +103,12 @@ self.addEventListener('notificationclick', function(event) {
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then(function(clientList) {
       for (var i = 0; i < clientList.length; i++) {
-        if (clientList[i].url.indexOf(self.location.origin) === 0 && 'focus' in clientList[i]) {
+        if (clientList[i].url.indexOf(self.location.origin + '/app') === 0 && 'focus' in clientList[i]) {
           return clientList[i].focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow('/app');
       }
     })
   );
