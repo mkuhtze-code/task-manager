@@ -10,7 +10,6 @@ import { AdminContext } from './AdminContext';
 const TABS = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/feedback', label: 'Feedback' },
-  { href: '/admin/waitlist', label: 'Waitlist' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/errors', label: 'Errors' },
 ];
