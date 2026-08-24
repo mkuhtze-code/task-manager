@@ -11,17 +11,36 @@ import { useEffect, useState } from 'react';
  * where two overlapping semi-transparent layers let the app bleed
  * through. It fades exactly once, at the very end.
  *
+ * The splash is shown once per browser session, not whenever the user
+ * navigates back to Today. sessionStorage is intentionally used rather
+ * than localStorage so a genuinely new app session gets a fresh launch.
+ *
  * Timing:
  *   t = 1050ms  scene 1 exits (breathes in), scene 2 enters (breathes out) — right after the shake ends
  *   t = 3050ms  the backdrop itself fades out — the one and only reveal
  *   t = 4000ms  the whole backdrop is removed from the DOM entirely
  */
 export default function DokkitSplash() {
-  // 0 = mark shown, 1 = word entering, 2 = backdrop exiting.
+  // Keep the splash hidden until the client has established whether this
+  // browser session has already seen it. This prevents a splash flash on
+  // every client navigation while keeping the launch behaviour deterministic.
+  const [visible, setVisible] = useState(false);
   const [phase, setPhase] = useState(0);
   const [gone, setGone] = useState(false);
 
   useEffect(() => {
+    try {
+      if (sessionStorage.getItem('dokkit-splash-seen') === '1') {
+        setGone(true);
+        return;
+      }
+      sessionStorage.setItem('dokkit-splash-seen', '1');
+    } catch {
+      // If storage is unavailable, still show the launch splash.
+    }
+
+    setVisible(true);
+
     // The CSS entrance animations are anchored to first paint — the
     // server-rendered markup + stylesheet paint before React hydrates —
     // while plain timers would start at hydration, drifting the crossfade
@@ -52,7 +71,7 @@ export default function DokkitSplash() {
     };
   }, []);
 
-  if (gone) return null;
+  if (!visible || gone) return null;
 
   const backdropClass =
     phase >= 2 ? 'dokkit-splash-backdrop exit' : 'dokkit-splash-backdrop';
@@ -65,7 +84,7 @@ export default function DokkitSplash() {
     <div className={backdropClass}>
       <div className={logoClass} id="dokkitLogoScene">
         <div className="dokkit-impact" />
-        <img id="dokkitLogoImg" src="/android-chrome-512.png" alt="Dokkit logo" />
+        <img id="dokkitLogoImg" src="/app/android-chrome-512.png" alt="Dokkit logo" />
       </div>
 
       <div className={wordClass} id="dokkitWordScene">
