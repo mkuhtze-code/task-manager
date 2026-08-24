@@ -147,30 +147,52 @@ export async function POST(req: NextRequest) {
   let basePolyline: string | null = null;
   let betweenLegsMins = 0;
 
+  const first = located[0];
+  const last = located[located.length - 1];
+
+  // The origin→first leg, every between-stop leg, and the Work return
+  // probe are mutually independent Directions calls — each needs only two
+  // coordinate pairs that are already fixed at this point. Firing them
+  // concurrently turns what used to be N+1 serial round-trips into one
+  // batched wait. The return-destination decision below needs their
+  // totals, not their identities, so nothing downstream changes.
+  //
+  // The fallback return leg (Home / origin, chosen only when the Work
+  // probe says the office doesn't fit) stays lazy below — computing it
+  // speculatively would spend an extra paid Directions call on the rare
+  // path, reversing the saving.
+  const [originLeg, betweenLegs, workReturnLeg] = await Promise.all([
+    originCoords
+      ? computeRouteLeg(originCoords, { lat: first.lat, lng: first.lng })
+      : Promise.resolve(null),
+    Promise.all(
+      located.slice(0, -1).map((a, i) =>
+        computeRouteLeg(
+          { lat: a.lat, lng: a.lng },
+          { lat: located[i + 1].lat, lng: located[i + 1].lng }
+        )
+      )
+    ),
+    workCoords ? computeRouteLeg({ lat: last.lat, lng: last.lng }, workCoords) : Promise.resolve(null),
+  ]);
+
   if (originCoords) {
-    const first = located[0];
-    const leg = await computeRouteLeg(originCoords, { lat: first.lat, lng: first.lng });
-    if (leg !== null) {
-      driveFromBaseMins = leg.mins;
-      basePolyline = leg.polyline;
+    if (originLeg !== null) {
+      driveFromBaseMins = originLeg.mins;
+      basePolyline = originLeg.polyline;
     } else {
       skipped.push(first.text);
     }
   }
 
-  for (let i = 0; i < located.length - 1; i++) {
-    const a = located[i];
-    const b = located[i + 1];
-    const leg = await computeRouteLeg({ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng });
+  betweenLegs.forEach((leg, i) => {
     if (leg !== null) {
-      updates.push({ id: a.id, drive_mins_to_next: leg.mins, route_polyline: leg.polyline });
+      updates.push({ id: located[i].id, drive_mins_to_next: leg.mins, route_polyline: leg.polyline });
       betweenLegsMins += leg.mins;
     } else {
-      skipped.push(b.text);
+      skipped.push(located[i + 1].text);
     }
-  }
-
-  const last = located[located.length - 1];
+  });
 
   // ── Return destination decision ──────────────────────────────────
   // The route's final leg ends at Work when the predicted arrival there
@@ -249,5 +271,9 @@ export async function POST(req: NextRequest) {
     returnLabel,
     legsComputed: updates.length,
     skipped,
+    // The exact per-task rows persisted above, so the client can merge
+    // them into the task state it already holds instead of refetching
+    // the whole list after every recalculation.
+    legs: updates,
   });
 }

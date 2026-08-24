@@ -23,11 +23,14 @@ export function TodayHeader(props: {
   routeError: string | null;
   hasRoute: boolean;
   onViewMap: () => void;
+  // Forwarded to GearMenu so it can skip its own getSession() lookup —
+  // Today already knows who is signed in.
+  userId: string;
 }) {
   const {
     overloaded, weekdayLabel, dateOnlyLabel, isWorkDay, minutesLeftToday,
     remainingWorkMins, nowPercent, planWidthPercent, workStart, workEnd, geoAware,
-    recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError, hasRoute, onViewMap,
+    recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError, hasRoute, onViewMap, userId,
   } = props;
 
   const [capacityOpen, setCapacityOpen] = useState(false);
@@ -42,7 +45,7 @@ export function TodayHeader(props: {
           <div className="today-header-date">{dateOnlyLabel}</div>
         </div>
         <div className="today-header-top-right">
-          <GearMenu />
+          <GearMenu userId={userId} />
         </div>
       </div>
 

@@ -13,7 +13,17 @@ function GearIcon() {
   );
 }
 
-export default function GearMenu({ context = 'work' }: { context?: 'work' | 'travel' | 'jobs' }) {
+// userId: when the mounting page already knows who is signed in, passing
+// it here skips a redundant getSession() round-trip per mount. Optional —
+// without it the menu resolves the session itself, so existing call sites
+// keep working unchanged.
+export default function GearMenu({
+  context = 'work',
+  userId,
+}: {
+  context?: 'work' | 'travel' | 'jobs';
+  userId?: string | null;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -21,17 +31,22 @@ export default function GearMenu({ context = 'work' }: { context?: 'work' | 'tra
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    checkAdmin();
-  }, []);
+    if (userId) {
+      checkAdmin(userId);
+      return;
+    }
+    supabase.auth.getSession().then(({ data }) => {
+      const session = data.session;
+      if (session) checkAdmin(session.user.id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
-  async function checkAdmin() {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const session = sessionData.session;
-    if (!session) return;
+  async function checkAdmin(uid: string) {
     const { data } = await supabase
       .from('admins')
       .select('user_id')
-      .eq('user_id', session.user.id)
+      .eq('user_id', uid)
       .maybeSingle();
     setIsAdmin(!!data);
   }

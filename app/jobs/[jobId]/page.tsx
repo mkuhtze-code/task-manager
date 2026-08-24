@@ -492,7 +492,7 @@ export default function JobDetailPage() {
           <h1 className="app-title">{job ? job.name : 'Job'}</h1>
         </div>
         <div className="app-header-right">
-          <GearMenu context="jobs" />
+          <GearMenu context="jobs" userId={session?.user.id ?? null} />
         </div>
       </div>
 
