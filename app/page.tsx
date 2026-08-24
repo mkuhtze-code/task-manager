@@ -36,6 +36,7 @@ import { sortTasks } from '@/lib/taskSort';
 import { authedFetch } from '@/lib/authedFetch';
 import {
   HAS_SIGNED_IN_KEY,
+  INITIALIZED_FOR_KEY,
   DEFAULT_WORK_DAYS,
   type Meeting,
   type SortMode,
@@ -133,9 +134,17 @@ export default function Home() {
   const [captureJobId, setCaptureJobId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState('');
+  // Surfaced in the task list when the tasks query itself fails, so a
+  // load failure is never mistaken for "Nothing on your plate yet."
+  const [taskLoadError, setTaskLoadError] = useState('');
   const [now, setNow] = useState(new Date());
   const recordEvent = useRecordSurfaceEvent();
   const hasRedirected = useRef(false);
+  // Guards Today's data load so it runs once per authenticated user.
+  // getSession() and onAuthStateChange's INITIAL_SESSION can both deliver
+  // the same session, and background TOKEN_REFRESHED events deliver fresh
+  // session objects for the same user — none of that should reload data.
+  const loadedUserIdRef = useRef<string | null>(null);
 
   // ── Personal Gravity (Scope 3G) ────────────────────────────────
   // Surface events drive the gravity decision — which surface the
@@ -157,6 +166,28 @@ export default function Home() {
   // same clusters now — see suggestLocation in taskIntelligence.ts.
   const [history, setHistory] = useState<HistoricalTask[]>([]);
   const clusters = useMemo(() => buildClusters(history), [history]);
+
+  // ── Learned effective estimates, cached per task id ─────────────
+  // The one-second clock re-renders Home constantly; suggestEstimate()'s
+  // cluster scan must not rerun on every tick. This recomputes only when
+  // the underlying tasks, history or clusters change — restoring the
+  // caching from 2e2122f that 4ed8ebf reverted. Estimate values and
+  // confidence semantics are identical to computing them per render.
+  const learnedEffectiveEstimates = useMemo(() => {
+    const estimates = new Map<string, number>();
+
+    for (const t of tasks) {
+      if (t.estimate_mins <= 0) {
+        estimates.set(t.id, t.estimate_mins);
+        continue;
+      }
+
+      const suggestion = suggestEstimate(t.text, history, clusters);
+      estimates.set(t.id, effectiveEstimate(t.estimate_mins, suggestion));
+    }
+
+    return estimates;
+  }, [tasks, history, clusters]);
 
   const captureSuggestion = useMemo(() => {
     const trimmed = taskText.trim();
@@ -220,12 +251,6 @@ export default function Home() {
   }, [session]);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-  }, []);
-
-  useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
@@ -269,26 +294,55 @@ export default function Home() {
   }, [session, gravityDecision]);
 
   useEffect(() => {
-    if (session) loadEverything();
+    if (!session) {
+      loadedUserIdRef.current = null;
+      return;
+    }
+    if (loadedUserIdRef.current === session.user.id) return;
+    loadedUserIdRef.current = session.user.id;
+    loadEverything();
   }, [session]);
 
-   async function loadEverything() {
+  async function loadEverything() {
     const userId = session.user.id;
 
-    const initResponse = await fetch('/app/api/account/initialize', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
+    /*
+     * Account initialization is no longer a blocking prerequisite for
+     * Today's data — a failure here must never leave an authenticated
+     * user staring at "Nothing on your plate yet." It runs once per user
+     * per browser: first sign-in awaits it so a brand-new account's
+     * settings row exists before the reads below; every later load skips
+     * it entirely. A non-403 failure is logged and Today loads anyway;
+     * only an explicit "account not active" (403) signs the user out.
+     */
+    let needsInit = true;
+    try {
+      needsInit = window.localStorage.getItem(INITIALIZED_FOR_KEY) !== userId;
+    } catch {}
+    if (needsInit) {
+      try {
+        const initResponse = await fetch('/app/api/account/initialize', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
 
-    if (!initResponse.ok) {
-      const payload = await initResponse.json().catch(() => null);
-      const accessError = payload?.error || 'Could not verify account access.';
-      setError(accessError);
-      setSignInError(accessError);
-      if (initResponse.status === 403) await supabase.auth.signOut();
-      return;
+        if (!initResponse.ok) {
+          const payload = await initResponse.json().catch(() => null);
+          const accessError = payload?.error || 'Could not verify account access.';
+          if (initResponse.status === 403) {
+            setSignInError(accessError);
+            await supabase.auth.signOut();
+            return;
+          }
+          console.error('Account initialization failed:', accessError);
+        } else {
+          try {
+            window.localStorage.setItem(INITIALIZED_FOR_KEY, userId);
+          } catch {}
+        }
+      } catch (err) {
+        console.error('Account initialization request failed:', err);
+      }
     }
 
     /*
@@ -343,8 +397,14 @@ export default function Home() {
      * As soon as the task request resolves, put the tasks into state.
      * The other requests have already been running in parallel.
      */
-    const { data: taskRows } = await taskPromise;
-    setTasks(taskRows || []);
+    const { data: taskRows, error: taskError } = await taskPromise;
+    if (taskError) {
+      console.error('Could not load tasks:', taskError.message);
+      setTaskLoadError(taskError.message);
+    } else {
+      setTasks(taskRows || []);
+      setTaskLoadError('');
+    }
 
     /*
      * Resolve the other independent requests.
@@ -993,16 +1053,12 @@ export default function Home() {
   // aggregate capacity picture (the ring, the day rail, overflow flags,
   // capacity_first sort) is calibrated by reality — without ever touching
   // the number the person actually sees on the task itself.
-     function effectiveRemainingForTask(t: Task): number {
+  function effectiveRemainingForTask(t: Task): number {
     let logged = t.logged_mins;
     if (t.status === 'active' && t.started_at) {
       logged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
     }
-    if (t.estimate_mins <= 0) {
-      return Math.max(t.estimate_mins - logged - completedSubtaskMins(t.id), 0);
-    }
-    const suggestion = suggestEstimate(t.text, history, clusters);
-    const effEstimate = effectiveEstimate(t.estimate_mins, suggestion);
+    const effEstimate = learnedEffectiveEstimates.get(t.id) ?? t.estimate_mins;
     return Math.max(effEstimate - logged - completedSubtaskMins(t.id), 0);
   }
 
@@ -1158,20 +1214,27 @@ export default function Home() {
       />
 
       <div className="task-list">
-        {ordered.length === 0 && (
+        {taskLoadError ? (
           <div className="empty-state">
-            <div className="empty-state-title">Nothing on your plate yet.</div>
-            <div className="empty-state-sub">
-              Add something and Dokkit will work out what realistically fits today.
-            </div>
-            <button
-              className="btn btn-steel"
-              onClick={() => setCaptureOpen(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              <PlusIcon size={16} /> Add a task
-            </button>
+            <div className="empty-state-title">Couldn't load your tasks.</div>
+            <div className="empty-state-sub">{taskLoadError}</div>
           </div>
+        ) : (
+          ordered.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-state-title">Nothing on your plate yet.</div>
+              <div className="empty-state-sub">
+                Add something and Dokkit will work out what realistically fits today.
+              </div>
+              <button
+                className="btn btn-steel"
+                onClick={() => setCaptureOpen(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <PlusIcon size={16} /> Add a task
+              </button>
+            </div>
+          )
         )}
         {ordered.map((t, idx) => {
           const remainingForThis = remainingForTask(t);
