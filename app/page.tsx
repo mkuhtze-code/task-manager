@@ -993,49 +993,17 @@ export default function Home() {
   // aggregate capacity picture (the ring, the day rail, overflow flags,
   // capacity_first sort) is calibrated by reality — without ever touching
   // the number the person actually sees on the task itself.
-   /*
-   * Cache the expensive learning decision separately from the live clock.
-   *
-   * The active-task timer updates `now` every second. We do NOT want that
-   * one-second clock to cause suggestEstimate() to scan the learning
-   * clusters again for every task.
-   *
-   * These learned estimates only need to change when the underlying tasks,
-   * history, clusters, or subtasks change.
-   */
-  const learnedEffectiveEstimates = useMemo(() => {
-    const estimates = new Map<string, number>();
-
-    for (const t of tasks) {
-      if (t.estimate_mins <= 0) {
-        estimates.set(t.id, t.estimate_mins);
-        continue;
-      }
-
-      const suggestion = suggestEstimate(t.text, history, clusters);
-      estimates.set(
-        t.id,
-        effectiveEstimate(t.estimate_mins, suggestion)
-      );
-    }
-
-    return estimates;
-  }, [tasks, history, clusters, subtasksByTask]);
-
-  function effectiveRemainingForTask(t: Task): number {
+     function effectiveRemainingForTask(t: Task): number {
     let logged = t.logged_mins;
-
     if (t.status === 'active' && t.started_at) {
       logged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
     }
-
-    const effEstimate =
-      learnedEffectiveEstimates.get(t.id) ?? t.estimate_mins;
-
-    return Math.max(
-      effEstimate - logged - completedSubtaskMins(t.id),
-      0
-    );
+    if (t.estimate_mins <= 0) {
+      return Math.max(t.estimate_mins - logged - completedSubtaskMins(t.id), 0);
+    }
+    const suggestion = suggestEstimate(t.text, history, clusters);
+    const effEstimate = effectiveEstimate(t.estimate_mins, suggestion);
+    return Math.max(effEstimate - logged - completedSubtaskMins(t.id), 0);
   }
 
   const todayStr = localDateStr(now);
