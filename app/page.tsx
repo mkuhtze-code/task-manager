@@ -274,7 +274,7 @@ export default function Home() {
 
   async function loadEverything() {
     const userId = session.user.id;
-    const initResponse = await fetch('/api/account/initialize', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } });
+    const initResponse = await fetch('/app/api/account/initialize', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } });
     if (!initResponse.ok) {
       const payload = await initResponse.json().catch(() => null);
       const accessError = payload?.error || 'Could not verify account access.';
