@@ -28,25 +28,31 @@ function localDateStr(d: Date): string {
 // Deliberately its own self-contained fetch, not wired into Today's
 // existing loadEverything() — keeps this addition isolated from the
 // production data-loading path rather than tangling a new query into
-// an already-working function.
-export default function TravelAwarenessBanner() {
+// an already-working function. userId: passed by Today so the banner can
+// skip its own getSession() round-trip; optional, so other callers (or
+// future ones) still resolve the session themselves.
+export default function TravelAwarenessBanner({ userId }: { userId?: string | null }) {
   const router = useRouter();
   const [trip, setTrip] = useState<ActiveTrip | null>(null);
 
   useEffect(() => {
-    load();
-  }, []);
+    if (userId) {
+      load(userId);
+      return;
+    }
+    supabase.auth.getSession().then(({ data }) => {
+      const session = data.session;
+      if (session) load(session.user.id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
-  async function load() {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const session = sessionData.session;
-    if (!session) return;
-
+  async function load(uid: string) {
     const todayStr = localDateStr(new Date());
     const { data } = await supabase
       .from('trips')
       .select('id, name, end_date')
-      .eq('user_id', session.user.id)
+      .eq('user_id', uid)
       .lte('start_date', todayStr)
       .gte('end_date', todayStr)
       .limit(1)

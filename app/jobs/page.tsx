@@ -118,7 +118,7 @@ export default function JobsHome() {
           <h1 className="app-title">Jobs</h1>
         </div>
         <div className="app-header-right">
-          <GearMenu context="jobs" />
+          <GearMenu context="jobs" userId={session?.user.id ?? null} />
         </div>
       </div>
 

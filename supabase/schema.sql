@@ -712,3 +712,27 @@ create table if not exists account_status (
 );
 
 alter table account_status enable row level security;
+
+-- ── Hot Today query indexes ──────────────────────────────────────
+-- Covers the queries Today runs on every load and the privileged API
+-- routes behind it. RLS injects a user_id equality into every client
+-- query, so each index leads with user_id; the trailing columns match
+-- the filter/order shape of the actual queries:
+--   * open tasks in manual order        → tasks(user_id, status, order_index)
+--     (app/page.tsx loadEverything)
+--   * completed history for learning    → tasks(user_id, status, completed_at DESC)
+--     (app/page.tsx historyPromise: status = done ORDER BY completed_at DESC LIMIT 500)
+--   * subtasks per task card            → subtasks(task_id)
+--     (app/page.tsx .in('task_id', ids))
+--   * today's meeting window            → meetings(user_id, start_time)
+--     (app/page.tsx meetingsPromise start_time range/IS NULL filter)
+--   * gravity's recent-events lookup    → surface_events(user_id, created_at DESC)
+--     (app/page.tsx surface_events effect: eq user_id + gte created_at
+--     ORDER BY created_at DESC LIMIT 50 — supersedes the practical use
+--     of the older single-column surface_events_created_at_idx, which is
+--     kept to avoid touching existing installs unnecessarily)
+create index if not exists tasks_user_id_status_order_idx on tasks (user_id, status, order_index);
+create index if not exists tasks_user_id_status_completed_idx on tasks (user_id, status, completed_at desc);
+create index if not exists subtasks_task_id_idx on subtasks (task_id);
+create index if not exists meetings_user_id_start_time_idx on meetings (user_id, start_time);
+create index if not exists surface_events_user_id_created_at_idx on surface_events (user_id, created_at desc);

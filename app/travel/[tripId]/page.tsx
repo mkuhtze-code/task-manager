@@ -807,7 +807,7 @@ export default function TripDayView() {
           </div>
         </div>
         <div className="app-header-right">
-          <GearMenu context="travel" />
+          <GearMenu context="travel" userId={session?.user.id ?? null} />
         </div>
       </div>
 

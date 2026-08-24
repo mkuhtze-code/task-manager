@@ -207,7 +207,7 @@ export default function TravelHome() {
           <h1 className="app-title">Trips</h1>
         </div>
         <div className="app-header-right">
-          <GearMenu context="travel" />
+          <GearMenu context="travel" userId={session?.user.id ?? null} />
         </div>
       </div>
 

@@ -253,7 +253,7 @@ export default function Analytics() {
           <h1 className="app-title">Patterns</h1>
         </div>
         <div className="app-header-right">
-          <GearMenu />
+          <GearMenu userId={session?.user.id ?? null} />
         </div>
       </div>
 
