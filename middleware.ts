@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Keep root-relative API requests compatible with the application's /app
- * basePath. Next.js route handlers are deployed at /api/*, so API requests
- * must pass through unchanged; basePath does not move route handlers.
+ * The app is deployed with basePath /app, but client code intentionally
+ * uses root-relative /api/* URLs. Rewrite those requests to the actual
+ * deployed route while preserving the HTTP method and request body.
  */
-export function middleware(_request: NextRequest) {
+export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  if (pathname.startsWith('/api/')) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/app${pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
   return NextResponse.next();
 }
 
