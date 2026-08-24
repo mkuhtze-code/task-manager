@@ -272,9 +272,16 @@ export default function Home() {
     if (session) loadEverything();
   }, [session]);
 
-  async function loadEverything() {
+   async function loadEverything() {
     const userId = session.user.id;
-    const initResponse = await fetch('/app/api/account/initialize', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } });
+
+    const initResponse = await fetch('/app/api/account/initialize', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
     if (!initResponse.ok) {
       const payload = await initResponse.json().catch(() => null);
       const accessError = payload?.error || 'Could not verify account access.';
@@ -284,77 +291,152 @@ export default function Home() {
       return;
     }
 
-    const { data: settings } = await supabase
+    /*
+     * Start all independent reads together.
+     *
+     * Previously these ran sequentially:
+     *
+     * settings → tasks → meetings → jobs → history
+     *
+     * That meant every network round-trip added to Today startup time.
+     * These requests do not depend on one another, so they can safely
+     * run concurrently.
+     */
+
+    const settingsPromise = supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days, timezone, sort_mode, onboarded, home_location_text, home_lat, home_lng, work_location_text, work_lat, work_lng')
+      .select(
+        'work_start, work_end, work_days, timezone, sort_mode, onboarded, home_location_text, home_lat, home_lng, work_location_text, work_lat, work_lng'
+      )
       .eq('user_id', userId)
       .maybeSingle();
 
-    const detectedTimezone =
-      typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : null;
-
-    if (settings) {
-      setWorkStart(settings.work_start || '08:00');
-      setWorkEnd(settings.work_end || '16:00');
-      setWorkDays(settings.work_days && settings.work_days.length > 0 ? settings.work_days : DEFAULT_WORK_DAYS);
-      setSortMode((settings.sort_mode as SortMode) || 'capacity_first');
-      setHomeLocation(settings.home_location_text || '');
-      if (settings.home_lat != null && settings.home_lng != null) {
-        setHomeCoords({ lat: settings.home_lat, lng: settings.home_lng });
-      }
-      setWorkLocation(settings.work_location_text || '');
-      if (settings.work_lat != null && settings.work_lng != null) {
-        setWorkCoords({ lat: settings.work_lat, lng: settings.work_lng });
-      }
-      if (!settings.timezone && detectedTimezone) {
-        supabase.from('user_settings').update({ timezone: detectedTimezone }).eq('user_id', userId);
-      }
-      // onboarded defaults false on the column; only explicit false shows
-      // the welcome screen — anything truthy (including rows from before
-      // this column existed, which were backfilled to true) skips it.
-      if (settings.onboarded === false) {
-        setShowOnboarding(true);
-      }
-    }
-
-    const { data: taskRows } = await supabase
+    const taskPromise = supabase
       .from('tasks')
       .select('*')
       .neq('status', 'done')
       .order('order_index', { ascending: true });
-    setTasks(taskRows || []);
 
-    const { data: meetingRows } = await supabase.from('meetings').select('*');
-    setMeetings(meetingRows || []);
+    const meetingsPromise = supabase
+      .from('meetings')
+      .select('*');
 
-    // Jobs for the capture sheet's "Add to a job" disclosure — name only,
-    // the detail pages load the rest.
-    const { data: jobRows } = await supabase
+    // Jobs for the capture sheet's "Add to a job" disclosure — name only.
+    const jobsPromise = supabase
       .from('jobs')
       .select('id, name')
       .order('created_at', { ascending: false });
-    setJobs((jobRows as Job[]) || []);
 
-    if (taskRows && taskRows.length > 0) {
-      const ids = taskRows.map((t: Task) => t.id);
-      const { data: subRows } = await supabase.from('subtasks').select('*').in('task_id', ids).order('order_index', { ascending: true });
-      const grouped: Record<string, Subtask[]> = {};
-      (subRows || []).forEach((s: Subtask) => {
-        if (!grouped[s.task_id]) grouped[s.task_id] = [];
-        grouped[s.task_id].push(s);
-      });
-      setSubtasksByTask(grouped);
-    }
-
-    // Completed-task history for the learning layer — capped at the most
-    // recent 500 so clustering stays cheap even after months of use.
-    const { data: historyRows } = await supabase
+    // Completed-task history for the learning layer.
+    // Start this at the same time as the other reads.
+    const historyPromise = supabase
       .from('tasks')
       .select('text, actual_mins, location_text, lat, lng, job_id, created_at')
       .eq('status', 'done')
       .not('actual_mins', 'is', null)
       .order('completed_at', { ascending: false })
       .limit(500);
+
+    /*
+     * Tasks are the critical data for Today.
+     *
+     * As soon as the task request resolves, put the tasks into state.
+     * The other requests have already been running in parallel.
+     */
+    const { data: taskRows } = await taskPromise;
+    setTasks(taskRows || []);
+
+    /*
+     * Resolve the other independent requests.
+     */
+    const [
+      { data: settings },
+      { data: meetingRows },
+      { data: jobRows },
+      { data: historyRows },
+    ] = await Promise.all([
+      settingsPromise,
+      meetingsPromise,
+      jobsPromise,
+      historyPromise,
+    ]);
+
+    const detectedTimezone =
+      typeof Intl !== 'undefined'
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : null;
+
+    if (settings) {
+      setWorkStart(settings.work_start || '08:00');
+      setWorkEnd(settings.work_end || '16:00');
+      setWorkDays(
+        settings.work_days && settings.work_days.length > 0
+          ? settings.work_days
+          : DEFAULT_WORK_DAYS
+      );
+      setSortMode((settings.sort_mode as SortMode) || 'capacity_first');
+      setHomeLocation(settings.home_location_text || '');
+
+      if (settings.home_lat != null && settings.home_lng != null) {
+        setHomeCoords({
+          lat: settings.home_lat,
+          lng: settings.home_lng,
+        });
+      }
+
+      setWorkLocation(settings.work_location_text || '');
+
+      if (settings.work_lat != null && settings.work_lng != null) {
+        setWorkCoords({
+          lat: settings.work_lat,
+          lng: settings.work_lng,
+        });
+      }
+
+      if (!settings.timezone && detectedTimezone) {
+        supabase
+          .from('user_settings')
+          .update({ timezone: detectedTimezone })
+          .eq('user_id', userId);
+      }
+
+      // onboarded defaults false on the column; only explicit false shows
+      // the welcome screen — anything truthy skips it.
+      if (settings.onboarded === false) {
+        setShowOnboarding(true);
+      }
+    }
+
+    setMeetings(meetingRows || []);
+    setJobs((jobRows as Job[]) || []);
+
+    /*
+     * Subtasks depend on the current task IDs, so this is the one
+     * additional request that must wait for the task list.
+     */
+    if (taskRows && taskRows.length > 0) {
+      const ids = taskRows.map((t: Task) => t.id);
+
+      const { data: subRows } = await supabase
+        .from('subtasks')
+        .select('*')
+        .in('task_id', ids)
+        .order('order_index', { ascending: true });
+
+      const grouped: Record<string, Subtask[]> = {};
+
+      (subRows || []).forEach((s: Subtask) => {
+        if (!grouped[s.task_id]) grouped[s.task_id] = [];
+        grouped[s.task_id].push(s);
+      });
+
+      setSubtasksByTask(grouped);
+    }
+
+    /*
+     * History was loaded concurrently with the rest of the initial data.
+     * Keep the existing 500-record cap and learning data structure intact.
+     */
     setHistory(
       (historyRows || []).map((r: any) => ({
         text: r.text,
