@@ -28,12 +28,12 @@ import {
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
 import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
-import { decidePersonalGravity } from '@/lib/thinking/decisions/personalGravity';
+import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
 import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
 import type { SurfaceEvent, Surface } from '@/lib/thinking/types';
 import { determineBase, nearestNeighborOrder, weaveGeoOrder, type Coords } from '@/lib/todayRoute';
 import { sortTasks } from '@/lib/taskSort';
-import { authedFetch } from '@/lib/authedFetch';
+import { authedFetch, apiUrl } from '@/lib/authedFetch';
 import {
   HAS_SIGNED_IN_KEY,
   INITIALIZED_FOR_KEY,
@@ -68,6 +68,18 @@ function getGpsPosition(timeoutMs = 4000): Promise<Coords | null> {
     );
   });
 }
+
+// Explicit column list for Today's task reads — everything the Task type
+// and its consumers (cards, detail sheet, drag reorder, sorting) actually
+// use. Keeps polylines and coordinates while skipping bookkeeping columns
+// (notification flags, timestamps) Today never reads.
+const TASK_COLUMNS =
+  'id, text, status, source, estimate_mins, logged_mins, started_at, due_today, order_index, created_at, surface_date, location_text, lat, lng, drive_mins_to_next, route_polyline, info, job_id';
+
+// sessionStorage flag: the passive "landed on Today" surface event is the
+// same exposure for every mount in one browser session, so it is recorded
+// at most once per session. Deliberate navigation always records.
+const PASSIVE_TODAY_KEY = 'dokkit-passive-today-recorded';
 
 export default function Home() {
   const router = useRouter();
@@ -264,18 +276,33 @@ export default function Home() {
     if (!session) return;
     const userId = session.user.id;
 
+    // Gravity's decision window is LOOKBACK_DAYS and its smallest
+    // threshold is 8 events across 3 distinct days — a bounded recent
+    // slice covers that without dragging the full event history down on
+    // every Today mount.
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - LOOKBACK_DAYS);
+
     supabase
       .from('surface_events')
       .select('id, user_id, surface, active, created_at')
       .eq('user_id', userId)
+      .gte('created_at', cutoff.toISOString())
       .order('created_at', { ascending: false })
-      .limit(200)
+      .limit(50)
       .then(({ data }) => {
         if (data) setSurfaceEvents(data as SurfaceEvent[]);
       });
 
-    // Record passive landing on Today (default surface)
-    recordEvent('today', false);
+    // Record passive landing on Today (default surface) once per browser
+    // session — flag is set synchronously so concurrent mounts can't
+    // double-write.
+    let shouldRecord = true;
+    try {
+      shouldRecord = sessionStorage.getItem(PASSIVE_TODAY_KEY) !== '1';
+      if (shouldRecord) sessionStorage.setItem(PASSIVE_TODAY_KEY, '1');
+    } catch {}
+    if (shouldRecord) recordEvent('today', false);
   }, [session]);
 
   // ── Personal Gravity redirect ───────────────────────────────────
@@ -321,7 +348,7 @@ export default function Home() {
     } catch {}
     if (needsInit) {
       try {
-        const initResponse = await fetch('/app/api/account/initialize', {
+        const initResponse = await fetch(apiUrl('/api/account/initialize'), {
           method: 'POST',
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
@@ -367,13 +394,21 @@ export default function Home() {
 
     const taskPromise = supabase
       .from('tasks')
-      .select('*')
+      .select(TASK_COLUMNS)
       .neq('status', 'done')
       .order('order_index', { ascending: true });
 
+    // Only today's meetings feed capacity math (plus untimed ones, which
+    // Today always counts) — no reason to pull the table's full history.
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const nextDay = new Date(dayStart);
+    nextDay.setDate(nextDay.getDate() + 1);
     const meetingsPromise = supabase
       .from('meetings')
-      .select('*');
+      .select('id, text, duration_mins, start_time')
+      .or(
+        `start_time.is.null,and(start_time.gte.${dayStart.toISOString()},start_time.lt.${nextDay.toISOString()})`
+      );
 
     // Jobs for the capture sheet's "Add to a job" disclosure — name only.
     const jobsPromise = supabase
@@ -696,7 +731,7 @@ export default function Home() {
         }
         const { data: taskRows } = await supabase
           .from('tasks')
-          .select('*')
+          .select(TASK_COLUMNS)
           .neq('status', 'done')
           .order('order_index', { ascending: true });
         setTasks(taskRows || []);

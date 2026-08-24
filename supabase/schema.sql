@@ -171,6 +171,25 @@ create table if not exists admins (
   created_at timestamptz not null default now()
 );
 
+-- ── Account status (signup gate + admin account controls) ───────
+-- One row per authenticated user. Created lazily by
+-- /api/account/initialize (open signup: every authenticated Supabase
+-- user becomes 'active' on first initialization). Admins flip status to
+-- 'terminated', which lib/verifyUser.ts enforces on every privileged
+-- service-role route. admin_notified_at is a one-shot claim marking that
+-- the "new user joined" admin push has been sent.
+--
+-- Accessed exclusively through the service-role client; no client-side
+-- reads or writes exist, so RLS is enabled with no policies — only the
+-- service role can touch this table.
+create table if not exists account_status (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  status text not null default 'active' check (status in ('active', 'terminated')),
+  admin_notified_at timestamptz,
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
 -- ── Trips ────────────────────────────────────────────────────────
 create table if not exists trips (
   id uuid primary key default gen_random_uuid(),
@@ -302,6 +321,7 @@ alter table trip_library_items enable row level security;
 alter table waitlist_signups enable row level security;
 alter table error_logs enable row level security;
 alter table allowed_signup_emails enable row level security;
+alter table account_status enable row level security;
 
 -- ── Policies: reset then recreate so this file can be rerun safely ─
 drop policy if exists "own settings" on user_settings;
@@ -642,8 +662,8 @@ begin
 end $$;
 
 -- Index for efficient lookup of predictions by task text (for the
-// evidence buffer's recordOutcome lookup) and by completion time
-// (for the Patterns surface's accuracy queries).
+-- evidence buffer's recordOutcome lookup) and by completion time
+-- (for the Patterns surface's accuracy queries).
 create index if not exists prediction_log_user_id_idx on prediction_log (user_id);
 create index if not exists prediction_log_task_text_idx on prediction_log (task_text);
 create index if not exists prediction_log_completed_at_idx on prediction_log (completed_at);
@@ -678,3 +698,17 @@ end $$;
 
 create index if not exists surface_events_user_id_idx on surface_events (user_id);
 create index if not exists surface_events_created_at_idx on surface_events (created_at);
+
+-- ── Account status (signup gate + admin account controls) ───────
+-- Same definition as the fresh-install section above. Accessed only via
+-- the service-role client (initialize gate, verifyUser enforcement,
+-- admin account controls), so RLS is enabled with no policies.
+create table if not exists account_status (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  status text not null default 'active' check (status in ('active', 'terminated')),
+  admin_notified_at timestamptz,
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+alter table account_status enable row level security;

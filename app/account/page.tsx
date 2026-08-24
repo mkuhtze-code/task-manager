@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import { apiUrl } from '@/lib/authedFetch';
 import AppHeader from '@/components/AppHeader';
 
 const inputStyle: React.CSSProperties = {
@@ -140,7 +141,7 @@ export default function Account() {
     setDeleting(true);
     setDeleteError('');
 
-    const res = await fetch('/api/account/delete-account', {
+    const res = await fetch(apiUrl('/api/account/delete-account'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

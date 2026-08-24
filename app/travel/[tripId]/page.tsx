@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { authedFetch } from '@/lib/authedFetch';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import LibrarySheet from '@/components/LibrarySheet';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
@@ -141,20 +142,6 @@ function parseMins(raw: string): number | null {
   const num = parseFloat(numStr);
   if (isNaN(num)) return null;
   return unit === 'h' ? Math.round(num * 60) : Math.round(num);
-}
-
-async function authedFetch(url: string, body: any) {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
-  return res.json();
 }
 
 function ActivityDetailSheet(props: {

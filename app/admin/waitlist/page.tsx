@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { apiUrl } from '@/lib/authedFetch';
 import { useAdminSession } from '../AdminContext';
 
 type WaitlistRow = {
@@ -36,7 +37,7 @@ export default function WaitlistInbox() {
     setApproving((prev) => ({ ...prev, [item.id]: true }));
     setApproveError((prev) => ({ ...prev, [item.id]: '' }));
 
-    const res = await fetch('/app/api/admin/approve-waitlist', {
+    const res = await fetch(apiUrl('/api/admin/approve-waitlist'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAdminSession } from '../AdminContext';
+import { apiUrl } from '@/lib/authedFetch';
 
 type User = { id: string; email: string | null; createdAt: string; status: 'active' | 'terminated' };
 
@@ -12,7 +13,7 @@ export default function AdminUsersPage() {
   const [updating, setUpdating] = useState<string | null>(null);
 
   async function load() {
-    const response = await fetch('/app/api/admin/account-status', { headers: { Authorization: `Bearer ${session.access_token}` } });
+    const response = await fetch(apiUrl('/api/admin/account-status'), { headers: { Authorization: `Bearer ${session.access_token}` } });
     const payload = await response.json();
     if (!response.ok) { setError(payload.error || 'Could not load users.'); return; }
     setUsers(payload.users || []);
@@ -24,7 +25,7 @@ export default function AdminUsersPage() {
     if (status === 'terminated' && !window.confirm(`Terminate ${user.email || 'this user'}? They will be signed out and denied protected data.`)) return;
     setUpdating(user.id);
     setError('');
-    const response = await fetch('/app/api/admin/account-status', {
+    const response = await fetch(apiUrl('/api/admin/account-status'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ userId: user.id, status }),

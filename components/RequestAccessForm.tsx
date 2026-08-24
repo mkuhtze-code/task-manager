@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { apiUrl } from '@/lib/authedFetch';
 
 export default function RequestAccessForm() {
   const [name, setName] = useState('');
@@ -14,7 +15,7 @@ export default function RequestAccessForm() {
     setStatus('sending');
     setError('');
     try {
-      const res = await fetch('/api/request-access', {
+      const res = await fetch(apiUrl('/api/request-access'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, marketingOptIn: optIn }),
