@@ -70,6 +70,9 @@ export type DragState = {
 };
 
 export const HAS_SIGNED_IN_KEY = 'dokkit-has-signed-in';
+// Records the id of the last user for whom /api/account/initialize
+// completed successfully on this browser, so returning users skip it.
+export const INITIALIZED_FOR_KEY = 'dokkit-initialized-for';
 export const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
 export const LONG_PRESS_MS = 500;
 export const ROW_GAP = 8;
