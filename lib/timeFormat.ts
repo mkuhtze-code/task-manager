@@ -65,5 +65,15 @@ export function fmtSurfaceDate(dateStr: string): string {
 }
 
 export function isScheduledForLater(t: Task, todayStr: string): boolean {
-  return !!t.surface_date && t.surface_date > todayStr;
+  if (!t.surface_date) return false;
+
+  // Supabase's canonical schema stores surface_date as a PostgreSQL `date`,
+  // but older/partially migrated data can arrive as a date-time string.
+  // Comparing a date-time directly with YYYY-MM-DD makes a task scheduled
+  // for today look "later" because `2026-08-24T... > 2026-08-24`.
+  // Normalize to the date portion before comparing so today's tasks remain
+  // visible regardless of the persisted representation.
+  const surfaceDate = String(t.surface_date).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(surfaceDate)) return false;
+  return surfaceDate > todayStr;
 }
