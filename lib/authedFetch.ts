@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabaseClient';
 export async function authedFetch(url: string, body: any) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  const res = await fetch(url, {
+  const requestUrl = url.startsWith('/api/') ? `/app${url}` : url;
+  const res = await fetch(requestUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
