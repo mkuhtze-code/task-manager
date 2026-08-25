@@ -3,6 +3,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
+import { isNative } from '@/lib/capacitor';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 import { TaskCard } from '@/components/TaskCard';
 import { TravelLeg } from '@/components/TravelLeg';
@@ -93,6 +96,7 @@ export default function Home() {
   const [isNewUser, setIsNewUser] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [signingInWithGoogle, setSigningInWithGoogle] = useState(false);
+  const [nativeCallbackReceived, setNativeCallbackReceived] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
@@ -264,6 +268,25 @@ export default function Home() {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
     return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!isNative) return;
+    const handler = App.addListener('appUrlOpen', ({ url }) => {
+      console.log('[Stage 1] appUrlOpen received');
+      if (url.startsWith('com.dokkit.app://auth/callback')) {
+        const hash = url.includes('#') ? url.split('#')[1] : '';
+        const params = new URLSearchParams(hash);
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        if (access_token && refresh_token) {
+          supabase.auth.setSession({ access_token, refresh_token });
+        }
+        setNativeCallbackReceived(true);
+        Browser.close();
+      }
+    });
+    return () => { handler.then(h => h.remove()); };
   }, []);
 
   useEffect(() => {
@@ -641,15 +664,31 @@ export default function Home() {
   async function signInWithGoogle() {
     setSigningInWithGoogle(true);
     setSignInError('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}`,
-      },
-    });
-    if (error) {
-      setSignInError('Failed to sign in with Google.');
-      setSigningInWithGoogle(false);
+    if (isNative) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'com.dokkit.app://auth/callback',
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error || !data?.url) {
+        setSignInError('Failed to sign in with Google.');
+        setSigningInWithGoogle(false);
+        return;
+      }
+      await Browser.open({ url: data.url });
+    } else {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}`,
+        },
+      });
+      if (error) {
+        setSignInError('Failed to sign in with Google.');
+        setSigningInWithGoogle(false);
+      }
     }
   }
 
@@ -1076,7 +1115,17 @@ export default function Home() {
 
   if (!session) {
     return (
-      <AuthScreen
+      <>
+        {nativeCallbackReceived && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+            background: '#22c55e', color: '#fff', padding: '12px 16px',
+            textAlign: 'center', fontFamily: 'monospace', fontSize: 14,
+          }}>
+            Stage 1: Native OAuth callback received successfully!
+          </div>
+        )}
+        <AuthScreen
         hasSignedInBefore={hasSignedInBefore}
         isNewUser={isNewUser}
         setIsNewUser={setIsNewUser}
@@ -1097,6 +1146,7 @@ export default function Home() {
         setMagicLinkSent={setMagicLinkSent}
         onMagicLink={handleMagicLink}
       />
+      </>
     );
   }
 
