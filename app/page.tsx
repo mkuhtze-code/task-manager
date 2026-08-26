@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
-import { isNative } from '@/lib/capacitor';
+import { isNative, setupPushNotifications, requestNotificationPermission, registerCurrentToken, unregisterFCMToken } from '@/lib/capacitor';
+import { showRunningTaskNotification, dismissRunningTaskNotification } from '@/lib/runningTaskNotification';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 import { TaskCard } from '@/components/TaskCard';
 import { TravelLeg } from '@/components/TravelLeg';
@@ -295,6 +296,40 @@ export default function Home() {
     }
   }, [session]);
 
+  // ── FCM push notification setup (native only) ─────────────────
+  // Registers for push notifications when the user is authenticated.
+  // The token is sent to the server and stored against the Supabase user.
+  // On sign-out the token is unregistered so it does not leak across accounts.
+  const prevSessionRef = useRef<typeof session>(null);
+  useEffect(() => {
+    console.log('[FCM] effect fired, isNative:', isNative, 'session:', session ? 'exists' : 'null');
+    if (!isNative) return;
+
+    const accessToken = session?.access_token ?? null;
+    const prevAccessToken = prevSessionRef.current?.access_token ?? null;
+    prevSessionRef.current = session;
+
+    if (accessToken && !prevAccessToken) {
+      console.log('[FCM] Fresh sign-in detected — setting up push notifications');
+      // Fresh sign-in: set up listeners and register
+      setupPushNotifications(() => session?.access_token ?? null);
+      requestNotificationPermission().then((granted) => {
+        console.log('[FCM] Permission granted:', granted);
+        if (granted) registerCurrentToken();
+      });
+    } else if (!accessToken && prevAccessToken) {
+      console.log('[FCM] Sign-out detected — unregistering token');
+      // Sign-out: unregister the token and dismiss running-task notification
+      const lastToken = (globalThis as any).__dokkitLastFCMToken?.();
+      if (lastToken) {
+        unregisterFCMToken(lastToken, prevAccessToken);
+      }
+      dismissRunningTaskNotification();
+    } else {
+      console.log('[FCM] Effect ran but no state change (accessToken:', !!accessToken, 'prevAccessToken:', !!prevAccessToken, ')');
+    }
+  }, [session]);
+
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
@@ -473,6 +508,9 @@ export default function Home() {
     } else {
       setTasks(taskRows || []);
       setTaskLoadError('');
+      // Restore running-task notification if an active task exists
+      const active = (taskRows || []).find((t: Task) => t.status === 'active' && t.started_at);
+      if (active) showRunningTaskNotification(active.text, active.started_at!);
     }
 
     /*
@@ -986,6 +1024,8 @@ export default function Home() {
       return;
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'active', started_at: startedAt } : t)));
+    const task = tasks.find((t) => t.id === id);
+    if (task) showRunningTaskNotification(task.text, startedAt);
   }
 
   async function stopTask(id: string) {
@@ -1000,6 +1040,7 @@ export default function Home() {
       return;
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'pending', started_at: null, logged_mins: newLogged } : t)));
+    dismissRunningTaskNotification();
   }
 
   async function completeTask(id: string) {
@@ -1018,6 +1059,7 @@ export default function Home() {
       return;
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    dismissRunningTaskNotification();
     // Keep the learning layer current without waiting for a full reload —
     // this task's outcome (duration and location alike) should be
     // eligible to inform the very next suggestion, not just after the
