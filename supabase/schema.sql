@@ -736,3 +736,36 @@ create index if not exists tasks_user_id_status_completed_idx on tasks (user_id,
 create index if not exists subtasks_task_id_idx on subtasks (task_id);
 create index if not exists meetings_user_id_start_time_idx on meetings (user_id, start_time);
 create index if not exists surface_events_user_id_created_at_idx on surface_events (user_id, created_at desc);
+
+-- ── FCM device tokens (mobile push registration) ─────────────────
+-- Stores the Firebase Cloud Messaging token for each user/device
+-- combination. A user may have multiple devices; each device registers
+-- its own FCM token. Tokens are upserted on registration and deleted
+-- on sign-out or token rotation.
+create table if not exists fcm_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  fcm_token text not null,
+  platform text not null default 'android' check (platform in ('android', 'ios', 'web')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(user_id, fcm_token)
+);
+
+alter table fcm_tokens enable row level security;
+
+do $$
+begin
+  begin
+    drop policy if exists "own fcm tokens" on fcm_tokens;
+  exception when undefined_object then
+    null;
+  end;
+
+  create policy "own fcm tokens" on fcm_tokens
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+create index if not exists fcm_tokens_user_id_idx on fcm_tokens (user_id);
+create index if not exists fcm_tokens_fcm_token_idx on fcm_tokens (fcm_token);
