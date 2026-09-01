@@ -268,11 +268,11 @@ export function suggestLocation(
 // clustering assignment logic. Needed because buildClusters() doesn't
 // store the task-to-cluster mapping.
 
-function groupTasksByCluster(
-  history: HistoricalTask[],
+export function groupTasksByCluster<T extends { text: string }>(
+  history: T[],
   clusters: TaskCluster[]
-): Map<string, HistoricalTask[]> {
-  const groups = new Map<string, HistoricalTask[]>();
+): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
 
   for (const task of history) {
     const taskTokens = tokenize(task.text);

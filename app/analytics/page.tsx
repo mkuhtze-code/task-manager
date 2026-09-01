@@ -6,11 +6,10 @@ import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
 import GearMenu from '@/components/GearMenu';
 import { BackIcon } from '@/components/icons';
-import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
+import { buildClusters, groupTasksByCluster, type HistoricalTask } from '@/lib/taskIntelligence';
 import {
   buildUserPatterns,
   buildAllActivityProfiles,
-  findClusterTimeAssociations,
   findClusterPlaceAssociations,
   findClusterJobAssociations,
   summarizeAccuracy,
@@ -58,7 +57,6 @@ type PatternInsight = {
   label: string;
   count: number;
   avgMins: number;
-  timeAssoc?: string;
   placeAssoc?: string;
   jobAssoc?: string;
   confidence: Confidence;
@@ -76,21 +74,6 @@ function fmtMins(mins: number): string {
 function fmtHours(mins: number): string {
   const hours = (mins / 60).toFixed(1);
   return `${hours}h`;
-}
-
-function periodToText(period: string): string {
-  switch (period) {
-    case 'morning':
-      return 'mornings';
-    case 'afternoon':
-      return 'afternoons';
-    case 'evening':
-      return 'evenings';
-    case 'night':
-      return 'nights';
-    default:
-      return period;
-  }
 }
 
 export default function Analytics() {
@@ -232,16 +215,21 @@ export default function Analytics() {
 
   const clusters = useMemo(() => buildClusters(historyForClustering), [historyForClustering]);
 
+  // Group facts by fuzzy cluster membership to preserve consistent cluster evidence everywhere
+  const groupedFacts = useMemo(() => {
+    return groupTasksByCluster(allFacts, clusters);
+  }, [allFacts, clusters]);
+
   const labelFn = (fact: CompletedTaskFacts) => {
-    for (const c of clusters) {
-      if (c.label.toLowerCase() === fact.text.trim().toLowerCase()) return c.label;
+    for (const [label, memberFacts] of groupedFacts) {
+      if (memberFacts.includes(fact)) return label;
     }
     return fact.text.trim();
   };
 
   const activityProfiles = useMemo(
     () => buildAllActivityProfiles(allFacts, labelFn, now),
-    [allFacts, clusters]
+    [allFacts, clusters, groupedFacts]
   );
 
   // Long-term recurring pattern insights derived directly from thinking modules
@@ -251,22 +239,10 @@ export default function Analytics() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 6)
       .map((c) => {
-        const clusterTasks = allFacts.filter(
-          (f) => labelFn(f).toLowerCase() === c.label.toLowerCase()
-        );
+        const clusterTasks = groupedFacts.get(c.label) || [];
 
-        const timeAssocs = findClusterTimeAssociations(c.label, clusterTasks);
         const placeAssocs = findClusterPlaceAssociations(c.label, clusterTasks);
         const jobAssocs = findClusterJobAssociations(c.label, clusterTasks);
-
-        let timeText: string | undefined;
-        if (timeAssocs.length > 0) {
-          const primary = timeAssocs[0];
-          timeText =
-            primary.dimension === 'period'
-              ? `Usually in the ${periodToText(primary.value)}`
-              : `Usually on ${primary.value}s`;
-        }
 
         let placeText: string | undefined;
         if (placeAssocs.length > 0) {
@@ -286,14 +262,13 @@ export default function Analytics() {
           label: c.label,
           count: c.count,
           avgMins: c.avgMins,
-          timeAssoc: timeText,
           placeAssoc: placeText,
           jobAssoc: jobText,
           confidence: profile?.confidence || 'low',
           trend: profile?.trend,
         };
       });
-  }, [clusters, allFacts, activityProfiles]);
+  }, [clusters, groupedFacts, activityProfiles]);
 
   // Overall estimation prediction calibration
   const completedPredictions = useMemo(
@@ -451,9 +426,9 @@ export default function Analytics() {
                     <div className="analytics-task-info">
                       <div className="analytics-task-name">{p.label}</div>
                       <div className="analytics-task-time mono">usually ~{fmtMins(p.avgMins)}</div>
-                      {(p.timeAssoc || p.placeAssoc || p.jobAssoc) && (
+                      {(p.placeAssoc || p.jobAssoc) && (
                         <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 2 }}>
-                          {[p.timeAssoc, p.placeAssoc, p.jobAssoc].filter(Boolean).join(' · ')}
+                          {[p.placeAssoc, p.jobAssoc].filter(Boolean).join(' · ')}
                         </div>
                       )}
                     </div>
@@ -472,13 +447,9 @@ export default function Analytics() {
                 Long-term history of how initial duration estimates match completed work.
               </p>
               <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>
-                {accuracySummary.averageRatio < 0.85 ? (
-                  <p>Tasks frequently take slightly less time than planned.</p>
-                ) : accuracySummary.averageRatio > 1.15 ? (
-                  <p>Tasks often require a bit more time than initial estimates.</p>
-                ) : (
-                  <p>Your duration estimates consistently reflect actual completion times.</p>
-                )}
+                <p>
+                  Across recorded tasks, overall average estimate accuracy is {accuracySummary.accuracyPercent}%.
+                </p>
                 <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>
                   Based on {completedPredictions.length} recorded prediction{completedPredictions.length === 1 ? '' : 's'}.
                 </div>
