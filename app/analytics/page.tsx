@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
@@ -17,11 +17,7 @@ import {
   type CompletedTaskFacts,
   type EstimateAccuracyObservation,
   type Confidence,
-  type ActivityProfile,
   type UserPatterns,
-  type ClusterTimeAssociation,
-  type ClusterPlaceAssociation,
-  type ClusterJobAssociation,
 } from '@/lib/thinking';
 
 type CompletedTask = {
@@ -43,6 +39,13 @@ type CompletedTask = {
   info: string | null;
 };
 
+type SubtaskItem = {
+  id: string;
+  task_id: string;
+  mins: number;
+  done: boolean;
+};
+
 type PredictionEntry = {
   task_text: string;
   estimated_mins: number;
@@ -58,6 +61,7 @@ type PatternInsight = {
   timeAssoc?: string;
   placeAssoc?: string;
   jobAssoc?: string;
+  confidence: Confidence;
   trend?: 'stable' | 'improving' | 'worsening';
 };
 
@@ -72,12 +76,6 @@ function fmtMins(mins: number): string {
 function fmtHours(mins: number): string {
   const hours = (mins / 60).toFixed(1);
   return `${hours}h`;
-}
-
-function confidenceLabel(count: number): string {
-  if (count >= 5) return 'Well known';
-  if (count >= 3) return 'Fairly confident';
-  return 'Just noticed';
 }
 
 function periodToText(period: string): string {
@@ -100,6 +98,7 @@ export default function Analytics() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [allTasks, setAllTasks] = useState<CompletedTask[]>([]);
+  const [allSubtasks, setAllSubtasks] = useState<SubtaskItem[]>([]);
   const [predictions, setPredictions] = useState<PredictionEntry[]>([]);
   const [timePeriod, setTimePeriod] = useState<'today' | 'week' | 'month'>('week');
 
@@ -124,6 +123,18 @@ export default function Analytics() {
       .eq('status', 'done')
       .order('completed_at', { ascending: false });
 
+    const loadedTasks: CompletedTask[] = taskData || [];
+    const taskIds = loadedTasks.map((t) => t.id);
+
+    let loadedSubtasks: SubtaskItem[] = [];
+    if (taskIds.length > 0) {
+      const { data: subtaskData } = await supabase
+        .from('subtasks')
+        .select('id, task_id, mins, done')
+        .in('task_id', taskIds);
+      loadedSubtasks = subtaskData || [];
+    }
+
     const { data: predictionData } = await supabase
       .from('prediction_log')
       .select('task_text, estimated_mins, actual_mins, confidence, completed_at')
@@ -131,93 +142,96 @@ export default function Analytics() {
       .order('logged_at', { ascending: false })
       .limit(200);
 
-    setAllTasks(taskData || []);
+    setAllTasks(loadedTasks);
+    setAllSubtasks(loadedSubtasks);
     setPredictions(predictionData || []);
     setLoading(false);
   }
 
-  if (!session) {
-    return (
-      <div className="app-shell">
-        <AppHeader title="Patterns" backHref="/" />
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>Sign in to see your patterns.</p>
-      </div>
-    );
-  }
+  // Pre-index subtasks by task_id
+  const subtasksByTaskId = useMemo(() => {
+    const map = new Map<string, SubtaskItem[]>();
+    for (const sub of allSubtasks) {
+      const existing = map.get(sub.task_id) || [];
+      existing.push(sub);
+      map.set(sub.task_id, existing);
+    }
+    return map;
+  }, [allSubtasks]);
+
+  // Convert DB tasks to CompletedTaskFacts with accurate subtask facts
+  const createFact = (t: CompletedTask): CompletedTaskFacts => {
+    const subs = subtasksByTaskId.get(t.id) || [];
+    const subtaskDone = subs.filter((s) => s.done);
+    const totalSubMins = subs.reduce((sum, s) => sum + (s.mins || 0), 0);
+
+    return {
+      text: t.text,
+      status: 'done',
+      source: t.source || 'planned',
+      estimate_mins: t.estimate_mins || 0,
+      actual_mins: t.actual_mins ?? null,
+      logged_mins: t.logged_mins || 0,
+      created_at: t.created_at || new Date().toISOString(),
+      completed_at: t.completed_at,
+      started_at: t.started_at,
+      surface_date: t.surface_date,
+      location_text: t.location_text,
+      lat: t.lat,
+      lng: t.lng,
+      job_id: t.job_id,
+      info: t.info,
+      subtaskCount: subs.length,
+      subtaskDoneCount: subtaskDone.length,
+      subtaskTotalMins: totalSubMins,
+    };
+  };
+
+  const allFacts = useMemo(() => allTasks.map(createFact), [allTasks, subtasksByTaskId]);
 
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const filteredTasks = allTasks.filter((t) => {
-    if (!t.completed_at) return false;
-    const compDate = new Date(t.completed_at);
-    if (timePeriod === 'today') return compDate >= todayStart;
-    if (timePeriod === 'week') return compDate >= weekStart;
-    return compDate >= monthStart;
-  });
+  const filteredTasks = useMemo(() => {
+    return allTasks.filter((t) => {
+      if (!t.completed_at) return false;
+      const compDate = new Date(t.completed_at);
+      if (timePeriod === 'today') return compDate >= todayStart;
+      if (timePeriod === 'week') return compDate >= weekStart;
+      return compDate >= monthStart;
+    });
+  }, [allTasks, timePeriod]);
 
-  // Convert to CompletedTaskFacts for thinking engine modules
-  const facts: CompletedTaskFacts[] = filteredTasks.map((t) => ({
-    text: t.text,
-    status: 'done',
-    source: t.source || 'planned',
-    estimate_mins: t.estimate_mins || 0,
-    actual_mins: t.actual_mins ?? null,
-    logged_mins: t.logged_mins || 0,
-    created_at: t.created_at || new Date().toISOString(),
-    completed_at: t.completed_at,
-    started_at: t.started_at,
-    surface_date: t.surface_date,
-    location_text: t.location_text,
-    lat: t.lat,
-    lng: t.lng,
-    job_id: t.job_id,
-    info: t.info,
-    subtaskCount: 0,
-    subtaskDoneCount: 0,
-    subtaskTotalMins: 0,
-  }));
+  const filteredFacts = useMemo(
+    () => filteredTasks.map(createFact),
+    [filteredTasks, subtasksByTaskId]
+  );
 
-  const allFacts: CompletedTaskFacts[] = allTasks.map((t) => ({
-    text: t.text,
-    status: 'done',
-    source: t.source || 'planned',
-    estimate_mins: t.estimate_mins || 0,
-    actual_mins: t.actual_mins ?? null,
-    logged_mins: t.logged_mins || 0,
-    created_at: t.created_at || new Date().toISOString(),
-    completed_at: t.completed_at,
-    started_at: t.started_at,
-    surface_date: t.surface_date,
-    location_text: t.location_text,
-    lat: t.lat,
-    lng: t.lng,
-    job_id: t.job_id,
-    info: t.info,
-    subtaskCount: 0,
-    subtaskDoneCount: 0,
-    subtaskTotalMins: 0,
-  }));
+  // Period-specific user interaction habits
+  const periodUserPatterns: UserPatterns | null = useMemo(
+    () => buildUserPatterns(filteredFacts),
+    [filteredFacts]
+  );
 
-  // User patterns across filtered period
-  const userPatterns: UserPatterns | null = buildUserPatterns(facts);
+  // Historical task clustering (uses actual_mins || 0 without substituting estimates)
+  const historyForClustering: HistoricalTask[] = useMemo(
+    () =>
+      allTasks.map((t) => ({
+        text: t.text,
+        actual_mins: t.actual_mins || 0,
+        location_text: t.location_text,
+        lat: t.lat,
+        lng: t.lng,
+        job_id: t.job_id,
+        created_at: t.created_at,
+      })),
+    [allTasks]
+  );
 
-  // Clusters and Activity Profiles
-  const historyForClustering: HistoricalTask[] = allTasks.map((t) => ({
-    text: t.text,
-    actual_mins: t.actual_mins || t.estimate_mins || 0,
-    location_text: t.location_text,
-    lat: t.lat,
-    lng: t.lng,
-    job_id: t.job_id,
-    created_at: t.created_at,
-  }));
+  const clusters = useMemo(() => buildClusters(historyForClustering), [historyForClustering]);
 
-  const clusters = buildClusters(historyForClustering);
-
-  // Map each task to cluster label
   const labelFn = (fact: CompletedTaskFacts) => {
     for (const c of clusters) {
       if (c.label.toLowerCase() === fact.text.trim().toLowerCase()) return c.label;
@@ -225,73 +239,130 @@ export default function Analytics() {
     return fact.text.trim();
   };
 
-  const activityProfiles = buildAllActivityProfiles(allFacts, labelFn, now);
+  const activityProfiles = useMemo(
+    () => buildAllActivityProfiles(allFacts, labelFn, now),
+    [allFacts, clusters]
+  );
 
-  // Derive recurring pattern insights
-  const clusterInsights: PatternInsight[] = clusters
-    .filter((c) => c.count >= 2)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 6)
-    .map((c) => {
-      const clusterTasks = allFacts.filter(
-        (f) => labelFn(f).toLowerCase() === c.label.toLowerCase()
-      );
+  // Long-term recurring pattern insights derived directly from thinking modules
+  const clusterInsights: PatternInsight[] = useMemo(() => {
+    return clusters
+      .filter((c) => c.count >= 2)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6)
+      .map((c) => {
+        const clusterTasks = allFacts.filter(
+          (f) => labelFn(f).toLowerCase() === c.label.toLowerCase()
+        );
 
-      const timeAssocs = findClusterTimeAssociations(c.label, clusterTasks);
-      const placeAssocs = findClusterPlaceAssociations(c.label, clusterTasks);
-      const jobAssocs = findClusterJobAssociations(c.label, clusterTasks);
+        const timeAssocs = findClusterTimeAssociations(c.label, clusterTasks);
+        const placeAssocs = findClusterPlaceAssociations(c.label, clusterTasks);
+        const jobAssocs = findClusterJobAssociations(c.label, clusterTasks);
 
-      let timeText: string | undefined;
-      if (timeAssocs.length > 0) {
-        const primary = timeAssocs[0];
-        timeText =
-          primary.dimension === 'period'
-            ? `Usually in the ${periodToText(primary.value)}`
-            : `Usually on ${primary.value}s`;
-      }
+        let timeText: string | undefined;
+        if (timeAssocs.length > 0) {
+          const primary = timeAssocs[0];
+          timeText =
+            primary.dimension === 'period'
+              ? `Usually in the ${periodToText(primary.value)}`
+              : `Usually on ${primary.value}s`;
+        }
 
-      let placeText: string | undefined;
-      if (placeAssocs.length > 0) {
-        placeText = `Often at ${placeAssocs[0].locationText}`;
-      }
+        let placeText: string | undefined;
+        if (placeAssocs.length > 0) {
+          placeText = `Usually at ${placeAssocs[0].locationText}`;
+        }
 
-      let jobText: string | undefined;
-      if (jobAssocs.length > 0) {
-        jobText = `Connected to recurring job context`;
-      }
+        let jobText: string | undefined;
+        if (jobAssocs.length > 0) {
+          jobText = `Linked to recurring job context`;
+        }
 
-      const profile = activityProfiles.find(
-        (p) => p.clusterLabel.toLowerCase() === c.label.toLowerCase()
-      );
+        const profile = activityProfiles.find(
+          (p) => p.clusterLabel.toLowerCase() === c.label.toLowerCase()
+        );
 
-      return {
-        label: c.label,
-        count: c.count,
-        avgMins: c.avgMins,
-        timeAssoc: timeText,
-        placeAssoc: placeText,
-        jobAssoc: jobText,
-        trend: profile?.trend,
-      };
-    });
+        return {
+          label: c.label,
+          count: c.count,
+          avgMins: c.avgMins,
+          timeAssoc: timeText,
+          placeAssoc: placeText,
+          jobAssoc: jobText,
+          confidence: profile?.confidence || 'low',
+          trend: profile?.trend,
+        };
+      });
+  }, [clusters, allFacts, activityProfiles]);
 
-  // Prediction accuracy observations
-  const completedPredictions = predictions.filter((p) => p.actual_mins !== null);
-  const accuracyObs: EstimateAccuracyObservation[] = completedPredictions.map((p) => ({
-    kind: 'estimate_accuracy' as const,
-    taskText: p.task_text,
-    clusterLabel: null,
-    clusterCount: 0,
-    estimatedMins: p.estimated_mins,
-    actualMins: p.actual_mins!,
-    ratio: p.actual_mins! / Math.max(p.estimated_mins, 1),
-    confidence: (p.confidence as Confidence) || 'low',
-    observedAt: p.completed_at || new Date().toISOString(),
-  }));
-  const accuracySummary = summarizeAccuracy(accuracyObs);
+  // Overall estimation prediction calibration
+  const completedPredictions = useMemo(
+    () => predictions.filter((p) => p.actual_mins !== null),
+    [predictions]
+  );
+
+  const accuracySummary = useMemo(() => {
+    const accuracyObs: EstimateAccuracyObservation[] = completedPredictions.map((p) => ({
+      kind: 'estimate_accuracy' as const,
+      taskText: p.task_text,
+      clusterLabel: null,
+      clusterCount: 0,
+      estimatedMins: p.estimated_mins,
+      actualMins: p.actual_mins!,
+      ratio: p.actual_mins! / Math.max(p.estimated_mins, 1),
+      confidence: (p.confidence as Confidence) || 'low',
+      observedAt: p.completed_at || new Date().toISOString(),
+    }));
+    return summarizeAccuracy(accuracyObs);
+  }, [completedPredictions]);
+
+  if (!session) {
+    return (
+      <div className="app-shell">
+        <AppHeader title="Patterns" backHref="/" />
+        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>
+          Sign in to see your patterns.
+        </p>
+      </div>
+    );
+  }
 
   const totalCompleted = filteredTasks.length;
   const totalActualMins = filteredTasks.reduce((sum, t) => sum + (t.actual_mins || 0), 0);
+
+  // Generate quiet, non-percentage observations based on UserPatterns
+  const habitObservations: string[] = [];
+  if (periodUserPatterns) {
+    if (periodUserPatterns.cameUpRate > 0.5) {
+      habitObservations.push('You often capture tasks dynamically as they arise during the day.');
+    } else if (periodUserPatterns.cameUpRate < 0.2 && periodUserPatterns.totalCompleted >= 3) {
+      habitObservations.push('Most tasks were planned in advance rather than added dynamically.');
+    }
+
+    if (periodUserPatterns.estimatedRate > 0.5) {
+      habitObservations.push('You consistently add duration estimates when capturing tasks.');
+    }
+
+    if (periodUserPatterns.locatedRate > 0.3) {
+      habitObservations.push('Many of your tasks include specific locations for travel awareness.');
+    }
+
+    if (periodUserPatterns.jobAttachedRate > 0.3) {
+      habitObservations.push('You frequently attach tasks to ongoing jobs.');
+    }
+
+    if (periodUserPatterns.subtaskUsageRate > 0.2) {
+      habitObservations.push('You tend to break complex tasks down into subtasks.');
+    }
+
+    if (periodUserPatterns.infoUsageRate > 0.2) {
+      habitObservations.push('You regularly record notes and details on your tasks.');
+    }
+
+    if (periodUserPatterns.timerUsageRate > 0.3) {
+      habitObservations.push('You frequently use active timers to track focus time.');
+    }
+  }
 
   return (
     <div className="app-shell">
@@ -334,61 +405,45 @@ export default function Analytics() {
 
       {loading ? (
         <div className="empty-state">Loading patterns...</div>
-      ) : totalCompleted === 0 ? (
-        <div className="empty-state">Nothing wrapped up in this window yet.</div>
       ) : (
         <>
-          {/* Section 1: Overview & Interaction Habits */}
+          {/* Section 1: Period-Scoped Summary & Habits */}
           <div className="settings-panel">
-            <div className="settings-panel-title">Time & interaction style</div>
-            <div className="hero-stat-row">
-              <div className="hero-stat-number mono">{fmtHours(totalActualMins)}</div>
-              <div className="hero-stat-sub">
-                spent across {totalCompleted} task{totalCompleted === 1 ? '' : 's'}
-              </div>
+            <div className="settings-panel-title">
+              {timePeriod === 'today' ? 'Today' : timePeriod === 'week' ? 'This week' : 'This month'}
             </div>
-
-            {userPatterns && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
-                {userPatterns.cameUpRate > 0.4 ? (
-                  <div className="analytics-task-item">
-                    <span className="analytics-task-text">
-                      {Math.round(userPatterns.cameUpRate * 100)}% of tasks came up dynamically during the day.
-                    </span>
+            {totalCompleted === 0 ? (
+              <p style={{ color: 'var(--ink-soft)', fontSize: 13, margin: 0 }}>
+                No completed work recorded in this window yet.
+              </p>
+            ) : (
+              <>
+                <div className="hero-stat-row">
+                  <div className="hero-stat-number mono">{fmtHours(totalActualMins)}</div>
+                  <div className="hero-stat-sub">
+                    across {totalCompleted} completed task{totalCompleted === 1 ? '' : 's'}
                   </div>
-                ) : (
-                  <div className="analytics-task-item">
-                    <span className="analytics-task-text">
-                      Most tasks were captured in advance rather than as reactive carryover.
-                    </span>
+                </div>
+
+                {habitObservations.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+                    {habitObservations.map((obs, i) => (
+                      <div key={i} className="analytics-task-item">
+                        <span className="analytics-task-text">{obs}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
-
-                {userPatterns.estimatedRate > 0 ? (
-                  <div className="analytics-task-item">
-                    <span className="analytics-task-text">
-                      {Math.round(userPatterns.estimatedRate * 100)}% of tasks had an estimated duration attached.
-                    </span>
-                  </div>
-                ) : null}
-
-                {userPatterns.locatedRate > 0 ? (
-                  <div className="analytics-task-item">
-                    <span className="analytics-task-text">
-                      {Math.round(userPatterns.locatedRate * 100)}% of tasks were location-based.
-                    </span>
-                  </div>
-                ) : null}
-              </div>
+              </>
             )}
           </div>
 
-          {/* Section 2: Observed Task Patterns */}
+          {/* Section 2: Long-Term Historical Task Patterns */}
           {clusterInsights.length > 0 && (
             <div className="settings-panel">
-              <div className="settings-panel-title">What Dokkit has noticed</div>
+              <div className="settings-panel-title">Learned task patterns</div>
               <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.5, margin: '-4px 0 var(--space-3)' }}>
-                Quiet patterns learned from tasks you repeat.
+                Long-term observations from tasks you repeat across all work history.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                 {clusterInsights.map((p) => (
@@ -402,19 +457,19 @@ export default function Analytics() {
                         </div>
                       )}
                     </div>
-                    <div className="confidence-tag">{confidenceLabel(p.count)}</div>
+                    <div className="confidence-tag">{p.count} completions</div>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Section 3: Estimation Guidance */}
+          {/* Section 3: Overall Estimate Calibration */}
           {completedPredictions.length > 0 && (
             <div className="settings-panel">
               <div className="settings-panel-title">Estimate calibration</div>
               <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.5, margin: '-4px 0 var(--space-3)' }}>
-                Observations on how planned estimates align with actual time spent.
+                Long-term history of how initial duration estimates match completed work.
               </p>
               <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>
                 {accuracySummary.averageRatio < 0.85 ? (
@@ -425,7 +480,7 @@ export default function Analytics() {
                   <p>Your duration estimates consistently reflect actual completion times.</p>
                 )}
                 <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>
-                  Based on {completedPredictions.length} completed prediction{completedPredictions.length === 1 ? '' : 's'}.
+                  Based on {completedPredictions.length} recorded prediction{completedPredictions.length === 1 ? '' : 's'}.
                 </div>
               </div>
             </div>
