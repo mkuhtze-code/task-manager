@@ -38,7 +38,7 @@ describe('observeStaleness', () => {
     const tasks = [
       // Created 10 days ago, still pending → stale
       makeTask({
-        status: 'pending',
+        status: 'pending' as any,
         completed_at: null,
         actual_mins: null,
         created_at: '2026-01-05T08:00:00Z',
@@ -51,7 +51,7 @@ describe('observeStaleness', () => {
   it('does not consider recent pending tasks stale', () => {
     const tasks = [
       makeTask({
-        status: 'pending',
+        status: 'pending' as any,
         completed_at: null,
         actual_mins: null,
         created_at: '2026-01-14T08:00:00Z', // 1 day ago
