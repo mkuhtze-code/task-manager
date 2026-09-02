@@ -34,11 +34,10 @@ describe('observeStaleness', () => {
     expect(observeStaleness([], NOW)).toBeNull();
   });
 
-  it('detects stale pending tasks', () => {
+  it('detects stale uncompleted tasks', () => {
     const tasks = [
-      // Created 10 days ago, still pending → stale
+      // Created 10 days ago, not completed yet (completed_at: null) → stale
       makeTask({
-        status: 'pending',
         completed_at: null,
         actual_mins: null,
         created_at: '2026-01-05T08:00:00Z',
@@ -48,10 +47,9 @@ describe('observeStaleness', () => {
     expect(obs.staleRate).toBe(1);
   });
 
-  it('does not consider recent pending tasks stale', () => {
+  it('does not consider recent uncompleted tasks stale', () => {
     const tasks = [
       makeTask({
-        status: 'pending',
         completed_at: null,
         actual_mins: null,
         created_at: '2026-01-14T08:00:00Z', // 1 day ago
