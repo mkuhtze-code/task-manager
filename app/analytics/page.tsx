@@ -448,7 +448,7 @@ export default function Analytics() {
               </p>
               <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>
                 <p>
-                  Across recorded tasks, overall average estimate accuracy is {accuracySummary.accuracyPercent}%.
+                  Your duration estimates are being compared with completed work over time to help guide future planning.
                 </p>
                 <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>
                   Based on {completedPredictions.length} recorded prediction{completedPredictions.length === 1 ? '' : 's'}.
