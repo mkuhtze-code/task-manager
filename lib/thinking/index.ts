@@ -199,3 +199,23 @@ export {
   logCapturePrediction,
   logCompletionOutcome,
 } from './evidence/predictionLog';
+
+// Observation Pipeline V2
+export type {
+  ObservationType,
+  EvidenceItem,
+  EngineObservation,
+  DetectorContext,
+} from './pipeline/types';
+
+export {
+  evaluateEvidenceConfidence,
+  MIN_PIPELINE_SAMPLE_SIZE,
+  MIN_PIPELINE_CONSISTENCY,
+  STALE_DAYS_THRESHOLD,
+} from './pipeline/confidence';
+
+export {
+  generateObservations,
+} from './pipeline/observationPipeline';
+export type { GenerateObservationsOptions } from './pipeline/observationPipeline';

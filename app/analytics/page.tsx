@@ -13,6 +13,8 @@ import {
   findClusterPlaceAssociations,
   findClusterJobAssociations,
   summarizeAccuracy,
+  generateObservations,
+  type EngineObservation,
   type CompletedTaskFacts,
   type EstimateAccuracyObservation,
   type Confidence,
@@ -232,6 +234,15 @@ export default function Analytics() {
     [allFacts, clusters, groupedFacts]
   );
 
+  // Thinking Engine V2 evidence-based observations pipeline
+  const engineObservations: EngineObservation[] = useMemo(() => {
+    return generateObservations({
+      facts: allFacts,
+      precomputedClusters: clusters,
+      now,
+    });
+  }, [allFacts, clusters]);
+
   // Long-term recurring pattern insights derived directly from thinking modules
   const clusterInsights: PatternInsight[] = useMemo(() => {
     return clusters
@@ -413,7 +424,35 @@ export default function Analytics() {
             )}
           </div>
 
-          {/* Section 2: Long-Term Historical Task Patterns */}
+          {/* Section 2: Thinking Engine V2 Evidence-Based Observations */}
+          {engineObservations.length > 0 && (
+            <div className="settings-panel">
+              <div className="settings-panel-title">What I've noticed</div>
+              <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.5, margin: '-4px 0 var(--space-3)' }}>
+                Evidence-backed observations derived from your completed work history.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                {engineObservations.map((obs) => (
+                  <div key={obs.id} className="analytics-task-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                      <div className="analytics-task-name" style={{ fontWeight: 600 }}>
+                        {obs.title}
+                      </div>
+                      <div className="confidence-tag">{obs.confidence} confidence</div>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.4 }}>
+                      {obs.statement}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.4, backgroundColor: 'var(--surface-sunken)', padding: '6px 10px', borderRadius: 6, width: '100%' }}>
+                      <strong>Why Dokkit thinks this:</strong> {obs.explanation}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Section 3: Long-Term Historical Task Patterns */}
           {clusterInsights.length > 0 && (
             <div className="settings-panel">
               <div className="settings-panel-title">Learned task patterns</div>
@@ -439,7 +478,7 @@ export default function Analytics() {
             </div>
           )}
 
-          {/* Section 3: Overall Estimate Calibration */}
+          {/* Section 4: Overall Estimate Calibration */}
           {completedPredictions.length > 0 && (
             <div className="settings-panel">
               <div className="settings-panel-title">Estimate calibration</div>
