@@ -13,10 +13,12 @@ import {
   findClusterPlaceAssociations,
   findClusterJobAssociations,
   summarizeAccuracy,
+  runObservationPipeline,
   type CompletedTaskFacts,
   type EstimateAccuracyObservation,
   type Confidence,
   type UserPatterns,
+  type StructuredObservation,
 } from '@/lib/thinking';
 
 type CompletedTask = {
@@ -291,6 +293,12 @@ export default function Analytics() {
     return summarizeAccuracy(accuracyObs);
   }, [completedPredictions]);
 
+  // Thinking Engine V2: evidence-based structured observations
+  const v2Observations: StructuredObservation[] = useMemo(
+    () => runObservationPipeline(allFacts),
+    [allFacts]
+  );
+
   if (!session) {
     return (
       <div className="app-shell">
@@ -438,6 +446,35 @@ export default function Analytics() {
               </div>
             </div>
           )}
+
+          {/* Section 2b: Evidence-Based Observations (Thinking Engine V2) */}
+          <div className="settings-panel">
+            <div className="settings-panel-title">Things I&apos;ve noticed</div>
+            <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.5, margin: '-4px 0 var(--space-3)' }}>
+              Quiet observations grounded in your task history. Not a scoreboard — just patterns worth knowing.
+            </p>
+            {v2Observations.length === 0 ? (
+              <p style={{ color: 'var(--ink-soft)', fontSize: 13, margin: 0 }}>
+                Not enough history to form confident observations yet.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                {v2Observations.map((obs) => (
+                  <div key={obs.id} className="analytics-task-row">
+                    <div className="analytics-task-info">
+                      <div className="analytics-task-name">{obs.title}</div>
+                      <div className="analytics-task-time">{obs.description}</div>
+                      {obs.confidence === 'high' && (
+                        <div className="confidence-tag" style={{ marginTop: 6 }}>
+                          {obs.evidence.sampleSize} samples
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Section 3: Overall Estimate Calibration */}
           {completedPredictions.length > 0 && (
