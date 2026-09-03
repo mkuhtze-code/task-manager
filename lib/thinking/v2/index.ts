@@ -18,6 +18,7 @@ export type {
   ConfidenceDimensions,
   StalenessStatus,
   ContradictionStatus,
+  EvidenceKind,
 } from './evidence';
 
 export {
@@ -75,6 +76,34 @@ export type {
 export {
   observeTimeOfDay,
 } from './timeOfDay';
+
+export {
+  observeV2TaskContext,
+  buildProportionEvidence,
+} from './taskContext';
+
+export {
+  observeV2Lifecycle,
+} from './lifecycle';
+
+export {
+  observeV2Decomposition,
+} from './decomposition';
+
+export {
+  observeV2Staleness,
+} from './staleness';
+
+export {
+  observeV2Clusters,
+} from './cluster';
+
+export {
+  buildClusterGroups,
+} from './clusterGroups';
+export type {
+  ClusterGroup,
+} from './clusterGroups';
 
 export {
   runObservationPipeline,

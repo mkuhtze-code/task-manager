@@ -6,12 +6,8 @@ import { supabase } from '@/lib/supabaseClient';
 import AppHeader from '@/components/AppHeader';
 import GearMenu from '@/components/GearMenu';
 import { BackIcon } from '@/components/icons';
-import { buildClusters, groupTasksByCluster, type HistoricalTask } from '@/lib/taskIntelligence';
 import {
   buildUserPatterns,
-  buildAllActivityProfiles,
-  findClusterPlaceAssociations,
-  findClusterJobAssociations,
   summarizeAccuracy,
   runObservationPipeline,
   type CompletedTaskFacts,
@@ -86,6 +82,7 @@ export default function Analytics() {
   const [allSubtasks, setAllSubtasks] = useState<SubtaskItem[]>([]);
   const [predictions, setPredictions] = useState<PredictionEntry[]>([]);
   const [timePeriod, setTimePeriod] = useState<'today' | 'week' | 'month'>('week');
+  const [userTimezone, setUserTimezone] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -126,6 +123,22 @@ export default function Analytics() {
       .eq('user_id', userId)
       .order('logged_at', { ascending: false })
       .limit(200);
+
+    // Load the user's IANA timezone so the V2 pipeline reasons in local
+    // calendar time (carryover, lifecycle, staleness, time-of-day) rather
+    // than silently defaulting to UTC.
+    let timezone: string | null = null;
+    try {
+      const { data: settings } = await supabase
+        .from('user_settings')
+        .select('timezone')
+        .eq('user_id', userId)
+        .maybeSingle();
+      timezone = settings?.timezone || null;
+    } catch {
+      timezone = null;
+    }
+    setUserTimezone(timezone);
 
     setAllTasks(loadedTasks);
     setAllSubtasks(loadedSubtasks);
@@ -200,78 +213,6 @@ export default function Analytics() {
     [filteredFacts]
   );
 
-  // Historical task clustering (uses actual_mins || 0 without substituting estimates)
-  const historyForClustering: HistoricalTask[] = useMemo(
-    () =>
-      allTasks.map((t) => ({
-        text: t.text,
-        actual_mins: t.actual_mins || 0,
-        location_text: t.location_text,
-        lat: t.lat,
-        lng: t.lng,
-        job_id: t.job_id,
-        created_at: t.created_at,
-      })),
-    [allTasks]
-  );
-
-  const clusters = useMemo(() => buildClusters(historyForClustering), [historyForClustering]);
-
-  // Group facts by fuzzy cluster membership to preserve consistent cluster evidence everywhere
-  const groupedFacts = useMemo(() => {
-    return groupTasksByCluster(allFacts, clusters);
-  }, [allFacts, clusters]);
-
-  const labelFn = (fact: CompletedTaskFacts) => {
-    for (const [label, memberFacts] of groupedFacts) {
-      if (memberFacts.includes(fact)) return label;
-    }
-    return fact.text.trim();
-  };
-
-  const activityProfiles = useMemo(
-    () => buildAllActivityProfiles(allFacts, labelFn, now),
-    [allFacts, clusters, groupedFacts]
-  );
-
-  // Long-term recurring pattern insights derived directly from thinking modules
-  const clusterInsights: PatternInsight[] = useMemo(() => {
-    return clusters
-      .filter((c) => c.count >= 2)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6)
-      .map((c) => {
-        const clusterTasks = groupedFacts.get(c.label) || [];
-
-        const placeAssocs = findClusterPlaceAssociations(c.label, clusterTasks);
-        const jobAssocs = findClusterJobAssociations(c.label, clusterTasks);
-
-        let placeText: string | undefined;
-        if (placeAssocs.length > 0) {
-          placeText = `Usually at ${placeAssocs[0].locationText}`;
-        }
-
-        let jobText: string | undefined;
-        if (jobAssocs.length > 0) {
-          jobText = `Linked to recurring job context`;
-        }
-
-        const profile = activityProfiles.find(
-          (p) => p.clusterLabel.toLowerCase() === c.label.toLowerCase()
-        );
-
-        return {
-          label: c.label,
-          count: c.count,
-          avgMins: c.avgMins,
-          placeAssoc: placeText,
-          jobAssoc: jobText,
-          confidence: profile?.confidence || 'low',
-          trend: profile?.trend,
-        };
-      });
-  }, [clusters, groupedFacts, activityProfiles]);
-
   // Overall estimation prediction calibration
   const completedPredictions = useMemo(
     () => predictions.filter((p) => p.actual_mins !== null),
@@ -295,9 +236,44 @@ export default function Analytics() {
 
   // Thinking Engine V2: evidence-based structured observations
   const v2Observations: StructuredObservation[] = useMemo(
-    () => runObservationPipeline(allFacts),
-    [allFacts]
+    () => runObservationPipeline(allFacts, { timezone: userTimezone || 'UTC' }),
+    [allFacts, userTimezone]
   );
+
+  // Long-term recurring pattern insights. The evidence and confidence here
+  // come directly from the structured V2 cluster observations — the page does
+  // NOT independently recalculate evidence/confidence.
+  const clusterInsights: PatternInsight[] = useMemo(() => {
+    const byCluster = new Map<string, PatternInsight>();
+    for (const obs of v2Observations) {
+      if (obs.type !== 'cluster') continue;
+      const label = obs.affectedContext.clusterLabel ?? 'Pattern';
+      const current = byCluster.get(label) ?? {
+        label,
+        count: 0,
+        avgMins: 0,
+        placeAssoc: undefined,
+        jobAssoc: undefined,
+        confidence: obs.confidence,
+      };
+      current.count = Math.max(current.count, obs.evidence.sampleSize);
+      current.confidence = obs.confidence;
+      if (obs.affectedContext.location) {
+        current.placeAssoc = `Usually at ${obs.affectedContext.location}`;
+      }
+      // Extract a representative median duration if the observation carries one.
+      for (const m of obs.evidence.measurements) {
+        const rec = m as { medianMins?: number };
+        if (typeof rec.medianMins === 'number') {
+          current.avgMins = rec.medianMins;
+        }
+      }
+      byCluster.set(label, current);
+    }
+    return [...byCluster.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  }, [v2Observations]);
 
   if (!session) {
     return (

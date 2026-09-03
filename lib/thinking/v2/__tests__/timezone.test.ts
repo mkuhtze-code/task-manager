@@ -40,6 +40,45 @@ describe('timezone - local hour', () => {
   it('returns null for invalid input', () => {
     expect(toLocalHour('not-a-date', 'UTC')).toBeNull();
   });
+
+  it('normalises midnight hour 24 to 0', () => {
+    // Some ICU builds report midnight (00:xx) as hour "24" with hour12:false.
+    expect(toLocalHour('2026-01-15T00:00:00Z', 'UTC')).toBe(0);
+    expect(toLocalHour('2026-01-15T00:30:00Z', 'UTC')).toBe(0);
+    expect(toLocalHour('2026-01-15T23:00:00Z', 'UTC')).toBe(23);
+  });
+});
+
+describe('timezone - DST transitions', () => {
+  it('resolves local hour across a DST spring-forward (America/New_York)', () => {
+    // 2026-03-08 02:00 local EST → 03:00 local EDT (spring forward).
+    // 2026-03-08T06:30:00Z = 01:30 EST (before transition)
+    expect(toLocalHour('2026-03-08T06:30:00Z', 'America/New_York')).toBe(1);
+    // 2026-03-08T07:30:00Z = 03:30 EDT (after transition)
+    expect(toLocalHour('2026-03-08T07:30:00Z', 'America/New_York')).toBe(3);
+  });
+
+  it('resolves local date across a DST fall-back (America/New_York)', () => {
+    // 2026-11-01: 01:00 EDT → 01:00 EST (fall back). A UTC timestamp maps
+    // deterministically to a local date regardless of ambiguity.
+    // 2026-11-01T23:30:00Z = 19:30 EDT (not on the ambiguous hour)
+    expect(toLocalDate('2026-11-01T23:30:00Z', 'America/New_York')).toBe('2026-11-01');
+  });
+
+  it('is deterministic across a DST transition hour', () => {
+    // 2026-03-08 05:30Z = 00:30 EST, 06:30Z = 01:30 EST, 07:30Z = 03:30 EDT.
+    // No hour 02:xx local exists. Verify hour never exceeds 23 and is stable.
+    expect(toLocalHour('2026-03-08T06:30:00Z', 'America/New_York')).toBe(1);
+    expect(toLocalHour('2026-03-08T07:30:00Z', 'America/New_York')).toBe(3);
+  });
+
+  it('resolves southern-hemisphere DST (Australia/Sydney)', () => {
+    // Sydney DST begins 2026-10-04 (first Sunday in October), spring forward.
+    // 2026-10-03T13:00:00Z = 23:00 AEST (before transition, UTC+10)
+    expect(toLocalHour('2026-10-03T13:00:00Z', 'Australia/Sydney')).toBe(23);
+    // 2026-10-04T13:00:00Z = 00:00 AEDT next day (UTC+11)
+    expect(toLocalDate('2026-10-04T13:00:00Z', 'Australia/Sydney')).toBe('2026-10-05');
+  });
 });
 
 describe('timezone - day of week', () => {

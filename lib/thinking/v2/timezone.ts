@@ -31,7 +31,9 @@ export function toLocalHour(iso: string, tz: string): number | null {
     }).formatToParts(d);
     const h = parts.find((p) => p.type === 'hour')?.value;
     if (h === undefined) return null;
-    return parseInt(h, 10);
+    // Some ICU builds emit "24" for midnight with hour12:false → normalise to 0.
+    const parsed = parseInt(h, 10);
+    return parsed === 24 ? 0 : parsed;
   } catch {
     return null;
   }

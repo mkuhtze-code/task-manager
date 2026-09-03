@@ -1,6 +1,11 @@
 import { CompletedTaskFacts } from '../types';
 import { toLocalDate, localDateDiffDays } from './timezone';
-import { buildEvidence, deriveConfidenceDimensions, deriveConfidence } from './evidence';
+import {
+  buildEvidence,
+  deriveConfidenceDimensions,
+  deriveConfidence,
+  median,
+} from './evidence';
 import { observationIdentityKey } from './identity';
 import { buildStructuredObservation, StructuredObservation } from './observations';
 
@@ -122,11 +127,23 @@ export function observeRepeatedCarryover(
 
   if (repeated.length === 0 && single.length === 0) return null;
 
-  const repeatedTasks = repeated.length;
+  // daysOverdue is guaranteed non-null for non-'none' results, but we guard
+  // against null defensively rather than fabricating a 0 denominator value.
+  // We collect overdue days from BOTH repeated and one-off carryovers so the
+  // evidence reflects every carried-over task, never inventing a value.
+  const overdueDays = [...repeated, ...single]
+    .map((r) => r.daysOverdue)
+    .filter((d): d is number => d !== null);
+  const totalCarryovers = repeated.length + single.length;
+  if (overdueDays.length === 0 || totalCarryovers === 0) return null;
+
   const evidence = buildEvidence({
-    sampleSize: repeated.length + single.length,
-    values: repeated.map((r) => r.daysOverdue ?? 0),
+    sampleSize: totalCarryovers,
+    values: overdueDays,
     measurements: [],
+    // Effect magnitude is the share of carried-over tasks that were
+    // repeated (vs one-off). Not an estimate ratio, so supply explicitly.
+    effectMagnitude: repeated.length / totalCarryovers,
   });
 
   const confidenceDimensions = deriveConfidenceDimensions(evidence);
@@ -140,7 +157,7 @@ export function observeRepeatedCarryover(
   const description =
     repeated.length > 0
       ? `Across ${repeated.length + single.length} carried-over tasks, ${repeated.length} were carried over on multiple occasions. ` +
-        `Median days past due: ${median(repeated.map((r) => r.daysOverdue ?? 0))}.`
+        `Median days past due: ${median(overdueDays)}.`
       : `${single.length} tasks were completed after their intended date.`;
 
   return buildStructuredObservation({
@@ -159,14 +176,4 @@ export function observeRepeatedCarryover(
     },
     semanticType: repeated.length > 0 ? 'carryover:repeated' : 'carryover:single',
   });
-}
-
-function median(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 0) {
-    return (sorted[mid - 1] + sorted[mid]) / 2;
-  }
-  return sorted[mid];
 }

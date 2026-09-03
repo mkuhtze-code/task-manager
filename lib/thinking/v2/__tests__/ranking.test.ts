@@ -12,7 +12,7 @@ function makeObs(over: Partial<StructuredObservation> = {}): StructuredObservati
     evidence: {
       sampleSize: 4, effectMagnitude: 0.5, consistency: 0.9, variance: 1,
       recency: 5, contradictionCount: 0, missingDataCount: 0, specificity: null,
-      measurements: [], insufficient: false,
+      measurements: [], insufficient: false, evidenceKind: 'observation',
     },
     confidence: 'medium' as Confidence,
     confidenceDimensions: { sampleStrength: 'medium', effectStrength: 'medium', consistencyStrength: 'high' },
@@ -43,6 +43,7 @@ function obsWithEvidence(sampleSize: number, over: Partial<StructuredObservation
       specificity: null,
       measurements: [],
       insufficient: false,
+      evidenceKind: 'observation',
     },
     ...over,
   });
@@ -70,7 +71,7 @@ describe('ranking - effect magnitude matters', () => {
       evidence: {
         sampleSize: 10, effectMagnitude: 0.9, consistency: 0.9, variance: 1,
         recency: 5, contradictionCount: 0, missingDataCount: 0, specificity: null,
-        measurements: [], insufficient: false,
+        measurements: [], insufficient: false, evidenceKind: 'observation',
       },
       id: 'big',
     });
@@ -78,7 +79,7 @@ describe('ranking - effect magnitude matters', () => {
       evidence: {
         sampleSize: 10, effectMagnitude: 0.1, consistency: 0.9, variance: 1,
         recency: 5, contradictionCount: 0, missingDataCount: 0, specificity: null,
-        measurements: [], insufficient: false,
+        measurements: [], insufficient: false, evidenceKind: 'observation',
       },
       id: 'small',
     });

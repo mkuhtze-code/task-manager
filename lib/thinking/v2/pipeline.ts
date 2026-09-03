@@ -5,6 +5,11 @@ import { rankAll } from './ranking';
 import { observeEstimateCalibration } from './calibration';
 import { observeTimeOfDay } from './timeOfDay';
 import { observeRepeatedCarryover } from './carryover';
+import { observeV2TaskContext } from './taskContext';
+import { observeV2Lifecycle } from './lifecycle';
+import { observeV2Decomposition } from './decomposition';
+import { observeV2Staleness } from './staleness';
+import { observeV2Clusters } from './cluster';
 
 export interface ObservationPipelineConfig {
   timezone?: string;
@@ -37,6 +42,12 @@ export function runObservationPipeline(
 
   const carryover = observeRepeatedCarryover(tasks, tz);
   if (carryover) candidates.push(carryover);
+
+  candidates.push(...observeV2TaskContext(tasks));
+  candidates.push(...observeV2Lifecycle(tasks, tz));
+  candidates.push(...observeV2Decomposition(tasks));
+  candidates.push(...observeV2Staleness(tasks, tz));
+  candidates.push(...observeV2Clusters(tasks));
 
   const deduped = deduplicateObservations(candidates);
   return rankAll(deduped);

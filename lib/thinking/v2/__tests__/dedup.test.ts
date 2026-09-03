@@ -20,6 +20,7 @@ function makeObs(over: Partial<StructuredObservation> = {}): StructuredObservati
       specificity: null,
       measurements: [],
       insufficient: false,
+      evidenceKind: 'observation',
     },
     confidence: 'medium' as Confidence,
     confidenceDimensions: { sampleStrength: 'medium', effectStrength: 'medium', consistencyStrength: 'high' },
@@ -55,7 +56,7 @@ describe('dedup - keeps strongest evidence', () => {
       evidence: {
         sampleSize: 4, effectMagnitude: 0.5, consistency: 0.9, variance: 1,
         recency: 2, contradictionCount: 0, missingDataCount: 0, specificity: null,
-        measurements: [], insufficient: false,
+        measurements: [], insufficient: false, evidenceKind: 'observation',
       },
     });
     const strong = makeObs({
@@ -65,7 +66,7 @@ describe('dedup - keeps strongest evidence', () => {
       evidence: {
         sampleSize: 12, effectMagnitude: 0.5, consistency: 0.9, variance: 1,
         recency: 2, contradictionCount: 0, missingDataCount: 0, specificity: null,
-        measurements: [], insufficient: false,
+        measurements: [], insufficient: false, evidenceKind: 'observation',
       },
     });
     const result = deduplicateObservations([weak, strong]);

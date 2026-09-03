@@ -3,6 +3,24 @@ import { Confidence } from '../types';
 export type StalenessStatus = 'current' | 'stale';
 export type ContradictionStatus = 'none' | 'partial' | 'full';
 
+/**
+ * The level of reasoning an observation operates at. These are never
+ * silently promoted — a raw fact is not an observation, an association is
+ * never asserted as causation, a hypothesis is never reported as a finding.
+ *
+ *   - raw_fact           unprocessed data point (e.g. actual_mins = 45)
+ *   - derived_measurement calculated from raw facts (ratio = 1.5)
+ *   - association        statistical co-occurrence (no causal claim)
+ *   - observation        structured, evidence-backed statement
+ *   - hypothesis         tentative, requires further data
+ */
+export type EvidenceKind =
+  | 'raw_fact'
+  | 'derived_measurement'
+  | 'association'
+  | 'observation'
+  | 'hypothesis';
+
 export interface Evidence {
   sampleSize: number;
   effectMagnitude: number | null;
@@ -14,6 +32,8 @@ export interface Evidence {
   specificity: number | null;
   measurements: unknown[];
   insufficient: boolean;
+  /** Level of reasoning; defaults to 'observation'. */
+  evidenceKind: EvidenceKind;
 }
 
 export interface ConfidenceDimensions {
@@ -122,26 +142,61 @@ export function buildEvidence(params: {
   recencyDays?: number | null;
   specificity?: number | null;
   measurements?: unknown[];
+  insufficient?: boolean;
+  effectMagnitude?: number | null;
+  evidenceKind?: EvidenceKind;
 }): Evidence {
-  const { sampleSize, values, contradictionCount = 0, missingDataCount = 0, recencyDays = null, specificity = null, measurements = [] } = params;
+  const {
+    sampleSize,
+    values,
+    contradictionCount = 0,
+    missingDataCount = 0,
+    recencyDays = null,
+    specificity = null,
+    measurements = [],
+    insufficient = false,
+    effectMagnitude: explicitEffectMagnitude,
+    evidenceKind = 'observation',
+  } = params;
 
-  if (sampleSize === 0) {
+  // Insufficiency means the observation does NOT have enough valid evidence
+  // to support the claim. This is broader than sampleSize === 0. A detector
+  // may also pass an explicit `insufficient` flag when it detects a missing
+  // denominator, a missing comparison baseline, invalid timestamps where
+  // temporal evidence is required, etc.
+  const effectivelyInsufficient =
+    insufficient ||
+    sampleSize === 0 ||
+    (sampleSize > 0 && values.length === 0);
+
+  if (effectivelyInsufficient) {
     return {
-      sampleSize: 0,
+      sampleSize,
       effectMagnitude: null,
       consistency: null,
       variance: null,
       recency: recencyDays,
-      contradictionCount: 0,
+      contradictionCount,
       missingDataCount,
       specificity: null,
       measurements: [],
       insufficient: true,
+      evidenceKind: 'hypothesis',
     };
   }
 
+  // Effect magnitude is intentionally supplied by the detector when the
+  // values are NOT estimate ratios (e.g. task-context comparisons, cluster
+  // associations). When values ARE ratios (e.g. estimate calibration) and no
+  // explicit magnitude is given, it is derived from the median ratio's
+  // deviation from 1.0.
   const med = median(values);
-  const effectMag = med !== null ? effectMagnitudeFromRatio(med) : null;
+  const effectMag =
+    explicitEffectMagnitude !== undefined
+      ? explicitEffectMagnitude
+      : med !== null
+        ? effectMagnitudeFromRatio(med)
+        : null;
   const consistency = consistencyFromValues(values);
   const variance = standardDeviation(values);
 
@@ -156,5 +211,28 @@ export function buildEvidence(params: {
     specificity,
     measurements,
     insufficient: false,
+    evidenceKind,
   };
+}
+
+/**
+ * Build an explicitly insufficient Evidence object. Used by detectors when
+ * the data cannot legitimately support an observation (zero denominator,
+ * missing baseline, invalid required timestamps, etc.) — without inventing
+ * any null measurement into a fabricated value.
+ */
+export function insufficientEvidence(params: {
+  sampleSize: number;
+  missingDataCount?: number;
+  contradictionCount?: number;
+  recencyDays?: number | null;
+}): Evidence {
+  return buildEvidence({
+    sampleSize: params.sampleSize,
+    values: [],
+    missingDataCount: params.missingDataCount ?? 0,
+    contradictionCount: params.contradictionCount ?? 0,
+    recencyDays: params.recencyDays ?? null,
+    insufficient: true,
+  });
 }
