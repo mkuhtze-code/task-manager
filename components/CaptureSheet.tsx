@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import type { EstimateSuggestion, LocationSuggestion, JobSuggestion, LocationMemorySuggestion } from '@/lib/taskIntelligence';
 import type { CaptureContextDecision } from '@/lib/thinking/types';
-import { fmtMins, minsToInput } from '@/lib/timeFormat';
+import { fmtMins, minsToInput, fmtClock } from '@/lib/timeFormat';
 import type { Job } from '@/lib/jobTypes';
+import type { ThoughtParts } from '@/lib/unifiedInput/parse';
+import type { JobLocationResolution, JobLocationCandidate } from '@/lib/unifiedInput/resolve';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { MapPinIcon } from '@/components/icons';
@@ -34,6 +36,12 @@ export function CaptureSheet(props: {
   jobs: Job[];
   captureJobId: string | null;
   setCaptureJobId: (v: string | null) => void;
+  thought: ThoughtParts | null;
+  intendedTime: string;
+  locationResolution: JobLocationResolution | null;
+  declinedResolution: boolean;
+  onConfirmResolution: (c: JobLocationCandidate) => void;
+  onDeclineResolution: () => void;
   error: string;
   onClose: () => void;
 }) {
@@ -42,7 +50,9 @@ export function CaptureSheet(props: {
     captureLocationMemorySuggestion, captureJobSuggestion, captureContext, locationFieldVisible, addTask,
     captureLocation, setCaptureLocation, captureLocationCoords, setCaptureLocationCoords,
     manualLocationToggle, setManualLocationToggle, showReminderField, setShowReminderField,
-    captureSurfaceDate, setCaptureSurfaceDate, jobs, captureJobId, setCaptureJobId, error, onClose,
+    captureSurfaceDate, setCaptureSurfaceDate, jobs, captureJobId, setCaptureJobId,
+    thought, intendedTime, locationResolution, declinedResolution, onConfirmResolution, onDeclineResolution,
+    error, onClose,
   } = props;
 
   const [showJobField, setShowJobField] = useState(false);
@@ -93,6 +103,61 @@ export function CaptureSheet(props: {
             }
           />
         </div>
+
+        {thought && thought.hadFacets && (
+          <div className="unified-thought-panel">
+            <div className="unified-thought-summary">
+              {thought.intent && thought.intent.length > 0 && (
+                <span className="unified-thought-intent">As: <strong>{thought.intent}</strong></span>
+              )}
+              <span className="unified-thought-facets">
+                {thought.date && <span className="unified-thought-chip">📅 {thought.date}</span>}
+                {intendedTime && <span className="unified-thought-chip">⏰ {fmtClock(intendedTime)}</span>}
+                {thought.locationHint && <span className="unified-thought-chip">📍 {thought.locationHint}</span>}
+              </span>
+            </div>
+
+            {!declinedResolution && locationResolution && locationResolution.state === 'proposed' && (
+              <div className="unified-thought-confirm">
+                <span className="unified-thought-prompt">
+                  Do you mean <strong>{locationResolution.candidate.matchedField === 'location' && locationResolution.candidate.locationText ? locationResolution.candidate.locationText : locationResolution.candidate.jobName}</strong>
+                  {locationResolution.candidate.matchedField === 'location' ? ` (${locationResolution.candidate.jobName})` : ''}?
+                </span>
+                <div className="unified-thought-actions">
+                  <button
+                    type="button"
+                    className="btn btn-steel"
+                    style={{ flex: 1 }}
+                    onClick={() => onConfirmResolution(locationResolution.candidate)}
+                  >
+                    Yes
+                  </button>
+                  <button type="button" className="btn-text" onClick={onDeclineResolution}>Not this</button>
+                </div>
+              </div>
+            )}
+
+            {!declinedResolution && locationResolution && locationResolution.state === 'choose' && (
+              <div className="unified-thought-choose">
+                <span className="unified-thought-prompt">Which one?</span>
+                <div className="sheet-inline-options">
+                  {locationResolution.candidates.map((c) => (
+                    <button
+                      type="button"
+                      key={c.jobId}
+                      className="move-day-option"
+                      onClick={() => onConfirmResolution(c)}
+                    >
+                      {c.matchedField === 'location' && c.locationText ? `${c.locationText} (${c.jobName})` : c.jobName}
+                    </button>
+                  ))}
+                  <button type="button" className="btn-text" onClick={onDeclineResolution}>Not here</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {captureSuggestion && (
           <button
             type="button"

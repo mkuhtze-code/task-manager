@@ -29,6 +29,8 @@ import {
 } from '@/lib/taskIntelligence';
 import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
 import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
+import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
+import { resolveJobAndLocation, type JobLocationResolution, type JobLocationCandidate } from '@/lib/unifiedInput/resolve';
 import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
 import type { SurfaceEvent, Surface } from '@/lib/thinking/types';
 import { determineBase, nearestNeighborOrder, weaveGeoOrder, type Coords } from '@/lib/todayRoute';
@@ -74,7 +76,7 @@ function getGpsPosition(timeoutMs = 4000): Promise<Coords | null> {
 // use. Keeps polylines and coordinates while skipping bookkeeping columns
 // (notification flags, timestamps) Today never reads.
 const TASK_COLUMNS =
-  'id, text, status, source, estimate_mins, logged_mins, started_at, due_today, order_index, created_at, surface_date, location_text, lat, lng, drive_mins_to_next, route_polyline, info, job_id';
+  'id, text, status, source, estimate_mins, logged_mins, started_at, due_today, order_index, created_at, surface_date, intended_time, location_text, lat, lng, drive_mins_to_next, route_polyline, info, job_id, original_input';
 
 // sessionStorage flag: the passive "landed on Today" surface event is the
 // same exposure for every mount in one browser session, so it is recorded
@@ -146,6 +148,42 @@ export default function Home() {
   const [captureJobId, setCaptureJobId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState('');
+  // Unified Thought Input V1: the live interpretation of the capture text and
+  // the job/location resolution. `thought` holds the parsed action/date/time/
+  // location hint; `locationResolution` is the discrete proposed/choose/none
+  // outcome over the user's existing jobs. Confirmation state lets the user
+  // accept or reject a single plausible candidate (never silently invented).
+  const [thought, setThought] = useState<ThoughtParts | null>(null);
+  const [locationResolution, setLocationResolution] = useState<JobLocationResolution | null>(null);
+  const [intendedTime, setIntendedTime] = useState('');
+  const [confirmedJobId, setConfirmedJobId] = useState<string | null>(null);
+  const [confirmedLocation, setConfirmedLocation] = useState<{ text: string; lat: number | null; lng: number | null } | null>(null);
+  const [declinedResolution, setDeclinedResolution] = useState(false);
+
+  // Live interpretation of the capture text: re-parse whenever the typed
+  // thought or the known jobs change, and recompute the job/location
+  // resolution. Confirmation state resets on each text change so an old
+  // "yes" never leaks into a new thought.
+  useEffect(() => {
+    const raw = taskText.trim();
+    if (raw.length === 0) {
+      setThought(null);
+      setLocationResolution(null);
+      setIntendedTime('');
+      setConfirmedJobId(null);
+      setConfirmedLocation(null);
+      setDeclinedResolution(false);
+      return;
+    }
+    const parsed = parseThought(raw);
+    setThought(parsed);
+    setLocationResolution(resolveJobAndLocation(parsed, jobs));
+    setIntendedTime(parsed.time ? parsed.time.label : '');
+    setConfirmedJobId(null);
+    setConfirmedLocation(null);
+    setDeclinedResolution(false);
+  }, [taskText, jobs]);
+
   // Surfaced in the task list when the tasks query itself fails, so a
   // load failure is never mistaken for "Nothing on your plate yet."
   const [taskLoadError, setTaskLoadError] = useState('');
@@ -813,9 +851,36 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortMode, session, todayDataReady]);
 
+  // Unified Thought Input V1 confirmation handlers. The user confirms a
+  // single proposed candidate ("Do you mean 14 Belgium Road?"), picks one
+  // from several, or declines — which leaves the relationship unresolved
+  // (never invented). Setting the facet here is explicit, so the task is
+  // written with the user's confirmed intent rather than an auto-guess.
+  function confirmResolution(c: JobLocationCandidate) {
+    setConfirmedJobId(c.jobId);
+    setConfirmedLocation({
+      text: c.matchedField === 'location' && c.locationText ? c.locationText : c.jobName,
+      lat: c.lat,
+      lng: c.lng,
+    });
+    setDeclinedResolution(false);
+  }
+
+  function declineResolution() {
+    setConfirmedJobId(null);
+    setConfirmedLocation(null);
+    setDeclinedResolution(true);
+  }
+
   async function addTask() {
-    const text = taskText.trim();
-    if (text.length === 0) return;
+    const originalInput = taskText.trim();
+    if (originalInput.length === 0) return;
+    const parsed = thought;
+    // The action is the parsed intent when the thought carried consumable
+    // facets; otherwise it is the raw text, unchanged.
+    const text = parsed && parsed.hadFacets && parsed.intent && parsed.intent.length > 0
+      ? parsed.intent
+      : originalInput;
     const mins = parseMins(taskTime);
     if (mins === null) {
       setError('Could not read that time, try 15m or 1.5h');
@@ -824,7 +889,20 @@ export default function Home() {
     setError('');
     const userId = session.user.id;
     const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order_index), 0);
-    const surfaceDate = showReminderField && captureSurfaceDate.length > 0 ? captureSurfaceDate : null;
+    // A manual reminder date (explicit) wins over the parsed one; otherwise
+    // the parsed date applies. Time is the parsed 'HH:MM', if any.
+    const surfaceDate = showReminderField && captureSurfaceDate.length > 0
+      ? captureSurfaceDate
+      : (parsed?.date ?? null);
+    const intendedTime = parsed?.time ? parsed.time.label : null;
+    // A confirmed resolution wins over a manual pick; both are explicit and
+    // never co-occur for the same facet in practice.
+    const jobId = confirmedJobId ?? captureJobId;
+    const locationText = confirmedLocation && confirmedLocation.text.length > 0
+      ? confirmedLocation.text
+      : (captureLocation.trim().length > 0 ? captureLocation.trim() : null);
+    const lat = confirmedLocation?.lat != null ? confirmedLocation.lat : (captureLocationCoords?.lat ?? null);
+    const lng = confirmedLocation?.lng != null ? confirmedLocation.lng : (captureLocationCoords?.lng ?? null);
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -834,10 +912,12 @@ export default function Home() {
         source: 'came_up',
         order_index: maxOrder + 1,
         surface_date: surfaceDate,
-        location_text: captureLocation.trim().length > 0 ? captureLocation.trim() : null,
-        lat: captureLocationCoords?.lat ?? null,
-        lng: captureLocationCoords?.lng ?? null,
-        job_id: captureJobId,
+        intended_time: intendedTime,
+        location_text: locationText,
+        lat,
+        lng,
+        job_id: jobId,
+        original_input: originalInput,
       })
       .select()
       .single();
@@ -857,6 +937,12 @@ export default function Home() {
     setCaptureLocationCoords(null);
     setManualLocationToggle(false);
     setCaptureJobId(null);
+    setConfirmedJobId(null);
+    setConfirmedLocation(null);
+    setDeclinedResolution(false);
+    setIntendedTime('');
+    setThought(null);
+    setLocationResolution(null);
     setCaptureOpen(false);
     if (data.lat != null && sortMode === 'geo_aware') recalcRoute();
 
@@ -1437,6 +1523,12 @@ export default function Home() {
           jobs={jobs}
           captureJobId={captureJobId}
           setCaptureJobId={setCaptureJobId}
+          thought={thought}
+          intendedTime={intendedTime}
+          locationResolution={locationResolution}
+          declinedResolution={declinedResolution}
+          onConfirmResolution={confirmResolution}
+          onDeclineResolution={declineResolution}
           error={error}
           onClose={() => setCaptureOpen(false)}
         />
