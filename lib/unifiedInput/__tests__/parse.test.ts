@@ -124,4 +124,28 @@ describe('parseThought', () => {
     expect(parts.priority).toBe('urgent');
     expect(parts.intent.toLowerCase()).toBe('call the dentist');
   });
+
+  // ── V1.1: facets are independent of one another ──────────────────────
+  it('leaves a facet-less thought untouched except for the cleaned action', () => {
+    const parts = parseThought('Belgium needs attention', TODAY);
+    expect(parts.intent).toBe('Belgium needs attention');
+    expect(parts.date).toBeNull();
+    expect(parts.time).toBeNull();
+    expect(parts.locationHint).toBeNull();
+    expect(parts.priority).toBeNull();
+    expect(parts.hadFacets).toBe(false);
+  });
+
+  it('extracts the date facet from the same thought without hiding the entity', () => {
+    const parts = parseThought('Belgium needs attention on Monday', TODAY);
+    expect(parts.date).toBe('2026-09-07');
+    expect(parts.intent).toBe('Belgium needs attention');
+  });
+
+  it('strips the obligation filler from an entity-oriented thought', () => {
+    const parts = parseThought('Need to reprice the spouting for Gladstone', TODAY);
+    expect(parts.intent.toLowerCase()).toBe('reprice the spouting for gladstone');
+    expect(parts.date).toBeNull();
+    expect(parts.hadFacets).toBe(true); // obligation filler was removed
+  });
 });
