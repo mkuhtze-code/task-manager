@@ -540,6 +540,14 @@ alter table tasks add column if not exists drive_mins_to_next int not null defau
 alter table tasks add column if not exists route_polyline text;
 alter table tasks add column if not exists info text;
 alter table tasks add column if not exists job_id uuid references jobs(id) on delete set null;
+-- Unified Thought Input V1: capture-time facets. original_input keeps the
+-- user's raw thought verbatim (so nothing typed is ever lost even after the
+-- action text is trimmed); intended_time stores a resolved clock time as a
+-- plain 'HH:MM' string (the schema otherwise has no task clock-time column).
+-- Both are purely additive and nullable — tasks created without the unified
+-- flow simply leave them null.
+alter table tasks add column if not exists original_input text;
+alter table tasks add column if not exists intended_time text;
 
 -- Trip Library: the "own trip library items" policy above needs the table
 -- to exist for existing installs too; create table if not exists covers it.

@@ -1312,6 +1312,73 @@ button:focus-visible, input:focus-visible {
   background: var(--steel-wash-hover, #c3d0f5);
 }
 
+/* Unified Thought Input V1 — the live interpretation panel shown under the
+   capture text field. States what the thought resolves to and asks for
+   confirmation only when a single plausible candidate exists (proposed);
+   otherwise it surfaces the choices (choose) or stays quiet (none). */
+.unified-thought-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--steel-wash, #dbe2f5);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--paper, #ffffff);
+}
+
+.unified-thought-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.unified-thought-intent {
+  font-size: var(--text-sm, 14px);
+  color: var(--ink-soft, #555);
+}
+
+.unified-thought-facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.unified-thought-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--steel-wash, #dbe2f5);
+  color: var(--steel-text, var(--steel-dark));
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+}
+
+.unified-thought-confirm,
+.unified-thought-choose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.unified-thought-prompt {
+  font-size: var(--text-sm, 14px);
+  color: var(--ink-soft, #555);
+}
+
+.unified-thought-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sheet-inline-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .segmented {
   display: flex;
   background: var(--paper);

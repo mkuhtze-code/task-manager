@@ -16,6 +16,11 @@ export type Task = {
   // it just appears like any other task/list item — no notification,
   // no "overdue" state if a day is missed.
   surface_date: string | null;
+  // Resolved clock time as 'HH:MM' (e.g. "10:00"), parsed from a unified
+  // thought at capture time. Purely additive context — there is no
+  // scheduled-time behaviour tied to it in V1; it records the intended time
+  // of day so the facet isn't lost. Null when no time was captured.
+  intended_time: string | null;
   // Optional location — mirrors activities in Travel. drive_mins_to_next
   // and route_polyline are only meaningful in geo_aware sort mode; each
   // located task carries the leg to whichever located task comes next in
@@ -34,6 +39,10 @@ export type Task = {
   // never overrides this task's own scheduling, estimate, location,
   // status or ordering. Null means the task isn't part of a Job.
   job_id: string | null;
+  // The user's raw input verbatim, as typed at capture time. Keeps the
+  // original thought even when the stored `text` is the trimmed action.
+  // Null for tasks not captured through the unified thought flow.
+  original_input: string | null;
 };
 
 export type Subtask = {

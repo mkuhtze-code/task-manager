@@ -655,6 +655,12 @@ export default function JobDetailPage() {
               jobs={jobs}
               captureJobId={captureJobId}
               setCaptureJobId={setCaptureJobId}
+              thought={null}
+              intendedTime=""
+              locationResolution={null}
+              declinedResolution={false}
+              onConfirmResolution={() => {}}
+              onDeclineResolution={() => {}}
               error={captureError}
               onClose={() => setCaptureOpen(false)}
             />
