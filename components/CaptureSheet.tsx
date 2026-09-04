@@ -6,7 +6,7 @@ import type { CaptureContextDecision } from '@/lib/thinking/types';
 import { fmtMins, minsToInput, fmtClock } from '@/lib/timeFormat';
 import type { Job } from '@/lib/jobTypes';
 import type { ThoughtParts } from '@/lib/unifiedInput/parse';
-import type { JobLocationResolution, JobLocationCandidate } from '@/lib/unifiedInput/resolve';
+import { hasEntityResolution, type JobLocationResolution, type JobLocationCandidate } from '@/lib/unifiedInput/resolve';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { MapPinIcon } from '@/components/icons';
@@ -104,7 +104,11 @@ export function CaptureSheet(props: {
           />
         </div>
 
-        {thought && thought.hadFacets && (
+        {/* The live interpretation panel. Shown when the thought carried any
+            facet, OR when a job/location entity was independently recognised —
+            a proposed/choose resolution stands on its own and must not depend
+            on a date/time/priority being present. */}
+        {thought && (thought.hadFacets || hasEntityResolution(locationResolution)) && (
           <div className="unified-thought-panel">
             <div className="unified-thought-summary">
               {thought.intent && thought.intent.length > 0 && (

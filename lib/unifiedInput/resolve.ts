@@ -33,6 +33,16 @@ export type JobLocationResolution =
   | { state: 'proposed'; candidate: JobLocationCandidate; candidates: JobLocationCandidate[] }
   | { state: 'choose'; candidates: JobLocationCandidate[] };
 
+// True when a resolution produced a relationship worth surfacing to the user.
+// The entity/job facet is INDEPENDENT of the date/time/priority facets: a
+// proposed or choose outcome is enough for the UI to show the interpretation
+// panel (and its "Do you mean ...?" confirmation) even when no other facet was
+// detected from the thought. The absence of a date must never hide a
+// recognisable job/location.
+export function hasEntityResolution(res: JobLocationResolution | null): boolean {
+  return res !== null && (res.state === 'proposed' || res.state === 'choose');
+}
+
 // Generic words that don't help identify a place, so "the road" never looks
 // like a reliable match on its own.
 const STOPWORDS = new Set([

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveJobAndLocation } from '@/lib/unifiedInput/resolve';
+import { resolveJobAndLocation, hasEntityResolution } from '@/lib/unifiedInput/resolve';
 import { parseThought } from '@/lib/unifiedInput/parse';
 import type { Job } from '@/lib/jobTypes';
 
@@ -106,5 +106,69 @@ describe('resolveJobAndLocation', () => {
     const jobs: Job[] = [job({ id: 'j1', name: 'Atlantic Avenue' })];
     const res = resolveJobAndLocation(parts, jobs);
     expect(res.state).toBe('none');
+  });
+
+  // ── V1.1: entity resolution is independent of date/time/other facets ──
+  it('recognises the entity from a facet-less thought ("Belgium needs attention")', () => {
+    const parts = parseThought('Belgium needs attention', TODAY);
+    // No date, no time, no location hint, no priority — yet the entity must
+    // still resolve and be surfaced.
+    expect(parts.hadFacets).toBe(false);
+    const res = resolveJobAndLocation(parts, [
+      job({ id: 'j1', name: 'Belgium Road', location_text: '14 Belgium Road' }),
+    ]);
+    expect(res.state).toBe('proposed');
+    if (res.state === 'proposed') expect(res.candidate.jobId).toBe('j1');
+    expect(hasEntityResolution(res)).toBe(true);
+  });
+
+  it('recognises the entity the same way when a date is also present', () => {
+    const parts = parseThought('Belgium needs attention on Monday', TODAY);
+    expect(parts.date).toBe('2026-09-07');
+    const res = resolveJobAndLocation(parts, [
+      job({ id: 'j1', name: 'Belgium Road', location_text: '14 Belgium Road' }),
+    ]);
+    expect(res.state).toBe('proposed');
+    if (res.state === 'proposed') expect(res.candidate.jobId).toBe('j1');
+    expect(hasEntityResolution(res)).toBe(true);
+  });
+
+  it('surfaces a bare entity the user simply names ("Belgium")', () => {
+    const parts = parseThought('Belgium', TODAY);
+    expect(parts.hadFacets).toBe(false);
+    const res = resolveJobAndLocation(parts, [
+      job({ id: 'j1', name: 'Belgium Road', location_text: '14 Belgium Road' }),
+    ]);
+    expect(res.state).toBe('proposed');
+    if (res.state === 'proposed') expect(res.candidate.jobId).toBe('j1');
+    expect(hasEntityResolution(res)).toBe(true);
+  });
+
+  it('falls back to the existing choice behaviour when the entity is ambiguous', () => {
+    const res = resolveJobAndLocation(parseThought('Belgium', TODAY), [
+      job({ id: 'j1', name: 'Belgium Road' }),
+      job({ id: 'j2', name: 'Belgium Avenue', location_text: '4 Belgium Avenue' }),
+    ]);
+    expect(res.state).toBe('choose');
+    expect(hasEntityResolution(res)).toBe(true);
+  });
+
+  it('recognises a known entity mid-thought after an obligation filler', () => {
+    const parts = parseThought('Need to reprice the spouting for Gladstone', TODAY);
+    expect(parts.date).toBeNull();
+    const res = resolveJobAndLocation(parts, [
+      job({ id: 'g1', name: 'Gladstone Street', location_text: '12 Gladstone Street' }),
+    ]);
+    expect(res.state).toBe('proposed');
+    if (res.state === 'proposed') expect(res.candidate.jobId).toBe('g1');
+    expect(hasEntityResolution(res)).toBe(true);
+  });
+
+  it('leaves a thought unresolved when no entity is recognised', () => {
+    const res = resolveJobAndLocation(parseThought('paint the fence', TODAY), [
+      job({ id: 'j1', name: 'Belgium Road' }),
+    ]);
+    expect(res.state).toBe('none');
+    expect(hasEntityResolution(res)).toBe(false);
   });
 });
