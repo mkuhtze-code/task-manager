@@ -78,6 +78,7 @@ Detectors produce candidate observations from normalised facts:
 | `clusterBehaviour` | Cluster tasks | `ClusterBehaviourObservation` | ≥1 task |
 | `carryover` | Task history | `CarryoverObservation` | ≥2 date transitions |
 | `timeOfDay` | Cluster tasks | `TimeOfDayObservation` | ≥3 tasks with timestamps |
+| `temporalBehaviour` (V2) | Completed tasks + tz | `TemporalObservation[]` | ≥3 eligible tasks per claim |
 
 ## Evidence Model
 
@@ -408,8 +409,77 @@ lib/thinking/
     pipeline.ts          — Main pipeline orchestrator
     timezone.ts          — Local timezone utilities
     carryover.ts         — Carryover detection
-    timeOfDay.ts         — Time-of-day patterns
+    timeOfDay.ts         — Time-of-day capture patterns
     calibration.ts       — Estimate calibration
+    proportion.ts        — Shared proportion-vs-baseline builder
+    temporal.ts          — Shared temporal normalisation (latency, displacement, persistence)
+    temporalBehaviour.ts — V2.3 task-temporal-behaviour detector
+    taskContext.ts       — Planning/estimate/location/job/info rates
+    lifecycle.ts         — Same-day lifecycle rate
+    decomposition.ts     — Subtask rate
+    staleness.ts         — Completed-after-stall rate
+    cluster.ts           — Cluster duration/place associations
+    clusterGroups.ts     — Dependency-free deterministic clustering
   types.ts               — Extended types (V1 + V2)
   index.ts               — Updated barrel exports
 ```
+
+## Runtime Pipeline (V2.3)
+
+`runObservationPipeline(tasks, { timezone, now })` executes every detector in
+one pass over a single `CompletedTaskFacts[]` argument, then deduplicates and
+ranks. The runtime call graph is:
+
+```
+runObservationPipeline
+ ├─ observeEstimateCalibration(tasks)            → estimate:*
+ ├─ observeTimeOfDay(tasks, tz)                  → time_of_day:<period>
+ ├─ observeRepeatedCarryover(tasks, tz)          → carryover:*
+ ├─ observeV2TaskContext(tasks)                  → task_context:*
+ ├─ observeV2Lifecycle(tasks, tz)                → lifecycle:same_day
+ ├─ observeV2Decomposition(tasks)                → decomposition:rate
+ ├─ observeV2Staleness(tasks, tz)                → staleness:*
+ ├─ observeV2Clusters(tasks)                     → cluster:*
+ └─ observeV2TemporalBehaviour(tasks, tz)        → temporal:*
+      (overnight, completion_period, shift_later,
+       schedule_displacement:<dir>, persistence)
+ ├─ deduplicateObservations(candidates)          → semantic dedup
+ └─ rankAll(deduped)                             → deterministic ranking
+```
+
+The Patterns page consumes the returned `StructuredObservation[]` directly; it
+does not recompute evidence or confidence itself.
+
+### Temporal detector (V2.3)
+
+`observeV2TemporalBehaviour` (via `temporal.ts`) learns how tasks move through
+time from ordinary task use. Facts are normalised once in
+`normalizeTemporalFacts(tasks, tz)` (local date/hour/weekday, completion
+period, intended date, latency/displacement/persistence intervals) and reused
+by every sub-observation — no per-observation rescan.
+
+Observed behaviours (each a distinct semantic type / identity):
+
+| semanticType | Claim |
+|--------------|-------|
+| `temporal:overnight` | P(completed on a later local date) — baseline 0.5 |
+| `temporal:completion_period` | Dominant completion period vs uniform 1/4 baseline |
+| `temporal:shift_later` | Completion later in the day than added — baseline 0.5 |
+| `temporal:schedule_displacement:<before\|after>` | Typical completion vs intended day (magnitude) |
+| `temporal:persistence` | Typical number of local dates a carried task spans |
+
+**Known limitations**
+
+- Task latency and schedule displacement describe task movement through time;
+  they do **not** establish how long the task took to perform. Active duration
+  is only reported when Start/Stop evidence exists.
+- The current schema has no `due_at`; hard-due-date displacement is out of
+  scope and never fabricated.
+- Date-only `surface_date` values are kept as-is (never reinterpreted through a
+  timezone); the existing `carryover.ts` still localises them via the timezone
+  layer, so carryover day attribution is independent of this detector.
+- Temporal observations require a minimum eligible sample and an effect gate;
+  sparse or balanced history yields nothing.
+- Time-of-day statements describe concentration vs a uniform baseline — they
+  never claim preference or intent, and association phrasing never implies
+  causation.

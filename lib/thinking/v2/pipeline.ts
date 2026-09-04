@@ -10,6 +10,7 @@ import { observeV2Lifecycle } from './lifecycle';
 import { observeV2Decomposition } from './decomposition';
 import { observeV2Staleness } from './staleness';
 import { observeV2Clusters } from './cluster';
+import { observeV2TemporalBehaviour } from './temporalBehaviour';
 
 export interface ObservationPipelineConfig {
   timezone?: string;
@@ -48,6 +49,7 @@ export function runObservationPipeline(
   candidates.push(...observeV2Decomposition(tasks));
   candidates.push(...observeV2Staleness(tasks, tz));
   candidates.push(...observeV2Clusters(tasks));
+  candidates.push(...observeV2TemporalBehaviour(tasks, tz));
 
   const deduped = deduplicateObservations(candidates);
   return rankAll(deduped);

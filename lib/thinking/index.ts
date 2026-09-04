@@ -244,6 +244,9 @@ export {
   observeV2Staleness,
   observeV2Clusters,
   buildClusterGroups,
+  observeV2TemporalBehaviour,
+  normalizeTemporalFacts,
+  PERIOD_ORDER,
 } from './v2';
 export type {
   Evidence,
@@ -257,4 +260,6 @@ export type {
   CarryoverKind,
   EstimateCalibration,
   ObservationPipelineConfig,
+  TemporalFacts,
+  Period,
 } from './v2';

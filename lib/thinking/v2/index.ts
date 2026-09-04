@@ -106,6 +106,19 @@ export type {
 } from './clusterGroups';
 
 export {
+  observeV2TemporalBehaviour,
+} from './temporalBehaviour';
+
+export {
+  normalizeTemporalFacts,
+  PERIOD_ORDER,
+} from './temporal';
+export type {
+  TemporalFacts,
+  Period,
+} from './temporal';
+
+export {
   runObservationPipeline,
 } from './pipeline';
 export type {
