@@ -549,6 +549,24 @@ alter table tasks add column if not exists job_id uuid references jobs(id) on de
 alter table tasks add column if not exists original_input text;
 alter table tasks add column if not exists intended_time text;
 
+-- Meetings foundation (V1): the existing `meetings` row already IS the
+-- meeting identity — Today's capacity counts it via start_time/duration_mins,
+-- and Outlook sync writes source='outlook' rows into it. The foundation
+-- extends that same row additively rather than creating a parallel meeting:
+-- a Meeting can be about a Job, and can occur at a location, using exactly
+-- the same optional job_id/location columns tasks use. Everything is
+-- nullable, so existing manual/outlook meetings and Today's
+-- (id, text, duration_mins, start_time) read are untouched.
+-- notes holds raw capture (source evidence); summary is the derived minutes
+-- seam — nullable now, populated by a future derivation step, never
+-- auto-generated in V1.
+alter table meetings add column if not exists job_id uuid references jobs(id) on delete set null;
+alter table meetings add column if not exists location_text text;
+alter table meetings add column if not exists lat double precision;
+alter table meetings add column if not exists lng double precision;
+alter table meetings add column if not exists notes text;
+alter table meetings add column if not exists summary text;
+
 -- Trip Library: the "own trip library items" policy above needs the table
 -- to exist for existing installs too; create table if not exists covers it.
 -- Provenance link from a scheduled activity back to the Library item that
@@ -707,6 +725,7 @@ end $$;
 create index if not exists surface_events_user_id_idx on surface_events (user_id);
 create index if not exists surface_events_created_at_idx on surface_events (created_at);
 
+
 -- ── User-confirmed entity relationships (Unified Thought Input V1.2) ────
 -- One row records a relationship the user explicitly confirmed through the
 -- unified-thought confirmation flow: typing `alias` refers to the entity of
@@ -754,6 +773,146 @@ create unique index if not exists entity_aliases_user_alias_entity_idx
 create index if not exists entity_aliases_user_id_idx on entity_aliases (user_id);
 create index if not exists entity_aliases_user_alias_idx on entity_aliases (user_id, alias, entity_type);
 
+-- ── Meetings foundation (V1): relational structure ──────────────
+-- A Meeting is a block of time where people came together around a Job.
+-- Everything below is evidence first, interpretation later — the same
+-- capture-first contract tasks use. Each related table is an additive,
+-- rerunnable unit: ownership is enforced by the standard "own X" RLS
+-- policy, and every row cascades up through meetings → auth.users, so
+-- account deletion stays automatic with no per-table cleanup.
+--
+-- meeting_observations: ONE contextual observation (a photo + a voice
+-- note + a line of text are a single observation, not three records).
+--   → media attaches to an observation via meeting_media.observation_id.
+-- meeting_decisions: "the flashing gets replaced, not repaired".
+-- meeting_actions: "reprice the flashing"; carries a nullable task_id
+--   seam so a promoted action is ONE underlying action linked to the
+--   meeting (and via the meeting's job_id, to the Job and Today), never
+--   a duplicated copy.
+-- meeting_media: DEVICE-LOCAL references ONLY in V1 — local_uri points
+--   at the file/object on the device; nothing is uploaded to Supabase.
+--   The reference survives, the bytes stay where the user made them.
+
+create table if not exists meeting_participants (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  meeting_id uuid not null references meetings(id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists meeting_observations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  meeting_id uuid not null references meetings(id) on delete cascade,
+  text text not null,
+  captured_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists meeting_decisions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  meeting_id uuid not null references meetings(id) on delete cascade,
+  text text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists meeting_actions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  meeting_id uuid not null references meetings(id) on delete cascade,
+  text text not null,
+  created_at timestamptz not null default now(),
+  task_id uuid references tasks(id) on delete set null
+);
+
+create table if not exists meeting_media (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  meeting_id uuid not null references meetings(id) on delete cascade,
+  observation_id uuid references meeting_observations(id) on delete set null,
+  media_type text not null check (media_type in ('photo', 'audio', 'document')),
+  local_uri text not null,
+  mime_type text,
+  size_bytes bigint,
+  captured_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+alter table meeting_participants enable row level security;
+alter table meeting_observations enable row level security;
+alter table meeting_decisions enable row level security;
+alter table meeting_actions enable row level security;
+alter table meeting_media enable row level security;
+
+do $$
+begin
+  begin
+    drop policy if exists "own meeting participants" on meeting_participants;
+  exception when undefined_object then
+    null;
+  end;
+  create policy "own meeting participants" on meeting_participants
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+do $$
+begin
+  begin
+    drop policy if exists "own meeting observations" on meeting_observations;
+  exception when undefined_object then
+    null;
+  end;
+  create policy "own meeting observations" on meeting_observations
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+do $$
+begin
+  begin
+    drop policy if exists "own meeting decisions" on meeting_decisions;
+  exception when undefined_object then
+    null;
+  end;
+  create policy "own meeting decisions" on meeting_decisions
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+do $$
+begin
+  begin
+    drop policy if exists "own meeting actions" on meeting_actions;
+  exception when undefined_object then
+    null;
+  end;
+  create policy "own meeting actions" on meeting_actions
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+do $$
+begin
+  begin
+    drop policy if exists "own meeting media" on meeting_media;
+  exception when undefined_object then
+    null;
+  end;
+  create policy "own meeting media" on meeting_media
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+create index if not exists meeting_participants_meeting_id_idx on meeting_participants (meeting_id);
+create index if not exists meeting_observations_meeting_id_idx on meeting_observations (meeting_id);
+create index if not exists meeting_decisions_meeting_id_idx on meeting_decisions (meeting_id);
+create index if not exists meeting_actions_meeting_id_idx on meeting_actions (meeting_id);
+create index if not exists meeting_media_meeting_id_idx on meeting_media (meeting_id);
+create index if not exists meeting_media_observation_id_idx on meeting_media (observation_id);
+
 -- ── Account status (signup gate + admin account controls) ───────
 -- Same definition as the fresh-install section above. Accessed only via
 -- the service-role client (initialize gate, verifyUser enforcement,
@@ -790,4 +949,6 @@ create index if not exists tasks_user_id_status_order_idx on tasks (user_id, sta
 create index if not exists tasks_user_id_status_completed_idx on tasks (user_id, status, completed_at desc);
 create index if not exists subtasks_task_id_idx on subtasks (task_id);
 create index if not exists meetings_user_id_start_time_idx on meetings (user_id, start_time);
+-- Meetings about a job (Jobs surface reads meetings by job_id).
+create index if not exists meetings_job_id_idx on meetings (job_id);
 create index if not exists surface_events_user_id_created_at_idx on surface_events (user_id, created_at desc);

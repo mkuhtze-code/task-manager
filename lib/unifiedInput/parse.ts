@@ -317,24 +317,43 @@ function matchDateWord(
 }
 
 // ── Road-phrase extraction ─────────────────────────────────────────────
+// Capture the SHORT place name directly in front of a road-type suffix —
+// one or two tokens ("Belgium Rd", "14 Belgium Road", "Valley View
+// Avenue"). Two tokens is the widest the prefix ever goes, so a road that
+// sits mid-sentence ("Meeting with Tim at Belgium Rd tomorrow at 2pm")
+// never swallows the words in front of it as part of the "place name".
+// The suffix must be a SEPARATE word (whitespace-required) so "dentist"
+// can never splice into "denti" + "st", and a leading preposition
+// ("at Belgium Rd", "on Main St") is dropped from the phrase and left to
+// the surrounding preposition consumption.
+const ROAD_NAME_TOKEN = "[a-z0-9][a-z0-9.'-]*";
+const PLACE_PREP = new Set(['at', 'to', 'on', 'in', 'near', 'by', 'via', 'around', 'next']);
+const ROAD_PHRASE_SRC =
+  '\\b(' + ROAD_NAME_TOKEN + '(?:\\s+' + ROAD_NAME_TOKEN + ')?)\\s+' +
+  '(road|rd|street|st|avenue|ave|lane|ln|drive|dr|boulevard|blvd|way|place|pl|terrace|close|grove|crescent|mews|rte|route|highway|hwy|parkway|court|ct)(?:\\.)?\\b';
+
 function extractRoadPhrase(
   text: string,
   consumed: { start: number; end: number }[],
 ): { phrase: string; start: number; end: number } | null {
-  // Match a phrase that ENDS in a road suffix, e.g. "Belgium Rd", "14
-  // Belgium Road", "Valley Avenue". The prefix is letters/numbers/spaces
-  // and is kept short so we grab only the place name, not the whole line.
-  const re =
-    /\b([a-z0-9][a-z0-9 .'-]{0,40}?)(road|rd|street|st|avenue|ave|lane|ln|drive|dr|boulevard|blvd|way|place|pl|terrace|close|grove|crescent|mews|rte|route|highway|hwy|parkway|court|ct)(?:\.)?\b/gi;
+  // Fresh instance per call: a shared /g regex would leak lastIndex across
+  // parseThought calls and drop later matches.
+  const re = new RegExp(ROAD_PHRASE_SRC, 'gi');
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    const phrase = (m[1] + m[2]).trim();
+    let phrase = (m[1] + ' ' + m[2]).trim();
+    let start = m.index;
+    const first = m[1].split(/\s+/)[0];
+    if (PLACE_PREP.has(first.toLowerCase()) && phrase.split(/\s+/).length > 2) {
+      phrase = phrase.split(/\s+/).slice(1).join(' ');
+      start = m.index + first.length + 1;
+    }
     if (phrase.length < 3) continue;
     if (!looksLikeRoadPhrase(phrase)) continue;
-    // The phrase's raw span: m.index is the first word char; the trimmed
-    // phrase may drop a trailing space inside m[1], so end at phrase.length.
-    const start = m.index;
-    const end = m.index + phrase.length;
+    // The phrase's raw span: `start` is the first word char of the name
+    // part; the joint includes a space before the suffix, so end at
+    // start + phrase.length.
+    const end = start + phrase.length;
     const overlaps = consumed.some((c) => start < c.end && end > c.start);
     if (!overlaps) return { phrase, start, end };
   }

@@ -125,7 +125,7 @@ describe('parseThought', () => {
     expect(parts.intent.toLowerCase()).toBe('call the dentist');
   });
 
-  // ── V1.1: facets are independent of one another ──────────────────────
+// ── V1.1: facets are independent of one another ──────────────────────
   it('leaves a facet-less thought untouched except for the cleaned action', () => {
     const parts = parseThought('Belgium needs attention', TODAY);
     expect(parts.intent).toBe('Belgium needs attention');
@@ -147,5 +147,19 @@ describe('parseThought', () => {
     expect(parts.intent.toLowerCase()).toBe('reprice the spouting for gladstone');
     expect(parts.date).toBeNull();
     expect(parts.hadFacets).toBe(true); // obligation filler was removed
+  });
+
+  // ── V1.1: road phrase mid-sentence (Meetings pattern) ───────────────
+  it('captures only the short road phrase when the road is mid-sentence', () => {
+    const parts = parseThought('Meeting with Tim at Belgium Rd tomorrow at 2pm', TODAY);
+    expect(parts.locationHint).toBe('Belgium Rd');
+    expect(parts.date).toBe('2026-09-05');
+    expect(parts.time?.hour).toBe(14);
+    expect(parts.intent).toBe('Meeting with Tim');
+  });
+
+  it('handles "14 Belgium Road" and a two-name road equally', () => {
+    expect(parseThought('14 Belgium Road', TODAY).locationHint).toBe('14 Belgium Road');
+    expect(parseThought('Valley View Avenue next week', TODAY).locationHint).toBe('Valley View Avenue');
   });
 });
