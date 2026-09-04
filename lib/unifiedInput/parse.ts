@@ -20,10 +20,12 @@ export type ParsedClock = {
 
 export type ThoughtParts = {
   originalInput: string;
-  // The action text: the input with any date/time and road-location tokens
-  // removed (and a boundary preposition trimmed), so the acceptance example
-  // "Belgium Rd tomorrow at 10am to measure Rainwater Head" → intent
-  // "measure Rainwater Head". If nothing was consumed, intent === input.
+  // The action text: the input with any date/time, road-location tokens and
+  // grammatical/context fillers removed (and a boundary preposition trimmed),
+  // so the acceptance example "Belgium Rd tomorrow at 10am to measure Rainwater
+  // Head" → intent "measure Rainwater Head", and "I need to call the dentist
+  // urgently" → intent "call the dentist". If nothing was consumed,
+  // intent === input.
   intent: string;
   // Resolved calendar date as 'YYYY-MM-DD', or null.
   date: string | null;
@@ -31,7 +33,12 @@ export type ThoughtParts = {
   time: ParsedClock | null;
   // A road-type phrase (e.g. "Belgium Rd") to resolve against jobs, or null.
   locationHint: string | null;
-  // Hints that the input actually contained consumable facets.
+  // A detected priority/state modifier facet — "urgent", "asap", "important",
+  // "priority", "delayed", "waiting", "blocked", "on hold" — surfaced for the
+  // UI but kept OUT of the task label (intent). Null when none was recognised.
+  priority: string | null;
+  // Hints that the input actually contained consumable facets or that the
+  // label was cleaned up (obligation/project/priority fillers removed).
   hadFacets: boolean;
 };
 
@@ -43,6 +50,87 @@ const ROAD_SUFFIX_RE =
 
 export function looksLikeRoadPhrase(phrase: string): boolean {
   return ROAD_SUFFIX_RE.test(phrase.trim());
+}
+
+// ── Grammatical / context fillers (V1.1) ─────────────────────────────
+// Obligation constructions that ride on the front of a command and are not
+// part of the action ("I need to call...", "must call..."). need/have/got
+// only fire when followed by "to" so "have a coffee" is never mangled; the
+// modal must/should also fire directly before the verb ("must call").
+const OBLIGATION_LEAD_RE =
+  /^(?:(?:i|we|you)\s+)?(?:need|have|got)\s+to\s+/i;
+const MODAL_LEAD_RE = /^(?:(?:i|we|you)\s+)?(?:must|should)\s+/i;
+const REMEMBER_LEAD_RE = /^(?:remember|don't\s+forget|do\s+not\s+forget)\s+to\s+/i;
+
+// Priority / state modifiers. These are facets of the thought — a priority or
+// a workflow state — not part of the label itself, so they are surfaced but
+// kept out of the intent ("urgent: call the dentist" → intent "call the
+// dentist", priority "urgent"). Only standalone markers at the leading or
+// trailing edge are recognised, so an embedded adjective ("an important email")
+// is left alone.
+const PRIORITY_FACET: Record<string, string> = {
+  urgent: 'urgent',
+  urgently: 'urgent',
+  asap: 'urgent',
+  important: 'important',
+  priority: 'priority',
+  'high priority': 'high priority',
+  delayed: 'delayed',
+  waiting: 'waiting',
+  blocked: 'blocked',
+  'on hold': 'on hold',
+};
+
+function canonicalPriority(word: string): string {
+  return PRIORITY_FACET[word.toLowerCase().trim()] ?? word.toLowerCase().trim();
+}
+
+// Strips one leading priority marker (optionally followed by a colon/comma)
+// and/or one leading obligation construction. Returns the cleaned text and the
+// first priority facet found, if any.
+function stripLeadingFacets(text: string): { text: string; priority: string | null } {
+  let out = text.trim();
+  let priority: string | null = null;
+  let guard = 0;
+  while (guard < 4) {
+    guard++;
+    const trimmed = out.trimStart();
+    const lead = trimmed.match(/^(urgent|urgently|asap|important|priority|high\s+priority|on\s+hold|delayed|waiting|blocked)\s*[:,\-]?\s+/i);
+    if (lead) {
+      priority = canonicalPriority(lead[1]);
+      out = trimmed.slice(lead[0].length).trimStart();
+      continue;
+    }
+    const ob = trimmed.match(OBLIGATION_LEAD_RE) || trimmed.match(MODAL_LEAD_RE) || trimmed.match(REMEMBER_LEAD_RE);
+    if (ob) {
+      out = trimmed.slice(ob[0].length).trimStart();
+      continue;
+    }
+    const bare = trimmed.match(/^(urgent|urgently|asap|important|priority|high\s+priority|on\s+hold|delayed|waiting|blocked)\s*$/i);
+    if (bare) {
+      priority = canonicalPriority(bare[1]);
+      out = '';
+      continue;
+    }
+    break;
+  }
+  return { text: out, priority };
+}
+
+// Strips one trailing priority/state marker (optionally after a comma or
+// em-dash). e.g. "call the dentist - urgent" → "call the dentist".
+function stripTrailingFacet(text: string): { text: string; priority: string | null } {
+  const trimmed = text.trim();
+  const m = trimmed.match(
+    /[\s,:\-–—]+(urgent|urgently|asap|important|priority|high\s+priority|on\s+hold|delayed|waiting|blocked)\s*$/i,
+  );
+  if (m) {
+    return {
+      text: trimmed.slice(0, trimmed.length - m[0].length).trim(),
+      priority: canonicalPriority(m[1]),
+    };
+  }
+  return { text: trimmed, priority: null };
 }
 
 // ── Clock time token: "10am", "10:30", "10:00 am", "7 pm" ─────────────
@@ -102,8 +190,29 @@ export function parseThought(raw: string, today: string = localDateStr(new Date(
   const originalInput = raw;
   const text = raw.trim();
   if (text.length === 0) {
-    return { originalInput, intent: '', date: null, time: null, locationHint: null, hadFacets: false };
+    return {
+      originalInput,
+      intent: '',
+      date: null,
+      time: null,
+      locationHint: null,
+      priority: null,
+      hadFacets: false,
+    };
   }
+
+  // V1.1: pull grammatical/context fillers (obligation constructions and
+  // priority/state markers) off the label first. These are facets, not the
+  // action — they are removed from `intent` so the label reads cleanly, but
+  // the priority is still surfaced for the UI. The rest of the walk then runs
+  // on the cleaned `working` string, so its spans are always relative to it.
+  const lead = stripLeadingFacets(text);
+  let working = lead.text;
+  let priority = lead.priority;
+  const trail = stripTrailingFacet(working);
+  working = trail.text;
+  if (trail.priority && !priority) priority = trail.priority;
+  const textTransformed = working !== text;
 
   // Walk the string left-to-right, collecting consumed spans.
   const consumed: { start: number; end: number }[] = [];
@@ -111,15 +220,15 @@ export function parseThought(raw: string, today: string = localDateStr(new Date(
   let time: ParsedClock | null = null;
 
   let i = 0;
-  while (i < text.length) {
+  while (i < working.length) {
     // Try a clock token at this offset.
-    const clock = parseClockMatch(text, i);
+    const clock = parseClockMatch(working, i);
     if (clock) {
       if (time === null) {
         time = clock.clock;
         consumed.push({ start: i, end: i + clock.token.length });
         // Consume a leading "at" (e.g. "at 10am").
-        const before = text.slice(0, i).match(/(\s+at)\s*$/i);
+        const before = working.slice(0, i).match(/(\s+at)\s*$/i);
         if (before) {
           consumed.push({ start: i - before[1].length, end: i });
         }
@@ -129,14 +238,14 @@ export function parseThought(raw: string, today: string = localDateStr(new Date(
     }
 
     // Try a date word at this offset.
-    const lower = text.slice(i);
+    const lower = working.slice(i);
     const dateMatch = matchDateWord(lower, today);
     if (dateMatch) {
       if (date === null) {
         date = dateMatch.date;
         consumed.push({ start: i, end: i + dateMatch.matchLength });
         // Consume a leading "on" / "next" / "this".
-        const before = text.slice(0, i).match(/(\s+(?:on|next|this))\s*$/i);
+        const before = working.slice(0, i).match(/(\s+(?:on|next|this))\s*$/i);
         if (before) {
           consumed.push({ start: i - before[1].length, end: i });
         }
@@ -150,19 +259,19 @@ export function parseThought(raw: string, today: string = localDateStr(new Date(
 
   // Extract a road-type location hint (first occurrence).
   let locationHint: string | null = null;
-  const roadMatch = extractRoadPhrase(text, consumed);
+  const roadMatch = extractRoadPhrase(working, consumed);
   if (roadMatch) {
     locationHint = roadMatch.phrase;
     consumed.push({ start: roadMatch.start, end: roadMatch.end });
     // Consume a leading "at" / "to" / "on" if one rides on the phrase.
-    const before = text.slice(0, roadMatch.start).match(/(\s+(?:at|to|on))\s*$/i);
+    const before = working.slice(0, roadMatch.start).match(/(\s+(?:at|to|on))\s*$/i);
     if (before) {
       consumed.push({ start: roadMatch.start - before[1].length, end: roadMatch.start });
     }
   }
 
   // Build the intent from the non-consumed spans.
-  const intent = buildIntent(text, consumed);
+  const intent = buildIntent(working, consumed);
 
   return {
     originalInput,
@@ -170,7 +279,8 @@ export function parseThought(raw: string, today: string = localDateStr(new Date(
     date,
     time,
     locationHint,
-    hadFacets: date !== null || time !== null || locationHint !== null,
+    priority,
+    hadFacets: date !== null || time !== null || locationHint !== null || textTransformed,
   };
 }
 

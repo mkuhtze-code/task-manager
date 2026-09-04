@@ -66,4 +66,45 @@ describe('resolveJobAndLocation', () => {
     const res = resolveJobAndLocation(parts, jobs);
     expect(res.state).toBe('none');
   });
+
+  // ── V1.1: progressive resolution of short names without a street suffix ──
+  it('resolves a bare short name to the fuller street-titled job', () => {
+    // "Gladstone" (no street suffix) → the job named "Gladstone Street".
+    const parts = parseThought('Gladstone', TODAY);
+    const jobs: Job[] = [
+      job({ id: 'j1', name: 'Gladstone Street', location_text: '12 Gladstone Street' }),
+    ];
+    const res = resolveJobAndLocation(parts, jobs);
+    expect(res.state).toBe('proposed');
+    if (res.state === 'proposed') expect(res.candidate.jobId).toBe('j1');
+  });
+
+  it('progressively matches a leading fragment of a longer entity name', () => {
+    const parts = parseThought('Glads', TODAY);
+    const jobs: Job[] = [job({ id: 'j1', name: 'Gladstone Street' })];
+    const res = resolveJobAndLocation(parts, jobs);
+    expect(res.state).toBe('proposed');
+    if (res.state === 'proposed') expect(res.candidate.jobId).toBe('j1');
+  });
+
+  it('asks which Gladstone when several short-name matches exist', () => {
+    const parts = parseThought('Gladstone', TODAY);
+    const jobs: Job[] = [
+      job({ id: 'j1', name: 'Gladstone Street' }),
+      job({ id: 'j2', name: 'Gladstone Road', location_text: '4 Gladstone Road' }),
+    ];
+    const res = resolveJobAndLocation(parts, jobs);
+    expect(res.state).toBe('choose');
+    if (res.state === 'choose') {
+      expect(res.candidates.map((c) => c.jobId).sort()).toEqual(['j1', 'j2']);
+    }
+  });
+
+  it('does not over-match a short query against an unrelated long token', () => {
+    // "at" is too short to be a progressive prefix and matches nothing real.
+    const parts = parseThought('meet at 2pm', TODAY);
+    const jobs: Job[] = [job({ id: 'j1', name: 'Atlantic Avenue' })];
+    const res = resolveJobAndLocation(parts, jobs);
+    expect(res.state).toBe('none');
+  });
 });

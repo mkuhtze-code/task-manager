@@ -114,6 +114,7 @@ export function CaptureSheet(props: {
                 {thought.date && <span className="unified-thought-chip">📅 {thought.date}</span>}
                 {intendedTime && <span className="unified-thought-chip">⏰ {fmtClock(intendedTime)}</span>}
                 {thought.locationHint && <span className="unified-thought-chip">📍 {thought.locationHint}</span>}
+                {thought.priority && <span className="unified-thought-chip">{thought.priority}</span>}
               </span>
             </div>
 

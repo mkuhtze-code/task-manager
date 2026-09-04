@@ -64,12 +64,25 @@ function distinctTokens(value: string): string[] {
   return [...seen];
 }
 
+// Progressive token match: a query token counts as a hit when it equals a
+// business/job token, OR when it is a short leading fragment of one. This is
+// how a bare, suffix-less short name resolves against the fuller entity — e.g.
+// "Gladstone" (or even "Glads") → a job named "Gladstone Street" or located at
+// "Gladstone Road". Only the SHORT→LONG direction is allowed (the query token
+// is a prefix of the field token), so a vague query never out-matches a more
+// specific job token, and a minimum length keeps 2–3 letter noise from firing.
+function tokenMatchesFieldToken(queryToken: string, fieldToken: string): boolean {
+  if (queryToken === fieldToken) return true;
+  if (queryToken.length < 3) return false;
+  return fieldToken.startsWith(queryToken);
+}
+
 function candidateScore(queryTokens: Set<string>, fieldText: string): number {
   const fieldTokens = distinctTokens(fieldText);
   if (fieldTokens.length === 0) return 0;
   let hits = 0;
   for (const t of queryTokens) {
-    if (fieldTokens.includes(t)) hits += 1;
+    if (fieldTokens.some((f) => tokenMatchesFieldToken(t, f))) hits += 1;
   }
   if (hits === 0) return 0;
   // Score favours meaningful shared tokens, tempered by how much of the
