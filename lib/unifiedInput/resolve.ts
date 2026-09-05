@@ -8,12 +8,27 @@
 // much to trust the result, following the existing DecisionAuthority
 // discipline:
 //   'none'     → no reliable candidate; leave the relationship unresolved
+//   'known'    → the input carries a user-confirmed relationship and it was
+//                applied automatically; do not ask
 //   'proposed' → exactly one reliable candidate; ask to confirm it
 //   'choose'   → several plausible candidates; let the user pick
 //
 // Road abbreviations ("rd", "st", "ave") are normalised to full words so
 // "Belgium Rd" matches a job named "Belgium Road" or located at "14 Belgium
 // Road".
+//
+// V1.2 — persistent entity relationships. The resolver stays generic; the
+// only thing it gains is an optional `memory` of the user's previously
+// confirmed relationships (alias → entity). Those are DATA the resolver
+// consults, never parser rules. Precedence:
+//   1. the confirmed relationship, when it is unambiguous and the input does
+//      not textually identify a different entity more strongly (→ 'known')
+//   2. the same relationship, genuinely ambiguous across several entities
+//      (→ 'choose'; still nothing is silently forced)
+//   3. fuzzy textual matching, exactly as V1.1 (→ 'proposed' / 'choose')
+//   4. nothing reliable (→ 'none')
+// A relationship whose entity is no longer active (per the existing job
+// lifecycle) is treated as expired and falls back to step 3.
 
 import type { ThoughtParts } from '@/lib/unifiedInput/parse';
 import type { Job } from '@/lib/jobTypes';
@@ -31,7 +46,36 @@ export type JobLocationCandidate = {
 export type JobLocationResolution =
   | { state: 'none'; candidates: JobLocationCandidate[] }
   | { state: 'proposed'; candidate: JobLocationCandidate; candidates: JobLocationCandidate[] }
-  | { state: 'choose'; candidates: JobLocationCandidate[] };
+  | { state: 'choose'; candidates: JobLocationCandidate[] }
+  // 'known' → the input carries a user-confirmed relationship that the
+  // resolver has applied, so the caller should NOT ask for confirmation.
+  | { state: 'known'; candidate: JobLocationCandidate; candidates: JobLocationCandidate[] };
+
+// A confirmed relationship: typing `alias` means the user's entity of
+// entity_type with id entityId. This is learned user knowledge — it is DATA
+// the resolver consults, never a parser rule hardcoded anywhere. `active`
+// lets the caller retain a relationship while taking it out of use (the
+// resolver only consults active ones); false prevents it from firing without
+// needing a full alias-management UI.
+export type EntityAliasMemory = {
+  alias: string;
+  entityType: 'job';
+  entityId: string;
+  active?: boolean;
+};
+
+// Everything the resolver knows about the user's confirmed relationships,
+// plus which entities the existing lifecycle still considers active. A
+// relationship to an entity that is no longer active is treated as expired
+// (it falls back to the normal fuzzy flow, which still asks).
+export type EntityRelationshipMemory = {
+  aliases: EntityAliasMemory[];
+  // When provided, an entity absent from this set is considered inactive and
+  // its confirmed relationships do NOT fire. Derived from the same
+  // lifecycle used everywhere else (a job is inactive when it has tasks and
+  // all of them are done). Omitted = every given job counts as active.
+  activeEntityIds?: ReadonlySet<string>;
+};
 
 // True when a resolution produced a relationship worth surfacing to the user.
 // The entity/job facet is INDEPENDENT of the date/time/priority facets: a
@@ -100,9 +144,84 @@ function candidateScore(queryTokens: Set<string>, fieldText: string): number {
   return hits / (hits + (fieldTokens.length - hits));
 }
 
+// Normalizes a confirmed trigger term exactly like match fields are
+// normalized (lower-case, road abbreviations expanded), so "Belgium Rd" and
+// "Belgium Road" are stored and looked up as the same relationship.
+export function normalizeAliasPhrase(value: string): string {
+  const tokens = normalizeMatchText(value);
+  return tokens.length > 0 ? tokens.join(' ') : value.trim().toLowerCase();
+}
+
+function distinctAliasTokens(alias: string, cache: Map<string, string[]>): string[] {
+  const hit = cache.get(alias);
+  if (hit) return hit;
+  const tokens = normalizeMatchText(alias);
+  cache.set(alias, tokens);
+  return tokens;
+}
+
+// A confirmed alias applies when every distinctive token of the alias appears
+// in the query. Progressive short→long prefixes are allowed (the user typed a
+// fragment of the term they taught), mirroring the fuzzy matcher's rule. The
+// reverse direction — a longer query token prefix-matching the alias — is NOT
+// allowed: the user must type at least the term they actually confirmed.
+//
+// Matching deliberately uses the FULL token sets (road abbreviations already
+// expanded), NOT the stopword-filtered token set: for a confirmed relationship
+// the road word IS meaningful ("belgium road" must match the road hint
+// "Belgium Rd" even though the fuzzy matcher would drop "road" as generic).
+function aliasMatchesQuery(aliasTokens: string[], queryTokens: Set<string>): boolean {
+  if (aliasTokens.length === 0) return false;
+  return aliasTokens.every((a) => [...queryTokens].some((q) => tokenMatchesFieldToken(q, a)));
+}
+
+// The confirmed relationships whose term the query actually contains, each
+// mapped to the candidate it resolves to when that entity is present and
+// still active. Memory entries that no longer point at a real, reliable
+// candidate (or that point at a finished entity) are dropped here.
+function matchesForConfirmedAliases(
+  memory: EntityRelationshipMemory,
+  reliable: JobLocationCandidate[],
+  aliasQueryTokens: Set<string>,
+): JobLocationCandidate[] {
+  const cache = new Map<string, string[]>();
+  const known: JobLocationCandidate[] = [];
+  for (const alias of memory.aliases) {
+    if (alias.entityType !== 'job') continue;
+    if (alias.active === false) continue;
+    const candidate = reliable.find((c) => c.jobId === alias.entityId);
+    if (!candidate) continue;
+    if (memory.activeEntityIds && !memory.activeEntityIds.has(alias.entityId)) continue;
+    if (!aliasMatchesQuery(distinctAliasTokens(alias.alias, cache), aliasQueryTokens)) continue;
+    if (!known.some((k) => k.jobId === candidate.jobId)) known.push(candidate);
+  }
+  return known;
+}
+
+// The trigger term the user typed that the confirmed relationship should
+// remember: the distinctive query token(s) that matched the candidate's
+// matched field. So "new tap for Kitchen" → alias "kitchen", and "Belgium Rd
+// tomorrow at 10am" → alias "belgium road". Like alias matching, this uses
+// the full (road-expanded) token sets, so a matched road word is preserved.
+export function deriveAliasTerm(parts: ThoughtParts, candidate: JobLocationCandidate): string {
+  const querySource = parts.locationHint && parts.locationHint.length > 0
+    ? parts.locationHint
+    : parts.intent;
+  const queryTokens = normalizeMatchText(querySource);
+  const fieldText = candidate.matchedField === 'location' && candidate.locationText
+    ? candidate.locationText
+    : candidate.jobName;
+  const fieldTokens = normalizeMatchText(fieldText);
+  const hits = queryTokens.filter((q) =>
+    fieldTokens.some((f) => tokenMatchesFieldToken(q, f))
+  );
+  return hits.length > 0 ? hits.join(' ') : normalizeAliasPhrase(querySource);
+}
+
 export function resolveJobAndLocation(
   parts: ThoughtParts,
   jobs: Job[],
+  memory?: EntityRelationshipMemory,
 ): JobLocationResolution {
   const querySource = parts.locationHint && parts.locationHint.length > 0
     ? parts.locationHint
@@ -150,6 +269,29 @@ export function resolveJobAndLocation(
   if (reliable.length === 0) return { state: 'none', candidates: [] };
 
   reliable.sort((a, b) => b.score - a.score);
+
+  // V1.2: user-confirmed relationships. A confirmed term has strong authority
+  // over a merely fuzzy textual match — but ONLY when it is unambiguous and
+  // the input does not textually identify a different entity more strongly.
+  // Genuine ambiguity stays ambiguous (the "Which one?" flow), and a
+  // relationship to an entity the lifecycle no longer considers active
+  // expires instead of forcing it.
+  if (memory && memory.aliases.length > 0) {
+    const aliasQueryTokens = new Set(normalizeMatchText(querySource));
+    const known = matchesForConfirmedAliases(memory, reliable, aliasQueryTokens);
+    if (known.length > 0) {
+      const bestKnown = Math.max(...known.map((c) => c.score));
+      const explicitlyStronger = reliable.some(
+        (c) => !known.some((k) => k.jobId === c.jobId) && c.score > bestKnown,
+      );
+      if (!explicitlyStronger) {
+        if (known.length === 1) {
+          return { state: 'known', candidate: known[0], candidates: reliable };
+        }
+        return { state: 'choose', candidates: known };
+      }
+    }
+  }
 
   if (reliable.length === 1) {
     return { state: 'proposed', candidate: reliable[0], candidates: reliable };

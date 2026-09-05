@@ -707,6 +707,53 @@ end $$;
 create index if not exists surface_events_user_id_idx on surface_events (user_id);
 create index if not exists surface_events_created_at_idx on surface_events (created_at);
 
+-- ── User-confirmed entity relationships (Unified Thought Input V1.2) ────
+-- One row records a relationship the user explicitly confirmed through the
+-- unified-thought confirmation flow: typing `alias` refers to the entity of
+-- `entity_type` whose id is `entity_id`. This is learned, deterministic user
+-- knowledge — it feeds the resolver, never a parser rule, and it only ever
+-- narrows what previously required a manual confirmation. It is not a generic
+-- relationship framework: rows are keyed to the logged-in user and RLS keeps
+-- them private. Deleting the target job removes its aliases (cascade), so a
+-- relationship can never outlive the entity it points at.
+create table if not exists entity_aliases (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  alias text not null,
+  entity_type text not null default 'job' check (entity_type in ('job')),
+  entity_id uuid not null references jobs(id) on delete cascade,
+  source text not null default 'user_confirmed' check (source in ('user_confirmed')),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table entity_aliases enable row level security;
+
+do $$
+begin
+  begin
+    drop policy if exists "own entity aliases" on entity_aliases;
+  exception when undefined_object then
+    null;
+  end;
+
+  create policy "own entity aliases" on entity_aliases
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+-- One user can confirm the same alias for the same entity only once. Alias
+-- values are stored normalized (lower-cased trigger phrase, road abbreviations
+-- expanded) so this stays a simple unique index the app can upsert against. A
+-- user may still hold the same alias for several entities — that is genuine
+-- ambiguity, intentionally permitted and surfaced through the existing
+-- "Which one?" flow.
+create unique index if not exists entity_aliases_user_alias_entity_idx
+  on entity_aliases (user_id, alias, entity_type, entity_id);
+create index if not exists entity_aliases_user_id_idx on entity_aliases (user_id);
+create index if not exists entity_aliases_user_alias_idx on entity_aliases (user_id, alias, entity_type);
+
 -- ── Account status (signup gate + admin account controls) ───────
 -- Same definition as the fresh-install section above. Accessed only via
 -- the service-role client (initialize gate, verifyUser enforcement,

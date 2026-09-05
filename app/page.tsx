@@ -30,7 +30,7 @@ import {
 import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
 import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
 import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
-import { resolveJobAndLocation, type JobLocationResolution, type JobLocationCandidate } from '@/lib/unifiedInput/resolve';
+import { resolveJobAndLocation, deriveAliasTerm, type JobLocationResolution, type JobLocationCandidate, type EntityAliasMemory, type EntityRelationshipMemory } from '@/lib/unifiedInput/resolve';
 import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
 import type { SurfaceEvent, Surface } from '@/lib/thinking/types';
 import { determineBase, nearestNeighborOrder, weaveGeoOrder, type Coords } from '@/lib/todayRoute';
@@ -148,6 +148,15 @@ export default function Home() {
   const [captureJobId, setCaptureJobId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState('');
+  // Unified Thought Input V1.2: the user's persistent entity-confirmation
+  // memory (alias → entity) and which job ids the existing lifecycle already
+  // considers finished. Together these let the resolver auto-apply a
+  // previously confirmed relationship instead of re-asking. loadedEntityAliasRows
+  // is the raw string map used to refresh state after a new confirmation is
+  // persisted (State Reflector — DB is the source of truth).
+  const [entityAliases, setEntityAliases] = useState<EntityAliasMemory[]>([]);
+  const [doneJobIds, setDoneJobIds] = useState<Set<string>>(new Set());
+  const loadedEntityAliasRows = useRef<Record<string, { type: string; entityId: string }>>({});
   // Unified Thought Input V1: the live interpretation of the capture text and
   // the job/location resolution. `thought` holds the parsed action/date/time/
   // location hint; `locationResolution` is the discrete proposed/choose/none
@@ -160,10 +169,34 @@ export default function Home() {
   const [confirmedLocation, setConfirmedLocation] = useState<{ text: string; lat: number | null; lng: number | null } | null>(null);
   const [declinedResolution, setDeclinedResolution] = useState(false);
 
+  // V1.2: the resolver's view of the user's confirmed relationships, plus
+  // which jobs the existing lifecycle still considers active. A relationship
+  // to a finished job is treated as expired by the resolver (it never forces
+  // a completed job). Active matches `isJobDone` exactly: a job is finished
+  // only when it has done tasks and no open tasks remain.
+  const activeEntityIds = useMemo(() => {
+    const hasOpenTask = new Set(
+      tasks.map((t) => t.job_id).filter((id): id is string => id != null)
+    );
+    const active = new Set<string>();
+    for (const j of jobs) {
+      if (!(doneJobIds.has(j.id) && !hasOpenTask.has(j.id))) active.add(j.id);
+    }
+    return active;
+  }, [tasks, jobs, doneJobIds]);
+
+  const entityMemory = useMemo<EntityRelationshipMemory>(
+    () => ({
+      aliases: entityAliases.filter((a) => a.active),
+      activeEntityIds,
+    }),
+    [entityAliases, activeEntityIds]
+  );
+
   // Live interpretation of the capture text: re-parse whenever the typed
-  // thought or the known jobs change, and recompute the job/location
-  // resolution. Confirmation state resets on each text change so an old
-  // "yes" never leaks into a new thought.
+  // thought, the known jobs, or the confirmed-relationship memory changes,
+  // and recompute the job/location resolution. Confirmation state resets on
+  // each text change so an old "yes" never leaks into a new thought.
   useEffect(() => {
     const raw = taskText.trim();
     if (raw.length === 0) {
@@ -177,12 +210,25 @@ export default function Home() {
     }
     const parsed = parseThought(raw);
     setThought(parsed);
-    setLocationResolution(resolveJobAndLocation(parsed, jobs));
+    const resolution = resolveJobAndLocation(parsed, jobs, entityMemory);
+    setLocationResolution(resolution);
     setIntendedTime(parsed.time ? parsed.time.label : '');
     setConfirmedJobId(null);
     setConfirmedLocation(null);
     setDeclinedResolution(false);
-  }, [taskText, jobs]);
+    // A confirmed relationship the resolver auto-applied is as explicit as a
+    // manual confirmation — attach the job (and its location) silently, so
+    // no "Do you mean X?" prompt is ever shown again for the learned term.
+    if (resolution.state === 'known') {
+      const c = resolution.candidate;
+      setConfirmedJobId(c.jobId);
+      setConfirmedLocation({
+        text: c.matchedField === 'location' && c.locationText ? c.locationText : c.jobName,
+        lat: c.lat,
+        lng: c.lng,
+      });
+    }
+  }, [taskText, jobs, entityMemory]);
 
   // Surfaced in the task list when the tasks query itself fails, so a
   // load failure is never mistaken for "Nothing on your plate yet."
@@ -459,11 +505,30 @@ export default function Home() {
         `start_time.is.null,and(start_time.gte.${dayStart.toISOString()},start_time.lt.${nextDay.toISOString()})`
       );
 
-    // Jobs for the capture sheet's "Add to a job" disclosure — name only.
+    // Jobs for the capture sheet's "Add to a job" disclosure and the unified
+    // thought resolver (which matches against name AND location and, when a
+    // resolution is confirmed or auto-applied, pins the task's location to the
+    // job's own address/coords).
     const jobsPromise = supabase
       .from('jobs')
-      .select('id, name')
+      .select('id, name, client, location_text, lat, lng, created_at')
       .order('created_at', { ascending: false });
+
+    // V1.2: the user's confirmed entity relationships (alias → entity) and
+    // the set of jobs the existing lifecycle already considers finished (a job
+    // is "done" when it has at least one task and ALL of its tasks are done).
+    // The resolver needs both: learned relationships to auto-apply, and the
+    // finished set so a relationship to a completed job expires instead of
+    // blindly forcing it.
+    const aliasesPromise = supabase
+      .from('entity_aliases')
+      .select('id, user_id, alias, entity_type, entity_id, source, active, created_at, updated_at');
+
+    const doneJobsPromise = supabase
+      .from('tasks')
+      .select('job_id')
+      .eq('status', 'done')
+      .not('job_id', 'is', null);
 
     // Completed-task history for the learning layer.
     // Start this at the same time as the other reads.
@@ -498,11 +563,15 @@ export default function Home() {
       { data: meetingRows },
       { data: jobRows },
       { data: historyRows },
+      { data: aliasRows },
+      { data: doneJobRows },
     ] = await Promise.all([
       settingsPromise,
       meetingsPromise,
       jobsPromise,
       historyPromise,
+      aliasesPromise,
+      doneJobsPromise,
     ]);
 
     const detectedTimezone =
@@ -553,6 +622,30 @@ export default function Home() {
 
     setMeetings(meetingRows || []);
     setJobs((jobRows as Job[]) || []);
+
+    // V1.2: fold the confirmed relationships into resolver memory. Loaded
+    // rows stay visible — only `active` ones are consulted by the resolver.
+    const aliases = (aliasRows || []).map((r: any) => ({
+      alias: r.alias,
+      entityType: r.entity_type,
+      entityId: r.entity_id,
+      active: r.active !== false,
+    }));
+    setEntityAliases(
+      aliases.filter((a) => a.entityType === 'job') as EntityAliasMemory[]
+    );
+    // Remember the raw DB rows (including inactive ones) so the State
+    // Reflector can distinguish "new relationship" from "re-confirmation".
+    loadedEntityAliasRows.current = {};
+    (aliasRows || []).forEach((r: any) => {
+      loadedEntityAliasRows.current[`${r.entity_type}:${r.entity_id}:${r.alias}`] = {
+        type: r.entity_type,
+        entityId: r.entity_id,
+      };
+    });
+    // Jobs that have at least one task and every task done. A job here is
+    // finished; its confirmed relationships must not force it anymore.
+    setDoneJobIds(new Set((doneJobRows || []).map((r: any) => r.job_id)));
 
     /*
      * Subtasks depend on the current task IDs, so this is the one
@@ -856,6 +949,8 @@ export default function Home() {
   // from several, or declines — which leaves the relationship unresolved
   // (never invented). Setting the facet here is explicit, so the task is
   // written with the user's confirmed intent rather than an auto-guess.
+  // V1.2: confirming also persists the relationship (alias → entity), so the
+  // next time the user types that term it resolves without re-asking.
   function confirmResolution(c: JobLocationCandidate) {
     setConfirmedJobId(c.jobId);
     setConfirmedLocation({
@@ -864,12 +959,58 @@ export default function Home() {
       lng: c.lng,
     });
     setDeclinedResolution(false);
+    if (thought) {
+      // Best-effort persistence: the task flow must never depend on the
+      // memory write succeeding. On failure the relationship is simply not
+      // learned this time (safe, explicit, and no silent pretending).
+      const alias = deriveAliasTerm(thought, c);
+      persistEntityAlias(alias, c.jobId).catch(() => {});
+    }
   }
 
   function declineResolution() {
     setConfirmedJobId(null);
     setConfirmedLocation(null);
     setDeclinedResolution(true);
+  }
+
+  // V1.2: writes the user-confirmed relationship (alias → entity) to the
+  // entity_aliases table. Idempotent upsert keyed on (user_id, alias,
+  // entity_type, entity_id), so re-confirming the same pairing just revives
+  // it; a user can still hold the same alias for several entities (genuine
+  // ambiguity). On success the in-memory memory is refreshed immediately so
+  // the current thought resolves as 'known' without a reload.
+  async function persistEntityAlias(alias: string, jobId: string) {
+    if (!session) return;
+    const normalized = alias.trim().toLowerCase();
+    if (normalized.length === 0) return;
+    const key = `job:${jobId}:${normalized}`;
+    const upsert = await supabase
+      .from('entity_aliases')
+      .upsert(
+        {
+          user_id: session.user.id,
+          alias: normalized,
+          entity_type: 'job',
+          entity_id: jobId,
+          source: 'user_confirmed',
+          active: true,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,alias,entity_type,entity_id' }
+      )
+      .select('*')
+      .single();
+    if (upsert.error) {
+      if (!loadedEntityAliasRows.current[key]) {
+        console.error('Could not persist the confirmed entity relationship:', upsert.error.message);
+      }
+      return;
+    }
+    setEntityAliases((prev) => {
+      const next = prev.filter((a) => !(a.alias === normalized && a.entityId === jobId));
+      return [...next, { alias: normalized, entityType: 'job', entityId: jobId, active: true }];
+    });
   }
 
   async function addTask() {
