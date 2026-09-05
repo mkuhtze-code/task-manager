@@ -5,6 +5,12 @@ import {
   buildObservationDraft,
   groupMediaByObservation,
   fmtCapturedAt,
+  photoMedia,
+  uniqueMedia,
+  meetingPhotos,
+  remainingMedia,
+  observationEdit,
+  photoAlt,
 } from '@/lib/meetingCapture';
 import type { MeetingMedia, MeetingParticipant } from '@/lib/meetingTypes';
 
@@ -150,5 +156,96 @@ describe('fmtCapturedAt', () => {
 
   it('handles an invalid timestamp silently', () => {
     expect(fmtCapturedAt('garbage')).toBe('');
+  });
+});
+
+describe('photoMedia / uniqueMedia / meetingPhotos', () => {
+  function photo(id: string, obsId: string | null): MeetingMedia {
+    return media(id, obsId);
+  }
+  function audioNote(id: string, obsId: string | null): MeetingMedia {
+    return { ...media(id, obsId), media_type: 'audio' };
+  }
+
+  it('returns no photos for a meeting with none', () => {
+    expect(photoMedia([audioNote('a1', 'o-1')])).toEqual([]);
+    expect(meetingPhotos([])).toEqual([]);
+  });
+
+  it('keeps a single photo', () => {
+    expect(meetingPhotos([photo('p1', 'o-1')]).map((m) => m.id)).toEqual(['p1']);
+  });
+
+  it('keeps multiple photos and drops audio', () => {
+    const list = [photo('p1', 'o-1'), audioNote('a1', 'o-1'), photo('p2', 'o-2')];
+    expect(photoMedia(list).map((m) => m.id)).toEqual(['p1', 'p2']);
+  });
+
+  it('collects photos from every observation', () => {
+    const list = [photo('p1', 'o-1'), photo('p2', 'o-1'), photo('p3', 'o-2')];
+    expect(meetingPhotos(list).map((m) => m.id)).toEqual(['p1', 'p2', 'p3']);
+  });
+
+  it('keeps orphan meeting photos visible in the gallery', () => {
+    const list = [photo('p1', null), photo('p2', 'o-1')];
+    expect(meetingPhotos(list).map((m) => m.id)).toEqual(['p1', 'p2']);
+  });
+
+  it('never shows a duplicate media row in the gallery', () => {
+    expect(uniqueMedia([photo('p1', 'o-1'), photo('p1', 'o-1')])).toHaveLength(1);
+    expect(meetingPhotos([photo('p1', 'o-1'), audioNote('a1', null), photo('p1', 'o-1')])).toHaveLength(1);
+  });
+
+  it('lists every photo attached to one observation', () => {
+    const grouped = groupMediaByObservation([photo('p1', 'o-1'), photo('p2', 'o-1'), photo('p3', 'o-2')]);
+    expect(photoMedia(grouped.get('o-1') ?? []).map((m) => m.id)).toEqual(['p1', 'p2']);
+  });
+});
+
+describe('remainingMedia / observationEdit', () => {
+  function photo(id: string, obsId: string | null): MeetingMedia {
+    return media(id, obsId);
+  }
+
+  it('removes the requested media rows and keeps the rest', () => {
+    const list = [photo('p1', 'o-1'), photo('p2', 'o-1'), photo('p3', 'o-1')];
+    expect(remainingMedia(list, ['p2']).map((m) => m.id)).toEqual(['p1', 'p3']);
+    expect(remainingMedia(list, []).length).toBe(3);
+  });
+
+  it('keeps editing a text-only observation (legacy data)', () => {
+    expect(observationEdit('  Roof flashing damaged.  ', 0)).toBe('Roof flashing damaged.');
+    expect(observationEdit('', 0)).toBeNull();
+  });
+
+  it('keeps editing a media-only observation with empty text', () => {
+    expect(observationEdit('', 2)).toBe('');
+  });
+
+  it('trims text into the saved payload', () => {
+    expect(observationEdit('  edit  ', 1)).toBe('edit');
+  });
+
+  it('blocks a save that would leave an empty observation', () => {
+    expect(observationEdit('   ', 0)).toBeNull();
+    expect(observationEdit('', remainingMedia([photo('p1', 'o-1')], ['p1']).length)).toBeNull();
+  });
+
+  it('allows a save that removes media only when text remains', () => {
+    expect(observationEdit('Still evidence.', remainingMedia([photo('p1', 'o-1')], ['p1']).length)).toBe(
+      'Still evidence.'
+    );
+  });
+});
+
+describe('photoAlt', () => {
+  it('describes position without an observation', () => {
+    expect(photoAlt(media('p1', null), 0, 4)).toBe('Photo 1 of 4');
+  });
+
+  it('includes the observation text when available', () => {
+    expect(photoAlt(media('p1', 'o-1'), 2, 4, 'Roof flashing damaged.')).toBe(
+      'Photo 3 of 4 — Roof flashing damaged.'
+    );
   });
 });

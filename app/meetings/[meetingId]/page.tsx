@@ -17,11 +17,14 @@ import {
   personAlreadyAdded,
   buildObservationDraft,
   groupMediaByObservation,
-  fmtCapturedAt,
+  meetingPhotos,
   type CapturedMedia,
 } from '@/lib/meetingCapture';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
 import { ObservationCapture } from '@/components/MeetingSheets';
+import MeetingObservationItem from '@/components/MeetingObservationItem';
+import MeetingPhotoCarousel from '@/components/MeetingPhotoCarousel';
+import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
@@ -44,12 +47,17 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   const [media, setMedia] = useState<MeetingMedia[]>([]);
   const [notes, setNotes] = useState('');
 
-  // Reveal-style captives: a quiet "+ Add …" link opens a simple input.
+  // Section capture states: a quiet "+ …" pill in the section header opens
+  // its simple input row. Everything here is Meetings-scoped.
   const [addingPerson, setAddingPerson] = useState(false);
   const [capturingObservation, setCapturingObservation] = useState(false);
+  const [addingDecision, setAddingDecision] = useState(false);
+  const [addingAction, setAddingAction] = useState(false);
   const [participantInput, setParticipantInput] = useState('');
   const [decisionInput, setDecisionInput] = useState('');
   const [actionInput, setActionInput] = useState('');
+
+  const galleryCapture = useMeetingMediaCapture();
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -175,12 +183,14 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     if (!decisionInput.trim()) return;
     await addRow('meeting_decisions', decisionInput);
     setDecisionInput('');
+    setAddingDecision(false);
   }
 
   async function addAction() {
     if (!actionInput.trim()) return;
     await addRow('meeting_actions', actionInput);
     setActionInput('');
+    setAddingAction(false);
   }
 
   // An observation is ONE piece of evidence: text, photo, voice, or any
@@ -230,6 +240,74 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     await load();
   }
 
+  // Link one captured piece of media to an observation (or to the meeting
+  // as orphan gallery media when observationId is null).
+  async function insertMedia(observationId: string | null, captured: CapturedMedia): Promise<boolean> {
+    if (!session) return false;
+    const { error } = await supabase.from('meeting_media').insert({
+      user_id: session.user.id,
+      meeting_id: meetingId,
+      observation_id: observationId,
+      media_type: captured.mediaType,
+      local_uri: captured.uri,
+      mime_type: captured.mime,
+      size_bytes: captured.size,
+    });
+    if (error) {
+      console.error(error);
+      setError("Couldn't save the media");
+      return false;
+    }
+    setError(null);
+    await load();
+    return true;
+  }
+
+  // Save an in-place edit: update the text, then apply any staged media
+  // removals. Returns false on failure so the item keeps its edit open.
+  async function saveObservationEdit(
+    observationId: string,
+    text: string,
+    removeMediaIds: string[]
+  ): Promise<boolean> {
+    if (!session) return false;
+    const { error: e } = await supabase
+      .from('meeting_observations')
+      .update({ text })
+      .eq('id', observationId)
+      .eq('user_id', session.user.id);
+    if (e) {
+      console.error(e);
+      setError("Couldn't save the observation");
+      return false;
+    }
+    if (removeMediaIds.length > 0) {
+      const { error: remErr } = await supabase
+        .from('meeting_media')
+        .delete()
+        .in('id', removeMediaIds)
+        .eq('user_id', session.user.id);
+      if (remErr) {
+        console.error(remErr);
+        setError("Couldn't remove some media");
+      }
+    }
+    setError(null);
+    await load();
+    return true;
+  }
+
+  function captureMeetingPhoto() {
+    galleryCapture.pickPhoto((m) => {
+      void insertMedia(null, m);
+    });
+  }
+
+  function obsTextForPhoto(photo: MeetingMedia): string | null {
+    if (!photo.observation_id) return null;
+    return observations.find((o) => o.id === photo.observation_id)?.text ?? null;
+  }
+
   async function removeRow(table: string, id: string) {
     await supabase.from(table).delete().eq('id', id).eq('user_id', session.user.id);
     setError(null);
@@ -253,6 +331,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   }
 
   const mediaByObservation = useMemo(() => groupMediaByObservation(media), [media]);
+  const photos = useMemo(() => meetingPhotos(media), [media]);
 
   if (!session) {
     return <div className="empty-state">{loading ? 'Loading…' : 'Not signed in'}</div>;
@@ -321,24 +400,34 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       </div>
 
       <section className="detail-section">
-        <div className="detail-section-title">People</div>
+        <div className="detail-section-title-row">
+          <div className="detail-section-title">People</div>
+          <button
+            type="button"
+            className="meeting-pill"
+            onClick={() => setAddingPerson(true)}
+            disabled={addingPerson || saving}
+          >
+            + Person
+          </button>
+        </div>
         {participants.length === 0 ? (
           <p className="meeting-empty">No participants yet.</p>
         ) : (
           participants.map((p) => (
             <div key={p.id} className="meeting-list-row">
               <span>{p.name}</span>
-              <button className="btn-text" onClick={() => removeRow('meeting_participants', p.id)} aria-label={`Remove ${p.name}`}>
+              <button
+                className="meeting-pill meeting-pill--icon"
+                onClick={() => removeRow('meeting_participants', p.id)}
+                aria-label={`Remove ${p.name}`}
+              >
                 <TrashIcon />
               </button>
             </div>
           ))
         )}
-        {!addingPerson ? (
-          <button type="button" className="reveal-reminder-link" onClick={() => setAddingPerson(true)}>
-            + Add person
-          </button>
-        ) : (
+        {addingPerson && (
           <div className="meeting-add-row">
             <input
               type="text"
@@ -349,8 +438,12 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
               aria-label="Participant name"
               autoFocus
             />
-            <button className="btn btn-steel" onClick={addParticipant}>Add</button>
-            <button type="button" className="btn-text" onClick={() => { setParticipantInput(''); setAddingPerson(false); }}>
+            <button className="meeting-pill meeting-pill--primary" onClick={addParticipant}>Add</button>
+            <button
+              type="button"
+              className="meeting-pill"
+              onClick={() => { setParticipantInput(''); setAddingPerson(false); }}
+            >
               Cancel
             </button>
           </div>
@@ -358,47 +451,32 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       </section>
 
       <section className="detail-section">
-        <div className="detail-section-title">Observations</div>
-        {observations.length === 0 ? (
-          <p className="meeting-empty">No evidence captured yet.</p>
-        ) : (
-          observations.map((o) => {
-            const obsMedia = mediaByObservation.get(o.id) ?? [];
-            return (
-              <div key={o.id} className="observation-item">
-                {o.text && <div className="observation-text">{o.text}</div>}
-                {obsMedia.length > 0 && (
-                  <div className="meeting-media-row">
-                    {obsMedia.map((m) =>
-                      m.media_type === 'audio' ? (
-                        <audio key={m.id} controls src={m.local_uri} className="media-audio" />
-                      ) : (
-                        <div key={m.id} className="media-thumb">
-                          {m.media_type === 'document' ? (
-                            <span className="media-doc-label">Document</span>
-                          ) : (
-                            <img src={m.local_uri} alt="Meeting photo" />
-                          )}
-                        </div>
-                      ),
-                    )}
-                  </div>
-                )}
-                <div className="observation-meta">
-                  <span className="observation-captured">Captured {fmtCapturedAt(o.captured_at)}</span>
-                  <button className="btn-text" onClick={() => removeRow('meeting_observations', o.id)} aria-label="Remove observation">
-                    <TrashIcon size={14} />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-        {!capturingObservation ? (
-          <button type="button" className="reveal-reminder-link" onClick={() => setCapturingObservation(true)}>
-            + Add observation
+        <div className="detail-section-title-row">
+          <div className="detail-section-title">Observations</div>
+          <button
+            type="button"
+            className="meeting-pill"
+            onClick={() => setCapturingObservation(true)}
+            disabled={capturingObservation || saving}
+          >
+            + Observation
           </button>
-        ) : (
+        </div>
+        {observations.length === 0 && !capturingObservation && (
+          <p className="meeting-empty">No evidence captured yet.</p>
+        )}
+        {observations.map((o) => (
+          <MeetingObservationItem
+            key={o.id}
+            observation={o}
+            media={mediaByObservation.get(o.id) ?? []}
+            saving={saving}
+            onDelete={() => removeRow('meeting_observations', o.id)}
+            onInsertMedia={insertMedia}
+            onSaveEdit={saveObservationEdit}
+          />
+        ))}
+        {capturingObservation && (
           <ObservationCapture
             saving={saving}
             onSave={addObservation}
@@ -408,34 +486,90 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       </section>
 
       <section className="detail-section">
-        <div className="detail-section-title">Decisions</div>
+        <div className="detail-section-title-row">
+          <div className="detail-section-title">Photos</div>
+          <button type="button" className="meeting-pill" onClick={captureMeetingPhoto}>
+            + Photo
+          </button>
+        </div>
+        {photos.length === 0 ? (
+          <p className="meeting-empty">No photos yet.</p>
+        ) : (
+          <MeetingPhotoCarousel
+            photos={photos}
+            getObservationText={obsTextForPhoto}
+            labelBase="All meeting photos"
+          />
+        )}
+        <input
+          ref={galleryCapture.photoRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={galleryCapture.onPhotoInputChange}
+        />
+      </section>
+
+      <section className="detail-section">
+        <div className="detail-section-title-row">
+          <div className="detail-section-title">Decisions</div>
+          <button
+            type="button"
+            className="meeting-pill"
+            onClick={() => setAddingDecision(true)}
+            disabled={addingDecision || saving}
+          >
+            + Decision
+          </button>
+        </div>
         {decisions.length === 0 ? (
           <p className="meeting-empty">Nothing decided yet.</p>
         ) : (
           decisions.map((d) => (
             <div key={d.id} className="meeting-list-row">
               <span>{d.text}</span>
-              <button className="btn-text" onClick={() => removeRow('meeting_decisions', d.id)} aria-label="Remove decision">
+              <button className="meeting-pill meeting-pill--icon" onClick={() => removeRow('meeting_decisions', d.id)} aria-label="Remove decision">
                 <TrashIcon />
               </button>
             </div>
           ))
         )}
-        <div className="meeting-add-row">
-          <input
-            type="text"
-            value={decisionInput}
-            onChange={(e) => setDecisionInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addDecision(); } }}
-            placeholder="What did you decide?"
-            aria-label="Decision text"
-          />
-          <button className="btn btn-steel" onClick={addDecision}>Add</button>
-        </div>
+        {addingDecision && (
+          <div className="meeting-add-row">
+            <input
+              type="text"
+              value={decisionInput}
+              onChange={(e) => setDecisionInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addDecision(); } }}
+              placeholder="What did you decide?"
+              aria-label="Decision text"
+              autoFocus
+            />
+            <button className="meeting-pill meeting-pill--primary" onClick={addDecision}>Add</button>
+            <button
+              type="button"
+              className="meeting-pill"
+              onClick={() => { setDecisionInput(''); setAddingDecision(false); }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="detail-section">
-        <div className="detail-section-title">Actions</div>
+        <div className="detail-section-title-row">
+          <div className="detail-section-title">Actions</div>
+          <button
+            type="button"
+            className="meeting-pill"
+            onClick={() => setAddingAction(true)}
+            disabled={addingAction || saving}
+          >
+            + Action
+          </button>
+        </div>
         {actions.length === 0 ? (
           <p className="meeting-empty">Nothing to do afterwards yet.</p>
         ) : (
@@ -445,23 +579,33 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
                 {a.text}
                 {a.task_id && <span className="meeting-list-row-sub"> · linked to a task</span>}
               </span>
-              <button className="btn-text" onClick={() => removeRow('meeting_actions', a.id)} aria-label="Remove action">
+              <button className="meeting-pill meeting-pill--icon" onClick={() => removeRow('meeting_actions', a.id)} aria-label="Remove action">
                 <TrashIcon />
               </button>
             </div>
           ))
         )}
-        <div className="meeting-add-row">
-          <input
-            type="text"
-            value={actionInput}
-            onChange={(e) => setActionInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAction(); } }}
-            placeholder="Something to do because of this meeting"
-            aria-label="Action text"
-          />
-          <button className="btn btn-steel" onClick={addAction}>Add</button>
-        </div>
+        {addingAction && (
+          <div className="meeting-add-row">
+            <input
+              type="text"
+              value={actionInput}
+              onChange={(e) => setActionInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAction(); } }}
+              placeholder="Something to do because of this meeting"
+              aria-label="Action text"
+              autoFocus
+            />
+            <button className="meeting-pill meeting-pill--primary" onClick={addAction}>Add</button>
+            <button
+              type="button"
+              className="meeting-pill"
+              onClick={() => { setActionInput(''); setAddingAction(false); }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="detail-section">
@@ -474,12 +618,12 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           placeholder="Anything jotted during the meeting — plain text, captured as-is"
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button className="btn btn-steel" onClick={saveNotes}>Save notes</button>
+          <button className="meeting-pill meeting-pill--primary" onClick={saveNotes}>Save notes</button>
         </div>
       </section>
 
       <div className="meeting-delete-row">
-        <button className="btn-text" onClick={deleteMeeting} style={{ color: 'var(--hazard)' }}>
+        <button type="button" className="meeting-pill meeting-pill--danger" onClick={deleteMeeting}>
           Delete meeting
         </button>
       </div>

@@ -73,3 +73,63 @@ export function fmtCapturedAt(iso: string): string {
   if (minutes === 0) return `${hours}${ampm}`;
   return `${hours}:${String(minutes).padStart(2, '0')}${ampm}`;
 }
+
+// ── V2.1: photo galleries + in-place observation edits ─────────────
+// Pure helpers for the meeting photo gallery and for editing saved
+// observations. Media stays the same device-local meeting_media[] the page
+// loads — nothing here touches persistence or storage.
+
+// Every photo row in the list: those inside observations and orphans alike.
+export function photoMedia(media: MeetingMedia[]): MeetingMedia[] {
+  return media.filter((m) => m.media_type === 'photo');
+}
+
+// Defensive no-duplicates guarantee for aggregate views (a gallery must
+// never show the same row twice, even if the underlying list ever did).
+export function uniqueMedia(media: MeetingMedia[]): MeetingMedia[] {
+  const seen = new Set<string>();
+  const out: MeetingMedia[] = [];
+  for (const m of media) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    out.push(m);
+  }
+  return out;
+}
+
+// All of the meeting's photos, deduplicated, in load order — whether they
+// belong to an observation or stand alone as meeting-level media. The
+// observation relationship is never rewritten: orphan photos stay visible
+// here without being silently attached to an observation.
+export function meetingPhotos(media: MeetingMedia[]): MeetingMedia[] {
+  return uniqueMedia(photoMedia(media));
+}
+
+// Media left after an explicit removal list is applied. The count decides
+// whether an observation still holds evidence after an edit.
+export function remainingMedia(media: MeetingMedia[], removeIds: string[]): MeetingMedia[] {
+  const removed = new Set(removeIds);
+  return media.filter((m) => !removed.has(m.id));
+}
+
+// Edits follow the same "at least one input" rule as new observations:
+// a trimmed text when the observation keeps some evidence, null when text
+// AND every media row would be gone (nothing left to save).
+export function observationEdit(text: string, remainingCount: number): string | null {
+  const trimmed = text.trim();
+  if (trimmed.length === 0 && remainingCount === 0) return null;
+  return trimmed;
+}
+
+// Meaningful alt/description text for a gallery photo: its position plus
+// the observation it belongs to, when there is one.
+export function photoAlt(
+  photo: MeetingMedia,
+  index: number,
+  total: number,
+  observationText?: string | null
+): string {
+  const base = `Photo ${index + 1} of ${total}`;
+  const text = observationText?.trim();
+  return text ? `${base} — ${text}` : base;
+}

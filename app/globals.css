@@ -3870,18 +3870,6 @@ button:focus-visible, input:focus-visible {
   border-color: var(--line-strong);
 }
 
-.observation-capture-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.observation-capture-save {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .pending-media {
   display: flex;
   flex-wrap: wrap;
@@ -3948,6 +3936,313 @@ button:focus-visible, input:focus-visible {
 .meeting-delete-row {
   display: flex;
   justify-content: flex-end;
-  padding: 0 16px;
+  padding: 0 16px calc(16px + env(safe-area-inset-bottom));
+}
+
+/* ── Meetings V2.1 interactive observations ────────────────────────
+   Every interactive control across the meeting detail is one of these
+   quiet pills; section headings and observation text stay plain text.
+   The photo strip is a small snap-swipe carousel (no library) with a
+   full-view state for looking at a photo properly. */
+.detail-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.meeting-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.2;
+  min-height: 36px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.meeting-pill:hover:not(:disabled) {
+  background: var(--paper);
+}
+
+.meeting-pill:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+.meeting-pill:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.meeting-pill--primary {
+  background: var(--steel);
+  border-color: transparent;
+  color: white;
+}
+
+.meeting-pill--primary:hover:not(:disabled) {
+  background: var(--steel-dark);
+}
+
+.meeting-pill--primary:disabled {
+  background: var(--line);
+  color: var(--ink-faint);
+}
+
+.meeting-pill--quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-soft);
+}
+
+.meeting-pill--quiet:hover:not(:disabled) {
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.meeting-pill--danger {
+  color: var(--danger);
+}
+
+.meeting-pill--danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+}
+
+.meeting-pill--icon {
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meeting-pill--icon:hover:not(:disabled) {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.meeting-observation-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Scroll-snapped photo strip — one frame at a time, swipe or arrows. */
+.meeting-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+  overflow: hidden;
+}
+
+.meeting-carousel-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.meeting-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.meeting-carousel-slide {
+  flex: none;
+  width: 100%;
+  scroll-snap-align: start;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+.meeting-carousel-open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0;
+  background: var(--paper-raised);
+  cursor: zoom-in;
+  overflow: hidden;
+}
+
+.meeting-carousel-open img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.meeting-carousel-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px 8px;
+}
+
+.meeting-carousel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+}
+
+.meeting-carousel-btn:hover {
+  background: var(--paper);
+}
+
+.meeting-carousel-count {
+  font-size: var(--text-2xs);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focused, full-view photo state above everything except nothing. */
+.meeting-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(var(--shadow-rgb), 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  touch-action: manipulation;
+}
+
+.meeting-lightbox:focus {
+  outline: none;
+}
+
+.meeting-lightbox figure {
+  margin: 0;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.meeting-lightbox img {
+  max-width: 100%;
+  max-height: 76vh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 40px rgba(var(--shadow-rgb), 0.4);
+}
+
+.meeting-lightbox figcaption {
+  font-size: var(--text-2xs);
+  color: var(--paper);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.meeting-lightbox-caption {
+  color: var(--paper);
+}
+
+.meeting-lightbox-close,
+.meeting-lightbox-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+}
+
+.meeting-lightbox-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  right: 16px;
+  width: 40px;
+  height: 40px;
+}
+
+.meeting-lightbox-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.3);
+}
+
+.meeting-lightbox-prev {
+  left: 12px;
+}
+
+.meeting-lightbox-next {
+  right: 12px;
+}
+
+.meeting-lightbox-close:hover,
+.meeting-lightbox-btn:hover {
+  background: var(--paper);
+}
+
+/* Staged, reversible media removal inside the edit state. */
+.meeting-edit-media {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+}
+
+.meeting-edit-media-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: opacity 0.15s var(--ease);
+}
+
+.meeting-edit-media-item.is-removing {
+  opacity: 0.45;
+}
+
+.meeting-edit-media-item img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+}
+
+.meeting-edit-media-item audio {
+  height: 40px;
+  min-width: 0;
 }
 
