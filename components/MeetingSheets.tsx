@@ -8,6 +8,7 @@ import { parseMeetingInput, parseTimeInput, combineDateAndTime } from '@/lib/mee
 import type { JobLocationCandidate } from '@/lib/unifiedInput/resolve';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
+import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
 import { CloseIcon, MapPinIcon, TrashIcon } from '@/components/icons';
 
 export type NewMeetingPayload = {
@@ -301,59 +302,27 @@ export function ObservationCapture(props: {
   const { saving, onSave, onCancel } = props;
   const [text, setText] = useState('');
   const [media, setMedia] = useState<CapturedMedia[]>([]);
-  const [recording, setRecording] = useState(false);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const photoRef = useRef<HTMLInputElement>(null);
+  const cap = useMeetingMediaCapture();
   const textRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     textRef.current?.focus();
   }, []);
 
-  function stopRecording() {
-    try {
-      recorderRef.current?.stop();
-    } catch {
-      setRecording(false);
-    }
+  function addPhoto() {
+    cap.pickPhoto((m) => setMedia((prev) => [...prev, m]));
   }
 
-  function startRecording() {
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+  async function toggleVoice() {
+    if (cap.recording) {
+      cap.stopRecording();
       return;
     }
-    navigator.mediaDevices
-      .getUserMedia({ audio: true })
-      .then((stream) => {
-        const recorder = new MediaRecorder(stream);
-        chunksRef.current = [];
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunksRef.current.push(e.data);
-        };
-        recorder.onstop = () => {
-          stream.getTracks().forEach((t) => t.stop());
-          setRecording(false);
-          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-          setMedia((prev) => [
-            ...prev,
-            { mediaType: 'audio', uri: URL.createObjectURL(blob), mime: blob.type, size: blob.size },
-          ]);
-        };
-        recorder.onerror = () => {
-          stream.getTracks().forEach((t) => t.stop());
-          setRecording(false);
-        };
-        recorderRef.current = recorder;
-        recorder.start();
-        setRecording(true);
-      })
-      .catch(() => {
-        // Permission denied or no mic — the photo button still works.
-      });
+    const m = await cap.captureVoice();
+    if (m) setMedia((prev) => [...prev, m]);
   }
 
-  const canSave = !saving && (text.trim().length > 0 || media.length > 0);
+  const canSave = !saving && !cap.recording && (text.trim().length > 0 || media.length > 0);
 
   return (
     <div className="observation-capture">
@@ -366,32 +335,25 @@ export function ObservationCapture(props: {
         className="observation-capture-text"
       />
 
-      <div className="observation-capture-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => photoRef.current?.click()}>
-          Photo
+      <div className="meeting-observation-actions">
+        <button type="button" className="meeting-pill" onClick={addPhoto}>
+          + Photo
         </button>
         <button
           type="button"
-          className={recording ? 'btn btn-steel' : 'btn btn-ghost'}
-          onClick={recording ? stopRecording : startRecording}
+          className={cap.recording ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+          onClick={toggleVoice}
+          disabled={saving}
         >
-          {recording ? 'Recording…' : 'Voice'}
+          {cap.recording ? 'Recording…' : '+ Voice'}
         </button>
         <input
-          ref={photoRef}
+          ref={cap.photoRef}
           type="file"
           accept="image/*"
           capture="environment"
           style={{ display: 'none' }}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            setMedia((prev) => [
-              ...prev,
-              { mediaType: 'photo', uri: URL.createObjectURL(file), mime: file.type || null, size: file.size },
-            ]);
-            e.target.value = '';
-          }}
+          onChange={cap.onPhotoInputChange}
         />
       </div>
 
@@ -417,11 +379,18 @@ export function ObservationCapture(props: {
         </div>
       )}
 
-      <div className="observation-capture-save">
-        <button type="button" className="btn btn-steel" onClick={() => onSave({ text, media })} disabled={!canSave}>
+      <div className="meeting-observation-actions">
+        <button
+          type="button"
+          className="meeting-pill meeting-pill--primary"
+          onClick={() => onSave({ text, media })}
+          disabled={!canSave}
+        >
           {saving ? 'Saving…' : 'Save observation'}
         </button>
-        <button type="button" className="btn-text" onClick={onCancel}>Cancel</button>
+        <button type="button" className="meeting-pill" onClick={onCancel} disabled={saving}>
+          Cancel
+        </button>
       </div>
     </div>
   );
