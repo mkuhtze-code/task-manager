@@ -85,7 +85,15 @@ export default function MeetingsHome() {
       .single();
     setSaving(false);
     if (insertErr) {
-      console.error(insertErr);
+      console.error('Meeting insert failed', {
+        userId: session.user.id,
+        text: payload.text,
+        startTime: payload.startTime,
+        durationMins: payload.durationMins,
+        jobId: payload.jobId,
+        hasLocation: Boolean(payload.locationText),
+        error: insertErr,
+      });
       setError("Couldn't record the meeting");
       return;
     }
