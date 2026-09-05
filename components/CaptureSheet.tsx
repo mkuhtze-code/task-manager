@@ -58,6 +58,17 @@ export function CaptureSheet(props: {
   const [showJobField, setShowJobField] = useState(false);
   const chosenJob = jobs.find((j) => j.id === captureJobId);
 
+  // V1.2: a resolution that demands (or has already resolved) the user's
+  // attention. 'known' is a previously confirmed relationship the resolver
+  // auto-applied — the user is told (quietly) and can detach, but never
+  // re-asked. The panel shows for these even when the thought carried no
+  // date/time/road facets, so a bare "Kitchen" that resolves to a job is
+  // still visible and correctable.
+  const resolutionFocused = !!locationResolution &&
+    (locationResolution.state === 'proposed' ||
+      locationResolution.state === 'choose' ||
+      locationResolution.state === 'known');
+
   // Auto-fill job from capture context when authority >= 'suggest'.
   // The context composes job inference, current surface, and gravity.
   // Only fires when no job is currently selected — explicit user input
@@ -107,20 +118,24 @@ export function CaptureSheet(props: {
         {/* The live interpretation panel. Shown when the thought carried any
             facet, OR when a job/location entity was independently recognised —
             a proposed/choose resolution stands on its own and must not depend
-            on a date/time/priority being present. */}
-        {thought && (thought.hadFacets || hasEntityResolution(locationResolution)) && (
+            on a date/time/priority being present. 'known' (a confirmed
+            relationship V1.2 auto-applied) is surfaced the same way, so a bare
+            term that resolves to a job is still visible and correctable. */}
+        {thought && (thought.hadFacets || hasEntityResolution(locationResolution) || resolutionFocused) && (
           <div className="unified-thought-panel">
-            <div className="unified-thought-summary">
-              {thought.intent && thought.intent.length > 0 && (
-                <span className="unified-thought-intent">As: <strong>{thought.intent}</strong></span>
-              )}
-              <span className="unified-thought-facets">
-                {thought.date && <span className="unified-thought-chip">📅 {thought.date}</span>}
-                {intendedTime && <span className="unified-thought-chip">⏰ {fmtClock(intendedTime)}</span>}
-                {thought.locationHint && <span className="unified-thought-chip">📍 {thought.locationHint}</span>}
-                {thought.priority && <span className="unified-thought-chip">{thought.priority}</span>}
-              </span>
-            </div>
+            {thought.hadFacets && (
+              <div className="unified-thought-summary">
+                {thought.intent && thought.intent.length > 0 && (
+                  <span className="unified-thought-intent">As: <strong>{thought.intent}</strong></span>
+                )}
+                <span className="unified-thought-facets">
+                  {thought.date && <span className="unified-thought-chip">📅 {thought.date}</span>}
+                  {intendedTime && <span className="unified-thought-chip">⏰ {fmtClock(intendedTime)}</span>}
+                  {thought.locationHint && <span className="unified-thought-chip">📍 {thought.locationHint}</span>}
+                  {thought.priority && <span className="unified-thought-chip">{thought.priority}</span>}
+                </span>
+              </div>
+            )}
 
             {!declinedResolution && locationResolution && locationResolution.state === 'proposed' && (
               <div className="unified-thought-confirm">
@@ -158,6 +173,16 @@ export function CaptureSheet(props: {
                   ))}
                   <button type="button" className="btn-text" onClick={onDeclineResolution}>Not here</button>
                 </div>
+              </div>
+            )}
+
+            {!declinedResolution && locationResolution && locationResolution.state === 'known' && (
+              <div className="unified-thought-confirm">
+                <span className="unified-thought-prompt">
+                  In <strong>{locationResolution.candidate.matchedField === 'location' && locationResolution.candidate.locationText ? locationResolution.candidate.locationText : locationResolution.candidate.jobName}</strong>
+                  {locationResolution.candidate.matchedField === 'location' ? ` (${locationResolution.candidate.jobName})` : ''}
+                </span>
+                <button type="button" className="btn-text" onClick={onDeclineResolution}>Not this</button>
               </div>
             )}
           </div>

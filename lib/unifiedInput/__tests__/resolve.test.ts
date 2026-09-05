@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { resolveJobAndLocation, hasEntityResolution } from '@/lib/unifiedInput/resolve';
+import {
+  resolveJobAndLocation,
+  hasEntityResolution,
+  deriveAliasTerm,
+  normalizeAliasPhrase,
+  type EntityRelationshipMemory,
+} from '@/lib/unifiedInput/resolve';
 import { parseThought } from '@/lib/unifiedInput/parse';
 import type { Job } from '@/lib/jobTypes';
 
@@ -15,6 +21,27 @@ function job(partial: Partial<Job> & { id: string; name: string }): Job {
     ...partial,
   };
 }
+
+// Builds a memory for the resolver. `active` defaults to every referenced job
+// being active, so activeness is only exercised where a test asks for it.
+function memory(
+  aliases: { alias: string; entityId: string }[],
+  activeIds?: string[],
+): EntityRelationshipMemory {
+  return {
+    aliases: aliases.map((a) => ({ alias: a.alias, entityType: 'job' as const, entityId: a.entityId })),
+    ...(activeIds ? { activeEntityIds: new Set(activeIds) } : {}),
+  };
+}
+
+const KITCHEN_JOBS: Job[] = [
+  job({ id: 'fix-kitchen', name: 'Fix Kitchen' }),
+  job({ id: 'johns-kitchen', name: 'Johns Kitchen' }),
+];
+
+// The single-job world: only Fix Kitchen exists, so "Kitchen" and
+// "new tap for Kitchen" yield exactly one fuzzy candidate (V1.1 → ask).
+const ONE_KITCHEN_JOB: Job[] = [job({ id: 'fix-kitchen', name: 'Fix Kitchen' })];
 
 describe('resolveJobAndLocation', () => {
   it('proposes the single reliable Belgium Road job', () => {
@@ -108,7 +135,7 @@ describe('resolveJobAndLocation', () => {
     expect(res.state).toBe('none');
   });
 
-  // ── V1.1: entity resolution is independent of date/time/other facets ──
+// ── V1.1: entity resolution is independent of date/time/other facets ──
   it('recognises the entity from a facet-less thought ("Belgium needs attention")', () => {
     const parts = parseThought('Belgium needs attention', TODAY);
     // No date, no time, no location hint, no priority — yet the entity must
@@ -170,5 +197,186 @@ describe('resolveJobAndLocation', () => {
     ]);
     expect(res.state).toBe('none');
     expect(hasEntityResolution(res)).toBe(false);
+  });
+
+  // ── V1.2: persistent user-confirmed entity relationships ──
+  describe('confirmed entity relationships', () => {
+    it('still requires confirmation when no relationship was ever confirmed', () => {
+      // The "Kitchen" candidate exists, but with no memory the resolver must
+      // ask exactly as V1.1 did — it never silently assigns.
+      const parts = parseThought('Kitchen', TODAY);
+      const res = resolveJobAndLocation(parts, ONE_KITCHEN_JOB);
+      expect(res.state).toBe('proposed');
+      if (res.state === 'proposed') expect(res.candidate.jobId).toBe('fix-kitchen');
+    });
+
+    it('resolves automatically on later input once the relationship is confirmed', () => {
+      // The user previously confirmed "Kitchen → Fix Kitchen".
+      const parts = parseThought('new tap for Kitchen', TODAY);
+      const res = resolveJobAndLocation(
+        parts,
+        KITCHEN_JOBS,
+        memory([{ alias: 'kitchen', entityId: 'fix-kitchen' }]),
+      );
+      expect(res.state).toBe('known');
+      if (res.state === 'known') expect(res.candidate.jobId).toBe('fix-kitchen');
+    });
+
+    it('resolves the bare confirmed term itself without a prompt', () => {
+      const parts = parseThought('Kitchen', TODAY);
+      const res = resolveJobAndLocation(
+        parts,
+        KITCHEN_JOBS,
+        memory([{ alias: 'kitchen', entityId: 'fix-kitchen' }]),
+      );
+      expect(res.state).toBe('known');
+      if (res.state === 'known') expect(res.candidate.jobId).toBe('fix-kitchen');
+    });
+
+    it('does not inherit another user/context relationship (nothing is hardcoded)', () => {
+      // No memory for THIS resolution: even though a relationship exists in
+      // the world, a resolver with an empty/absent memory behaves as V1.1.
+      const parts = parseThought('new tap for Kitchen', TODAY);
+      const res = resolveJobAndLocation(parts, ONE_KITCHEN_JOB, memory([]));
+      expect(res.state).toBe('proposed');
+      if (res.state === 'proposed') expect(res.candidate.jobId).toBe('fix-kitchen');
+    });
+
+    it('keeps a location-phrase relationship working via the road hint', () => {
+      const jobs: Job[] = [
+        job({ id: 'j1', name: 'Fix Kitchen', location_text: '14 Belgium Road' }),
+      ];
+      const parts = parseThought('Belgium Rd tomorrow at 10am to measure Rainwater Head', TODAY);
+      const res = resolveJobAndLocation(parts, jobs, memory([{ alias: 'belgium road', entityId: 'j1' }]));
+      expect(res.state).toBe('known');
+      if (res.state === 'known') {
+        expect(res.candidate.jobId).toBe('j1');
+        expect(res.candidate.matchedField).toBe('location');
+      }
+    });
+
+    it('matches a progressive fragment of a previously confirmed term', () => {
+      const parts = parseThought('new tap for Kit', TODAY);
+      const res = resolveJobAndLocation(
+        parts,
+        KITCHEN_JOBS,
+        memory([{ alias: 'kitchen', entityId: 'fix-kitchen' }]),
+      );
+      expect(res.state).toBe('known');
+      if (res.state === 'known') expect(res.candidate.jobId).toBe('fix-kitchen');
+    });
+
+    it('stays ambiguous when the same term was confirmed for two entities', () => {
+      const parts = parseThought('Kitchen needs measuring', TODAY);
+      const res = resolveJobAndLocation(
+        parts,
+        KITCHEN_JOBS,
+        memory([
+          { alias: 'kitchen', entityId: 'fix-kitchen' },
+          { alias: 'kitchen', entityId: 'johns-kitchen' },
+        ]),
+      );
+      expect(res.state).toBe('choose');
+      if (res.state === 'choose') {
+        expect(res.candidates.map((c) => c.jobId).sort()).toEqual(['fix-kitchen', 'johns-kitchen']);
+      }
+    });
+
+    it('prefers the confirmed relationship over a tie with an unconfirmed job', () => {
+      // Only Fix Kitchen was ever confirmed. "Johns Kitchen" matches the term
+      // too (an equal fuzzy tie), but the learned relationship has authority.
+      const parts = parseThought('Kitchen', TODAY);
+      const res = resolveJobAndLocation(
+        parts,
+        KITCHEN_JOBS,
+        memory([{ alias: 'kitchen', entityId: 'fix-kitchen' }]),
+      );
+      expect(res.state).toBe('known');
+      if (res.state === 'known') expect(res.candidate.jobId).toBe('fix-kitchen');
+    });
+
+    it('lets an explicitly named job win even when an alias exists for the term', () => {
+      // "Johns Kitchen" is textually identified strictly more strongly than
+      // the aliased Fix Kitchen, so it must never be silently overridden.
+      const parts = parseThought('Johns Kitchen', TODAY);
+      const res = resolveJobAndLocation(
+        parts,
+        KITCHEN_JOBS,
+        memory([{ alias: 'kitchen', entityId: 'fix-kitchen' }]),
+      );
+      expect(res.state).toBe('choose');
+      if (res.state === 'choose') {
+        // The explicit job is among the choices and Fix Kitchen is NOT forced.
+        expect(res.candidates.map((c) => c.jobId)).toContain('johns-kitchen');
+        expect(res.candidates[0].jobId).toBe('johns-kitchen');
+      }
+    });
+
+    it('never forces an entity the lifecycle no longer considers active', () => {
+      // Fix Kitchen has been confirmed, but the job is now fully done and is
+      // excluded from activeEntityIds — the relationship expires instead of
+      // blindly forcing it, and the normal fuzzy ask returns.
+      const parts = parseThought('new tap for Kitchen', TODAY);
+      const res = resolveJobAndLocation(
+        parts,
+        KITCHEN_JOBS,
+        memory([{ alias: 'kitchen', entityId: 'fix-kitchen' }], ['johns-kitchen']),
+      );
+      expect(res.state).not.toBe('known');
+    });
+
+    it('ignores a relationship that has been taken out of use (active: false)', () => {
+      const parts = parseThought('new tap for Kitchen', TODAY);
+      const mem: EntityRelationshipMemory = {
+        aliases: [{ alias: 'kitchen', entityType: 'job', entityId: 'fix-kitchen', active: false }],
+      };
+      const res = resolveJobAndLocation(parts, ONE_KITCHEN_JOB, mem);
+      expect(res.state).toBe('proposed');
+    });
+
+    it('leaves genuinely unknown terms exactly as before', () => {
+      const parts = parseThought('unrelated errand', TODAY);
+      const res = resolveJobAndLocation(
+        parts,
+        KITCHEN_JOBS,
+        memory([{ alias: 'kitchen', entityId: 'fix-kitchen' }]),
+      );
+      expect(res.state).toBe('none');
+    });
+  });
+
+  // ── V1.2: the term persisted when a confirmation is accepted ──
+  describe('deriveAliasTerm', () => {
+    it('derives the single distinctive token from a chatty intent', () => {
+      const parts = parseThought('new tap for Kitchen', TODAY);
+      const res = resolveJobAndLocation(parts, ONE_KITCHEN_JOB);
+      if (res.state !== 'proposed') throw new Error('expected proposed');
+      expect(deriveAliasTerm(parts, res.candidate)).toBe('kitchen');
+    });
+
+    it('derives the road phrase from a location-matched candidate', () => {
+      const jobs: Job[] = [
+        job({ id: 'j1', name: 'Fix Kitchen', location_text: '14 Belgium Road' }),
+      ];
+      const parts = parseThought('Belgium Rd tomorrow at 10am to measure Rainwater Head', TODAY);
+      const res = resolveJobAndLocation(parts, jobs);
+      if (res.state !== 'proposed') throw new Error('expected proposed, got ' + res.state);
+      expect(deriveAliasTerm(parts, res.candidate)).toBe('belgium road');
+    });
+
+    it('derives the full distinctive name when the whole name was typed', () => {
+      const parts = parseThought('Fix Kitchen', TODAY);
+      const res = resolveJobAndLocation(parts, ONE_KITCHEN_JOB);
+      if (res.state !== 'proposed') throw new Error('expected proposed');
+      expect(deriveAliasTerm(parts, res.candidate)).toBe('fix kitchen');
+    });
+  });
+
+  describe('normalizeAliasPhrase', () => {
+    it('lower-cases and expands road abbreviations', () => {
+      expect(normalizeAliasPhrase('Belgium Rd')).toBe('belgium road');
+      expect(normalizeAliasPhrase('Kitchen')).toBe('kitchen');
+      expect(normalizeAliasPhrase('')).toBe('');
+    });
   });
 });
