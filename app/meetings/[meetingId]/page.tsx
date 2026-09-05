@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
@@ -12,9 +12,16 @@ import type {
   MeetingAction,
   MeetingMedia,
 } from '@/lib/meetingTypes';
+import {
+  normalizePersonName,
+  personAlreadyAdded,
+  buildObservationDraft,
+  groupMediaByObservation,
+  fmtCapturedAt,
+  type CapturedMedia,
+} from '@/lib/meetingCapture';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
-import { MeetingMediaCapture, type CapturedMedia } from '@/components/MeetingSheets';
-import MicButton from '@/components/MicButton';
+import { ObservationCapture } from '@/components/MeetingSheets';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
@@ -35,14 +42,14 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   const [decisions, setDecisions] = useState<MeetingDecision[]>([]);
   const [actions, setActions] = useState<MeetingAction[]>([]);
   const [media, setMedia] = useState<MeetingMedia[]>([]);
+  const [notes, setNotes] = useState('');
 
-  // Add-row inputs.
+  // Reveal-style captives: a quiet "+ Add …" link opens a simple input.
+  const [addingPerson, setAddingPerson] = useState(false);
+  const [capturingObservation, setCapturingObservation] = useState(false);
   const [participantInput, setParticipantInput] = useState('');
   const [decisionInput, setDecisionInput] = useState('');
   const [actionInput, setActionInput] = useState('');
-  const [observationText, setObservationText] = useState('');
-  const [pendingMedia, setPendingMedia] = useState<CapturedMedia[]>([]);
-  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -133,13 +140,35 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       setError("Couldn't save that — try again");
       return;
     }
+    setError(null);
     await load();
   }
 
   async function addParticipant() {
-    if (!participantInput.trim()) return;
-    await addRow('meeting_participants', participantInput, 'name');
+    if (!session) return;
+    const name = normalizePersonName(participantInput);
+    if (!name) return;
+    // Quiet duplicate handling: the same name again simply adds nothing.
+    if (personAlreadyAdded(participants, name)) {
+      setParticipantInput('');
+      setAddingPerson(false);
+      setError(null);
+      return;
+    }
+    const { error: e } = await supabase.from('meeting_participants').insert({
+      user_id: session.user.id,
+      meeting_id: meetingId,
+      name,
+    });
+    if (e) {
+      console.error(e);
+      setError("Couldn't add that person — try again");
+      return;
+    }
+    setError(null);
     setParticipantInput('');
+    setAddingPerson(false);
+    await load();
   }
 
   async function addDecision() {
@@ -154,18 +183,21 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     setActionInput('');
   }
 
-  // A photo + a voice note + a line of text = ONE observation. The rows
-  // are created together; media reference device-local bytes only.
-  async function addObservation() {
-    const text = observationText.trim();
-    if (text.length === 0 && pendingMedia.length === 0) return;
+  // An observation is ONE piece of evidence: text, photo, voice, or any
+  // combination. None of them are required together; at least one is
+  // required at all. Media rows attach back via observation_id and stay
+  // device-local (blob URLs in V1) — nothing here is transcribed or
+  // interpreted, just stored as it was captured.
+  async function addObservation(draft: { text: string; media: CapturedMedia[] }) {
     if (!session) return;
+    const prepared = buildObservationDraft(draft.text, draft.media);
+    if (!prepared) return;
     setSaving(true);
     setError(null);
 
     const { data: obs, error: obsErr } = await supabase
       .from('meeting_observations')
-      .insert({ user_id: session.user.id, meeting_id: meetingId, text })
+      .insert({ user_id: session.user.id, meeting_id: meetingId, text: prepared.text })
       .select('id')
       .single();
     if (obsErr || !obs) {
@@ -175,8 +207,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       return;
     }
 
-    for (const m of pendingMedia) {
-      await supabase.from('meeting_media').insert({
+    let mediaFailed = false;
+    for (const m of prepared.media) {
+      const { error: mediaErr } = await supabase.from('meeting_media').insert({
         user_id: session.user.id,
         meeting_id: meetingId,
         observation_id: obs.id,
@@ -185,16 +218,21 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         mime_type: m.mime,
         size_bytes: m.size,
       });
+      if (mediaErr) {
+        console.error(mediaErr);
+        mediaFailed = true;
+      }
     }
+    if (mediaFailed) setError("Couldn't save part of the observation");
 
-    setObservationText('');
-    setPendingMedia([]);
     setSaving(false);
+    setCapturingObservation(false);
     await load();
   }
 
   async function removeRow(table: string, id: string) {
     await supabase.from(table).delete().eq('id', id).eq('user_id', session.user.id);
+    setError(null);
     await load();
   }
 
@@ -244,7 +282,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     );
   }
 
-  const mediaFor = (obsId: string) => media.filter((m) => m.observation_id === obsId);
+  const mediaByObservation = useMemo(() => groupMediaByObservation(media), [media]);
 
   return (
     <div className="app-shell">
@@ -271,13 +309,13 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           {fmtMeetingWindow(meeting.start_time, meeting.duration_mins)}
         </div>
         {(jobName || meeting.location_text) && (
-          <div className="meeting-row-sub">
+          <div className="meeting-context-meta">
             {jobName && (
-              <Link href={`/jobs/${meeting.job_id}`} className="meeting-chip">
-                📁 {jobName}
+              <Link href={`/jobs/${meeting.job_id}`} className="meeting-job-link">
+                {jobName}
               </Link>
             )}
-            {meeting.location_text && <span className="meeting-chip">📍 {meeting.location_text}</span>}
+            {meeting.location_text && <span className="meeting-location">{meeting.location_text}</span>}
           </div>
         )}
       </div>
@@ -285,108 +323,99 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       <section className="detail-section">
         <div className="detail-section-title">People</div>
         {participants.length === 0 ? (
-          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>No participants yet.</p>
+          <p className="meeting-empty">No participants yet.</p>
         ) : (
           participants.map((p) => (
             <div key={p.id} className="meeting-list-row">
               <span>{p.name}</span>
-              <button className="btn-text" onClick={() => removeRow('meeting_participants', p.id)}>
+              <button className="btn-text" onClick={() => removeRow('meeting_participants', p.id)} aria-label={`Remove ${p.name}`}>
                 <TrashIcon />
               </button>
             </div>
           ))
         )}
-        <div className="meeting-add-row">
-          <input
-            type="text"
-            value={participantInput}
-            onChange={(e) => setParticipantInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') addParticipant(); }}
-            placeholder="Who was there?"
-          />
-          <button className="btn btn-steel" onClick={addParticipant}>Add</button>
-        </div>
+        {!addingPerson ? (
+          <button type="button" className="reveal-reminder-link" onClick={() => setAddingPerson(true)}>
+            + Add person
+          </button>
+        ) : (
+          <div className="meeting-add-row">
+            <input
+              type="text"
+              value={participantInput}
+              onChange={(e) => setParticipantInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addParticipant(); } }}
+              placeholder="Name"
+              aria-label="Participant name"
+              autoFocus
+            />
+            <button className="btn btn-steel" onClick={addParticipant}>Add</button>
+            <button type="button" className="btn-text" onClick={() => { setParticipantInput(''); setAddingPerson(false); }}>
+              Cancel
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="detail-section">
         <div className="detail-section-title">Observations</div>
         {observations.length === 0 ? (
-          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>Evidence captured here stays source-first.</p>
+          <p className="meeting-empty">No evidence captured yet.</p>
         ) : (
-          observations.map((o) => (
-            <div key={o.id} className="meeting-list-row" style={{ flexDirection: 'column' }}>
-              <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 8 }}>
-                <span>{o.text || <em style={{ color: 'var(--ink-faint)' }}>(media only)</em>}</span>
-                <button className="btn-text" onClick={() => removeRow('meeting_observations', o.id)}>
-                  <TrashIcon />
-                </button>
-              </div>
-              {mediaFor(o.id).length > 0 && (
-                <div className="meeting-media-row">
-                  {mediaFor(o.id).map((m) =>
-                    m.media_type === 'audio' ? (
-                      <div key={m.id} className="media-thumb-audio">
-                        <audio controls src={m.local_uri} style={{ height: '100%', width: '100%' }} />
-                      </div>
-                    ) : m.media_type === 'document' ? (
-                      <div key={m.id} className="media-thumb-doc">📄</div>
-                    ) : (
-                      <div key={m.id} className="media-thumb">
-                        <img src={m.local_uri} alt="Meeting photo" />
-                      </div>
-                    ),
-                  )}
-                </div>
-              )}
-              <span className="meeting-list-row-sub">Captured {new Date(o.captured_at).toLocaleString()}</span>
-            </div>
-          ))
-        )}
-        <div className="meeting-add-row">
-          <input
-            type="text"
-            value={observationText}
-            onChange={(e) => setObservationText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') addObservation(); }}
-            placeholder="A thing you saw, heard or noticed"
-          />
-          <MicButton
-            onResult={(t) =>
-              setObservationText((prev) => (prev.trim().length > 0 ? `${prev.trim()} ${t}` : t))
-            }
-          />
-        </div>
-        <MeetingMediaCapture onCapture={(m) => setPendingMedia((prev) => [...prev, m])} />
-        {pendingMedia.length > 0 && (
-          <div className="meeting-media-row">
-            {pendingMedia.map((m, i) => (
-              <div key={i} className={m.mediaType === 'audio' ? 'media-thumb-audio' : 'media-thumb'}>
-                {m.mediaType === 'audio' ? (
-                  <audio controls src={m.uri} style={{ height: '100%', width: '100%' }} />
-                ) : (
-                  <img src={m.uri} alt="Pending meeting photo" />
+          observations.map((o) => {
+            const obsMedia = mediaByObservation.get(o.id) ?? [];
+            return (
+              <div key={o.id} className="observation-item">
+                {o.text && <div className="observation-text">{o.text}</div>}
+                {obsMedia.length > 0 && (
+                  <div className="meeting-media-row">
+                    {obsMedia.map((m) =>
+                      m.media_type === 'audio' ? (
+                        <audio key={m.id} controls src={m.local_uri} className="media-audio" />
+                      ) : (
+                        <div key={m.id} className="media-thumb">
+                          {m.media_type === 'document' ? (
+                            <span className="media-doc-label">Document</span>
+                          ) : (
+                            <img src={m.local_uri} alt="Meeting photo" />
+                          )}
+                        </div>
+                      ),
+                    )}
+                  </div>
                 )}
+                <div className="observation-meta">
+                  <span className="observation-captured">Captured {fmtCapturedAt(o.captured_at)}</span>
+                  <button className="btn-text" onClick={() => removeRow('meeting_observations', o.id)} aria-label="Remove observation">
+                    <TrashIcon size={14} />
+                  </button>
+                </div>
               </div>
-            ))}
-            <button className="btn-text" onClick={() => setPendingMedia([])}>Clear</button>
-          </div>
+            );
+          })
         )}
-        <div>
-          <button className="btn btn-steel" onClick={addObservation} disabled={saving}>
-            {saving ? 'Saving…' : 'Save observation'}
+        {!capturingObservation ? (
+          <button type="button" className="reveal-reminder-link" onClick={() => setCapturingObservation(true)}>
+            + Add observation
           </button>
-        </div>
+        ) : (
+          <ObservationCapture
+            saving={saving}
+            onSave={addObservation}
+            onCancel={() => setCapturingObservation(false)}
+          />
+        )}
       </section>
 
       <section className="detail-section">
         <div className="detail-section-title">Decisions</div>
         {decisions.length === 0 ? (
-          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>Nothing decided yet.</p>
+          <p className="meeting-empty">Nothing decided yet.</p>
         ) : (
           decisions.map((d) => (
             <div key={d.id} className="meeting-list-row">
               <span>{d.text}</span>
-              <button className="btn-text" onClick={() => removeRow('meeting_decisions', d.id)}>
+              <button className="btn-text" onClick={() => removeRow('meeting_decisions', d.id)} aria-label="Remove decision">
                 <TrashIcon />
               </button>
             </div>
@@ -397,8 +426,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             type="text"
             value={decisionInput}
             onChange={(e) => setDecisionInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') addDecision(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addDecision(); } }}
             placeholder="What did you decide?"
+            aria-label="Decision text"
           />
           <button className="btn btn-steel" onClick={addDecision}>Add</button>
         </div>
@@ -407,7 +437,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       <section className="detail-section">
         <div className="detail-section-title">Actions</div>
         {actions.length === 0 ? (
-          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>Nothing to do afterwards yet.</p>
+          <p className="meeting-empty">Nothing to do afterwards yet.</p>
         ) : (
           actions.map((a) => (
             <div key={a.id} className="meeting-list-row">
@@ -415,7 +445,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
                 {a.text}
                 {a.task_id && <span className="meeting-list-row-sub"> · linked to a task</span>}
               </span>
-              <button className="btn-text" onClick={() => removeRow('meeting_actions', a.id)}>
+              <button className="btn-text" onClick={() => removeRow('meeting_actions', a.id)} aria-label="Remove action">
                 <TrashIcon />
               </button>
             </div>
@@ -426,8 +456,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             type="text"
             value={actionInput}
             onChange={(e) => setActionInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') addAction(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAction(); } }}
             placeholder="Something to do because of this meeting"
+            aria-label="Action text"
           />
           <button className="btn btn-steel" onClick={addAction}>Add</button>
         </div>
