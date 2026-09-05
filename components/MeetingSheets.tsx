@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Job } from '@/lib/jobTypes';
-import type { MeetingMediaType } from '@/lib/meetingTypes';
+import type { CapturedMedia } from '@/lib/meetingCapture';
 import { parseMins, localDateStr } from '@/lib/timeFormat';
 import { parseMeetingInput, parseTimeInput, combineDateAndTime } from '@/lib/meetingUtils';
 import type { JobLocationCandidate } from '@/lib/unifiedInput/resolve';
@@ -285,21 +285,31 @@ export function NewMeetingSheet(props: {
   );
 }
 
-export type CapturedMedia = {
-  mediaType: MeetingMediaType;
-  uri: string;
-  mime: string | null;
-  size: number | null;
-};
+export type { CapturedMedia };
 
-// Media stays DEVICE-LOCAL in V1: a captured photo/audio note becomes a
-// meeting_media row whose local_uri is a blob URL reference — nothing is
-// uploaded to Supabase. The bytes live where the user made them.
-export function MeetingMediaCapture({ onCapture }: { onCapture: (m: CapturedMedia) => void }) {
+// The observation capture area: "What did you see, hear or notice?" with
+// optional Photo and Voice controls. Every input is optional — an
+// observation is ONE piece of evidence (text and/or media) and no
+// particular combination is ever required. Media stays DEVICE-LOCAL in
+// V1: a captured photo/audio note becomes a meeting_media row whose
+// local_uri is a blob URL reference — nothing is uploaded to Supabase.
+export function ObservationCapture(props: {
+  saving: boolean;
+  onSave: (draft: { text: string; media: CapturedMedia[] }) => void;
+  onCancel: () => void;
+}) {
+  const { saving, onSave, onCancel } = props;
+  const [text, setText] = useState('');
+  const [media, setMedia] = useState<CapturedMedia[]>([]);
   const [recording, setRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const photoRef = useRef<HTMLInputElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    textRef.current?.focus();
+  }, []);
 
   function stopRecording() {
     try {
@@ -325,8 +335,10 @@ export function MeetingMediaCapture({ onCapture }: { onCapture: (m: CapturedMedi
           stream.getTracks().forEach((t) => t.stop());
           setRecording(false);
           const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-          const uri = URL.createObjectURL(blob);
-          onCapture({ mediaType: 'audio', uri, mime: blob.type, size: blob.size });
+          setMedia((prev) => [
+            ...prev,
+            { mediaType: 'audio', uri: URL.createObjectURL(blob), mime: blob.type, size: blob.size },
+          ]);
         };
         recorder.onerror = () => {
           stream.getTracks().forEach((t) => t.stop());
@@ -341,39 +353,76 @@ export function MeetingMediaCapture({ onCapture }: { onCapture: (m: CapturedMedi
       });
   }
 
+  const canSave = !saving && (text.trim().length > 0 || media.length > 0);
+
   return (
-    <div className="sheet-inline-options" style={{ gap: 8 }}>
-      <button
-        type="button"
-        className={recording ? 'mic-btn listening' : 'mic-btn'}
-        onClick={recording ? stopRecording : startRecording}
-        aria-label={recording ? 'Stop recording' : 'Record a voice note'}
-      >
-        🎙️
-      </button>
-      <button
-        type="button"
-        className="mic-btn"
-        onClick={() => photoRef.current?.click()}
-        aria-label="Attach a photo"
-      >
-        📷
-      </button>
-      <input
-        ref={photoRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          const uri = URL.createObjectURL(file);
-          onCapture({ mediaType: 'photo', uri, mime: file.type || null, size: file.size });
-          e.target.value = '';
-        }}
+    <div className="observation-capture">
+      <textarea
+        ref={textRef}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="What did you see, hear or notice?"
+        rows={2}
+        className="observation-capture-text"
       />
-      <span className="settings-help">{recording ? 'Recording…' : 'Photo + voice note = one observation'}</span>
+
+      <div className="observation-capture-actions">
+        <button type="button" className="btn btn-ghost" onClick={() => photoRef.current?.click()}>
+          Photo
+        </button>
+        <button
+          type="button"
+          className={recording ? 'btn btn-steel' : 'btn btn-ghost'}
+          onClick={recording ? stopRecording : startRecording}
+        >
+          {recording ? 'Recording…' : 'Voice'}
+        </button>
+        <input
+          ref={photoRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setMedia((prev) => [
+              ...prev,
+              { mediaType: 'photo', uri: URL.createObjectURL(file), mime: file.type || null, size: file.size },
+            ]);
+            e.target.value = '';
+          }}
+        />
+      </div>
+
+      {media.length > 0 && (
+        <div className="pending-media">
+          {media.map((m, i) => (
+            <div key={`${m.uri}-${i}`} className="pending-media-item">
+              {m.mediaType === 'audio' ? (
+                <audio controls src={m.uri} />
+              ) : (
+                <img src={m.uri} alt="Captured photo" />
+              )}
+              <button
+                type="button"
+                aria-label="Remove"
+                className="pending-media-remove"
+                onClick={() => setMedia(media.filter((_, j) => j !== i))}
+              >
+                <CloseIcon size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="observation-capture-save">
+        <button type="button" className="btn btn-steel" onClick={() => onSave({ text, media })} disabled={!canSave}>
+          {saving ? 'Saving…' : 'Save observation'}
+        </button>
+        <button type="button" className="btn-text" onClick={onCancel}>Cancel</button>
+      </div>
     </div>
   );
 }

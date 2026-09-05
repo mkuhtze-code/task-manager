@@ -123,8 +123,8 @@ export default function MeetingsHome() {
                 </div>
                 <div className="meeting-row-sub">
                   <span className="meeting-window">{fmtMeetingWindow(m.start_time, m.duration_mins)}</span>
-                  {job && <span className="meeting-chip">📁 {job}</span>}
-                  {m.location_text && job === null && <span className="meeting-chip">📍 {m.location_text}</span>}
+                  {job && <span className="meeting-meta">{job}</span>}
+                  {m.location_text && job === null && <span className="meeting-meta">{m.location_text}</span>}
                 </div>
               </Link>
             );

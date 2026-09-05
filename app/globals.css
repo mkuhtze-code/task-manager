@@ -3704,29 +3704,50 @@ button:focus-visible, input:focus-visible {
   color: var(--ink-soft);
 }
 
-.meeting-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+.meeting-meta {
   font-size: var(--text-2xs);
-  font-weight: 600;
-  color: var(--steel-dark);
-  background: var(--steel-wash);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 1px 8px;
+  font-weight: 500;
+  color: var(--ink-soft);
 }
 
 .meeting-context {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 12px 16px;
 }
 
 .meeting-context-line {
   font-size: var(--text-sm);
   color: var(--ink);
+}
+
+.meeting-context-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.meeting-job-link {
+  font-size: var(--text-sm);
+  color: var(--steel-dark);
+  text-decoration: none;
+}
+
+.meeting-job-link:hover {
+  text-decoration: underline;
+}
+
+.meeting-location {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.meeting-empty {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  margin: 0;
 }
 
 .detail-section {
@@ -3780,7 +3801,7 @@ button:focus-visible, input:focus-visible {
   position: relative;
   width: 72px;
   height: 72px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px solid var(--line);
   background: var(--paper-raised);
@@ -3794,16 +3815,6 @@ button:focus-visible, input:focus-visible {
   display: block;
 }
 
-.media-thumb-audio {
-  width: 72px;
-  height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  background: var(--steel-wash);
-}
-
 .media-thumb-doc {
   width: 72px;
   height: 72px;
@@ -3813,6 +3824,137 @@ button:focus-visible, input:focus-visible {
   font-size: 24px;
   background: var(--paper-raised);
   color: var(--ink-soft);
+}
+
+.media-doc-label {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.media-audio {
+  max-width: 260px;
+  width: 100%;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+}
+
+/* One observation reads as a quiet notebook line: text, media, then the
+   captured time. Separators stay hairline-free and calm. */
+.observation-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0 10px;
+}
+
+.observation-text {
+  font-size: var(--text-sm);
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.observation-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.observation-captured {
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
+/* The lightweight capture area: nothing decorative, each input optional. */
+.observation-capture {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--paper-raised);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.observation-capture-text {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.observation-capture-text:focus {
+  border-color: var(--line-strong);
+}
+
+.observation-capture-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.observation-capture-save {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pending-media {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.pending-media-item {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.pending-media-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pending-media-item audio {
+  width: 144px;
+  height: 72px;
+}
+
+.pending-media-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--shadow-rgb), 0.55);
+  color: var(--paper);
+  cursor: pointer;
+  padding: 0;
+}
+
+.pending-media-remove:hover {
+  background: var(--hazard);
 }
 
 .meeting-notes {
