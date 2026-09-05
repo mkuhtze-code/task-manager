@@ -69,11 +69,6 @@ function fmtMins(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-function fmtHours(mins: number): string {
-  const hours = (mins / 60).toFixed(1);
-  return `${hours}h`;
-}
-
 export default function Analytics() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
@@ -372,20 +367,18 @@ export default function Analytics() {
               {timePeriod === 'today' ? 'Today' : timePeriod === 'week' ? 'This week' : 'This month'}
             </div>
             {totalCompleted === 0 ? (
-              <p style={{ color: 'var(--ink-soft)', fontSize: 13, margin: 0 }}>
+              <p className="settings-help">
                 No completed work recorded in this window yet.
               </p>
             ) : (
               <>
-                <div className="hero-stat-row">
-                  <div className="hero-stat-number mono">{fmtHours(totalActualMins)}</div>
-                  <div className="hero-stat-sub">
-                    across {totalCompleted} completed task{totalCompleted === 1 ? '' : 's'}
-                  </div>
-                </div>
+                <p className="settings-help">
+                  {totalCompleted} completed task{totalCompleted === 1 ? '' : 's'}
+                  {totalActualMins >= 60 ? ` · roughly ${Math.round(totalActualMins / 60)}h of finished work` : ''}.
+                </p>
 
                 {habitObservations.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+                  <div className="pattern-list compact">
                     {habitObservations.map((obs, i) => (
                       <div key={i} className="analytics-task-item">
                         <span className="analytics-task-text">{obs}</span>
@@ -401,10 +394,10 @@ export default function Analytics() {
           {clusterInsights.length > 0 && (
             <div className="settings-panel">
               <div className="settings-panel-title">Learned task patterns</div>
-              <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.5, margin: '-4px 0 var(--space-3)' }}>
+              <p className="settings-help">
                 Long-term observations from tasks you repeat across all work history.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <div className="pattern-list">
                 {clusterInsights.map((p) => (
                   <div key={p.label} className="analytics-task-row">
                     <div className="analytics-task-info">
@@ -416,7 +409,7 @@ export default function Analytics() {
                         </div>
                       )}
                     </div>
-                    <div className="confidence-tag">{p.count} completions</div>
+                    <span className="analytics-evidence mono">seen {p.count} times</span>
                   </div>
                 ))}
               </div>
@@ -426,23 +419,25 @@ export default function Analytics() {
           {/* Section 2b: Evidence-Based Observations (Thinking Engine V2) */}
           <div className="settings-panel">
             <div className="settings-panel-title">Things I&apos;ve noticed</div>
-            <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.5, margin: '-4px 0 var(--space-3)' }}>
+            <p className="settings-help">
               Quiet observations grounded in your task history. Not a scoreboard — just patterns worth knowing.
             </p>
             {v2Observations.length === 0 ? (
-              <p style={{ color: 'var(--ink-soft)', fontSize: 13, margin: 0 }}>
+              <p className="settings-help">
                 Not enough history to form confident observations yet.
               </p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <div className="pattern-list">
                 {v2Observations.map((obs) => (
                   <div key={obs.id} className="analytics-task-row">
                     <div className="analytics-task-info">
                       <div className="analytics-task-name">{obs.title}</div>
                       <div className="analytics-task-time">{obs.description}</div>
-                      {obs.confidence === 'high' && (
-                        <div className="confidence-tag" style={{ marginTop: 6 }}>
-                          {obs.evidence.sampleSize} samples
+                      {(obs.affectedContext.location || obs.confidence !== 'low') && (
+                        <div className="analytics-evidence mono" style={{ marginTop: 2 }}>
+                          {[obs.affectedContext.location ? `usually at ${obs.affectedContext.location}` : null, obs.confidence !== 'low' ? `${obs.confidence} confidence` : null]
+                            .filter(Boolean)
+                            .join(' · ')}
                         </div>
                       )}
                     </div>
@@ -456,17 +451,12 @@ export default function Analytics() {
           {completedPredictions.length > 0 && (
             <div className="settings-panel">
               <div className="settings-panel-title">Estimate calibration</div>
-              <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.5, margin: '-4px 0 var(--space-3)' }}>
-                Long-term history of how initial duration estimates match completed work.
+              <p className="settings-help">
+                Duration estimates are weighed against how long similar completed work actually took, so future suggestions stay realistic.
               </p>
-              <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>
-                <p>
-                  Your duration estimates are being compared with completed work over time to help guide future planning.
-                </p>
-                <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>
-                  Based on {completedPredictions.length} recorded prediction{completedPredictions.length === 1 ? '' : 's'}.
-                </div>
-              </div>
+              <p className="analytics-evidence mono">
+                Based on {completedPredictions.length} recorded prediction{completedPredictions.length === 1 ? '' : 's'}.
+              </p>
             </div>
           )}
         </>

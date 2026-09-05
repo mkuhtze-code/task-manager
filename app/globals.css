@@ -272,7 +272,6 @@ button:focus-visible, input:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  animation: expand-in 0.35s var(--spring);
 }
 
 .settings-panel-title {
@@ -305,6 +304,13 @@ button:focus-visible, input:focus-visible {
   font-size: var(--text-sm);
   color: var(--ink-soft);
   line-height: 1.5;
+  margin: 0;
+}
+
+.settings-hint {
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  line-height: 1.45;
   margin: 0;
 }
 
@@ -520,16 +526,9 @@ button:focus-visible, input:focus-visible {
 
 .task-row {
   position: relative;
-  border-radius: 16px;
-  border: 1px solid rgba(var(--shadow-rgb), 0.055);
-  box-shadow:
-    0 1px 2px rgba(var(--shadow-rgb), 0.05),
-    0 4px 12px rgba(var(--shadow-rgb), 0.055),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
   overflow: hidden;
   background: var(--paper);
   padding: 10px var(--space-4);
-  transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 
 .task-row.task-list-item {
@@ -540,13 +539,12 @@ button:focus-visible, input:focus-visible {
   content: '';
   position: absolute;
   left: 0;
-  top: 6px;
-  bottom: 6px;
+  top: 8px;
+  bottom: 8px;
   width: 3px;
   border-radius: 3px;
-  background: var(--marker-default, white);
+  background: transparent;
   z-index: 3;
-  opacity: 0.9;
   transition: background 0.2s var(--ease), opacity 0.2s var(--ease);
 }
 
@@ -2114,25 +2112,6 @@ button:focus-visible, input:focus-visible {
   min-width: 0;
 }
 
-.hero-stat-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.hero-stat-number {
-  font-size: var(--text-display-lg);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-  line-height: 1.1;
-}
-
-.hero-stat-sub {
-  font-size: var(--text-xs);
-  color: var(--ink-soft);
-}
-
 .daily-chart {
   display: flex;
   align-items: flex-end;
@@ -2236,15 +2215,23 @@ button:focus-visible, input:focus-visible {
   border-top: 1px dashed var(--line);
 }
 
-.confidence-tag {
+.analytics-evidence {
+  font-family: var(--font-mono);
   font-size: var(--text-2xs);
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 20px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
   flex-shrink: 0;
-  background: var(--moss-bg);
-  color: var(--moss-text, #0f5c2a);
-  white-space: nowrap;
+}
+
+.pattern-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pattern-list.compact {
+  gap: var(--space-2);
 }
 
 .today-header-date-block {
@@ -2759,7 +2746,6 @@ button:focus-visible, input:focus-visible {
    the light-mode value by default and only need a value here:
      --shadow-rgb      (shadow/border color, was rgba(26,41,51,…) everywhere)
      --glass-rgb       (the two frosted-glass surfaces)
-     --marker-default  (task-row's unmarked left edge)
      --moss-text       (dark-green text sitting on the moss chip)
      --steel-wash-hover (suggestion-chip hover state)
    ══════════════════════════════════════════════════════════════════ */
@@ -2818,10 +2804,6 @@ button:focus-visible, input:focus-visible {
      instead of staying stuck on white. */
   --glass-rgb: 20, 24, 31;
 
-  /* Unmarked task cards blend with the dark card instead of showing a
-     stray white sliver on the left edge. */
-  --marker-default: var(--paper-raised);
-
   /* Suggestion-chip hover — a lighter version of the dark steel-wash,
      mirroring what the light-mode hover does relative to its own wash. */
   --steel-wash-hover: #2c3e6b;
@@ -2830,13 +2812,6 @@ button:focus-visible, input:focus-visible {
 /* A couple of spots needed a literal (not token) adjustment, since the
    light-mode value was a fixed white sheen rather than something that
    already flows through a variable. */
-[data-theme="dark"] .task-row {
-  box-shadow:
-    0 1px 2px rgba(var(--shadow-rgb), 0.3),
-    0 4px 12px rgba(var(--shadow-rgb), 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
 [data-theme="dark"] .today-header-card {
   box-shadow: 0 2px 6px rgba(var(--shadow-rgb), 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
