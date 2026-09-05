@@ -356,7 +356,7 @@ export default function Preferences() {
           }}
         />
         {homeLocation.length > 0 && !homeCoords && (
-          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+          <p className="settings-hint">
             Pick a suggestion from the list so this can anchor drive-time calculations.
           </p>
         )}
@@ -372,7 +372,7 @@ export default function Preferences() {
           }}
         />
         {workLocation.length > 0 && !workCoords && (
-          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+          <p className="settings-hint">
             Pick a suggestion from the list so this can anchor drive-time calculations.
           </p>
         )}
