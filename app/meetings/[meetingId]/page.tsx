@@ -252,6 +252,8 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     router.push('/meetings');
   }
 
+  const mediaByObservation = useMemo(() => groupMediaByObservation(media), [media]);
+
   if (!session) {
     return <div className="empty-state">{loading ? 'Loading…' : 'Not signed in'}</div>;
   }
@@ -281,8 +283,6 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       </div>
     );
   }
-
-  const mediaByObservation = useMemo(() => groupMediaByObservation(media), [media]);
 
   return (
     <div className="app-shell">
