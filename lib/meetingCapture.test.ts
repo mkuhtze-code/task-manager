@@ -6,8 +6,6 @@ import {
   groupMediaByObservation,
   fmtCapturedAt,
   photoMedia,
-  uniqueMedia,
-  meetingPhotos,
   remainingMedia,
   observationEdit,
   photoAlt,
@@ -71,8 +69,9 @@ describe('personAlreadyAdded', () => {
 });
 
 describe('buildObservationDraft', () => {
-  const photo = { mediaType: 'photo' as const, uri: 'blob:p', mime: 'image/jpeg', size: 100 };
-  const audio = { mediaType: 'audio' as const, uri: 'blob:a', mime: 'audio/webm', size: 200 };
+  const photo = { mediaType: 'photo' as const, uri: 'blob:p', mime: 'image/jpeg', size: 100, capturedAt: '2026-01-01T00:00:01.000Z' };
+  const audio = { mediaType: 'audio' as const, uri: 'blob:a', mime: 'audio/webm', size: 200, capturedAt: '2026-01-01T00:00:02.000Z' };
+  const photo2 = { mediaType: 'photo' as const, uri: 'blob:p2', mime: 'image/jpeg', size: 100, capturedAt: '2026-01-01T00:00:03.000Z' };
 
   it('allows a text-only observation', () => {
     const draft = buildObservationDraft('The flashing needs replacing.', []);
@@ -116,6 +115,16 @@ describe('buildObservationDraft', () => {
     expect(draft!.media).toHaveLength(2);
   });
 
+  it('allows multiple pieces of one evidence type', () => {
+    const draft = buildObservationDraft('', [photo, photo2]);
+    expect(draft!.media).toHaveLength(2);
+  });
+
+  it('preserves the capture sequence of mixed evidence', () => {
+    const draft = buildObservationDraft('After the photos.', [photo, audio, photo2]);
+    expect(draft!.media.map((m) => m.uri)).toEqual(['blob:p', 'blob:a', 'blob:p2']);
+  });
+
   it('rejects an empty observation (no text, no media)', () => {
     expect(buildObservationDraft('   ', [])).toBeNull();
   });
@@ -136,6 +145,18 @@ describe('groupMediaByObservation', () => {
   it('keeps meeting-level media (no observation_id) out of the observation display', () => {
     const grouped = groupMediaByObservation([media('m1', null)]);
     expect(grouped.size).toBe(0);
+  });
+
+  it('never mixes one observation’s media into another', () => {
+    const list = [
+      { ...media('p1', 'o-1'), media_type: 'photo' as const },
+      { ...media('a1', 'o-2'), media_type: 'audio' as const },
+      { ...media('p2', 'o-1'), media_type: 'photo' as const },
+    ];
+    const grouped = groupMediaByObservation(list);
+    expect(grouped.get('o-1')?.map((m) => m.id)).toEqual(['p1', 'p2']);
+    expect(grouped.get('o-2')?.map((m) => m.id)).toEqual(['a1']);
+    expect(grouped.get('o-3')).toBeUndefined();
   });
 
   it('handles an empty media list from older meetings', () => {
@@ -159,7 +180,7 @@ describe('fmtCapturedAt', () => {
   });
 });
 
-describe('photoMedia / uniqueMedia / meetingPhotos', () => {
+describe('photoMedia (the evidence carousel set for one observation)', () => {
   function photo(id: string, obsId: string | null): MeetingMedia {
     return media(id, obsId);
   }
@@ -167,37 +188,27 @@ describe('photoMedia / uniqueMedia / meetingPhotos', () => {
     return { ...media(id, obsId), media_type: 'audio' };
   }
 
-  it('returns no photos for a meeting with none', () => {
+  it('shows no carousel for an observation with no photos', () => {
     expect(photoMedia([audioNote('a1', 'o-1')])).toEqual([]);
-    expect(meetingPhotos([])).toEqual([]);
+    expect(photoMedia([])).toEqual([]);
   });
 
-  it('keeps a single photo', () => {
-    expect(meetingPhotos([photo('p1', 'o-1')]).map((m) => m.id)).toEqual(['p1']);
+  it('keeps a single photo (no unnecessary navigation needed)', () => {
+    expect(photoMedia([photo('p1', 'o-1')]).map((m) => m.id)).toEqual(['p1']);
   });
 
-  it('keeps multiple photos and drops audio', () => {
-    const list = [photo('p1', 'o-1'), audioNote('a1', 'o-1'), photo('p2', 'o-2')];
+  it('keeps multiple photos in captured order and drops audio', () => {
+    const list = [photo('p1', 'o-1'), audioNote('a1', 'o-1'), photo('p2', 'o-1')];
     expect(photoMedia(list).map((m) => m.id)).toEqual(['p1', 'p2']);
   });
 
-  it('collects photos from every observation', () => {
-    const list = [photo('p1', 'o-1'), photo('p2', 'o-1'), photo('p3', 'o-2')];
-    expect(meetingPhotos(list).map((m) => m.id)).toEqual(['p1', 'p2', 'p3']);
-  });
-
-  it('keeps orphan meeting photos visible in the gallery', () => {
-    const list = [photo('p1', null), photo('p2', 'o-1')];
-    expect(meetingPhotos(list).map((m) => m.id)).toEqual(['p1', 'p2']);
-  });
-
-  it('never shows a duplicate media row in the gallery', () => {
-    expect(uniqueMedia([photo('p1', 'o-1'), photo('p1', 'o-1')])).toHaveLength(1);
-    expect(meetingPhotos([photo('p1', 'o-1'), audioNote('a1', null), photo('p1', 'o-1')])).toHaveLength(1);
-  });
-
-  it('lists every photo attached to one observation', () => {
-    const grouped = groupMediaByObservation([photo('p1', 'o-1'), photo('p2', 'o-1'), photo('p3', 'o-2')]);
+  it('lists every photo attached to one observation and none of another’s', () => {
+    const grouped = groupMediaByObservation([
+      photo('p1', 'o-1'),
+      photo('p2', 'o-1'),
+      photo('p3', 'o-2'),
+      photo('p4', null),
+    ]);
     expect(photoMedia(grouped.get('o-1') ?? []).map((m) => m.id)).toEqual(['p1', 'p2']);
   });
 });
@@ -211,6 +222,16 @@ describe('remainingMedia / observationEdit', () => {
     const list = [photo('p1', 'o-1'), photo('p2', 'o-1'), photo('p3', 'o-1')];
     expect(remainingMedia(list, ['p2']).map((m) => m.id)).toEqual(['p1', 'p3']);
     expect(remainingMedia(list, []).length).toBe(3);
+  });
+
+  it('removes a voice note without touching the photos beside it', () => {
+    const list = [
+      photo('p1', 'o-1'),
+      { ...photo('a1', 'o-1'), media_type: 'audio' as const },
+      photo('p2', 'o-1'),
+    ];
+    const rest = remainingMedia(list, ['a1']);
+    expect(rest.map((m) => m.id)).toEqual(['p1', 'p2']);
   });
 
   it('keeps editing a text-only observation (legacy data)', () => {

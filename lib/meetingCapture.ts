@@ -3,15 +3,28 @@ import type { MeetingMedia, MeetingMediaType, MeetingParticipant } from '@/lib/m
 // ── Pure capture/people logic ─────────────────────────────────────────
 // Kept out of the components so the behaviour is deterministic and tested:
 // name normalisation + quiet de-duplication for People, and the rule that
-// an observation must contain at least ONE input (text and/or media) but
-// never more than it needs. Media stays a device-local reference (blob URL
-// in V1) — nothing here uploads bytes.
+// an observation is ONE piece of evidence — text, photos and/or voice
+// notes, all optional but at least one present so nothing empty is ever
+// saved. Media stays device-local: `uri` is the stable `idb://…` reference
+// the media layer installs when the bytes are parked in IndexedDB at the
+// moment of capture, so the same reference is what `meeting_media.local_uri`
+// stores and what rendering resolves. Nothing here uploads.
 
 export type CapturedMedia = {
   mediaType: MeetingMediaType;
+  // Durable reference to the bytes already stored in IndexedDB (unless a
+  // legacy code path produced a blob URL, which the page migrates before
+  // writing any row). Never a temporary blob URL for new captures.
   uri: string;
   mime: string | null;
   size: number | null;
+  // The device bytes, kept beside the reference so a defensive migration
+  // never needs to re-fetch a dead blob URL.
+  blob?: Blob;
+  // When the piece was captured, client-side — stamped onto
+  // meeting_media.captured_at so loads reproduce the true capture sequence
+  // without a separate ordering column.
+  capturedAt: string;
 };
 
 // Participants are freeform names; there is no Person entity. Normalise so
@@ -74,35 +87,15 @@ export function fmtCapturedAt(iso: string): string {
   return `${hours}:${String(minutes).padStart(2, '0')}${ampm}`;
 }
 
-// ── V2.1: photo galleries + in-place observation edits ─────────────
-// Pure helpers for the meeting photo gallery and for editing saved
-// observations. Media stays the same device-local meeting_media[] the page
-// loads — nothing here touches persistence or storage.
+// ── V2.2: one observation, editable as one object ──────────────────
+// Pure helpers for the evidence carousel and in-place observation edits.
+// Media stays the same device-local meeting_media[] the page loads —
+// nothing here touches persistence or storage.
 
-// Every photo row in the list: those inside observations and orphans alike.
+// Every photo row belonging to a list (already filtered to ONE observation
+// by groupMediaByObservation): the exact set the evidence carousel shows.
 export function photoMedia(media: MeetingMedia[]): MeetingMedia[] {
   return media.filter((m) => m.media_type === 'photo');
-}
-
-// Defensive no-duplicates guarantee for aggregate views (a gallery must
-// never show the same row twice, even if the underlying list ever did).
-export function uniqueMedia(media: MeetingMedia[]): MeetingMedia[] {
-  const seen = new Set<string>();
-  const out: MeetingMedia[] = [];
-  for (const m of media) {
-    if (seen.has(m.id)) continue;
-    seen.add(m.id);
-    out.push(m);
-  }
-  return out;
-}
-
-// All of the meeting's photos, deduplicated, in load order — whether they
-// belong to an observation or stand alone as meeting-level media. The
-// observation relationship is never rewritten: orphan photos stay visible
-// here without being silently attached to an observation.
-export function meetingPhotos(media: MeetingMedia[]): MeetingMedia[] {
-  return uniqueMedia(photoMedia(media));
 }
 
 // Media left after an explicit removal list is applied. The count decides

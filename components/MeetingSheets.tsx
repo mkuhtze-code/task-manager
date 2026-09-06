@@ -9,6 +9,8 @@ import type { JobLocationCandidate } from '@/lib/unifiedInput/resolve';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
+import { AudioNote, PhotoImage } from '@/components/MediaRender';
+import { deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
 import { CloseIcon, MapPinIcon, TrashIcon } from '@/components/icons';
 
 export type NewMeetingPayload = {
@@ -288,12 +290,12 @@ export function NewMeetingSheet(props: {
 
 export type { CapturedMedia };
 
-// The observation capture area: "What did you see, hear or notice?" with
-// optional Photo and Voice controls. Every input is optional — an
-// observation is ONE piece of evidence (text and/or media) and no
-// particular combination is ever required. Media stays DEVICE-LOCAL in
-// V1: a captured photo/audio note becomes a meeting_media row whose
-// local_uri is a blob URL reference — nothing is uploaded to Supabase.
+// The observation capture area: ONE continuous surface. "What did you see,
+// hear or notice?" starts it, and [+ Photo] and [+ Voice] append evidence
+// to the SAME observation without leaving it — however the user builds it
+// (text → photo → voice → photo → Save), each piece lands in `media` in the
+// order it was captured and is stamped with that moment. Every evidence
+// type is optional; nothing is grouped or re-navigated until Save.
 export function ObservationCapture(props: {
   saving: boolean;
   onSave: (draft: { text: string; media: CapturedMedia[] }) => void;
@@ -320,6 +322,16 @@ export function ObservationCapture(props: {
     }
     const m = await cap.captureVoice();
     if (m) setMedia((prev) => [...prev, m]);
+  }
+
+  // Cancel discards the drafted bytes too: each pending capture was already
+  // parked in IndexedDB at the moment of capture, so it is freed here
+  // rather than left as an orphan nobody references.
+  function cancel() {
+    for (const m of media) {
+      if (isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
+    }
+    onCancel();
   }
 
   const canSave = !saving && !cap.recording && (text.trim().length > 0 || media.length > 0);
@@ -357,25 +369,29 @@ export function ObservationCapture(props: {
         />
       </div>
 
+      {cap.captureError && <p className="meeting-capture-error">{cap.captureError}</p>}
+
       {media.length > 0 && (
-        <div className="pending-media">
-          {media.map((m, i) => (
-            <div key={`${m.uri}-${i}`} className="pending-media-item">
-              {m.mediaType === 'audio' ? (
-                <audio controls src={m.uri} />
-              ) : (
-                <img src={m.uri} alt="Captured photo" />
-              )}
-              <button
-                type="button"
-                aria-label="Remove"
-                className="pending-media-remove"
-                onClick={() => setMedia(media.filter((_, j) => j !== i))}
-              >
-                <CloseIcon size={14} />
-              </button>
-            </div>
-          ))}
+        <div className="meeting-observation-actions">
+          <div className="pending-media">
+            {media.map((m, i) => (
+              <div key={m.uri} className="pending-media-item">
+                {m.mediaType === 'audio' ? (
+                  <AudioNote ref={m.uri} />
+                ) : (
+                  <PhotoImage ref={m.uri} alt="Captured photo" />
+                )}
+                <button
+                  type="button"
+                  aria-label="Remove"
+                  className="pending-media-remove"
+                  onClick={() => setMedia(media.filter((_, j) => j !== i))}
+                >
+                  <CloseIcon size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -388,7 +404,7 @@ export function ObservationCapture(props: {
         >
           {saving ? 'Saving…' : 'Save observation'}
         </button>
-        <button type="button" className="meeting-pill" onClick={onCancel} disabled={saving}>
+        <button type="button" className="meeting-pill" onClick={cancel} disabled={saving}>
           Cancel
         </button>
       </div>
