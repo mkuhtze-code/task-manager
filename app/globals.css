@@ -3816,32 +3816,174 @@ button:focus-visible, input:focus-visible {
   background: var(--paper-raised);
 }
 
-/* One observation reads as a quiet notebook line: the evidence first
-   (photos, then text, then voice), then the captured time. Separators stay
-   hairline-free and calm. */
-.observation-item {
+/* ONE observation renders as ONE evidence tile. The tile shows exactly the
+   evidence that exists — photos, then text, then voice — and nothing else:
+   a photo-only observation never shows an empty text slot, a text-only one
+   never shows a fake photo container. In the observation carousel it is the
+   full "detail" tile; in the grid it is a compact preview whose whole
+   surface opens that same observation. */
+.observation-tile {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 2px 0 10px;
+  padding: 10px 12px 8px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
 }
 
-.observation-text {
+.observation-tile--grid {
+  padding: 0;
+  gap: 0;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.observation-tile--grid:hover {
+  border-color: var(--line-strong);
+}
+
+.observation-tile--grid:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+.observation-tile-photo {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--paper-raised);
+  overflow: hidden;
+}
+
+.observation-tile-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.observation-tile-photo-count {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--paper);
+  background: rgba(var(--shadow-rgb), 0.6);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.observation-tile-text {
   font-size: var(--text-sm);
   color: var(--ink);
   line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.observation-footer {
+.observation-tile-text--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.observation-tile--grid .observation-tile-text {
+  padding: 8px 12px;
+}
+
+.observation-tile-grid-audio {
+  max-width: 100%;
+  padding: 8px 12px 10px;
+}
+
+.observation-tile-audio {
+  max-width: 100%;
+  width: 100%;
+}
+
+.observation-tile-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.observation-captured {
+.observation-tile-captured {
   font-size: var(--text-2xs);
   color: var(--ink-faint);
+}
+
+/* Level-1 navigation: swiping (or the pills) moves across OBSERVATIONS.
+   Each slide holds a full detail tile; the tile's own photo carousel is
+   the level-2 strip inside, so the two navigation levels stay distinct. */
+.observation-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.observation-carousel-viewport {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.observation-carousel-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.observation-carousel-slide {
+  flex: none;
+  width: 100%;
+  scroll-snap-align: start;
+  min-width: 0;
+}
+
+.observation-carousel-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.observation-carousel-btn svg {
+  transform: rotate(270deg);
+}
+
+.observation-carousel-btn--next svg {
+  transform: rotate(90deg);
+}
+
+.observation-carousel-btn:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.observation-carousel-position {
+  font-size: var(--text-2xs);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  min-width: 56px;
+  text-align: center;
+}
+
+/* The grid — every observation exactly once, tap to open. */
+.observation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.observation-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* The edit state keeps the whole observation in view — one lane, each

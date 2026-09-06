@@ -21,8 +21,7 @@ import {
 } from '@/lib/meetingCapture';
 import { saveMediaBlob, deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
-import { ObservationCapture } from '@/components/MeetingSheets';
-import MeetingObservationItem from '@/components/MeetingObservationItem';
+import MeetingObservations from '@/components/MeetingObservations';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
@@ -48,7 +47,6 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   // Section capture states: a quiet "+ …" pill in the section header opens
   // its simple input row. Everything here is Meetings-scoped.
   const [addingPerson, setAddingPerson] = useState(false);
-  const [capturingObservation, setCapturingObservation] = useState(false);
   const [addingDecision, setAddingDecision] = useState(false);
   const [addingAction, setAddingAction] = useState(false);
   const [participantInput, setParticipantInput] = useState('');
@@ -201,11 +199,13 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   // order. Bytes were already parked in IndexedDB at capture time, so
   // local_uri is always the stable idb:// reference; a metadata row is
   // created only for bytes that were successfully stored. Nothing is
-  // uploaded or transcribed.
-  async function addObservation(draft: { text: string; media: CapturedMedia[] }) {
-    if (!session) return;
+  // uploaded or transcribed. Returns false only when nothing was saved, so
+  // the capture surface stays open; a partial media failure still saves the
+  // observation and reports the missing rows.
+  async function addObservation(draft: { text: string; media: CapturedMedia[] }): Promise<boolean> {
+    if (!session) return false;
     const prepared = buildObservationDraft(draft.text, draft.media);
-    if (!prepared) return;
+    if (!prepared) return false;
     setSaving(true);
     setError(null);
 
@@ -218,15 +218,15 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       console.error(obsErr);
       setError("Couldn't save the observation");
       setSaving(false);
-      return;
+      return false;
     }
 
     const ok = await insertMediaRows(obs.id, prepared.media);
     if (!ok) setError("Couldn't save part of the observation");
 
     setSaving(false);
-    setCapturingObservation(false);
     await load();
+    return true;
   }
 
   // Attach captured evidence to an observation (or to the meeting).
@@ -483,40 +483,15 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         )}
       </section>
 
-      <section className="detail-section">
-        <div className="detail-section-title-row">
-          <div className="detail-section-title">Observations</div>
-          <button
-            type="button"
-            className="meeting-pill"
-            onClick={() => setCapturingObservation(true)}
-            disabled={capturingObservation || saving}
-          >
-            + Observation
-          </button>
-        </div>
-        {observations.length === 0 && !capturingObservation && (
-          <p className="meeting-empty">No evidence captured yet.</p>
-        )}
-        {observations.map((o) => (
-          <MeetingObservationItem
-            key={o.id}
-            observation={o}
-            media={mediaByObservation.get(o.id) ?? []}
-            saving={saving}
-            onDelete={() => removeRow('meeting_observations', o.id)}
-            onAddMedia={addMediaToObservation}
-            onSaveEdit={saveObservationEdit}
-          />
-        ))}
-        {capturingObservation && (
-          <ObservationCapture
-            saving={saving}
-            onSave={addObservation}
-            onCancel={() => setCapturingObservation(false)}
-          />
-        )}
-      </section>
+      <MeetingObservations
+        observations={observations}
+        mediaByObservation={mediaByObservation}
+        saving={saving}
+        onSaveObservation={addObservation}
+        onDelete={(id) => removeRow('meeting_observations', id)}
+        onAddMedia={addMediaToObservation}
+        onSaveEdit={saveObservationEdit}
+      />
 
       <section className="detail-section">
         <div className="detail-section-title-row">
