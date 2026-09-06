@@ -181,7 +181,6 @@ export default function MeetingObservationTile(props: {
             placeholder="What did you see, hear or notice?"
             rows={2}
             className="observation-capture-text"
-            autoFocus
           />
 
           {(media.length > 0 || newMedia.length > 0) && (

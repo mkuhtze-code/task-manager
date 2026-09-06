@@ -322,18 +322,12 @@ export function ObservationCapture(props: {
     onSave,
     onCancel,
   } = props;
-  const textRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    textRef.current?.focus();
-  }, []);
 
   const canSave = !saving && !recording && (text.trim().length > 0 || media.length > 0);
 
   return (
     <div className="observation-capture">
       <textarea
-        ref={textRef}
         value={text}
         onChange={(e) => onTextChange(e.target.value)}
         placeholder="What did you see, hear or notice?"
