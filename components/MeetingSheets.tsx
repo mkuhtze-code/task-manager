@@ -9,6 +9,8 @@ import type { JobLocationCandidate } from '@/lib/unifiedInput/resolve';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
+import { AudioNote, PhotoImage } from '@/components/MediaRender';
+import { deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
 import { CloseIcon, MapPinIcon, TrashIcon } from '@/components/icons';
 
 export type NewMeetingPayload = {
@@ -322,6 +324,16 @@ export function ObservationCapture(props: {
     if (m) setMedia((prev) => [...prev, m]);
   }
 
+  // Cancel discards the drafted bytes too: each pending capture was already
+  // parked in IndexedDB at the moment of capture, so it is freed here
+  // rather than left as an orphan nobody references.
+  function cancel() {
+    for (const m of media) {
+      if (isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
+    }
+    onCancel();
+  }
+
   const canSave = !saving && !cap.recording && (text.trim().length > 0 || media.length > 0);
 
   return (
@@ -357,15 +369,17 @@ export function ObservationCapture(props: {
         />
       </div>
 
+      {cap.captureError && <p className="meeting-capture-error">{cap.captureError}</p>}
+
       {media.length > 0 && (
         <div className="meeting-observation-actions">
           <div className="pending-media">
             {media.map((m, i) => (
-              <div key={`${m.uri}-${i}`} className="pending-media-item">
+              <div key={m.uri} className="pending-media-item">
                 {m.mediaType === 'audio' ? (
-                  <audio controls src={m.uri} />
+                  <AudioNote ref={m.uri} />
                 ) : (
-                  <img src={m.uri} alt="Captured photo" />
+                  <PhotoImage ref={m.uri} alt="Captured photo" />
                 )}
                 <button
                   type="button"
@@ -390,7 +404,7 @@ export function ObservationCapture(props: {
         >
           {saving ? 'Saving…' : 'Save observation'}
         </button>
-        <button type="button" className="meeting-pill" onClick={onCancel} disabled={saving}>
+        <button type="button" className="meeting-pill" onClick={cancel} disabled={saving}>
           Cancel
         </button>
       </div>

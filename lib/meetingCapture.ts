@@ -5,18 +5,21 @@ import type { MeetingMedia, MeetingMediaType, MeetingParticipant } from '@/lib/m
 // name normalisation + quiet de-duplication for People, and the rule that
 // an observation is ONE piece of evidence — text, photos and/or voice
 // notes, all optional but at least one present so nothing empty is ever
-// saved. Media stays device-local: `uri` is either the fresh blob URL of
-// the moment or (once persisted) the `idb://…` reference the media layer
-// installs so the bytes survive a browser restart. Nothing here uploads.
+// saved. Media stays device-local: `uri` is the stable `idb://…` reference
+// the media layer installs when the bytes are parked in IndexedDB at the
+// moment of capture, so the same reference is what `meeting_media.local_uri`
+// stores and what rendering resolves. Nothing here uploads.
 
 export type CapturedMedia = {
   mediaType: MeetingMediaType;
+  // Durable reference to the bytes already stored in IndexedDB (unless a
+  // legacy code path produced a blob URL, which the page migrates before
+  // writing any row). Never a temporary blob URL for new captures.
   uri: string;
   mime: string | null;
   size: number | null;
-  // The device bytes, only present while the capture is in hand and not yet
-  // handed to the IndexedDB media layer. Kept beside the preview URL so
-  // persistence never re-fetches a dead blob.
+  // The device bytes, kept beside the reference so a defensive migration
+  // never needs to re-fetch a dead blob URL.
   blob?: Blob;
   // When the piece was captured, client-side — stamped onto
   // meeting_media.captured_at so loads reproduce the true capture sequence

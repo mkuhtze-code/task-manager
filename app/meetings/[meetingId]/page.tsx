@@ -19,7 +19,7 @@ import {
   groupMediaByObservation,
   type CapturedMedia,
 } from '@/lib/meetingCapture';
-import { persistCapturedMedia, deleteMediaBlob } from '@/lib/mediaStore';
+import { saveMediaBlob, deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
 import { ObservationCapture } from '@/components/MeetingSheets';
 import MeetingObservationItem from '@/components/MeetingObservationItem';
@@ -198,8 +198,10 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
   // One observation is saved as ONE row plus its media: text (possibly
   // empty, the column is NOT NULL) and each piece of evidence in capture
-  // order. Bytes go to the device's IndexedDB first; local_uri stores the
-  // stable idb:// reference. Nothing is uploaded or transcribed.
+  // order. Bytes were already parked in IndexedDB at capture time, so
+  // local_uri is always the stable idb:// reference; a metadata row is
+  // created only for bytes that were successfully stored. Nothing is
+  // uploaded or transcribed.
   async function addObservation(draft: { text: string; media: CapturedMedia[] }) {
     if (!session) return;
     const prepared = buildObservationDraft(draft.text, draft.media);
@@ -227,18 +229,32 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     await load();
   }
 
-  // Park captured bytes in IndexedDB and attach them to an observation (or
-  // to the meeting). Inserted sequentially in capture order, each stamped
-  // with its captured_at.
+  // Attach captured evidence to an observation (or to the meeting).
+  // Inserted sequentially in capture order, each stamped with its
+  // captured_at. A Supabase failure leaves the local bytes in place (never
+  // silently discarded) and simply reports the missing row.
   async function insertMediaRows(observationId: string | null, list: CapturedMedia[]): Promise<boolean> {
     if (!session) return false;
     let ok = true;
     for (const m of list) {
-      const ref = await persistCapturedMedia(m).catch(() => null);
-      if (!ref) {
-        console.error('Failed to persist local media');
-        ok = false;
-        continue;
+      let ref = m.uri;
+      if (!isMediaRef(ref)) {
+        // Defensive only: nothing new captures a blob URL anymore, but
+        // local_uri must never store one — migrate any stray bytes to
+        // IndexedDB before inserting the row.
+        const blob = m.blob ?? (ref.startsWith('blob:') ? await fetch(ref).then((r) => r.blob()) : null);
+        if (!blob) {
+          console.error('Media bytes unavailable to persist');
+          ok = false;
+          continue;
+        }
+        try {
+          ref = await saveMediaBlob(blob, { mime: m.mime, size: m.size });
+        } catch {
+          console.error('Failed to persist local media');
+          ok = false;
+          continue;
+        }
       }
       const { error } = await supabase.from('meeting_media').insert({
         user_id: session.user.id,
@@ -253,7 +269,6 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       if (error) {
         console.error(error);
         ok = false;
-        void deleteMediaBlob(ref);
       }
     }
     return ok;

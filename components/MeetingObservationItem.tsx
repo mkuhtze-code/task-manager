@@ -6,6 +6,7 @@ import { fmtCapturedAt, observationEdit, type CapturedMedia } from '@/lib/meetin
 import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
 import MeetingPhotoCarousel from '@/components/MeetingPhotoCarousel';
 import { AudioNote, PhotoImage } from '@/components/MediaRender';
+import { deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
 import { TrashIcon } from '@/components/icons';
 
 // One observation displayed as ONE object. Its evidence — text, photos,
@@ -51,6 +52,11 @@ export default function MeetingObservationItem(props: {
   }
 
   function cancelEdit() {
+    // Staged media had their bytes parked in IndexedDB at capture time;
+    // cancelling the edit discards them so nothing orphaned is left behind.
+    for (const m of newMedia) {
+      if (isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
+    }
     setEditing(false);
     setEditText('');
     setRemoveIds([]);
@@ -62,6 +68,10 @@ export default function MeetingObservationItem(props: {
   }
 
   function dropNewMedia(i: number) {
+    // Dropping a staged piece also frees its local bytes — it was never
+    // saved to any observation, so nothing else references it.
+    const m = newMedia[i];
+    if (m && isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
     setNewMedia((prev) => prev.filter((_, j) => j !== i));
   }
 
@@ -156,11 +166,11 @@ export default function MeetingObservationItem(props: {
                 );
               })}
               {newMedia.map((m, i) => (
-                <div key={`new-${i}`} className="meeting-edit-media-item">
+                <div key={m.uri} className="meeting-edit-media-item">
                   {m.mediaType === 'audio' ? (
-                    <audio controls src={m.uri} className="media-audio" />
+                    <AudioNote ref={m.uri} className="media-audio" />
                   ) : (
-                    <img src={m.uri} alt="Newly captured" className="meeting-edit-media-thumb" />
+                    <PhotoImage ref={m.uri} alt="Newly captured" className="meeting-edit-media-thumb" />
                   )}
                   <button
                     type="button"
@@ -236,6 +246,8 @@ export default function MeetingObservationItem(props: {
           </>
         )}
       </div>
+
+      {cap.captureError && <p className="meeting-capture-error">{cap.captureError}</p>}
 
       <input
         ref={cap.photoRef}
