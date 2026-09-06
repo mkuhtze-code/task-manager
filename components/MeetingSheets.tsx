@@ -288,12 +288,12 @@ export function NewMeetingSheet(props: {
 
 export type { CapturedMedia };
 
-// The observation capture area: "What did you see, hear or notice?" with
-// optional Photo and Voice controls. Every input is optional — an
-// observation is ONE piece of evidence (text and/or media) and no
-// particular combination is ever required. Media stays DEVICE-LOCAL in
-// V1: a captured photo/audio note becomes a meeting_media row whose
-// local_uri is a blob URL reference — nothing is uploaded to Supabase.
+// The observation capture area: ONE continuous surface. "What did you see,
+// hear or notice?" starts it, and [+ Photo] and [+ Voice] append evidence
+// to the SAME observation without leaving it — however the user builds it
+// (text → photo → voice → photo → Save), each piece lands in `media` in the
+// order it was captured and is stamped with that moment. Every evidence
+// type is optional; nothing is grouped or re-navigated until Save.
 export function ObservationCapture(props: {
   saving: boolean;
   onSave: (draft: { text: string; media: CapturedMedia[] }) => void;
@@ -358,24 +358,26 @@ export function ObservationCapture(props: {
       </div>
 
       {media.length > 0 && (
-        <div className="pending-media">
-          {media.map((m, i) => (
-            <div key={`${m.uri}-${i}`} className="pending-media-item">
-              {m.mediaType === 'audio' ? (
-                <audio controls src={m.uri} />
-              ) : (
-                <img src={m.uri} alt="Captured photo" />
-              )}
-              <button
-                type="button"
-                aria-label="Remove"
-                className="pending-media-remove"
-                onClick={() => setMedia(media.filter((_, j) => j !== i))}
-              >
-                <CloseIcon size={14} />
-              </button>
-            </div>
-          ))}
+        <div className="meeting-observation-actions">
+          <div className="pending-media">
+            {media.map((m, i) => (
+              <div key={`${m.uri}-${i}`} className="pending-media-item">
+                {m.mediaType === 'audio' ? (
+                  <audio controls src={m.uri} />
+                ) : (
+                  <img src={m.uri} alt="Captured photo" />
+                )}
+                <button
+                  type="button"
+                  aria-label="Remove"
+                  className="pending-media-remove"
+                  onClick={() => setMedia(media.filter((_, j) => j !== i))}
+                >
+                  <CloseIcon size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

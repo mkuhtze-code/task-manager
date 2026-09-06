@@ -17,14 +17,12 @@ import {
   personAlreadyAdded,
   buildObservationDraft,
   groupMediaByObservation,
-  meetingPhotos,
   type CapturedMedia,
 } from '@/lib/meetingCapture';
+import { persistCapturedMedia, deleteMediaBlob } from '@/lib/mediaStore';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
 import { ObservationCapture } from '@/components/MeetingSheets';
 import MeetingObservationItem from '@/components/MeetingObservationItem';
-import MeetingPhotoCarousel from '@/components/MeetingPhotoCarousel';
-import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
@@ -56,8 +54,6 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   const [participantInput, setParticipantInput] = useState('');
   const [decisionInput, setDecisionInput] = useState('');
   const [actionInput, setActionInput] = useState('');
-
-  const galleryCapture = useMeetingMediaCapture();
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -98,12 +94,19 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       return (data as any[]) || [];
     };
 
+    // Media loads in capture order: new rows carry a client-stamped
+    // captured_at, so the evidence sequence the user made is reproduced.
     const [people, obs, dec, act, med] = await Promise.all([
       run('meeting_participants'),
       run('meeting_observations'),
       run('meeting_decisions'),
       run('meeting_actions'),
-      supabase.from('meeting_media').select('*').eq('meeting_id', meetingId).then(({ data }) => (data as MeetingMedia[]) || []),
+      supabase
+        .from('meeting_media')
+        .select('*')
+        .eq('meeting_id', meetingId)
+        .order('captured_at', { ascending: true })
+        .then(({ data }) => (data as MeetingMedia[]) || []),
     ]);
 
     setParticipants(people as MeetingParticipant[]);
@@ -193,11 +196,10 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     setAddingAction(false);
   }
 
-  // An observation is ONE piece of evidence: text, photo, voice, or any
-  // combination. None of them are required together; at least one is
-  // required at all. Media rows attach back via observation_id and stay
-  // device-local (blob URLs in V1) — nothing here is transcribed or
-  // interpreted, just stored as it was captured.
+  // One observation is saved as ONE row plus its media: text (possibly
+  // empty, the column is NOT NULL) and each piece of evidence in capture
+  // order. Bytes go to the device's IndexedDB first; local_uri stores the
+  // stable idb:// reference. Nothing is uploaded or transcribed.
   async function addObservation(draft: { text: string; media: CapturedMedia[] }) {
     if (!session) return;
     const prepared = buildObservationDraft(draft.text, draft.media);
@@ -217,60 +219,68 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       return;
     }
 
-    let mediaFailed = false;
-    for (const m of prepared.media) {
-      const { error: mediaErr } = await supabase.from('meeting_media').insert({
-        user_id: session.user.id,
-        meeting_id: meetingId,
-        observation_id: obs.id,
-        media_type: m.mediaType,
-        local_uri: m.uri,
-        mime_type: m.mime,
-        size_bytes: m.size,
-      });
-      if (mediaErr) {
-        console.error(mediaErr);
-        mediaFailed = true;
-      }
-    }
-    if (mediaFailed) setError("Couldn't save part of the observation");
+    const ok = await insertMediaRows(obs.id, prepared.media);
+    if (!ok) setError("Couldn't save part of the observation");
 
     setSaving(false);
     setCapturingObservation(false);
     await load();
   }
 
-  // Link one captured piece of media to an observation (or to the meeting
-  // as orphan gallery media when observationId is null).
-  async function insertMedia(observationId: string | null, captured: CapturedMedia): Promise<boolean> {
+  // Park captured bytes in IndexedDB and attach them to an observation (or
+  // to the meeting). Inserted sequentially in capture order, each stamped
+  // with its captured_at.
+  async function insertMediaRows(observationId: string | null, list: CapturedMedia[]): Promise<boolean> {
     if (!session) return false;
-    const { error } = await supabase.from('meeting_media').insert({
-      user_id: session.user.id,
-      meeting_id: meetingId,
-      observation_id: observationId,
-      media_type: captured.mediaType,
-      local_uri: captured.uri,
-      mime_type: captured.mime,
-      size_bytes: captured.size,
-    });
-    if (error) {
-      console.error(error);
-      setError("Couldn't save the media");
-      return false;
+    let ok = true;
+    for (const m of list) {
+      const ref = await persistCapturedMedia(m).catch(() => null);
+      if (!ref) {
+        console.error('Failed to persist local media');
+        ok = false;
+        continue;
+      }
+      const { error } = await supabase.from('meeting_media').insert({
+        user_id: session.user.id,
+        meeting_id: meetingId,
+        observation_id: observationId,
+        media_type: m.mediaType,
+        local_uri: ref,
+        mime_type: m.mime,
+        size_bytes: m.size,
+        captured_at: m.capturedAt,
+      });
+      if (error) {
+        console.error(error);
+        ok = false;
+        void deleteMediaBlob(ref);
+      }
     }
-    setError(null);
-    await load();
-    return true;
+    return ok;
   }
 
-  // Save an in-place edit: update the text, then apply any staged media
-  // removals. Returns false on failure so the item keeps its edit open.
+  // Add one piece of evidence straight to a saved observation from its
+  // "+ Photo"/"+ Voice" control — no navigation, no separate attach step.
+  async function addMediaToObservation(observationId: string, captured: CapturedMedia): Promise<boolean> {
+    const ok = await insertMediaRows(observationId, [captured]);
+    setError(ok ? null : "Couldn't save the media");
+    await load();
+    return ok;
+  }
+
+  // Apply an in-place edit to ONE observation: the text update, any staged
+  // media removals (bytes freed in IndexedDB), and any newly captured media
+  // appended in capture order. Returns false on failure so the item keeps
+  // its edit open rather than silently dropping the user's changes.
   async function saveObservationEdit(
     observationId: string,
     text: string,
-    removeMediaIds: string[]
+    removeMediaIds: string[],
+    newMedia: CapturedMedia[]
   ): Promise<boolean> {
     if (!session) return false;
+    setSaving(true);
+    setError(null);
     const { error: e } = await supabase
       .from('meeting_observations')
       .update({ text })
@@ -279,36 +289,42 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     if (e) {
       console.error(e);
       setError("Couldn't save the observation");
+      setSaving(false);
       return false;
     }
-    if (removeMediaIds.length > 0) {
-      const { error: remErr } = await supabase
-        .from('meeting_media')
-        .delete()
-        .in('id', removeMediaIds)
-        .eq('user_id', session.user.id);
-      if (remErr) {
-        console.error(remErr);
-        setError("Couldn't remove some media");
-      }
-    }
-    setError(null);
+    await removeMediaByIds(removeMediaIds);
+    const ok = await insertMediaRows(observationId, newMedia);
+    if (!ok) setError("Couldn't save some of the new media");
+    setSaving(false);
     await load();
     return true;
   }
 
-  function captureMeetingPhoto() {
-    galleryCapture.pickPhoto((m) => {
-      void insertMedia(null, m);
-    });
-  }
-
-  function obsTextForPhoto(photo: MeetingMedia): string | null {
-    if (!photo.observation_id) return null;
-    return observations.find((o) => o.id === photo.observation_id)?.text ?? null;
+  async function removeMediaByIds(ids: string[]) {
+    if (ids.length === 0) return;
+    for (const id of ids) {
+      const row = media.find((m) => m.id === id);
+      if (row?.local_uri) void deleteMediaBlob(row.local_uri);
+    }
+    const { error } = await supabase
+      .from('meeting_media')
+      .delete()
+      .in('id', ids)
+      .eq('user_id', session.user.id);
+    if (error) {
+      console.error(error);
+      setError("Couldn't remove some media");
+    }
   }
 
   async function removeRow(table: string, id: string) {
+    // Free the local bytes behind any media an observation carried when the
+    // row that referenced them is deleted.
+    if (table === 'meeting_observations') {
+      for (const m of media) {
+        if (m.observation_id === id && m.local_uri) void deleteMediaBlob(m.local_uri);
+      }
+    }
     await supabase.from(table).delete().eq('id', id).eq('user_id', session.user.id);
     setError(null);
     await load();
@@ -317,6 +333,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   async function deleteMeeting() {
     if (!meeting) return;
     if (!window.confirm('Delete this meeting and everything recorded under it?')) return;
+    for (const m of media) {
+      if (m.local_uri) void deleteMediaBlob(m.local_uri);
+    }
     const { error: e } = await supabase
       .from('meetings')
       .delete()
@@ -331,7 +350,6 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   }
 
   const mediaByObservation = useMemo(() => groupMediaByObservation(media), [media]);
-  const photos = useMemo(() => meetingPhotos(media), [media]);
 
   if (!session) {
     return <div className="empty-state">{loading ? 'Loading…' : 'Not signed in'}</div>;
@@ -472,7 +490,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             media={mediaByObservation.get(o.id) ?? []}
             saving={saving}
             onDelete={() => removeRow('meeting_observations', o.id)}
-            onInsertMedia={insertMedia}
+            onAddMedia={addMediaToObservation}
             onSaveEdit={saveObservationEdit}
           />
         ))}
@@ -483,32 +501,6 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             onCancel={() => setCapturingObservation(false)}
           />
         )}
-      </section>
-
-      <section className="detail-section">
-        <div className="detail-section-title-row">
-          <div className="detail-section-title">Photos</div>
-          <button type="button" className="meeting-pill" onClick={captureMeetingPhoto}>
-            + Photo
-          </button>
-        </div>
-        {photos.length === 0 ? (
-          <p className="meeting-empty">No photos yet.</p>
-        ) : (
-          <MeetingPhotoCarousel
-            photos={photos}
-            getObservationText={obsTextForPhoto}
-            labelBase="All meeting photos"
-          />
-        )}
-        <input
-          ref={galleryCapture.photoRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ display: 'none' }}
-          onChange={galleryCapture.onPhotoInputChange}
-        />
       </section>
 
       <section className="detail-section">

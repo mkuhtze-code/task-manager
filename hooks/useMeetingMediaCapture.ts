@@ -3,10 +3,11 @@ import type { ChangeEvent } from 'react';
 import type { CapturedMedia } from '@/lib/meetingCapture';
 
 // One shared capture path for every Meetings surface: the observation
-// composer, adding media to a saved observation, and the meeting photo
-// gallery. Photo = the device file/camera picker; voice = MediaRecorder.
-// The output is always a device-local CapturedMedia (a blob URL) — nothing
-// is uploaded, stored server-side or transcribed.
+// composer and adding media to a saved observation. Photo = the device
+// file/camera picker; voice = MediaRecorder. The output is always a
+// device-local CapturedMedia carrying the fresh bytes (blob) plus the local
+// capture time — the media layer parks the bytes in IndexedDB and stamps
+// meeting_media.captured_at, so nothing is uploaded or transcribed.
 export function useMeetingMediaCapture() {
   const photoRef = useRef<HTMLInputElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -32,6 +33,8 @@ export function useMeetingMediaCapture() {
         uri: URL.createObjectURL(file),
         mime: file.type || null,
         size: file.size,
+        blob: file,
+        capturedAt: new Date().toISOString(),
       });
     }
   }
@@ -72,6 +75,8 @@ export function useMeetingMediaCapture() {
               uri: URL.createObjectURL(blob),
               mime: blob.type,
               size: blob.size,
+              blob,
+              capturedAt: new Date().toISOString(),
             });
           };
           recorder.onerror = () => {
