@@ -9,7 +9,11 @@ import {
   remainingMedia,
   observationEdit,
   photoAlt,
+  evidenceSummary,
+  clampIndex,
+  moveIndex,
 } from '@/lib/meetingCapture';
+import { isMediaRef, decodeRef, REF_PREFIX } from '@/lib/mediaStore';
 import type { MeetingMedia, MeetingParticipant } from '@/lib/meetingTypes';
 
 function person(id: string, name: string): MeetingParticipant {
@@ -123,6 +127,23 @@ describe('buildObservationDraft', () => {
   it('preserves the capture sequence of mixed evidence', () => {
     const draft = buildObservationDraft('After the photos.', [photo, audio, photo2]);
     expect(draft!.media.map((m) => m.uri)).toEqual(['blob:p', 'blob:a', 'blob:p2']);
+  });
+
+  it('allows multiple photos with text', () => {
+    const draft = buildObservationDraft('Both cracks.', [photo, photo2]);
+    expect(draft!.text).toBe('Both cracks.');
+    expect(draft!.media.map((m) => m.uri)).toEqual(['blob:p', 'blob:p2']);
+  });
+
+  it('allows multiple photos with a voice note', () => {
+    const draft = buildObservationDraft('', [photo, audio, photo2]);
+    expect(draft!.media.map((m) => m.uri)).toEqual(['blob:p', 'blob:a', 'blob:p2']);
+  });
+
+  it('allows multiple photos, text and a voice note together', () => {
+    const draft = buildObservationDraft('Full record.', [photo, audio, photo2]);
+    expect(draft!.text).toBe('Full record.');
+    expect(draft!.media).toHaveLength(3);
   });
 
   it('rejects an empty observation (no text, no media)', () => {
@@ -268,5 +289,118 @@ describe('photoAlt', () => {
     expect(photoAlt(media('p1', 'o-1'), 2, 4, 'Roof flashing damaged.')).toBe(
       'Photo 3 of 4 — Roof flashing damaged.'
     );
+  });
+});
+
+describe('evidenceSummary (what one tile renders)', () => {
+  function photo(id: string, obsId: string | null): MeetingMedia {
+    return media(id, obsId);
+  }
+  function audioNote(id: string, obsId: string | null): MeetingMedia {
+    return { ...media(id, obsId), media_type: 'audio' };
+  }
+
+  it('describes a text-only observation', () => {
+    const ev = evidenceSummary({ text: '  Roof flashing damaged.  ' }, []);
+    expect(ev).toEqual({ photoCount: 0, voiceCount: 0, text: 'Roof flashing damaged.', total: 1 });
+  });
+
+  it('describes a photo-only observation', () => {
+    const ev = evidenceSummary({ text: '' }, [photo('p1', 'o-1')]);
+    expect(ev).toEqual({ photoCount: 1, voiceCount: 0, text: '', total: 1 });
+  });
+
+  it('describes a voice-only observation', () => {
+    const ev = evidenceSummary({ text: null }, [audioNote('a1', 'o-1')]);
+    expect(ev).toEqual({ photoCount: 0, voiceCount: 1, text: '', total: 1 });
+  });
+
+  it('counts every photo, the text as one piece, and every voice note', () => {
+    const ev = evidenceSummary({ text: 'Both cracks.' }, [
+      photo('p1', 'o-1'),
+      audioNote('a1', 'o-1'),
+      photo('p2', 'o-1'),
+      audioNote('a2', 'o-1'),
+    ]);
+    expect(ev.photoCount).toBe(2);
+    expect(ev.voiceCount).toBe(2);
+    expect(ev.total).toBe(5);
+  });
+
+  it('is empty exactly when the save guard would reject the observation', () => {
+    const ev = evidenceSummary({ text: '' }, []);
+    expect(ev.total).toBe(0);
+    expect(buildObservationDraft('', [])).toBeNull();
+  });
+
+  it('trusts the grouped media list it is handed (orphan filtering is groupMediaByObservation’s job)', () => {
+    const orphan = photo('p1', null);
+    expect(photoCount(orphan)).toBe(1);
+
+    const grouped = groupMediaByObservation([orphan]);
+    expect(grouped.has('anything')).toBe(false);
+    expect(evidenceSummary({ text: 'Note.' }, grouped.get('o-1') ?? []).photoCount).toBe(0);
+  });
+
+  function photoCount(m: MeetingMedia): number {
+    return m.media_type === 'photo' ? 1 : 0;
+  }
+});
+
+describe('clampIndex / moveIndex (carousel + grid navigation)', () => {
+  it('clamps out-of-range positions instead of wrapping', () => {
+    expect(clampIndex(-1, 3)).toBe(0);
+    expect(clampIndex(0, 3)).toBe(0);
+    expect(clampIndex(2, 3)).toBe(2);
+    expect(clampIndex(9, 3)).toBe(2);
+  });
+
+  it('is safe for an empty observation set', () => {
+    expect(clampIndex(0, 0)).toBe(0);
+    expect(moveIndex(2, -1, 0)).toBe(0);
+  });
+
+  it('moves by a delta without wrapping', () => {
+    expect(moveIndex(1, 1, 3)).toBe(2);
+    expect(moveIndex(0, -1, 3)).toBe(0);
+    expect(moveIndex(2, 1, 3)).toBe(2);
+  });
+
+  it('keeps the observation level independent of the photo level', () => {
+    const observationCount = 3;
+    const photosInCurrentObservation = 2;
+    let observationIndex = 1;
+    let photoIndex = 0;
+
+    photoIndex = moveIndex(photoIndex, 1, photosInCurrentObservation);
+    expect(photoIndex).toBe(1);
+    expect(observationIndex).toBe(1);
+
+    observationIndex = moveIndex(observationIndex, 1, observationCount);
+    expect(observationIndex).toBe(2);
+    expect(photoIndex).toBe(1);
+
+    photoIndex = clampIndex(0, photosInCurrentObservation);
+    expect(photoIndex).toBe(0);
+  });
+
+  it('collapses an observation set back to a valid position after a delete', () => {
+    let index = clampIndex(4, 5);
+    expect(index).toBe(4);
+    expect(clampIndex(index, 4)).toBe(3);
+    expect(moveIndex(index, 0, 3)).toBe(2);
+  });
+});
+
+describe('durable media references', () => {
+  it('only accepts stable idb:// references as persistable', () => {
+    expect(REF_PREFIX).toBe('idb://');
+    expect(isMediaRef('idb://abc-123')).toBe(true);
+    expect(isMediaRef('blob:https://example/abc')).toBe(false);
+    expect(isMediaRef('')).toBe(false);
+  });
+
+  it('decodes the stored id out of a reference', () => {
+    expect(decodeRef('idb://abc-123')).toBe('abc-123');
   });
 });
