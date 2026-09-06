@@ -8,9 +8,7 @@ import { parseMeetingInput, parseTimeInput, combineDateAndTime } from '@/lib/mee
 import type { JobLocationCandidate } from '@/lib/unifiedInput/resolve';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
-import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
 import { AudioNote, PhotoImage } from '@/components/MediaRender';
-import { deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
 import { CloseIcon, MapPinIcon, TrashIcon } from '@/components/icons';
 
 export type NewMeetingPayload = {
@@ -290,86 +288,74 @@ export function NewMeetingSheet(props: {
 
 export type { CapturedMedia };
 
-// The observation capture area: ONE continuous surface. "What did you see,
-// hear or notice?" starts it, and [+ Photo] and [+ Voice] append evidence
-// to the SAME observation without leaving it — however the user builds it
-// (text → photo → voice → photo → Save), each piece lands in `media` in the
-// order it was captured and is stamped with that moment. Every evidence
-// type is optional; nothing is grouped or re-navigated until Save.
+// The observation capture area: ONE continuous surface. The draft — text
+// plus the captured media — and the capture lifecycle are owned ABOVE this
+// component (the meeting page, mirrored to sessionStorage) so that the OS
+// camera/file picker, which can unmount or even reload this surface, can
+// never cancel the draft. Returning from the picker, blur, focus or a
+// remount simply resume the same open draft; only an explicit Cancel (or a
+// successful Save) closes it. Every evidence type is optional; nothing is
+// grouped or re-navigated until Save.
 export function ObservationCapture(props: {
   saving: boolean;
+  text: string;
+  media: CapturedMedia[];
+  recording: boolean;
+  captureError: string | null;
+  onTextChange: (text: string) => void;
+  onAddPhoto: () => void;
+  onToggleVoice: () => void;
+  onRemoveMedia: (index: number) => void;
   onSave: (draft: { text: string; media: CapturedMedia[] }) => void;
   onCancel: () => void;
 }) {
-  const { saving, onSave, onCancel } = props;
-  const [text, setText] = useState('');
-  const [media, setMedia] = useState<CapturedMedia[]>([]);
-  const cap = useMeetingMediaCapture();
+  const {
+    saving,
+    text,
+    media,
+    recording,
+    captureError,
+    onTextChange,
+    onAddPhoto,
+    onToggleVoice,
+    onRemoveMedia,
+    onSave,
+    onCancel,
+  } = props;
   const textRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     textRef.current?.focus();
   }, []);
 
-  function addPhoto() {
-    cap.pickPhoto((m) => setMedia((prev) => [...prev, m]));
-  }
-
-  async function toggleVoice() {
-    if (cap.recording) {
-      cap.stopRecording();
-      return;
-    }
-    const m = await cap.captureVoice();
-    if (m) setMedia((prev) => [...prev, m]);
-  }
-
-  // Cancel discards the drafted bytes too: each pending capture was already
-  // parked in IndexedDB at the moment of capture, so it is freed here
-  // rather than left as an orphan nobody references.
-  function cancel() {
-    for (const m of media) {
-      if (isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
-    }
-    onCancel();
-  }
-
-  const canSave = !saving && !cap.recording && (text.trim().length > 0 || media.length > 0);
+  const canSave = !saving && !recording && (text.trim().length > 0 || media.length > 0);
 
   return (
     <div className="observation-capture">
       <textarea
         ref={textRef}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => onTextChange(e.target.value)}
         placeholder="What did you see, hear or notice?"
         rows={2}
         className="observation-capture-text"
       />
 
       <div className="meeting-observation-actions">
-        <button type="button" className="meeting-pill" onClick={addPhoto}>
+        <button type="button" className="meeting-pill" onClick={onAddPhoto} disabled={saving}>
           + Photo
         </button>
         <button
           type="button"
-          className={cap.recording ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
-          onClick={toggleVoice}
+          className={recording ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+          onClick={onToggleVoice}
           disabled={saving}
         >
-          {cap.recording ? 'Recording…' : '+ Voice'}
+          {recording ? 'Recording…' : '+ Voice'}
         </button>
-        <input
-          ref={cap.photoRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ display: 'none' }}
-          onChange={cap.onPhotoInputChange}
-        />
       </div>
 
-      {cap.captureError && <p className="meeting-capture-error">{cap.captureError}</p>}
+      {captureError && <p className="meeting-capture-error">{captureError}</p>}
 
       {media.length > 0 && (
         <div className="meeting-observation-actions">
@@ -377,15 +363,15 @@ export function ObservationCapture(props: {
             {media.map((m, i) => (
               <div key={m.uri} className="pending-media-item">
                 {m.mediaType === 'audio' ? (
-                  <AudioNote ref={m.uri} />
+                  <AudioNote uri={m.uri} />
                 ) : (
-                  <PhotoImage ref={m.uri} alt="Captured photo" />
+                  <PhotoImage uri={m.uri} alt="Captured photo" />
                 )}
                 <button
                   type="button"
                   aria-label="Remove"
                   className="pending-media-remove"
-                  onClick={() => setMedia(media.filter((_, j) => j !== i))}
+                  onClick={() => onRemoveMedia(i)}
                 >
                   <CloseIcon size={14} />
                 </button>
@@ -404,7 +390,7 @@ export function ObservationCapture(props: {
         >
           {saving ? 'Saving…' : 'Save observation'}
         </button>
-        <button type="button" className="meeting-pill" onClick={cancel} disabled={saving}>
+        <button type="button" className="meeting-pill" onClick={onCancel} disabled={saving}>
           Cancel
         </button>
       </div>

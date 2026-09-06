@@ -94,7 +94,7 @@ export default function MeetingPhotoCarousel(props: {
               onClick={() => setOpen(i)}
               aria-label={photoAlt(p, i, photos.length)}
             >
-              <PhotoImage ref={p.local_uri} alt="" eager={i === safeIndex} />
+              <PhotoImage uri={p.local_uri} alt="" eager={i === safeIndex} />
             </button>
           </div>
         ))}
@@ -186,7 +186,7 @@ export default function MeetingPhotoCarousel(props: {
           )}
 
           <figure onClick={(e) => e.stopPropagation()}>
-            <PhotoImage ref={photos[open].local_uri} alt={photoAlt(photos[open], open, photos.length)} eager />
+            <PhotoImage uri={photos[open].local_uri} alt={photoAlt(photos[open], open, photos.length)} eager />
             <figcaption>
               {open + 1} / {photos.length}
             </figcaption>

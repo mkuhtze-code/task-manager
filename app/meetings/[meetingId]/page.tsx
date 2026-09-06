@@ -21,6 +21,8 @@ import {
 } from '@/lib/meetingCapture';
 import { saveMediaBlob, deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
+import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
+import { useObservationDrafting } from '@/hooks/useObservationDrafting';
 import MeetingObservations from '@/components/MeetingObservations';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
@@ -52,6 +54,58 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   const [participantInput, setParticipantInput] = useState('');
   const [decisionInput, setDecisionInput] = useState('');
   const [actionInput, setActionInput] = useState('');
+
+  // The active observation draft and every media capture path live HERE,
+  // on the page component, not in the capture sheet: the page survives its
+  // own `loading` gate, and sessionStorage rides out even a full reload
+  // (the OS camera/file picker can recreate the page on an Android
+  // WebView). A draft only closes on an explicit Cancel or a successful
+  // Save — a picker returning resumes the same draft.
+  const cap = useMeetingMediaCapture();
+  const draft = useObservationDrafting(meetingId);
+  const capturingObservation = draft.state.phase === 'open';
+
+  function startObservation() {
+    draft.begin();
+    setError(null);
+  }
+
+  function cancelObservation() {
+    // The ONLY path that discards the draft: free the staged bytes that
+    // were parked in IndexedDB at capture time, then drop the draft.
+    for (const m of draft.state.media) {
+      if (isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
+    }
+    if (cap.recording) cap.stopRecording();
+    draft.discard();
+    setError(null);
+  }
+
+  function addObservationPhoto() {
+    cap.pickPhoto((m) => draft.addMedia(m));
+  }
+
+  async function toggleObservationVoice() {
+    if (cap.recording) {
+      cap.stopRecording();
+      return;
+    }
+    const m = await cap.captureVoice();
+    if (m) draft.addMedia(m);
+  }
+
+  function removeDraftMedia(index: number) {
+    const m = draft.state.media[index];
+    if (m && isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
+    draft.removeMedia(index);
+  }
+
+  // Save closes the draft ONLY when the observation (and its rows) commit.
+  async function saveObservation(draftPayload: { text: string; media: CapturedMedia[] }) {
+    const ok = await addObservation(draftPayload);
+    if (ok) draft.complete();
+    return ok;
+  }
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -487,10 +541,23 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         observations={observations}
         mediaByObservation={mediaByObservation}
         saving={saving}
-        onSaveObservation={addObservation}
+        onSaveObservation={saveObservation}
         onDelete={(id) => removeRow('meeting_observations', id)}
         onAddMedia={addMediaToObservation}
         onSaveEdit={saveObservationEdit}
+        capturing={capturingObservation}
+        onStartObservation={startObservation}
+        draftText={draft.state.text}
+        draftMedia={draft.state.media}
+        recording={cap.recording}
+        captureError={cap.captureError}
+        onTextChange={draft.setText}
+        onAddPhoto={addObservationPhoto}
+        onToggleVoice={toggleObservationVoice}
+        onRemoveDraftMedia={removeDraftMedia}
+        onCancelObservation={cancelObservation}
+        photoInputRef={cap.photoRef}
+        onPhotoInputChange={cap.onPhotoInputChange}
       />
 
       <section className="detail-section">

@@ -29,14 +29,17 @@ function useResolvedMedia(ref: string) {
 }
 
 // A photo that knows how to come back from IndexedDB and how to fail
-// quietly. Exported for the evidence carousel and the edit state.
+// quietly. Exported for the evidence carousel and the edit state. The
+// media reference is a data prop (`uri`), not React's `ref` — passing the
+// reference through the special `ref` slot would make React treat it as a
+// component ref (which crashes on function components).
 export function PhotoImage({
-  ref: mediaRef,
+  uri: mediaRef,
   alt,
   className,
   eager = false,
 }: {
-  ref: string;
+  uri: string;
   alt: string;
   className?: string;
   eager?: boolean;
@@ -60,10 +63,10 @@ export function PhotoImage({
 // <audio controls> element; an unresolvable one keeps its slot as a quiet
 // note instead of a dead control.
 export function AudioNote({
-  ref: mediaRef,
+  uri: mediaRef,
   className,
 }: {
-  ref: string;
+  uri: string;
   className?: string;
 }) {
   const { url, unavailable, onError } = useResolvedMedia(mediaRef);

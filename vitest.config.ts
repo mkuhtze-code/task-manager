@@ -7,6 +7,14 @@ export default defineConfig({
       '@': path.resolve(__dirname),
     },
   },
+  oxc: {
+    // Next.js needs tsconfig `jsx: preserve`, but vitest must transpile
+    // TSX that tsconfig option leaves untouched.
+    jsx: {
+      runtime: 'automatic',
+      importSource: 'react',
+    },
+  },
   test: {
     globals: true,
     environment: 'node',

@@ -63,7 +63,7 @@ export default function MeetingObservationTile(props: {
       >
         {ev.photoCount > 0 && (
           <div className="observation-tile-photo">
-            <PhotoImage ref={photos[0].local_uri} alt="" className="observation-tile-photo-img" />
+            <PhotoImage uri={photos[0].local_uri} alt="" className="observation-tile-photo-img" />
             {ev.photoCount > 1 && (
               <span className="observation-tile-photo-count">1/{ev.photoCount}</span>
             )}
@@ -77,7 +77,7 @@ export default function MeetingObservationTile(props: {
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <AudioNote ref={m.local_uri} className="media-audio" />
+            <AudioNote uri={m.local_uri} className="media-audio" />
           </div>
         ))}
       </div>
@@ -170,7 +170,7 @@ export default function MeetingObservationTile(props: {
 
       {!editing &&
         audios.map((m) => (
-          <AudioNote key={m.id} ref={m.local_uri} className="media-audio observation-tile-audio" />
+          <AudioNote key={m.id} uri={m.local_uri} className="media-audio observation-tile-audio" />
         ))}
 
       {editing && (
@@ -194,9 +194,9 @@ export default function MeetingObservationTile(props: {
                     className={removing ? 'meeting-edit-media-item is-removing' : 'meeting-edit-media-item'}
                   >
                     {m.media_type === 'audio' ? (
-                      <AudioNote ref={m.local_uri} className="media-audio" />
+                      <AudioNote uri={m.local_uri} className="media-audio" />
                     ) : (
-                      <PhotoImage ref={m.local_uri} alt="" className="meeting-edit-media-thumb" />
+                      <PhotoImage uri={m.local_uri} alt="" className="meeting-edit-media-thumb" />
                     )}
                     <button
                       type="button"
@@ -211,9 +211,9 @@ export default function MeetingObservationTile(props: {
               {newMedia.map((m, i) => (
                 <div key={m.uri} className="meeting-edit-media-item">
                   {m.mediaType === 'audio' ? (
-                    <AudioNote ref={m.uri} className="media-audio" />
+                    <AudioNote uri={m.uri} className="media-audio" />
                   ) : (
-                    <PhotoImage ref={m.uri} alt="Newly captured" className="meeting-edit-media-thumb" />
+                    <PhotoImage uri={m.uri} alt="Newly captured" className="meeting-edit-media-thumb" />
                   )}
                   <button type="button" className="meeting-pill meeting-pill--quiet" onClick={() => dropNewMedia(i)}>
                     Remove
