@@ -24,6 +24,7 @@ import { fmtMeetingWindow } from '@/lib/meetingUtils';
 import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
 import { useObservationDrafting } from '@/hooks/useObservationDrafting';
 import MeetingObservations from '@/components/MeetingObservations';
+import MeetingExport from '@/components/MeetingExport';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
@@ -485,6 +486,18 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           </div>
         )}
       </div>
+
+      <MeetingExport
+        userId={session.user.id}
+        meetingId={meetingId}
+        meeting={meeting}
+        jobName={jobName}
+        participants={participants}
+        observations={observations}
+        decisions={decisions}
+        actions={actions}
+        media={media}
+      />
 
       <section className="detail-section">
         <div className="detail-section-title-row">
