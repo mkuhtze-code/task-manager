@@ -81,10 +81,65 @@ function downloadOne(file: File): void {
   const a = document.createElement('a');
   a.href = url;
   a.download = file.name;
+  a.rel = 'noopener';
   document.body.appendChild(a);
   a.click();
   a.remove();
+  console.warn('[meetingExport:download] download initiated', { fileName: file.name, sizeBytes: file.size });
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// ── TEMPORARY DIAGNOSTICS (browser delivery/generation failures) ────
+// Structured console detail so the actual exception for a real browser or
+// device failure is observable without an ugly stack reaching the UI. The
+// user-facing message stays generic. Remove after the failure is confirmed.
+function describeError(e: unknown): Record<string, unknown> {
+  const err = e as {
+    name?: string;
+    message?: string;
+    code?: unknown;
+    stack?: string;
+    cause?: unknown;
+    diagStage?: string;
+  };
+  return {
+    name: err?.name,
+    message: err?.message,
+    code: err?.code,
+    diagStage: err?.diagStage,
+    stack: err?.stack,
+    cause: err?.cause != null ? describeError(err.cause) : null,
+  };
+}
+
+function exportFiles(plan: MeetingExportPlan, result: MeetingExportResult): File[] {
+  const files: File[] = [];
+  if (plan.exportType !== 'evidence_package') {
+    files.push(new File([new Uint8Array(result.pdf)], result.pdfFileName || 'Meeting Record.pdf', { type: 'application/pdf' }));
+  }
+  if (plan.exportType !== 'pdf' && result.packageZip) {
+    files.push(new File([new Uint8Array(result.packageZip)], `${result.packageFolderName || 'Meeting Record'}.zip`, { type: 'application/zip' }));
+  }
+  return files;
+}
+
+// True only when the platform can actually hand these files to the OS share
+// sheet. Presence of navigator.share alone is NOT enough — on several
+// desktop builds canShare(file) is false or can throw, and that must never
+// prevent the download fallback.
+function canShareFiles(files: File[]): boolean {
+  if (files.length === 0) return false;
+  try {
+    return (
+      typeof navigator !== 'undefined' &&
+      typeof navigator.canShare === 'function' &&
+      typeof navigator.share === 'function' &&
+      (navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean }).canShare?.({ files }) === true
+    );
+  } catch (e) {
+    console.warn('[meetingExport:share] navigator.canShare threw — falling back to download', e);
+    return false;
+  }
 }
 
 export default function MeetingExport(props: Props) {
@@ -180,8 +235,33 @@ export default function MeetingExport(props: Props) {
     if (!content) return;
     lastPlanRef.current = plan;
     setFlow({ kind: 'generating' });
+    console.warn('[meetingExport:runGenerate] start', {
+      exportType: plan.exportType,
+      pdfQuality: plan.pdfQuality,
+      transcribe: plan.transcribe,
+      providers: transcriptionProviders().length,
+      selectedObservations: plan.observations.length,
+      selectedMediaIds: plan.observations.reduce((n, o) => n + o.mediaIds.length, 0),
+    });
     try {
-      const result = await generateExport({ content, plan, deps });
+      let result: MeetingExportResult;
+      try {
+        result = await generateExport({ content, plan, deps });
+      } catch (e1) {
+        const stage = (e1 as { diagStage?: string })?.diagStage ?? 'unknown';
+        console.error(`[meetingExport:runGenerate] generateExport FAILED at stage "${stage}"`, describeError(e1));
+        throw e1;
+      }
+      console.warn('[meetingExport:runGenerate] generated', {
+        pdfFileName: result.pdfFileName,
+        packageFolderName: result.packageFolderName,
+        pdfBytes: result.pdf.byteLength,
+        zipBytes: result.packageZip?.byteLength ?? null,
+        missing: result.missing.length,
+        transcriptionStatus: result.transcriptionStatus,
+        fileSize: result.fileSize,
+      });
+
       const recordInput: MeetingExportRecordInput = {
         status: 'successful',
         exportType: plan.exportType,
@@ -194,10 +274,19 @@ export default function MeetingExport(props: Props) {
         fileSize: result.fileSize,
         errorReason: null,
       };
-      await persistRecord(recordInput);
+      try {
+        await persistRecord(recordInput);
+      } catch (e2) {
+        console.error('[meetingExport:runGenerate] persistRecord FAILED — the artifact is still fine but the history row was not saved', describeError(e2));
+        throw e2;
+      }
+
       setFlow({ kind: 'ready', result, plan });
+      console.warn('[meetingExport:runGenerate] ready — artifacts held in memory; delivering via Share / Save to files', {
+        shareViable: canShareFiles(exportFiles(plan, result)),
+      });
     } catch (e) {
-      console.error(e);
+      console.error('[meetingExport:runGenerate] FAILED — showing the error sheet (user message stays generic)', describeError(e));
       setFlow({ kind: 'error', message: 'Could not generate the export.' });
     }
   }
@@ -205,7 +294,14 @@ export default function MeetingExport(props: Props) {
   async function onGenerate(state: MeetingExportReviewState) {
     if (!content) return;
     const plan = resolvePlanFromReview(content, state);
-    const report = await inspectMissingMedia(content, plan, deps);
+    let report: { ok: boolean; missing: MissingMediaNotice[] };
+    try {
+      report = await inspectMissingMedia(content, plan, deps);
+      console.warn('[meetingExport:onGenerate] missing-media inspection', { ok: report.ok, missingCount: report.missing.length });
+    } catch (e) {
+      console.error('[meetingExport:onGenerate] inspectMissingMedia FAILED — continuing without the warning, generation re-checks per media', describeError(e));
+      report = { ok: true, missing: [] };
+    }
     if (!report.ok) {
       setFlow({ kind: 'missing', plan, reviewState: state, missing: report.missing });
       return;
@@ -218,43 +314,38 @@ export default function MeetingExport(props: Props) {
     void refresh();
   }
 
-  const shareSupported =
-    typeof navigator !== 'undefined' && typeof navigator.canShare === 'function' && typeof navigator.share === 'function';
-
   async function shareFiles(plan: MeetingExportPlan, result: MeetingExportResult) {
-    const nav = navigator as Navigator & {
-      canShare?: (data: { files: File[] }) => boolean;
-    };
-    const files: File[] = [];
-    if (plan.exportType !== 'evidence_package') {
-      files.push(new File([new Uint8Array(result.pdf)], result.pdfFileName, { type: 'application/pdf' }));
-    }
-    if (plan.exportType !== 'pdf' && result.packageZip) {
-      files.push(new File([new Uint8Array(result.packageZip)], `${result.packageFolderName}.zip`, { type: 'application/zip' }));
-    }
-    if (files.length > 0) {
-      if (nav.canShare && nav.canShare({ files })) {
-        try {
-          await nav.share({ files, title: result.baseName });
-          closeFlow();
-          return;
-        } catch (e) {
-          // Abort = user closed the share sheet (not an error); any other
-          // failure falls through to the file download path.
-          if (e instanceof DOMException && e.name === 'AbortError') return;
-        }
+    const files = exportFiles(plan, result);
+    if (canShareFiles(files)) {
+      try {
+        await navigator.share({ files, title: result.baseName });
+        console.warn('[meetingExport:share] share sheet completed — delivery is now owned by the OS', {
+          fileName: files.map((f) => f.name),
+        });
+        closeFlow();
+        return;
+      } catch (e) {
+        // Any failure — including the user dismissing the sheet (AbortError)
+        // — falls through to the download path so a generated artifact is
+        // never silently left behind.
+        console.warn('[meetingExport:share] share did not complete — falling back to file download', e);
       }
+    } else {
+      console.warn('[meetingExport:share] file sharing unavailable here — downloading directly', {
+        files: files.map((f) => `${f.name} (${f.size} bytes)`),
+      });
     }
     saveFiles(plan, result);
   }
 
   function saveFiles(plan: MeetingExportPlan, result: MeetingExportResult) {
-    if (plan.exportType !== 'evidence_package') {
-      downloadOne(new File([new Uint8Array(result.pdf)], result.pdfFileName, { type: 'application/pdf' }));
+    const files = exportFiles(plan, result);
+    if (files.length === 0) {
+      console.warn('[meetingExport:saveFiles] nothing to save', { exportType: plan.exportType, hasZip: Boolean(result.packageZip) });
+      closeFlow();
+      return;
     }
-    if (plan.exportType !== 'pdf' && result.packageZip) {
-      downloadOne(new File([new Uint8Array(result.packageZip)], `${result.packageFolderName}.zip`, { type: 'application/zip' }));
-    }
+    for (const file of files) downloadOne(file);
     closeFlow();
   }
 
@@ -403,11 +494,9 @@ export default function MeetingExport(props: Props) {
                 Share
               </button>
             </div>
-            {!shareSupported && (
-              <button className="btn-text export-save-files" onClick={() => saveFiles(flow.plan, flow.result)}>
+            <button className="btn-text export-save-files" onClick={() => saveFiles(flow.plan, flow.result)}>
                 Save to files
               </button>
-            )}
           </div>
         </div>
       )}
