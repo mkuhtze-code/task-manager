@@ -43,6 +43,36 @@ import type { MeetingMedia } from '@/lib/meetingTypes';
 // Obs. 4 · 14:32") and in missing_media_count. The caller decides whether
 // to ask first (inspectMissingMedia → Continue/Cancel → generate).
 
+// ── TEMPORARY DIAGNOSTICS (browser-only) ─────────────────────────────
+// Stage boundaries around generateExport so a real browser/device failure
+// can be attributed to a stage without swallowing anything. gated to the
+// browser so the Node test suite stays quiet. Remove these helpers AND
+// their diagBoundary/diag call sites once the device failure is confirmed.
+const DIAG = typeof window !== 'undefined';
+
+// Logged as warn on both sides of a boundary; the FAILED side additionally
+// logs the original exception and tags the thrown error with the stage.
+function diagBoundary<T>(stage: string, run: () => Promise<T>): Promise<T> {
+  if (!DIAG) return run();
+  console.warn(`[meetingExport:${stage}] start`);
+  return run().then(
+    (result) => {
+      console.warn(`[meetingExport:${stage}] ok`);
+      return result;
+    },
+    (err) => {
+      (err as { diagStage?: string }).diagStage = stage;
+      console.error(`[meetingExport:${stage}] FAILED`, err);
+      throw err;
+    }
+  );
+}
+
+function diag(stage: string, context: unknown): void {
+  if (!DIAG) return;
+  console.warn(`[meetingExport:${stage}]`, context);
+}
+
 export type MeetingExportEngineDeps = {
   loadMedia: (localUri: string) => Promise<Blob | null>;
   optimisePhoto: (blob: Blob, quality: MeetingPdfQuality, mediaId: string) => Promise<MeetingExportPhotoAsset>;
@@ -142,6 +172,7 @@ export async function generateExport(request: MeetingExportRequest): Promise<Mee
   const loadedPhotos: { media: MeetingMedia; ordinal: number; blob: Blob }[] = [];
   const loadedAudio: { media: MeetingMedia; ordinal: number; blob: Blob }[] = [];
 
+  diag('gather', { selectedMedia: selected.length, exportType: plan.exportType });
   for (const entry of selected) {
     const blob = await deps.loadMedia(entry.media.local_uri);
     if (!blob) {
@@ -155,26 +186,48 @@ export async function generateExport(request: MeetingExportRequest): Promise<Mee
     if (entry.mediaType === 'photo') loadedPhotos.push({ media: entry.media, ordinal: entry.ordinal, blob });
     else loadedAudio.push({ media: entry.media, ordinal: entry.ordinal, blob });
   }
+  diag('loadMedia', { loadedPhotos: loadedPhotos.length, loadedAudio: loadedAudio.length, missing: missing.length });
 
   // Optimised JPEG derivatives for the record (the ORIGINALS are never
-  // touched — they go into the package untouched).
+  // touched — they go into the package untouched). A photo that the
+  // browser's decoder/canvas cannot process must not abort the whole export
+  // on a small device: it degrades to the same soft "unavailable" notice as
+  // a photo whose bytes are gone (the original still goes in the package).
   const photoAssets = new Map<string, MeetingExportPhotoAsset>();
   for (const photo of loadedPhotos) {
-    photoAssets.set(photo.media.id, await deps.optimisePhoto(photo.blob, plan.pdfQuality, photo.media.id));
+    try {
+      photoAssets.set(photo.media.id, await deps.optimisePhoto(photo.blob, plan.pdfQuality, photo.media.id));
+    } catch (err) {
+      diag('optimisePhoto', { mediaId: photo.media.id, failed: true, error: (err as Error)?.message });
+      if (DIAG) {
+        console.warn('[meetingExport:optimisePhoto] photo could not be processed — continuing without it in the record', err, {
+          mediaId: photo.media.id,
+          mediaType: photo.media.media_type,
+        });
+      }
+      missing.push({
+        mediaId: photo.media.id,
+        observationId: photo.media.observation_id,
+        label: missingNoticeLabel('photo', photo.ordinal, photo.media.captured_at),
+      });
+    }
   }
+  diag('optimisePhoto', { succeeded: photoAssets.size, failed: loadedPhotos.length - photoAssets.size });
 
   let transcripts = new Map<string, string>();
   let transcriptionStatus: MeetingTranscriptStatus = plan.transcribe ? 'requested' : 'not_requested';
   if (plan.transcribe) {
-    const outcome = await transcribeAssets(
-      loadedAudio.map((a) => ({
-        mediaId: a.media.id,
-        localUri: a.media.local_uri,
-        mimeType: a.media.mime_type ?? '',
-        blob: a.blob,
-        capturedAt: a.media.captured_at,
-      })),
-      deps.providers
+    const outcome = await diagBoundary('transcription', () =>
+      transcribeAssets(
+        loadedAudio.map((a) => ({
+          mediaId: a.media.id,
+          localUri: a.media.local_uri,
+          mimeType: a.media.mime_type ?? '',
+          blob: a.blob,
+          capturedAt: a.media.captured_at,
+        })),
+        deps.providers
+      )
     );
     transcripts = outcome.transcripts;
     transcriptionStatus = outcome.status;
@@ -183,27 +236,29 @@ export async function generateExport(request: MeetingExportRequest): Promise<Mee
   const baseName = exportBaseName(content, now);
   const doc = buildRecordDoc(content, plan, transcripts, missing, photoAssets);
   const font = await PDFDocument.create().then((d) => d.embedFont(StandardFonts.Helvetica));
-  const pdf = await renderMeetingRecordPdf(doc, helveticaMeasure(font), { assets: photoAssets });
+  const pdf = await diagBoundary('buildPdf', () => renderMeetingRecordPdf(doc, helveticaMeasure(font), { assets: photoAssets }));
 
-  const packageFiles = await buildEvidencePackage({
-    pdfBytes: pdf,
-    photos: loadedPhotos.map((p) => ({
-      mediaId: p.media.id,
-      ordinal: p.ordinal,
-      mimeType: p.media.mime_type,
-      blob: p.blob,
-    })),
-    audio: loadedAudio.map((a) => ({
-      mediaId: a.media.id,
-      ordinal: a.ordinal,
-      mimeType: a.media.mime_type,
-      blob: a.blob,
-    })),
-  });
+  const packageFiles = await diagBoundary('buildPackage', () =>
+    buildEvidencePackage({
+      pdfBytes: pdf,
+      photos: loadedPhotos.map((p) => ({
+        mediaId: p.media.id,
+        ordinal: p.ordinal,
+        mimeType: p.media.mime_type,
+        blob: p.blob,
+      })),
+      audio: loadedAudio.map((a) => ({
+        mediaId: a.media.id,
+        ordinal: a.ordinal,
+        mimeType: a.media.mime_type,
+        blob: a.blob,
+      })),
+    })
+  );
 
-  const packageZip = needsPackage ? await zipMeetingPackage(packageFiles) : null;
+  const packageZip = needsPackage ? await diagBoundary('zipPackage', () => zipMeetingPackage(packageFiles)) : null;
 
-  return {
+  const result: MeetingExportResult = {
     fingerprint: fingerprintExport(content, maskFromPlan(content, plan)),
     sections: sectionsFromPlan(content, plan),
     counts: planCounts(content, plan),
@@ -218,6 +273,13 @@ export async function generateExport(request: MeetingExportRequest): Promise<Mee
     transcriptionStatus,
     fileSize: needsPackage && packageZip ? packageZip.byteLength : pdf.byteLength,
   };
+  diag('generate', {
+    pdfBytes: result.pdf.byteLength,
+    zipBytes: result.packageZip?.byteLength ?? null,
+    missing: result.missing.length,
+    fileSize: result.fileSize,
+  });
+  return result;
 }
 
 // ── The Meeting Record (PDF content model) ───────────────────────────

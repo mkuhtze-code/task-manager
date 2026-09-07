@@ -31,17 +31,23 @@ function b64ToBytes(b64: string): Uint8Array {
 
 const now = new Date('2025-02-03T12:00:00');
 
-function deps(overrides: { missingUris?: string[]; providers?: MeetingExportEngineDeps['providers'] } = {}): MeetingExportEngineDeps {
+function deps(
+  overrides: { missingUris?: string[]; optimiseFailUris?: string[]; providers?: MeetingExportEngineDeps['providers'] } = {}
+): MeetingExportEngineDeps {
   const missingUris = overrides.missingUris ?? [];
+  const optimiseFailUris = overrides.optimiseFailUris ?? [];
   return {
     loadMedia: async (uri) => (missingUris.includes(uri) ? null : new Blob([new Uint8Array([1, 2, 3])])),
-    optimisePhoto: async (_blob, _quality, mediaId) => ({
-      mediaId,
-      mimeType: 'image/jpeg',
-      bytes: b64ToBytes(TINY_JPEG_B64),
-      width: 640,
-      height: 480,
-    }),
+    optimisePhoto: async (_blob, _quality, mediaId) => {
+      if (optimiseFailUris.includes(mediaId)) throw new Error('Photo encode failed');
+      return {
+        mediaId,
+        mimeType: 'image/jpeg',
+        bytes: b64ToBytes(TINY_JPEG_B64),
+        width: 640,
+        height: 480,
+      };
+    },
     providers: overrides.providers ?? [],
     now: () => now,
   };
@@ -158,6 +164,32 @@ describe('generateExport', () => {
     expect(files).toContain('audio/Obs-01-audio-1.m4a');
     expect(files).toContain('photos/Obs-02-photo-1.png');
     expect(result.pdf[0]).toBe(0x25);
+  });
+
+  it('soft-fails a photo the decoder/canvas cannot process and still packages its original', async () => {
+    const content = makeContent();
+    const plan = fullPlan(content);
+    // media-1's bytes exist (loaded), only the PDF-side optimisation fails —
+    // exactly what a mobile WebView hits when it cannot decode/encode a photo.
+    const result = await generateExport({ content, plan, deps: deps({ optimiseFailUris: ['media-1'] }) });
+
+    expect(result.missing).toHaveLength(1);
+    expect(result.missing[0].mediaId).toBe('media-1');
+    expect(result.missing[0].label).toContain('Photo unavailable');
+    expect(result.pdf[0]).toBe(0x25);
+
+    // The PDF omits the derivative (no asset for media-1 — its slot has zero
+    // size and the renderer skips blocks with no asset) but the package
+    // still holds the untouched original.
+    const doc = buildRecordDoc(content, plan, new Map(), result.missing, new Map());
+    const photo = doc.observations?.[0].photos.find((p) => p.mediaId === 'media-1');
+    expect(photo).toBeDefined();
+    expect(photo!.width).toBe(0);
+    expect(photo!.height).toBe(0);
+
+    const files = result.packageFiles.map((f) => f.path);
+    expect(files).toContain('photos/Obs-01-photo-1.png');
+    expect(result.packageZip).not.toBeNull();
   });
 
   it('marks transcription requested-but-failed when no provider is registered', async () => {
