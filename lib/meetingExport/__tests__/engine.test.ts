@@ -192,6 +192,29 @@ describe('generateExport', () => {
     expect(result.packageZip).not.toBeNull();
   });
 
+  it('proves the PDF uses the derivative while the package keeps original bytes untouched', async () => {
+    const content = makeContent();
+    const plan = fullPlan(content);
+    const result = await generateExport({ content, plan, deps: deps() });
+
+    // The original photo bytes that left the device ([1,2,3]) are the ones
+    // in the Evidence Package, and must be byte-for-byte the stored blob.
+    expect(result.missing).toEqual([]);
+    const photosEntry = result.packageFiles.find((f) => f.path === 'photos/Obs-01-photo-1.png');
+    const photosEntry2 = result.packageFiles.find((f) => f.path === 'photos/Obs-02-photo-1.png');
+    expect(photosEntry).toBeDefined();
+    expect(new Uint8Array(await photosEntry!.blob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+    expect(new Uint8Array(await photosEntry2!.blob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+
+    // The record (PDF content model) for the same photos carries the OPTIMISED
+    // derivative dimensions, not the original storage bytes.
+    const doc = buildRecordDoc(content, plan, new Map(), [], new Map([
+      ['media-1', { mediaId: 'media-1', mimeType: 'image/jpeg', bytes: b64ToBytes(TINY_JPEG_B64), width: 640, height: 480 }],
+    ]));
+    expect(doc.observations?.[0].photos.find((p) => p.mediaId === 'media-1')).toEqual({ mediaId: 'media-1', width: 640, height: 480 });
+    expect(result.pdf[0]).toBe(0x25);
+  });
+
   it('marks transcription requested-but-failed when no provider is registered', async () => {
     const content = makeContent();
     const state = defaultReviewState(content, undefined);

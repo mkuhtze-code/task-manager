@@ -402,13 +402,20 @@ export async function renderMeetingRecordPdf(
       } else if (block.type === 'image') {
         const asset = options.assets.get(block.mediaId);
         if (!asset) continue;
-        const embedded = await pdfDoc.embedJpg(asset.bytes);
-        pdfPage.drawImage(embedded, {
-          x: block.x,
-          y: block.y,
-          width: block.width,
-          height: block.height,
-        });
+        try {
+          const embedded = await pdfDoc.embedJpg(asset.bytes);
+          pdfPage.drawImage(embedded, {
+            x: block.x,
+            y: block.y,
+            width: block.width,
+            height: block.height,
+          });
+        } catch (err) {
+          // A derivative that somehow isn't embeddable (e.g. bytes truncated
+          // by an encoder quirk) must not abort the whole export — skip the
+          // image, keep the record.
+          console.warn('[meetingExport:pdf] skipped a photo that pdf-lib could not embed', err, { mediaId: block.mediaId });
+        }
       }
     }
     pdfPage.drawText(`${page.pageNumber} / ${pages.length}`, {
