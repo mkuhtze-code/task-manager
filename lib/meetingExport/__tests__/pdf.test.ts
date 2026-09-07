@@ -207,5 +207,39 @@ describe('renderMeetingRecordPdf', () => {
     );
     const parsed = await PDFDocument.load(bytes);
     expect(parsed.getPageCount()).toBe(1);
+
+    // The asset resolved into real JPEG bytes pdf-lib accepts: embedJpg
+    // throws on invalid bytes, so both this render and the independent embed
+    // below prove the derivative made it in with non-zero dimensions.
+    const again = await PDFDocument.create();
+    const img = await again.embedJpg(b64ToBytes(TINY_JPEG_B64));
+    expect(img.width).toBeGreaterThan(0);
+    expect(img.height).toBeGreaterThan(0);
+  });
+
+  it('skips an un-embeddable photo instead of aborting the export', async () => {
+    const font = await makeFont();
+    const bytes = await renderMeetingRecordPdf(
+      {
+        brand: null,
+        title: 'With a broken photo',
+        jobReference: null,
+        window: 'Thu · 9a',
+        location: null,
+        participants: null,
+        notes: null,
+        observations: [
+          { ordinal: 1, text: 'Evidence photo', captured: null, photos: [{ mediaId: 'm1', width: 1, height: 1 }], audio: [], missing: [] },
+        ],
+        decisions: null,
+        actions: null,
+        missing: [],
+      },
+      helveticaMeasure(font),
+      // Not a JPEG at all: embedJpg must not take the whole record down.
+      { assets: new Map([['m1', { mediaId: 'm1', bytes: new Uint8Array([1, 2, 3, 4, 5]), width: 1, height: 1 }]]) }
+    );
+    const parsed = await PDFDocument.load(bytes);
+    expect(parsed.getPageCount()).toBe(1);
   });
 });
