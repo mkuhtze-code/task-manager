@@ -26,16 +26,38 @@ export function TodayHeader(props: {
   // Forwarded to GearMenu so it can skip its own getSession() lookup —
   // Today already knows who is signed in.
   userId: string;
+  // External commitments (synced calendar events) for today, oldest first.
+  commitments: Array<{
+    id: string;
+    title: string;
+    start_at: string;
+    end_at: string;
+    all_day: boolean;
+  }>;
 }) {
   const {
     overloaded, weekdayLabel, dateOnlyLabel, isWorkDay, minutesLeftToday,
     remainingWorkMins, nowPercent, planWidthPercent, workStart, workEnd, geoAware,
     recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError, hasRoute, onViewMap, userId,
+    commitments,
   } = props;
 
   const [capacityOpen, setCapacityOpen] = useState(false);
 
   const overBy = remainingWorkMins - minutesLeftToday;
+
+  function commitmentWindow(c: { start_at: string; end_at: string; all_day: boolean }): string {
+    if (c.all_day) return 'All day';
+    const start = new Date(c.start_at);
+    const end = new Date(c.end_at);
+    const startLabel = fmtClock(
+      `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
+    );
+    const endLabel = fmtClock(
+      `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
+    );
+    return `${startLabel} – ${endLabel}`;
+  }
 
   return (
     <div className={overloaded ? 'today-header-card overloaded' : 'today-header-card'}>
@@ -48,6 +70,19 @@ export function TodayHeader(props: {
           <GearMenu userId={userId} />
         </div>
       </div>
+
+      {commitments.length > 0 && (
+        <div className="today-commitments">
+          {commitments.map((c) => (
+            <span key={c.id} className="today-commitment" title={commitmentWindow(c)}>
+              <span className="today-commitment-title">{c.title}</span>
+              <span className={c.all_day ? 'today-commitment-when all-day' : 'today-commitment-when'}>
+                {commitmentWindow(c)}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
 
       {isWorkDay ? (
         <div className="today-capacity">

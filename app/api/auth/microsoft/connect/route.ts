@@ -1,28 +1,48 @@
-
 import { NextRequest, NextResponse } from 'next/server';
-import { checkRateLimit, getClientIp } from '@/lib/ratelimit';
+import { verifyUser } from '@/lib/verifyUser';
+import { checkRateLimit } from '@/lib/ratelimit';
+import { MICROSOFT_OAUTH_SCOPE } from '@/lib/microsoftGraph';
+import {
+  encodeOAuthStateCookie,
+  generateOAuthState,
+  oauthCookieOptions,
+  OAUTH_STATE_COOKIE,
+  OAUTH_USER_COOKIE,
+} from '@/lib/calendar/oauthState';
 
-export async function GET(req: NextRequest) {
-  const { allowed } = await checkRateLimit(`ip:${getClientIp(req)}:ms-connect`);
+export async function POST(req: NextRequest) {
+  const auth = await verifyUser(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const { allowed } = await checkRateLimit(`user:${auth.userId}:ms-connect`);
   if (!allowed) {
-    return NextResponse.json({ error: 'Too many requests, try again shortly.' }, { status: 429 });
+    return NextResponse.json(
+      { error: 'Too many requests, try again shortly.' },
+      { status: 429 }
+    );
   }
 
-  const userId = req.nextUrl.searchParams.get('userId');
-  if (!userId) {
-    return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
-  }
+  const basePath = req.nextUrl.pathname.startsWith('/app') ? '/app' : '';
+  const redirectUri = `${req.nextUrl.origin}${basePath}/api/auth/microsoft/callback`;
 
   const tenant = process.env.MICROSOFT_TENANT_ID || 'common';
-  const redirectUri = `${req.nextUrl.origin}/api/auth/microsoft/callback`;
+  const state = generateOAuthState();
 
-  const authUrl = new URL(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`);
+  const authUrl = new URL(
+    `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`
+  );
   authUrl.searchParams.set('client_id', process.env.MICROSOFT_CLIENT_ID as string);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('redirect_uri', redirectUri);
   authUrl.searchParams.set('response_mode', 'query');
-  authUrl.searchParams.set('scope', 'offline_access Calendars.Read User.Read');
-  authUrl.searchParams.set('state', userId);
+  authUrl.searchParams.set('scope', MICROSOFT_OAUTH_SCOPE);
+  authUrl.searchParams.set('state', state);
 
-  return NextResponse.redirect(authUrl.toString());
+  const res = NextResponse.json({ url: authUrl.toString() });
+  const opts = oauthCookieOptions();
+  res.cookies.set(OAUTH_STATE_COOKIE, encodeOAuthStateCookie(state), opts);
+  res.cookies.set(OAUTH_USER_COOKIE, auth.userId, opts);
+  return res;
 }

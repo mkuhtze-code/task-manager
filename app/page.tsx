@@ -48,11 +48,13 @@ import {
 import type { Job } from '@/lib/jobTypes';
 import {
   fmtMins,
+  fmtClock,
   isScheduledForLater,
   localDateStr,
   parseMins,
   timeStringToMinutes,
 } from '@/lib/timeFormat';
+import { computeAvailability } from '@/lib/calendar/planning';
 
 // One-shot browser geolocation for the route's start point. Resolves to
 // null when the API is unavailable, permission is denied, or the fix
@@ -105,6 +107,16 @@ export default function Home() {
   const [scheduledSheetOpen, setScheduledSheetOpen] = useState(false);
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<
+    Array<{
+      id: string;
+      title: string;
+      start_at: string;
+      end_at: string;
+      all_day: boolean;
+      location: string | null;
+    }>
+  >([]);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
   const [workDays, setWorkDays] = useState<number[]>(DEFAULT_WORK_DAYS);
@@ -495,15 +507,27 @@ export default function Home() {
 
     // Only today's meetings feed capacity math (plus untimed ones, which
     // Today always counts) — no reason to pull the table's full history.
+    // Legacy source='outlook' rows are superseded by calendar_events and
+    // excluded from both the capacity math and the Today commitments strip.
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const nextDay = new Date(dayStart);
     nextDay.setDate(nextDay.getDate() + 1);
     const meetingsPromise = supabase
       .from('meetings')
-      .select('id, text, duration_mins, start_time')
+      .select('id, text, duration_mins, start_time, source')
       .or(
         `start_time.is.null,and(start_time.gte.${dayStart.toISOString()},start_time.lt.${nextDay.toISOString()})`
       );
+
+    // External commitments (synced calendar events) overlapping today feed
+    // the same capacity math as meetings. Events are read-only external
+    // blocks of time; cancelled ones are excluded so they stop consuming
+    // capacity. RLS limits this to the user's own events.
+    const eventsPromise = supabase
+      .from('calendar_events')
+      .select('id, title, start_at, end_at, all_day, location, status')
+      .neq('status', 'cancelled')
+      .or(`start_at.lt.${nextDay.toISOString()},and(end_at.gt.${dayStart.toISOString()})`);
 
     // Jobs for the capture sheet's "Add to a job" disclosure and the unified
     // thought resolver (which matches against name AND location and, when a
@@ -561,6 +585,7 @@ export default function Home() {
     const [
       { data: settings },
       { data: meetingRows },
+      { data: eventRows },
       { data: jobRows },
       { data: historyRows },
       { data: aliasRows },
@@ -568,6 +593,7 @@ export default function Home() {
     ] = await Promise.all([
       settingsPromise,
       meetingsPromise,
+      eventsPromise,
       jobsPromise,
       historyPromise,
       aliasesPromise,
@@ -621,6 +647,16 @@ export default function Home() {
     }
 
     setMeetings(meetingRows || []);
+    setCalendarEvents(
+      (eventRows || []).map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        start_at: r.start_at,
+        end_at: r.end_at,
+        all_day: r.all_day,
+        location: r.location,
+      }))
+    );
     setJobs((jobRows as Job[]) || []);
 
     // V1.2: fold the confirmed relationships into resolver memory. Loaded
@@ -1389,7 +1425,12 @@ export default function Home() {
     if (!m.start_time) return true;
     return localDateStr(new Date(m.start_time)) === todayStr;
   });
-  const meetingMins = todayMeetings.reduce((sum, m) => sum + m.duration_mins, 0);
+  // Legacy source='outlook' rows are superseded by calendar_events — the
+  // same meetings now arrive as external commitments and are counted below
+  // through capacity windows, so only manual meetings are summed here.
+  const manualMeetingMins = todayMeetings
+    .filter((m) => m.source !== 'outlook')
+    .reduce((sum, m) => sum + m.duration_mins, 0);
 
   const todayDow = now.getDay();
   const isWorkDay = workDays.includes(todayDow);
@@ -1398,7 +1439,23 @@ export default function Home() {
   const workStartMinutes = timeStringToMinutes(workStart);
   const workEndMinutes = timeStringToMinutes(workEnd);
   const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
-  const taskCapacity = minutesLeftToday - meetingMins;
+
+  // External commitments only consume capacity while they overlap the time
+  // remaining in the workday: an ended commitment stops blocking, one that
+  // hasn't started yet does not reduce time already spent, and all-day
+  // events span the whole window. This replaces the old flat subtraction
+  // that counted every meeting's full duration regardless of when it runs.
+  const availability = computeAvailability({
+    now,
+    workStartMins: workStartMinutes,
+    workEndMins: workEndMinutes,
+    isWorkDay,
+    commitments: calendarEvents.map((e) => ({
+      start: new Date(e.start_at),
+      end: new Date(e.end_at),
+    })),
+  });
+  const taskCapacity = availability.availableMinutes - manualMeetingMins;
 
   const geoAware = sortMode === 'geo_aware';
   const currentBase = geoAware ? determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords) : { coords: null, label: null };
@@ -1470,7 +1527,14 @@ export default function Home() {
   const hasRoute = geoAware && locatedInOrder.length > 0 && basePolyline != null;
 
   const remainingTaskMins = ordered.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
-  const remainingWorkMins = meetingMins + remainingTaskMins + routeDriveMins;
+  const remainingWorkMins =
+    availability.blockedMinutes + manualMeetingMins + remainingTaskMins + routeDriveMins;
+
+  const activeCommitments = calendarEvents
+    .filter((e) => new Date(e.end_at).getTime() > now.getTime())
+    .sort(
+      (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+    );
 
   const overloaded = isWorkDay && minutesLeftToday > 0 && remainingWorkMins > minutesLeftToday;
 
@@ -1527,6 +1591,7 @@ export default function Home() {
         hasRoute={hasRoute}
         onViewMap={() => setMapOpen(true)}
         userId={session.user.id}
+        commitments={activeCommitments}
       />
 
       <div className="task-list">

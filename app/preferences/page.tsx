@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { apiUrl } from '@/lib/authedFetch';
+import { apiUrl, authedFetch } from '@/lib/authedFetch';
 import AppHeader from '@/components/AppHeader';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 
@@ -77,10 +77,35 @@ export default function Preferences() {
   const [sortMode, setSortMode] = useState<SortMode>('capacity_first');
   const [sortSavedMsg, setSortSavedMsg] = useState('');
 
-  const [calendarConnection, setCalendarConnection] = useState<{ connected_email: string | null } | null>(null);
+  const [calendarConnection, setCalendarConnection] = useState<{
+    provider: string;
+    connected_email: string | null;
+    sync_status: string | null;
+    sync_error: string | null;
+  } | null>(null);
   const [calendarMessage, setCalendarMessage] = useState('');
+  const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
+// The user's Microsoft connections, each with its discovered calendars +
+  // current selection. Calendars are read-only external time; `selected`
+  // controls which ones feed Today's External Commitments.
+  const [calendarConnectionsState, setCalendarConnectionsState] = useState<
+    Array<{
+      connection_id: string;
+      provider: string;
+      connected_email: string | null;
+      calendars: Array<{
+        id: string;
+        provider_calendar_id: string;
+        name: string;
+        is_default: boolean;
+        selected: boolean;
+      }>;
+    }>
+  >([]);
+  const [calendarsSavingId, setCalendarsSavingId] = useState<string | null>(null);
+  const [calendarListMsg, setCalendarListMsg] = useState('');
   // ── Home & Work — the "base" pins geo_aware sort mode routes from,
   // switching automatically between them based on work hours already
   // set above, same base concept as Travel's accommodation, applied to
@@ -100,6 +125,7 @@ export default function Preferences() {
     if (session) {
       loadSettings();
       loadCalendarConnection();
+      loadExternalCalendars();
     }
   }, [session]);
 
@@ -107,7 +133,15 @@ export default function Preferences() {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('calendar') === 'connected') {
-      setCalendarMessage('Calendar connected — the first sync runs within a few minutes.');
+      setCalendarMessage('Calendar connected — your commitments will show up in Today within a few minutes.');
+    } else if (params.get('calendar') === 'denied') {
+      setCalendarMessage('You chose not to connect your calendar. No changes were made.');
+    } else if (params.get('calendar') === 'expired') {
+      setCalendarMessage('That connection link expired — try again.');
+    } else if (params.get('calendar') === 'invalid' || params.get('calendar') === 'missing') {
+      setCalendarMessage('That connection link was incomplete or invalid — please try again.');
+    } else if (params.get('calendar') === 'not_authed') {
+      setCalendarMessage('Please sign in again, then reconnect your calendar.');
     } else if (params.get('calendar') === 'error') {
       setCalendarMessage('Could not connect your calendar. Please try again.');
     }
@@ -147,10 +181,81 @@ export default function Preferences() {
   async function loadCalendarConnection() {
     const { data } = await supabase
       .from('calendar_connections')
-      .select('connected_email')
+      .select('provider, connected_email, sync_status, sync_error')
       .eq('user_id', session.user.id)
-      .maybeSingle();
-    setCalendarConnection(data || null);
+      .eq('provider', 'microsoft')
+      .order('created_at', { ascending: true })
+      .limit(1);
+    const row = Array.isArray(data) ? data[0] : null;
+    setCalendarConnection(row || null);
+  }
+
+  async function loadExternalCalendars() {
+    try {
+      const res = await fetch(apiUrl('/api/calendar/calendars'), {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) {
+        return;
+      }
+      const payload = await res.json();
+      if (Array.isArray(payload?.connections)) {
+        setCalendarConnectionsState(payload.connections);
+      }
+    } catch {
+      // Calendars are a progressive enhancement here — leave the panel
+      // showing just the connection state on failure.
+    }
+  }
+
+  async function toggleExternalCalendar(calendar: { id: string; selected: boolean }) {
+    const next = !calendar.selected;
+    setCalendarsSavingId(calendar.id);
+    setCalendarListMsg('');
+    try {
+      const res = await fetch(apiUrl('/api/calendar/calendars'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ calendarId: calendar.id, selected: next }),
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload?.ok) {
+        setCalendarListMsg(payload?.error || 'Could not update calendars — try again.');
+        return;
+      }
+      setCalendarConnectionsState((prev) =>
+        prev.map((conn) => ({
+          ...conn,
+          calendars: conn.calendars.map((c) =>
+            c.id === calendar.id ? { ...c, selected: next } : c
+          ),
+        }))
+      );
+    } catch {
+      setCalendarListMsg('Could not update calendars — try again.');
+    } finally {
+      setCalendarsSavingId(null);
+    }
+  }
+
+  async function connectCalendar() {
+    setConnecting(true);
+    setCalendarMessage('');
+    try {
+      const payload = await authedFetch('/api/auth/microsoft/connect', {});
+      if (payload?.url) {
+        window.location.assign(payload.url);
+        return;
+      }
+      setCalendarMessage(payload?.error || 'Could not start connecting your calendar. Please try again.');
+      setConnecting(false);
+    } catch {
+      setCalendarMessage('Could not start connecting your calendar. Please try again.');
+      setConnecting(false);
+    }
   }
 
   async function disconnectCalendar() {
@@ -164,6 +269,8 @@ export default function Preferences() {
       body: JSON.stringify({}),
     });
     setCalendarConnection(null);
+    setCalendarConnectionsState([]);
+    setCalendarListMsg('');
     setCalendarMessage('Calendar disconnected.');
     setDisconnecting(false);
   }
@@ -419,10 +526,69 @@ export default function Preferences() {
         {calendarConnection ? (
           <>
             <p className="settings-help">
-              Connected{calendarConnection.connected_email ? ` as ${calendarConnection.connected_email}` : ''}.
-              Today's meetings are pulled in automatically and drop off your workload once they end —
-              nothing to schedule or manage.
+              Connected Microsoft{calendarConnection.connected_email ? ` as ${calendarConnection.connected_email}` : ''}.
+              Your external commitments are pulled into Today automatically and drop off your workload once
+              they end — nothing to schedule or manage.
             </p>
+            <p className="settings-hint">
+              ✓ Calendar access (read-only).{calendarConnection.sync_status === 'error'
+                ? ' The last sync failed — Dokkit retries automatically.'
+                : ''}
+            </p>
+
+{calendarConnectionsState.length > 0 && (
+                  <>
+                    <span className="settings-label" style={{ marginTop: 'var(--space-3)' }}>
+                      Calendars
+                    </span>
+                    <p className="settings-help">
+                      Dokkit plans around the calendars you select below. Pick the ones that hold your
+                      real commitments — birthdays and shared calendars stay unselected so they don't
+                      quietly eat into your day.
+                    </p>
+                    {calendarConnectionsState.map((conn) => (
+                      <div key={conn.connection_id}>
+                        {calendarConnectionsState.length > 1 && (
+                          <span className="settings-label" style={{ marginTop: 'var(--space-2)' }}>
+                            {conn.connected_email || 'Calendar account'}
+                          </span>
+                        )}
+                        {conn.calendars.length === 0 ? (
+                          <p className="settings-hint">No calendars linked yet — they appear after the first sync.</p>
+                        ) : (
+                          <div className="settings-check-list">
+                            {conn.calendars.map((cal) => (
+                              <button
+                                key={cal.id}
+                                className="settings-check-row"
+                                aria-pressed={cal.selected}
+                                onClick={() => toggleExternalCalendar(cal)}
+                                disabled={calendarsSavingId === cal.id}
+                              >
+                                <span className="export-check">
+                                  {cal.selected && (
+                                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                                      <path d="M1.5 5.5l2.5 2.5L9.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  )}
+                                </span>
+                                <span className="settings-check-label">
+                                  {cal.name}
+                                  {cal.is_default ? ' · default' : ''}
+                                </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    </div>
+                  ))}
+                <p className="settings-hint">
+                  Read-only — Dokkit never edits these calendars. Changes take effect on the next sync.
+                </p>
+                {calendarListMsg && <span className="settings-saved">{calendarListMsg}</span>}
+              </>
+            )}
+
             <button className="btn btn-ghost" onClick={disconnectCalendar} disabled={disconnecting}>
               {disconnecting ? 'Disconnecting…' : 'Disconnect calendar'}
             </button>
@@ -430,12 +596,12 @@ export default function Preferences() {
         ) : (
           <>
             <p className="settings-help">
-              Outlook calendar sync is being finalized — Microsoft requires apps like this to go
-              through an app verification process before it can connect reliably. This will open up
-              in a future update.
+              Connect your Microsoft calendar and Dokkit treats your meetings as external commitments in
+              Today — they block capacity while they run and free it up as soon as they end. Read-only,
+              synced automatically.
             </p>
-            <button className="btn btn-ghost" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-              Connect Outlook Calendar — coming soon
+            <button className="btn btn-steel" onClick={connectCalendar} disabled={connecting}>
+              {connecting ? 'Connecting…' : 'Connect Microsoft Calendar'}
             </button>
           </>
         )}
