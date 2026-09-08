@@ -264,6 +264,97 @@ button:focus-visible, input:focus-visible {
   margin-bottom: var(--space-3);
 }
 
+.today-commitments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.today-commitment {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--paper-raised, var(--paper));
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 3px var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.today-commitment-title {
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.today-commitment-when {
+  color: var(--ink-faint);
+}
+
+.today-commitment-when.all-day {
+  color: var(--moss-text, var(--moss));
+  font-weight: 700;
+}
+
+/* Calendar selection: a read-only checkbox list of each connected account's
+   calendars, where `selected` picks which ones feed Today's External
+   Commitments. The rows are buttons like the export-list rows; only
+   appearance, never write access to the provider calendars behind them. */
+.settings-check-list {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.settings-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 10px 12px;
+  min-height: 44px;
+  text-align: left;
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.settings-check-row + .settings-check-row {
+  border-top: 1px solid var(--line);
+}
+
+.settings-check-row[aria-pressed='true'] .export-check,
+.export-check {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--line-strong);
+  color: white;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+
+.settings-check-row[aria-pressed='true'] .export-check {
+  background: var(--steel);
+  border-color: var(--steel);
+}
+
+.settings-check-label {
+  flex: 1;
+}
+
 .settings-panel {
   background: var(--paper-raised);
   border-radius: var(--radius-md);

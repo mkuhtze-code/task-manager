@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyUser } from '@/lib/verifyUser';
 import { checkRateLimit } from '@/lib/ratelimit';
+import { clearConnection } from '@/lib/calendar/sync';
 
 export async function POST(req: NextRequest) {
   const auth = await verifyUser(req);
@@ -9,13 +9,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { allowed } = await checkRateLimit(`user:${auth.userId}:calendar-disconnect`);
+  const { allowed } = await checkRateLimit(`user:${auth.userId}:ms-disconnect`);
   if (!allowed) {
-    return NextResponse.json({ error: 'Too many requests, try again shortly.' }, { status: 429 });
+    return NextResponse.json(
+      { error: 'Too many requests, try again shortly.' },
+      { status: 429 }
+    );
   }
 
-  await supabaseAdmin.from('calendar_connections').delete().eq('user_id', auth.userId);
-  await supabaseAdmin.from('meetings').delete().eq('user_id', auth.userId).eq('source', 'outlook');
+  await clearConnection(auth.userId, 'microsoft');
 
   return NextResponse.json({ ok: true });
 }

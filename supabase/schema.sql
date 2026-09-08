@@ -112,13 +112,24 @@ create table if not exists meetings (
 );
 
 -- ── Calendar connections ─────────────────────────────────────────
+-- Provider-independent external calendar links (Microsoft first, Google
+-- later). A user may hold several connections (work + personal). Tokens
+-- are AES-256-GCM ciphertext encrypted with CALENDAR_TOKEN_ENCRYPTION_KEY
+-- (see lib/calendar/tokens.ts); column names are unchanged so this stays
+-- purely additive to existing installs.
 create table if not exists calendar_connections (
-  user_id uuid primary key references auth.users(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
   provider text not null default 'microsoft',
+  provider_account_id text not null,
+  connected_email text,
   access_token text not null,
   refresh_token text not null,
   expires_at timestamptz not null,
-  connected_email text,
+  scopes text,
+  sync_status text not null default 'ok' check (sync_status in ('ok', 'error')),
+  sync_error text,
+  last_sync_at timestamptz,
   updated_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
@@ -1017,3 +1028,165 @@ create index if not exists meetings_user_id_start_time_idx on meetings (user_id,
 -- Meetings about a job (Jobs surface reads meetings by job_id).
 create index if not exists meetings_job_id_idx on meetings (job_id);
 create index if not exists surface_events_user_id_created_at_idx on surface_events (user_id, created_at desc);
+
+-- ── External Calendar (V1): provider-independent commitments ────
+-- Upgrades the prototype's single-row, plaintext Microsoft connection to
+-- the production shape (multi-connection, encrypted tokens, sync health).
+-- Fresh installs already have this shape from the create-table block
+-- above, so every statement here must evaluate to a no-op on a fresh
+-- database:
+--   * id uuid becomes the PK (legacy PK was user_id — one row per user)
+--   * provider_account_id keys the check "one connection per calendar"
+--   * access_token/refresh_token columns are UNCHANGED and now hold
+--     "enc:"-prefixed AES-256-GCM ciphertext; legacy plaintext values
+--     created before encryption are read transparently and re-encrypted
+--     on the next token write.
+alter table calendar_connections add column if not exists id uuid;
+update calendar_connections set id = gen_random_uuid() where id is null;
+alter table calendar_connections alter column id set not null;
+
+-- Promote id to the primary key. The legacy PK (user_id) blocks multiple
+-- connections per user, so it must be replaced by PRIMARY KEY (id). The old
+-- constraint is dropped under whatever name it carries, then id is promoted
+-- (a fresh database already has PRIMARY KEY (id), where both steps no-op and
+-- the "drop" must never fire on it). Every data-routing FK below
+-- (external_calendars.connection_id, calendar_events.connection_id) depends
+-- on id being unique, so this MUST end with calendar_connections_pkey on id.
+do $$
+declare
+  pkey_def text;
+  pkey_name text;
+begin
+  select pg_get_constraintdef(oid), conname into pkey_def, pkey_name
+    from pg_constraint
+    where conrelid = 'calendar_connections'::regclass and contype = 'p';
+  if pkey_def is not null and pkey_def not ilike '%(id)%' then
+    execute format('alter table calendar_connections drop constraint %I', pkey_name);
+  end if;
+  if pkey_def is null or pkey_def not ilike '%(id)%' then
+    alter table calendar_connections add constraint calendar_connections_pkey
+      primary key (id);
+  end if;
+end $$;
+
+alter table calendar_connections add column if not exists provider_account_id text;
+alter table calendar_connections add column if not exists scopes text;
+alter table calendar_connections add column if not exists last_sync_at timestamptz;
+alter table calendar_connections add column if not exists sync_status text
+  not null default 'ok' check (sync_status in ('ok', 'error'));
+alter table calendar_connections add column if not exists sync_error text;
+
+-- Existing rows get a stable account key; the connected email is the best
+-- proxy we have (legacy rows recorded it), falling back to a per-user
+-- placeholder so the unique index below can be enforced.
+update calendar_connections
+  set provider_account_id = coalesce(nullif(connected_email, ''), 'legacy-' || user_id::text)
+  where provider_account_id is null or provider_account_id = '';
+alter table calendar_connections alter column provider_account_id set not null;
+
+-- One connection per calendar account: a second Microsoft account creates
+-- a new row instead of overwriting the first one.
+create unique index if not exists calendar_connections_user_provider_account_idx
+  on calendar_connections (user_id, provider, provider_account_id);
+create index if not exists calendar_connections_user_id_idx on calendar_connections (user_id);
+
+-- ── External calendars (selectable calendars inside each connection) ──
+-- One row per calendar inside a connected account. Identity is the
+-- provider's stable calendar ID (never the name). `selected` decides which
+-- calendars contribute External Commitments: the account's default calendar
+-- is auto-selected on first connection, while birthdays, holidays and shared
+-- informational calendars are discovered but left unselected so they never
+-- silently consume Today's capacity. A user's choice is preserved across
+-- syncs. Rows cascade away with their connection (and up through
+-- auth.users), so disconnect/account-deletion need no extra cleanup.
+create table if not exists external_calendars (
+  id uuid primary key default gen_random_uuid(),
+  connection_id uuid not null references calendar_connections(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  provider text not null default 'microsoft' check (provider in ('microsoft', 'google')),
+  provider_calendar_id text not null,
+  name text not null,
+  is_default boolean not null default false,
+  selected boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (connection_id, provider, provider_calendar_id)
+);
+
+alter table external_calendars enable row level security;
+
+do $$
+begin
+  begin
+    drop policy if exists "own external calendars" on external_calendars;
+  exception when undefined_object then
+    null;
+  end;
+  create policy "own external calendars" on external_calendars
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+create index if not exists external_calendars_connection_id_idx on external_calendars (connection_id);
+create index if not exists external_calendars_user_id_idx on external_calendars (user_id);
+
+-- ── Calendar events (synced external commitments) ───────────────
+-- The distilled, normalized result of a calendar sync. One row per
+-- external event that overlaps the sync window. Each event points at the
+-- external_calendars row it came from (never a calendar name); sync only
+-- fetches selected calendars, so an event linked to a deselected calendar
+-- is not re-fetched and its cached row is reconciled to cancelled — it
+-- stops consuming Today capacity without deleting the Microsoft event.
+-- status 'cancelled' removes an event from Today's capacity without
+-- deleting the row, so a cancelled-then-revived event retains identity.
+-- Rows cascade away with their calendar/connection (and up through
+-- auth.users), so disconnect/account-deletion need no extra cleanup.
+create table if not exists calendar_events (
+  id uuid primary key default gen_random_uuid(),
+  connection_id uuid not null references calendar_connections(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  provider text not null default 'microsoft' check (provider in ('microsoft', 'google')),
+  calendar_id uuid references external_calendars(id) on delete cascade,
+  provider_event_id text not null,
+  title text not null,
+  start_at timestamptz not null,
+  end_at timestamptz not null,
+  all_day boolean not null default false,
+  location text,
+  description text,
+  status text not null default 'confirmed'
+    check (status in ('confirmed', 'tentative', 'cancelled')),
+  source_url text,
+  last_modified text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (connection_id, provider, provider_event_id)
+);
+
+alter table calendar_events enable row level security;
+
+do $$
+begin
+  begin
+    drop policy if exists "own calendar events" on calendar_events;
+  exception when undefined_object then
+    null;
+  end;
+  create policy "own calendar events" on calendar_events
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+-- Existing installs created calendar_events before external_calendars
+-- existed, so the link column is added idempotently (a fresh database
+-- already has it inline above). The add must run BEFORE the calendar_id
+-- index below, or an existing install would try to index a missing column.
+alter table calendar_events add column if not exists calendar_id uuid
+  references external_calendars(id) on delete cascade;
+
+-- Today's overlap scan (RLS adds user_id equality): events overlapping
+-- the local day via (start_at < dayEnd AND end_at > dayStart).
+create index if not exists calendar_events_user_id_start_at_idx on calendar_events (user_id, start_at);
+create index if not exists calendar_events_user_id_end_at_idx on calendar_events (user_id, end_at);
+create index if not exists calendar_events_connection_id_idx on calendar_events (connection_id);
+create index if not exists calendar_events_calendar_id_idx on calendar_events (calendar_id);
