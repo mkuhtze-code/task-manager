@@ -2,33 +2,37 @@
 
 import { useState } from 'react';
 import type { MeetingMedia, MeetingObservation } from '@/lib/meetingTypes';
-import { fmtCapturedAt, observationEdit, type CapturedMedia } from '@/lib/meetingCapture';
+import { evidenceSummary, fmtCapturedAt, observationEdit, type CapturedMedia } from '@/lib/meetingCapture';
 import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
 import MeetingPhotoCarousel from '@/components/MeetingPhotoCarousel';
 import { AudioNote, PhotoImage } from '@/components/MediaRender';
 import { deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
 import { TrashIcon } from '@/components/icons';
 
-// One observation displayed as ONE object. Its evidence — text, photos,
-// voice — is edited independently and never crossed: changing the text
-// never touches the media, removing a single photo never removes any other,
-// and removals are staged and undoable until Save. "Edit" opens the same
-// observation in place; "+ Photo"/"+ Voice" add evidence straight back to
-// THIS observation with no navigation and no separate "attach" step.
-export default function MeetingObservationItem(props: {
+// ONE observation rendered as ONE evidence tile. The tile shows exactly the
+// evidence that exists — photos, then text, then voice — and nothing else:
+// a photo-only observation never shows an empty text slot, a text-only one
+// never shows a fake photo container. In the observation carousel it is the
+// full "detail" tile; in the grid it is a compact preview whose whole
+// surface opens the same observation in the carousel.
+export default function MeetingObservationTile(props: {
   observation: MeetingObservation;
   media: MeetingMedia[];
   saving: boolean;
-  onDelete: () => void;
-  onAddMedia: (observationId: string, captured: CapturedMedia) => Promise<boolean>;
-  onSaveEdit: (
+  variant: 'detail' | 'grid';
+  onDelete?: () => void;
+  onAddMedia?: (observationId: string, captured: CapturedMedia) => Promise<boolean>;
+  onSaveEdit?: (
     observationId: string,
     text: string,
     removeMediaIds: string[],
     newMedia: CapturedMedia[]
   ) => Promise<boolean>;
+  onOpen?: () => void;
+  position?: number;
+  total?: number;
 }) {
-  const { observation, media, saving, onDelete, onAddMedia, onSaveEdit } = props;
+  const { observation, media, saving, variant, onDelete, onAddMedia, onSaveEdit, onOpen, position, total } = props;
   const cap = useMeetingMediaCapture();
 
   const [editing, setEditing] = useState(false);
@@ -37,12 +41,51 @@ export default function MeetingObservationItem(props: {
   const [newMedia, setNewMedia] = useState<CapturedMedia[]>([]);
   const [addingMedia, setAddingMedia] = useState(false);
 
+  const ev = evidenceSummary(observation, media);
   const photos = media.filter((m) => m.media_type === 'photo');
   const audios = media.filter((m) => m.media_type === 'audio');
+  const busy = saving || addingMedia || cap.recording;
+
+  if (variant === 'grid') {
+    return (
+      <div
+        className="observation-tile observation-tile--grid"
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onOpen?.();
+          }
+        }}
+        aria-label={total ? `Open observation ${position ?? 0} of ${total}` : 'Open observation'}
+      >
+        {ev.photoCount > 0 && (
+          <div className="observation-tile-photo">
+            <PhotoImage uri={photos[0].local_uri} alt="" className="observation-tile-photo-img" />
+            {ev.photoCount > 1 && (
+              <span className="observation-tile-photo-count">1/{ev.photoCount}</span>
+            )}
+          </div>
+        )}
+        {ev.text.length > 0 && <div className="observation-tile-text observation-tile-text--clamped">{observation.text}</div>}
+        {audios.map((m) => (
+          <div
+            key={m.id}
+            className="observation-tile-grid-audio"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <AudioNote uri={m.local_uri} className="media-audio" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   const evidenceAfterEdit = media.filter((m) => !removeIds.includes(m.id)).length + newMedia.length;
   const canSaveEdit = observationEdit(editText, evidenceAfterEdit) !== null;
-  const busy = saving || addingMedia || cap.recording;
 
   function startEdit() {
     setEditText(observation.text ?? '');
@@ -78,7 +121,7 @@ export default function MeetingObservationItem(props: {
   async function saveEdit() {
     const text = observationEdit(editText, evidenceAfterEdit);
     if (text === null) return;
-    const ok = await onSaveEdit(observation.id, text, removeIds, newMedia);
+    const ok = await onSaveEdit?.(observation.id, text, removeIds, newMedia);
     if (ok) cancelEdit();
   }
 
@@ -87,7 +130,7 @@ export default function MeetingObservationItem(props: {
   // the pill doubles as the stop control while recording.
   function addPhoto() {
     cap.pickPhoto(async (m) => {
-      await onAddMedia(observation.id, m);
+      await onAddMedia?.(observation.id, m);
     });
   }
 
@@ -98,7 +141,7 @@ export default function MeetingObservationItem(props: {
     }
     setAddingMedia(true);
     const m = await cap.captureVoice();
-    if (m) await onAddMedia(observation.id, m);
+    if (m) await onAddMedia?.(observation.id, m);
     setAddingMedia(false);
   }
 
@@ -120,17 +163,17 @@ export default function MeetingObservationItem(props: {
   }
 
   return (
-    <div className="observation-item">
+    <div className="observation-tile observation-tile--detail">
       {!editing && photos.length > 0 && <MeetingPhotoCarousel photos={photos} />}
 
-      {!editing && observation.text && observation.text.trim().length > 0 && (
-        <div className="observation-text">{observation.text}</div>
-      )}
+      {!editing && ev.text.length > 0 && <div className="observation-tile-text">{observation.text}</div>}
 
       {!editing &&
-        audios.map((m) => <AudioNote key={m.id} ref={m.local_uri} className="media-audio" />)}
+        audios.map((m) => (
+          <AudioNote key={m.id} uri={m.local_uri} className="media-audio observation-tile-audio" />
+        ))}
 
-      {editing ? (
+      {editing && (
         <div className="observation-edit-lane">
           <textarea
             value={editText}
@@ -138,7 +181,6 @@ export default function MeetingObservationItem(props: {
             placeholder="What did you see, hear or notice?"
             rows={2}
             className="observation-capture-text"
-            autoFocus
           />
 
           {(media.length > 0 || newMedia.length > 0) && (
@@ -151,9 +193,9 @@ export default function MeetingObservationItem(props: {
                     className={removing ? 'meeting-edit-media-item is-removing' : 'meeting-edit-media-item'}
                   >
                     {m.media_type === 'audio' ? (
-                      <AudioNote ref={m.local_uri} className="media-audio" />
+                      <AudioNote uri={m.local_uri} className="media-audio" />
                     ) : (
-                      <PhotoImage ref={m.local_uri} alt="" className="meeting-edit-media-thumb" />
+                      <PhotoImage uri={m.local_uri} alt="" className="meeting-edit-media-thumb" />
                     )}
                     <button
                       type="button"
@@ -168,15 +210,11 @@ export default function MeetingObservationItem(props: {
               {newMedia.map((m, i) => (
                 <div key={m.uri} className="meeting-edit-media-item">
                   {m.mediaType === 'audio' ? (
-                    <AudioNote ref={m.uri} className="media-audio" />
+                    <AudioNote uri={m.uri} className="media-audio" />
                   ) : (
-                    <PhotoImage ref={m.uri} alt="Newly captured" className="meeting-edit-media-thumb" />
+                    <PhotoImage uri={m.uri} alt="Newly captured" className="meeting-edit-media-thumb" />
                   )}
-                  <button
-                    type="button"
-                    className="meeting-pill meeting-pill--quiet"
-                    onClick={() => dropNewMedia(i)}
-                  >
+                  <button type="button" className="meeting-pill meeting-pill--quiet" onClick={() => dropNewMedia(i)}>
                     Remove
                   </button>
                 </div>
@@ -198,9 +236,11 @@ export default function MeetingObservationItem(props: {
             </button>
           </div>
         </div>
-      ) : (
-        <div className="observation-footer">
-          <span className="observation-captured">Captured {fmtCapturedAt(observation.captured_at)}</span>
+      )}
+
+      {!editing && (
+        <div className="observation-tile-footer">
+          <span className="observation-tile-captured">Captured {fmtCapturedAt(observation.captured_at)}</span>
           <button
             className="meeting-pill meeting-pill--icon"
             onClick={onDelete}

@@ -21,8 +21,10 @@ import {
 } from '@/lib/meetingCapture';
 import { saveMediaBlob, deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
-import { ObservationCapture } from '@/components/MeetingSheets';
-import MeetingObservationItem from '@/components/MeetingObservationItem';
+import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
+import { useObservationDrafting } from '@/hooks/useObservationDrafting';
+import MeetingObservations from '@/components/MeetingObservations';
+import MeetingExport from '@/components/MeetingExport';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
@@ -48,12 +50,63 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   // Section capture states: a quiet "+ …" pill in the section header opens
   // its simple input row. Everything here is Meetings-scoped.
   const [addingPerson, setAddingPerson] = useState(false);
-  const [capturingObservation, setCapturingObservation] = useState(false);
   const [addingDecision, setAddingDecision] = useState(false);
   const [addingAction, setAddingAction] = useState(false);
   const [participantInput, setParticipantInput] = useState('');
   const [decisionInput, setDecisionInput] = useState('');
   const [actionInput, setActionInput] = useState('');
+
+  // The active observation draft and every media capture path live HERE,
+  // on the page component, not in the capture sheet: the page survives its
+  // own `loading` gate, and sessionStorage rides out even a full reload
+  // (the OS camera/file picker can recreate the page on an Android
+  // WebView). A draft only closes on an explicit Cancel or a successful
+  // Save — a picker returning resumes the same draft.
+  const cap = useMeetingMediaCapture();
+  const draft = useObservationDrafting(meetingId);
+  const capturingObservation = draft.state.phase === 'open';
+
+  function startObservation() {
+    draft.begin();
+    setError(null);
+  }
+
+  function cancelObservation() {
+    // The ONLY path that discards the draft: free the staged bytes that
+    // were parked in IndexedDB at capture time, then drop the draft.
+    for (const m of draft.state.media) {
+      if (isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
+    }
+    if (cap.recording) cap.stopRecording();
+    draft.discard();
+    setError(null);
+  }
+
+  function addObservationPhoto() {
+    cap.pickPhoto((m) => draft.addMedia(m));
+  }
+
+  async function toggleObservationVoice() {
+    if (cap.recording) {
+      cap.stopRecording();
+      return;
+    }
+    const m = await cap.captureVoice();
+    if (m) draft.addMedia(m);
+  }
+
+  function removeDraftMedia(index: number) {
+    const m = draft.state.media[index];
+    if (m && isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
+    draft.removeMedia(index);
+  }
+
+  // Save closes the draft ONLY when the observation (and its rows) commit.
+  async function saveObservation(draftPayload: { text: string; media: CapturedMedia[] }) {
+    const ok = await addObservation(draftPayload);
+    if (ok) draft.complete();
+    return ok;
+  }
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -201,11 +254,13 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   // order. Bytes were already parked in IndexedDB at capture time, so
   // local_uri is always the stable idb:// reference; a metadata row is
   // created only for bytes that were successfully stored. Nothing is
-  // uploaded or transcribed.
-  async function addObservation(draft: { text: string; media: CapturedMedia[] }) {
-    if (!session) return;
+  // uploaded or transcribed. Returns false only when nothing was saved, so
+  // the capture surface stays open; a partial media failure still saves the
+  // observation and reports the missing rows.
+  async function addObservation(draft: { text: string; media: CapturedMedia[] }): Promise<boolean> {
+    if (!session) return false;
     const prepared = buildObservationDraft(draft.text, draft.media);
-    if (!prepared) return;
+    if (!prepared) return false;
     setSaving(true);
     setError(null);
 
@@ -218,15 +273,15 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       console.error(obsErr);
       setError("Couldn't save the observation");
       setSaving(false);
-      return;
+      return false;
     }
 
     const ok = await insertMediaRows(obs.id, prepared.media);
     if (!ok) setError("Couldn't save part of the observation");
 
     setSaving(false);
-    setCapturingObservation(false);
     await load();
+    return true;
   }
 
   // Attach captured evidence to an observation (or to the meeting).
@@ -432,6 +487,18 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         )}
       </div>
 
+      <MeetingExport
+        userId={session.user.id}
+        meetingId={meetingId}
+        meeting={meeting}
+        jobName={jobName}
+        participants={participants}
+        observations={observations}
+        decisions={decisions}
+        actions={actions}
+        media={media}
+      />
+
       <section className="detail-section">
         <div className="detail-section-title-row">
           <div className="detail-section-title">People</div>
@@ -483,40 +550,28 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         )}
       </section>
 
-      <section className="detail-section">
-        <div className="detail-section-title-row">
-          <div className="detail-section-title">Observations</div>
-          <button
-            type="button"
-            className="meeting-pill"
-            onClick={() => setCapturingObservation(true)}
-            disabled={capturingObservation || saving}
-          >
-            + Observation
-          </button>
-        </div>
-        {observations.length === 0 && !capturingObservation && (
-          <p className="meeting-empty">No evidence captured yet.</p>
-        )}
-        {observations.map((o) => (
-          <MeetingObservationItem
-            key={o.id}
-            observation={o}
-            media={mediaByObservation.get(o.id) ?? []}
-            saving={saving}
-            onDelete={() => removeRow('meeting_observations', o.id)}
-            onAddMedia={addMediaToObservation}
-            onSaveEdit={saveObservationEdit}
-          />
-        ))}
-        {capturingObservation && (
-          <ObservationCapture
-            saving={saving}
-            onSave={addObservation}
-            onCancel={() => setCapturingObservation(false)}
-          />
-        )}
-      </section>
+      <MeetingObservations
+        observations={observations}
+        mediaByObservation={mediaByObservation}
+        saving={saving}
+        onSaveObservation={saveObservation}
+        onDelete={(id) => removeRow('meeting_observations', id)}
+        onAddMedia={addMediaToObservation}
+        onSaveEdit={saveObservationEdit}
+        capturing={capturingObservation}
+        onStartObservation={startObservation}
+        draftText={draft.state.text}
+        draftMedia={draft.state.media}
+        recording={cap.recording}
+        captureError={cap.captureError}
+        onTextChange={draft.setText}
+        onAddPhoto={addObservationPhoto}
+        onToggleVoice={toggleObservationVoice}
+        onRemoveDraftMedia={removeDraftMedia}
+        onCancelObservation={cancelObservation}
+        photoInputRef={cap.photoRef}
+        onPhotoInputChange={cap.onPhotoInputChange}
+      />
 
       <section className="detail-section">
         <div className="detail-section-title-row">

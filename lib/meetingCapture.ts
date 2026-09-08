@@ -126,3 +126,46 @@ export function photoAlt(
   const text = observationText?.trim();
   return text ? `${base} — ${text}` : base;
 }
+
+// ── V2.3: observation tiles ─────────────────────────────────────────
+// Pure view helpers for the tile carousel + grid. A tile renders exactly
+// the evidence that exists — photos, then text, then voice — and nothing
+// else, so a photo-only observation never shows an empty text slot and a
+// text-only observation never shows a fake photo container.
+
+export type ObservationEvidence = {
+  photoCount: number;
+  voiceCount: number;
+  text: string;
+  total: number;
+};
+
+// What one observation actually holds. `total` counts each rendered piece
+// of evidence (every photo, every voice note, and the text as one piece) —
+// the tile layout and the "still has evidence" guard both derive from it.
+export function evidenceSummary(obs: { text: string | null }, media: MeetingMedia[]): ObservationEvidence {
+  const text = (obs.text ?? '').trim();
+  const photoCount = media.filter((m) => m.media_type === 'photo').length;
+  const voiceCount = media.filter((m) => m.media_type === 'audio').length;
+  return {
+    photoCount,
+    voiceCount,
+    text,
+    total: photoCount + voiceCount + (text.length > 0 ? 1 : 0),
+  };
+}
+
+// Index math for both navigation levels. Clamping (never wrapping) keeps
+// the two carousels predictable and distinct: the observation carousel
+// moves across observations, the photo carousel moves across one
+// observation's photos, and neither ever crosses into the other's domain.
+export function clampIndex(index: number, length: number): number {
+  if (length <= 0) return 0;
+  if (index < 0) return 0;
+  if (index >= length) return length - 1;
+  return index;
+}
+
+export function moveIndex(index: number, delta: number, length: number): number {
+  return clampIndex(index + delta, length);
+}

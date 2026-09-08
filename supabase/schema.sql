@@ -592,6 +592,71 @@ create index if not exists tasks_job_id_idx on tasks (job_id);
 
 alter table feedback add column if not exists user_last_read_at timestamptz;
 
+-- ── Meeting Export (V1): metadata for one export attempt ──────────
+-- One row per export of a meeting. A successful row is an immutable
+-- snapshot of what was produced (what went in, the fingerprint of the state
+-- it was made from, what size it ended up at); a failed row is kept until
+-- the next successful export so the flow can offer "Try again" from the
+-- exact attempt that failed. Ownership is the standard "own X" RLS pattern
+-- and the row cascades up through meetings → auth.users, so account
+-- deletion stays automatic. This is metadata ONLY — the exported evidence
+-- bytes stay device-local (idb://) exactly as recorded; nothing here is a
+-- copy of the media and nothing is stored in Supabase Storage.
+create table if not exists meeting_exports (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  meeting_id uuid not null references meetings(id) on delete cascade,
+  status text not null default 'generating' check (status in ('generating', 'successful', 'failed')),
+  export_type text not null check (export_type in ('pdf', 'evidence_package', 'both')),
+  -- Deterministic fingerprint of the exported state the export was built
+  -- from; the history marker compares the CURRENT masked state against it.
+  fingerprint text,
+  -- What was selected for this attempt (section mask + exact ids), so a
+  -- retry can reopen the same context and change detection knows which
+  -- sections the export covered.
+  selected_sections jsonb,
+  observation_count int not null default 0,
+  photo_count int not null default 0,
+  audio_count int not null default 0,
+  decision_count int not null default 0,
+  action_count int not null default 0,
+  participant_count int not null default 0,
+  transcription_requested boolean not null default false,
+  transcription_status text not null default 'not_requested'
+    check (transcription_status in ('not_requested', 'requested', 'completed', 'failed')),
+  -- Device-local evidence that could not be resolved at generation time
+  -- (bytes deleted, ref invalid). Kept out of the counts above, which only
+  -- describe what WAS exported.
+  missing_media_count int not null default 0,
+  file_size bigint,
+  error_reason text,
+  created_at timestamptz not null default now()
+);
+
+alter table meeting_exports enable row level security;
+
+do $$
+begin
+  begin
+    drop policy if exists "own meeting exports" on meeting_exports;
+  exception when undefined_object then
+    null;
+  end;
+  create policy "own meeting exports" on meeting_exports
+    for all using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+end $$;
+
+-- The meeting surface reads exports newest-first per meeting.
+create index if not exists meeting_exports_meeting_id_created_idx
+  on meeting_exports (meeting_id, created_at desc);
+
+-- Export preferences live on the existing single-row-per-user settings row
+-- (hybrid model: defaults live in the app, the user's choices settle here).
+-- JSONB so future export options fit without a column each; NULL means the
+-- app defaults apply unchanged.
+alter table user_settings add column if not exists meeting_export_prefs jsonb;
+
 -- onboarded: backfill true only for rows that existed before the column
 -- was added (existing users are already set up). Runs exactly once — a
 -- later rerun sees the column already present and skips the backfill.

@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { apiUrl, authedFetch } from '@/lib/authedFetch';
 import AppHeader from '@/components/AppHeader';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
+import type { MeetingExportPreferences } from '@/lib/meetingExport';
+import { DEFAULT_MEETING_EXPORT_PREFS, normalizeMeetingExportPrefs } from '@/lib/meetingExport';
 
 const DAY_OPTIONS: { label: string; value: number }[] = [
   { label: 'M', value: 1 },
@@ -87,7 +89,7 @@ export default function Preferences() {
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
-// The user's Microsoft connections, each with its discovered calendars +
+  // The user's Microsoft connections, each with its discovered calendars +
   // current selection. Calendars are read-only external time; `selected`
   // controls which ones feed Today's External Commitments.
   const [calendarConnectionsState, setCalendarConnectionsState] = useState<
@@ -106,6 +108,12 @@ export default function Preferences() {
   >([]);
   const [calendarsSavingId, setCalendarsSavingId] = useState<string | null>(null);
   const [calendarListMsg, setCalendarListMsg] = useState('');
+
+  // Meeting export preferences — what a new export starts with, chosen in
+  // the per-export Review only for that export.
+  const [exportPrefs, setExportPrefs] = useState<MeetingExportPreferences>(DEFAULT_MEETING_EXPORT_PREFS);
+  const [exportPrefsMsg, setExportPrefsMsg] = useState('');
+
   // ── Home & Work — the "base" pins geo_aware sort mode routes from,
   // switching automatically between them based on work hours already
   // set above, same base concept as Travel's accommodation, applied to
@@ -154,10 +162,11 @@ export default function Preferences() {
     const userId = session.user.id;
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('work_start, work_end, work_days, notification_style, sort_mode, theme, home_location_text, home_lat, home_lng, work_location_text, work_lat, work_lng')
+      .select('work_start, work_end, work_days, notification_style, sort_mode, theme, home_location_text, home_lat, home_lng, work_location_text, work_lat, work_lng, meeting_export_prefs')
       .eq('user_id', userId)
       .maybeSingle();
     if (settings) {
+      setExportPrefs(normalizeMeetingExportPrefs(settings.meeting_export_prefs));
       setSortMode((settings.sort_mode as SortMode) || 'capacity_first');
       setWorkStart(settings.work_start || '08:00');
       setWorkEnd(settings.work_end || '16:00');
@@ -324,6 +333,28 @@ export default function Preferences() {
       setTheme(previous);
       applyTheme(previous);
     }
+  }
+
+  async function saveExportPrefs(next: MeetingExportPreferences) {
+    const previous = exportPrefs;
+    setExportPrefs(next);
+    const { error } = await supabase
+      .from('user_settings')
+      .update({ meeting_export_prefs: next })
+      .eq('user_id', session.user.id);
+    if (error) {
+      setExportPrefs(previous);
+      setExportPrefsMsg('Could not save: ' + error.message);
+      setTimeout(() => setExportPrefsMsg(''), 4000);
+      return;
+    }
+    setExportPrefsMsg('Saved.');
+    setTimeout(() => setExportPrefsMsg(''), 1500);
+  }
+
+  function toggleExportPref(key: keyof MeetingExportPreferences) {
+    if (typeof exportPrefs[key] !== 'boolean') return;
+    void saveExportPrefs({ ...exportPrefs, [key]: !exportPrefs[key] });
   }
 
   async function saveHomeWork() {
@@ -518,6 +549,87 @@ export default function Preferences() {
           ))}
         </div>
         {sortSavedMsg && <span className="settings-saved">{sortSavedMsg}</span>}
+      </div>
+
+      <div className="settings-panel">
+        <div className="settings-panel-title">Meetings → Export</div>
+        <p className="settings-help">
+          What a new meeting export starts with. You can still adjust everything in the per-export review —
+          changes there apply to that export only, these stay the default.
+        </p>
+
+        <span className="settings-label">Export type</span>
+        <div className="segmented">
+          {([
+            { value: 'pdf', label: 'PDF' },
+            { value: 'evidence_package', label: 'Evidence package' },
+            { value: 'both', label: 'Both' },
+          ] as { value: 'pdf' | 'evidence_package' | 'both'; label: string }[]).map((opt) => (
+            <button
+              key={opt.value}
+              className={exportPrefs.exportType === opt.value ? 'segmented-btn active' : 'segmented-btn'}
+              onClick={() => saveExportPrefs({ ...exportPrefs, exportType: opt.value })}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <span className="settings-label" style={{ marginTop: 'var(--space-3)' }}>Include by default</span>
+        <div className="settings-check-list">
+          {([
+            { key: 'includeParticipants', label: 'Participants' },
+            { key: 'includeObservations', label: 'Observations' },
+            { key: 'includeDecisions', label: 'Decisions' },
+            { key: 'includeActions', label: 'Actions' },
+            { key: 'includeNotes', label: 'Notes (raw capture)' },
+            { key: 'includePhotos', label: 'Photos' },
+            { key: 'includeAudio', label: 'Voice notes' },
+          ] as { key: keyof MeetingExportPreferences; label: string }[]).map((row) => (
+            <button key={row.key} className="settings-check-row" onClick={() => toggleExportPref(row.key)} aria-pressed={Boolean(exportPrefs[row.key])}>
+              <span className="export-check">{Boolean(exportPrefs[row.key]) && (
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                  <path d="M1.5 5.5l2.5 2.5L9.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}</span>
+              <span className="settings-check-label">{row.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <span className="settings-label" style={{ marginTop: 'var(--space-3)' }}>Transcripts</span>
+        <button className="settings-check-row" onClick={() => toggleExportPref('transcribe')} aria-pressed={exportPrefs.transcribe}>
+          <span className="export-check">{exportPrefs.transcribe && (
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+              <path d="M1.5 5.5l2.5 2.5L9.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}</span>
+          <span className="settings-check-label">Write transcripts of voice notes</span>
+        </button>
+        <p className="settings-hint">
+          No transcription provider is set up yet — transcripts come with the export once one is connected.
+          Voice notes always export with or without a transcript.
+        </p>
+
+        <span className="settings-label" style={{ marginTop: 'var(--space-3)' }}>PDF photo quality</span>
+        <div className="segmented">
+          {([
+            { value: 'standard', label: 'Standard' },
+            { value: 'compact', label: 'Compact' },
+            { value: 'keep_quality', label: 'Keep quality' },
+          ] as { value: 'standard' | 'compact' | 'keep_quality'; label: string }[]).map((opt) => (
+            <button
+              key={opt.value}
+              className={exportPrefs.pdfQuality === opt.value ? 'segmented-btn active' : 'segmented-btn'}
+              onClick={() => saveExportPrefs({ ...exportPrefs, pdfQuality: opt.value })}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p className="settings-hint">Photos in the record are re-encoded for the PDF. The evidence package always keeps your originals untouched.</p>
+
+        {exportPrefsMsg && <span className="settings-saved">{exportPrefsMsg}</span>}
       </div>
 
       <div className="settings-panel">
