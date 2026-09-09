@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyUser } from '@/lib/verifyUser';
 import { checkRateLimit } from '@/lib/ratelimit';
+import { API_BASE_PATH } from '@/lib/authedFetch';
 import { MICROSOFT_OAUTH_SCOPE } from '@/lib/microsoftGraph';
 import {
   encodeOAuthStateCookie,
@@ -24,8 +25,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const basePath = req.nextUrl.pathname.startsWith('/app') ? '/app' : '';
-  const redirectUri = `${req.nextUrl.origin}${basePath}/api/auth/microsoft/callback`;
+  const redirectUri = `${req.nextUrl.origin}${API_BASE_PATH}/api/auth/microsoft/callback`;
 
   const tenant = process.env.MICROSOFT_TENANT_ID || 'common';
   const state = generateOAuthState();

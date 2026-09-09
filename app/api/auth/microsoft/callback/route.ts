@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForTokens, fetchMe } from '@/lib/microsoftGraph';
 import { checkRateLimit, getClientIp } from '@/lib/ratelimit';
+import { API_BASE_PATH } from '@/lib/authedFetch';
 import { logError } from '@/lib/logError';
 import { upsertConnection } from '@/lib/calendar/store';
 import { seedConnectionCalendars } from '@/lib/calendar/sync';
@@ -11,20 +12,15 @@ import {
   verifyOAuthState,
 } from '@/lib/calendar/oauthState';
 
-function basePathOf(req: NextRequest): string {
-  return req.nextUrl.pathname.startsWith('/app') ? '/app' : '';
-}
-
 export async function GET(req: NextRequest) {
   const { allowed } = await checkRateLimit(`ip:${getClientIp(req)}:ms-callback`);
   if (!allowed) {
     return NextResponse.redirect(
-      `${req.nextUrl.origin}${basePathOf(req)}/preferences?calendar=error`
+      `${req.nextUrl.origin}${API_BASE_PATH}/preferences?calendar=error`
     );
   }
 
-  const basePath = basePathOf(req);
-  const preferencesUrl = `${req.nextUrl.origin}${basePath}/preferences`;
+  const preferencesUrl = `${req.nextUrl.origin}${API_BASE_PATH}/preferences`;
 
   const code = req.nextUrl.searchParams.get('code');
   const state = req.nextUrl.searchParams.get('state');
@@ -58,7 +54,7 @@ export async function GET(req: NextRequest) {
     return res;
   }
 
-  const redirectUri = `${req.nextUrl.origin}${basePath}/api/auth/microsoft/callback`;
+  const redirectUri = `${req.nextUrl.origin}${API_BASE_PATH}/api/auth/microsoft/callback`;
 
   try {
     const tokens = await exchangeCodeForTokens(code as string, redirectUri);
