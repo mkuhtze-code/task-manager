@@ -13,10 +13,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
   }
 
-  const tenant = process.env.MICROSOFT_TENANT_ID || 'common';
   const redirectUri = `${req.nextUrl.origin}/api/auth/microsoft/callback`;
 
-  const authUrl = new URL(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`);
+  const authUrl = new URL(`https://login.microsoftonline.com/common/oauth2/v2.0/authorize`);
   authUrl.searchParams.set('client_id', process.env.MICROSOFT_CLIENT_ID as string);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('redirect_uri', redirectUri);

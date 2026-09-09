@@ -1,8 +1,7 @@
 // Minimal Microsoft Graph helper for read-only calendar sync. No SDK needed —
 // these are just the two OAuth token endpoints plus one Graph call.
 
-const TENANT = process.env.MICROSOFT_TENANT_ID || 'common';
-const TOKEN_URL = `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/token`;
+const TOKEN_URL = `https://login.microsoftonline.com/common/oauth2/v2.0/token`;
 const SCOPE = 'offline_access Calendars.Read User.Read';
 
 export async function exchangeCodeForTokens(code: string, redirectUri: string) {
