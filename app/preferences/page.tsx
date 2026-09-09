@@ -18,6 +18,10 @@ const DAY_OPTIONS: { label: string; value: number }[] = [
   { label: 'S', value: 0 },
 ];
 
+// Temporary UI gate: Microsoft Calendar connection is hidden from Preferences.
+// Flip to true to re-enable the panel. Backend/OAuth/calendar code is untouched.
+const CALENDAR_CONNECT_ENABLED = false;
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -632,6 +636,7 @@ export default function Preferences() {
         {exportPrefsMsg && <span className="settings-saved">{exportPrefsMsg}</span>}
       </div>
 
+      {CALENDAR_CONNECT_ENABLED && (
       <div className="settings-panel">
         <div className="settings-panel-title">Calendar</div>
         {calendarMessage && <div className="settings-status">{calendarMessage}</div>}
@@ -718,6 +723,7 @@ export default function Preferences() {
           </>
         )}
       </div>
+      )}
 
       <div className="settings-panel">
         <div className="settings-panel-title">Notifications</div>
