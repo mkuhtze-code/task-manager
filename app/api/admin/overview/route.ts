@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyUser } from '@/lib/verifyUser';
 import { logError } from '@/lib/logError';
-import { summarizeAccuracy } from '@/lib/thinking/observations/estimateAccuracy';
+import { normalizeAdminAggregates } from '@/lib/admin/overviewAggregate';
 import type {
   ActivityEvent,
   AttentionItem,
@@ -66,9 +66,32 @@ async function buildOverview(): Promise<OverviewPayload> {
   const h24 = new Date(Date.now() - DAY_MS).toISOString();
   const todayStr = generatedAt.slice(0, 10);
 
+  // ── Data fetch (three round trips) ──────────────────────────────
+  // requireAdmin()/verifyUser() above have already gated this request.
+  // Every historical count, window and bounded slice is computed inside
+  // the admin_overview_aggregates RPC (service-role only, see
+  // supabase/schema.sql) in ONE round trip. The GoTrue user list still
+  // has to come from here because auth.users is not in the public schema
+  // the RPC can read, and calendar_connections is fetched for the
+  // per-connection detail strings. Total: three round trips (plus the
+  // three auth round trips above), down from the ~44 serial reads.
+  const [authRes, aggRes, connectionsRes] = await Promise.all([
+    supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    supabaseAdmin.rpc('admin_overview_aggregates', {
+      p_d7: d7,
+      p_d14: d14,
+      p_d30: d30,
+      p_h24: h24,
+      p_today: todayStr,
+    }),
+    supabaseAdmin.from('calendar_connections').select('provider, sync_status, sync_error'),
+  ]);
+
+  const authUsers = authRes.data?.users || [];
+  const agg = normalizeAdminAggregates(aggRes.data);
+  const connections = connectionsRes.data || [];
+
   // ── Accounts ────────────────────────────────────────────────────
-  const { data: authUsersData } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const authUsers = authUsersData?.users || [];
   const emailById = new Map<string, string | null>(authUsers.map((u) => [u.id, u.email ?? null]));
 
   const now = new Date();
@@ -94,156 +117,97 @@ async function buildOverview(): Promise<OverviewPayload> {
     recentAccounts.push({ id: u.id, email: u.email ?? null, createdAt: u.created_at });
   }
 
-  const { data: settingsRows } = await supabaseAdmin.from('user_settings').select('account_tier, onboarded');
-  const tierCounts = { trusted_tester: 0, free: 0, premium: 0 };
-  let notOnboarded = 0;
-  (settingsRows || []).forEach((r) => {
-    if (r.account_tier in tierCounts) tierCounts[r.account_tier as keyof typeof tierCounts]++;
-    if (!r.onboarded) notOnboarded++;
-  });
+  const tierCounts = agg.userSettings.tiers;
+  const notOnboarded = agg.userSettings.notOnboarded;
 
-  const { data: accountStatusRows } = await supabaseAdmin.from('account_status').select('user_id, status, updated_at, created_at');
-  let activeAccounts = 0;
-  let terminatedAccounts = 0;
-  const recentChanges: { id: string; email: string | null; status: string; updatedAt: string }[] = [];
-  (accountStatusRows || []).forEach((r) => {
-    if (r.status === 'terminated') terminatedAccounts++;
-    else activeAccounts++;
-    // A status row whose updated_at is later than its own creation means an
-    // administrator later changed the account state (created_at is the signup)
-    if (r.updated_at && r.created_at && new Date(r.updated_at).getTime() > new Date(r.created_at).getTime() + 1000) {
-      recentChanges.push({ id: r.user_id, email: emailById.get(r.user_id) ?? null, status: r.status, updatedAt: r.updated_at });
-    }
-  });
-  recentChanges.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  const activeAccounts = agg.accounts.active;
+  const terminatedAccounts = agg.accounts.terminated;
+  const recentChanges: { id: string; email: string | null; status: string; updatedAt: string }[] = agg.accounts.recentChanges.map(
+    (c) => ({ id: c.user_id, email: emailById.get(c.user_id) ?? null, status: c.status, updatedAt: c.updated_at })
+  );
 
   // Active users: same task-activity definition as the previous Analytics
   // surface (task created or completed within the window).
-  const { data: activeTaskUsers } = await supabaseAdmin
-    .from('tasks' as any)
-    .select('user_id')
-    .or(`created_at.gte.${d7},completed_at.gte.${d7}`);
-  const activeUsers7d = new Set((activeTaskUsers || []).map((r: any) => r.user_id)).size;
+  const activeUsers7d = agg.activeUsers7d;
 
-  // ── Tasks ───────────────────────────────────────────────────────
-  const taskTotal = (await supabaseAdmin.from('tasks').select('id', { count: 'exact', head: true })).count ?? 0;
-  const taskOpen = (await supabaseAdmin.from('tasks').select('id', { count: 'exact', head: true }).neq('status', 'done')).count ?? 0;
-  const taskDueToday = (await supabaseAdmin.from('tasks').select('id', { count: 'exact', head: true }).eq('due_today', true).neq('status', 'done')).count ?? 0;
-  const taskCreated30d = (await supabaseAdmin.from('tasks').select('id', { count: 'exact', head: true }).gte('created_at', d30)).count ?? 0;
-  const taskCompleted7d = (await supabaseAdmin.from('tasks').select('id', { count: 'exact', head: true }).gte('completed_at', d7)).count ?? 0;
-  const taskCompleted24h = (await supabaseAdmin.from('tasks').select('id', { count: 'exact', head: true }).gte('completed_at', h24)).count ?? 0;
-  const taskCompleted30d = (await supabaseAdmin.from('tasks').select('id', { count: 'exact', head: true }).gte('completed_at', d30)).count ?? 0;
-  const taskDoneTotal = (await supabaseAdmin.from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'done')).count ?? 0;
-
-  const jobTotal = (await supabaseAdmin.from('jobs').select('id', { count: 'exact', head: true })).count ?? 0;
-  const jobCreated30d = (await supabaseAdmin.from('jobs').select('id', { count: 'exact', head: true }).gte('created_at', d30)).count ?? 0;
-  const { data: activeJobs } = await supabaseAdmin
-    .from('tasks' as any)
-    .select('job_id')
-    .not('job_id', 'is', null)
-    .gte('created_at', d30);
-  const jobActive30d = new Set((activeJobs || []).map((r: any) => r.job_id)).size;
+  // ── Tasks + jobs ────────────────────────────────────────────────
+  const {
+    total: taskTotal,
+    open: taskOpen,
+    dueToday: taskDueToday,
+    created30d: taskCreated30d,
+    completed7d: taskCompleted7d,
+    completed24h: taskCompleted24h,
+    completed30d: taskCompleted30d,
+    doneTotal: taskDoneTotal,
+  } = agg.tasks;
+  const { total: jobTotal, created30d: jobCreated30d, active30d: jobActive30d } = agg.jobs;
 
   // ── Meetings + evidence ─────────────────────────────────────────
-  const meetingTotal = (await supabaseAdmin.from('meetings').select('id', { count: 'exact', head: true })).count ?? 0;
-  const meeting30d = (await supabaseAdmin.from('meetings').select('id', { count: 'exact', head: true }).gte('created_at', d30)).count ?? 0;
-  const meetingW7d = (await supabaseAdmin.from('meetings').select('id', { count: 'exact', head: true }).gte('start_time', d7)).count ?? 0;
-  const meetingManual = (await supabaseAdmin.from('meetings').select('id', { count: 'exact', head: true }).eq('source', 'manual')).count ?? 0;
-  const meetingOutlook = (await supabaseAdmin.from('meetings').select('id', { count: 'exact', head: true }).eq('source', 'outlook')).count ?? 0;
-  const meetingObservations = (await supabaseAdmin.from('meeting_observations').select('id', { count: 'exact', head: true })).count ?? 0;
-  const meetingDecisions = (await supabaseAdmin.from('meeting_decisions').select('id', { count: 'exact', head: true })).count ?? 0;
-  const meetingActions = (await supabaseAdmin.from('meeting_actions').select('id', { count: 'exact', head: true })).count ?? 0;
-  const meetingMedia = (await supabaseAdmin.from('meeting_media').select('id', { count: 'exact', head: true })).count ?? 0;
-  const meetingParticipants = (await supabaseAdmin.from('meeting_participants').select('id', { count: 'exact', head: true })).count ?? 0;
+  const {
+    total: meetingTotal,
+    m30d: meeting30d,
+    w7d: meetingW7d,
+    manual: meetingManual,
+    outlook: meetingOutlook,
+  } = agg.meetings;
+  const {
+    observations: meetingObservations,
+    decisions: meetingDecisions,
+    actions: meetingActions,
+    media: meetingMedia,
+    participants: meetingParticipants,
+  } = agg.meetingEvidence;
 
   // ── Travel ──────────────────────────────────────────────────────
-  const tripsTotal = (await supabaseAdmin.from('trips').select('id', { count: 'exact', head: true })).count ?? 0;
-  const trips30d = (await supabaseAdmin.from('trips').select('id', { count: 'exact', head: true }).gte('created_at', d30)).count ?? 0;
-  const tripsActive = (await supabaseAdmin.from('trips').select('id', { count: 'exact', head: true }).lte('start_date', todayStr).gte('end_date', todayStr)).count ?? 0;
-  const tripDays = (await supabaseAdmin.from('trip_days').select('id', { count: 'exact', head: true })).count ?? 0;
-  const activitiesTotal = (await supabaseAdmin.from('activities').select('id', { count: 'exact', head: true })).count ?? 0;
-  const activitiesDone = (await supabaseAdmin.from('activities').select('id', { count: 'exact', head: true }).eq('status', 'done')).count ?? 0;
-  const accommodationsTotal = (await supabaseAdmin.from('accommodations').select('id', { count: 'exact', head: true })).count ?? 0;
+  const {
+    tripsTotal,
+    trips30d,
+    tripsActive,
+    tripDays,
+    activitiesTotal,
+    activitiesDone,
+    accommodationsTotal,
+  } = agg.travel;
 
   // ── Thinking engine (prediction evidence) ───────────────────────
-  const predictionsTotal = (await supabaseAdmin.from('prediction_log').select('id', { count: 'exact', head: true })).count ?? 0;
-  const predictionsWithOutcome = (await supabaseAdmin.from('prediction_log').select('id', { count: 'exact', head: true }).not('actual_mins', 'is', null)).count ?? 0;
-  const { data: predictionBoth } = await supabaseAdmin.from('prediction_log').select('estimated_mins, actual_mins').not('actual_mins', 'is', null);
-  const accuracySummary = summarizeAccuracy(
-    (predictionBoth || []).map((p) => {
-      const est = Math.max(Number(p.estimated_mins) || 0, 1);
-      const act = Number(p.actual_mins) || 0;
-      return {
-        kind: 'estimate_accuracy' as const,
-        taskText: '',
-        clusterLabel: null,
-        clusterCount: 0,
-        estimatedMins: est,
-        actualMins: act,
-        ratio: act / est,
-        confidence: 'low' as const,
-        observedAt: new Date().toISOString(),
-      };
-    })
-  );
-  const accuracyClass = accuracySummary.averageRatio > 1.15 ? 'over' : accuracySummary.averageRatio < 0.85 ? 'under' : 'accurate';
-
-  // ── Surface events (current version logs today/jobs/travel) ─────
-  const { data: surfaceRows } = await supabaseAdmin
-    .from('surface_events' as any)
-    .select('surface')
-    .gte('created_at', d14);
-  const surfaceCounts = { today: 0, jobs: 0, travel: 0 };
-  (surfaceRows || []).forEach((r: any) => {
-    if (r.surface in surfaceCounts) surfaceCounts[r.surface as keyof typeof surfaceCounts]++;
-  });
+  // The accuracy summary (average ratio, accuracy percent, median) is
+  // computed inside the RPC from the completed-outcome rows, using the
+  // same formulas as the previous lib summarizeAccuracy() call.
+  const predictionsTotal = agg.predictions.total;
+  const predictionsWithOutcome = agg.predictions.outcomes;
+  const accuracyAverageRatio = agg.predictions.averageRatio;
+  const accuracyPercent = agg.predictions.accuracyPercent;
+  const accuracyClass = accuracyAverageRatio > 1.15 ? 'over' : accuracyAverageRatio < 0.85 ? 'under' : 'accurate';
 
   // ── Feedback ────────────────────────────────────────────────────
-  const { data: feedbackRows } = await supabaseAdmin
-    .from('feedback')
-    .select('id, submitter_email, is_anonymous, message, page_context, created_at')
-    .order('created_at', { ascending: false })
-    .limit(200);
-  const { data: replyRows } = await supabaseAdmin.from('feedback_replies').select('feedback_id, author_type, created_at');
-  const topicWithAdminReply = new Set((replyRows || []).filter((r) => r.author_type === 'admin').map((r) => r.feedback_id));
-  const totalFeedback = feedbackRows?.length ?? 0;
-  const repliedFeedback = (feedbackRows || []).filter((f) => topicWithAdminReply.has(f.id)).length;
+  const totalFeedback = agg.feedback.total;
+  const repliedFeedback = agg.feedback.replied;
   const openFeedback = totalFeedback - repliedFeedback;
-  const feedbackRecent: OverviewPayload['feedback']['recent'] = (feedbackRows || []).slice(0, 6).map((f) => ({
+  const feedbackRecent: OverviewPayload['feedback']['recent'] = agg.feedback.recent.map((f) => ({
     id: f.id,
     label: f.is_anonymous ? 'Anonymous' : f.submitter_email ?? 'Unknown',
     message: f.message,
     pageContext: f.page_context,
-    numberOfReplies: (replyRows || []).filter((r) => r.feedback_id === f.id).length,
+    numberOfReplies: f.replies,
     createdAt: f.created_at,
   }));
 
   // ── Errors ──────────────────────────────────────────────────────
-  const errors24h = (await supabaseAdmin.from('error_logs').select('id', { count: 'exact', head: true }).gte('created_at', h24)).count ?? 0;
-  const errors7d = (await supabaseAdmin.from('error_logs').select('id', { count: 'exact', head: true }).gte('created_at', d7)).count ?? 0;
-  const errorsUnresolved = (await supabaseAdmin.from('error_logs').select('id', { count: 'exact', head: true }).eq('resolved', false)).count ?? 0;
-  const { data: errorRows } = await supabaseAdmin
-    .from('error_logs')
-    .select('id, source, route, message, resolved, created_at')
-    .gte('created_at', d14)
-    .order('created_at', { ascending: false })
-    .limit(200);
+  const { h24: errors24h, d7: errors7d, unresolved: errorsUnresolved } = agg.errors;
   const errorBuckets = new Map<string, number>();
   for (let i = 13; i >= 0; i--) errorBuckets.set(daysAgoIso(i).slice(0, 10), 0);
-  (errorRows || []).forEach((e) => {
-    const day = (e.created_at || '').slice(0, 10);
-    if (errorBuckets.has(day)) errorBuckets.set(day, (errorBuckets.get(day) || 0) + 1);
+  // SQL groups errors per UTC day across the full 14-day window; the
+  // has() check keeps only the days this dashboard shows, exactly as the
+  // previous per-row bucketing did.
+  agg.errors.dayBuckets.forEach((b) => {
+    if (errorBuckets.has(b.day)) errorBuckets.set(b.day, (errorBuckets.get(b.day) || 0) + b.value);
   });
 
   // ── Integrations / calendar ─────────────────────────────────────
-  const { data: connections } = await supabaseAdmin
-    .from('calendar_connections')
-    .select('provider, sync_status, sync_error, connected_email, last_sync_at');
-  const connectionsWithError = (connections || []).filter((c) => c.sync_status === 'error');
-  const microsoftConnections = (connections || []).filter((c) => c.provider === 'microsoft');
-  const { data: pushSubs } = await supabaseAdmin.from('push_subscriptions').select('user_id');
-  const adminIds = (await supabaseAdmin.from('admins').select('user_id')).data?.map((a) => a.user_id) || [];
-  const adminSubs = (pushSubs || []).filter((s) => adminIds.includes(s.user_id));
+  const connectionsWithError = (connections || []).filter((c: any) => c.sync_status === 'error');
+  const microsoftConnections = (connections || []).filter((c: any) => c.provider === 'microsoft');
+  const adminSubs = agg.integrations.adminSubscriptions;
 
   const vapidConfigured = Boolean(process.env.VAPID_SUBJECT && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
   const upstashConfigured = Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
@@ -321,7 +285,7 @@ async function buildOverview(): Promise<OverviewPayload> {
     timestamp: c.updatedAt,
     href: '/admin/users',
   }));
-  const feedbackEvents = (feedbackRows || []).slice(0, 3).map((f) => ({
+  const feedbackEvents = agg.feedback.recent.slice(0, 3).map((f) => ({
     id: `feedback-${f.id}`,
     type: 'feedback' as const,
     title: `Feedback received${f.is_anonymous ? ' (anonymous)' : ` from ${f.submitter_email || 'a signed-in user'}`}`,
@@ -329,18 +293,14 @@ async function buildOverview(): Promise<OverviewPayload> {
     timestamp: f.created_at,
     href: '/admin/feedback',
   }));
-  const replyEvents = (replyRows || [])
-    .filter((r) => r.author_type === 'admin')
-    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
-    .slice(0, 2)
-    .map((r) => ({
-      id: `reply-${r.feedback_id}-${r.created_at}`,
-      type: 'feedback_reply' as const,
-      title: 'Admin replied to a feedback thread',
-      timestamp: r.created_at,
-      href: '/admin/feedback',
-    }));
-  const errorEvents = (errorRows || []).slice(0, 3).map((e) => ({
+  const replyEvents = agg.feedback.adminRepliesRecent.map((r) => ({
+    id: `reply-${r.feedback_id}-${r.created_at}`,
+    type: 'feedback_reply' as const,
+    title: 'Admin replied to a feedback thread',
+    timestamp: r.created_at,
+    href: '/admin/feedback',
+  }));
+  const errorEvents = agg.errors.recent.slice(0, 3).map((e) => ({
     id: `error-${e.id}`,
     type: 'error' as const,
     title: `Error recorded [${e.source}] ${e.route ? `· ${e.route}` : ''}`,
@@ -374,7 +334,7 @@ async function buildOverview(): Promise<OverviewPayload> {
       label: 'Push notifications',
       state: !vapidConfigured ? 'not_configured' : 'operational',
       detail: vapidConfigured
-        ? `Web Push is configured and used for admin alerts (${adminSubs.length} admin device${adminSubs.length === 1 ? '' : 's'} subscribed).`
+        ? `Web Push is configured and used for admin alerts (${adminSubs} admin device${adminSubs === 1 ? '' : 's'} subscribed).`
         : 'VAPID credentials are not configured.',
     },
     {
@@ -415,7 +375,7 @@ async function buildOverview(): Promise<OverviewPayload> {
       key: 'notifications',
       label: 'Notifications',
       state: !vapidConfigured ? 'not_configured' : 'operational',
-      detail: vapidConfigured ? `Web Push configured (${adminSubs.length} admin subscription${adminSubs.length === 1 ? '' : 's'}).` : 'Web Push not configured.',
+      detail: vapidConfigured ? `Web Push configured (${adminSubs} admin subscription${adminSubs === 1 ? '' : 's'}).` : 'Web Push not configured.',
       href: '/admin/notifications',
     },
   ];
@@ -505,11 +465,11 @@ async function buildOverview(): Promise<OverviewPayload> {
         {
           key: 'accuracy',
           label: 'Estimate accuracy',
-          value: accuracySummary.total === 0 ? 0 : accuracySummary.accuracyPercent,
-          display: accuracySummary.total === 0 ? '—' : `${accuracySummary.accuracyPercent}%`,
-          note: accuracySummary.total === 0
+          value: predictionsWithOutcome === 0 ? 0 : accuracyPercent,
+          display: predictionsWithOutcome === 0 ? '—' : `${accuracyPercent}%`,
+          note: predictionsWithOutcome === 0
             ? 'No completed predictions to measure yet.'
-            : `${accuracySummary.total} completed prediction${accuracySummary.total === 1 ? '' : 's'}; ${accuracyClass} on average.`,
+            : `${predictionsWithOutcome} completed prediction${predictionsWithOutcome === 1 ? '' : 's'}; ${accuracyClass} on average.`,
         },
       ],
     },
@@ -521,7 +481,7 @@ async function buildOverview(): Promise<OverviewPayload> {
       headlineLabel: 'completed tasks in history',
       metrics: [
         { key: 'done-total', label: 'Completed tasks', value: taskDoneTotal, display: fmtInt(taskDoneTotal) },
-        { key: 'accuracy', label: 'Estimate accuracy', value: accuracySummary.total === 0 ? 0 : accuracySummary.accuracyPercent, display: accuracySummary.total === 0 ? '—' : `${accuracySummary.accuracyPercent}%`, note: accuracySummary.total === 0 ? 'No completed predictions to measure yet.' : 'Shared with the Thinking engine evidence.' },
+        { key: 'accuracy', label: 'Estimate accuracy', value: predictionsWithOutcome === 0 ? 0 : accuracyPercent, display: predictionsWithOutcome === 0 ? '—' : `${accuracyPercent}%`, note: predictionsWithOutcome === 0 ? 'No completed predictions to measure yet.' : 'Shared with the Thinking engine evidence.' },
       ],
       note: 'Patterns are derived client-side from a user\'s task history. Only aggregate evidence is measurable at system level.',
     },
@@ -572,7 +532,7 @@ async function buildOverview(): Promise<OverviewPayload> {
       recentChanges: recentChanges.slice(0, 6),
     },
     productAreas,
-    surfaces: surfaceCounts,
+    surfaces: agg.surfaces,
     system: { components: systemComponents },
     attention,
     activity: activity.slice(0, 12),

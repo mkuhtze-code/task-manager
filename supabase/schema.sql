@@ -1190,3 +1190,222 @@ create index if not exists calendar_events_user_id_start_at_idx on calendar_even
 create index if not exists calendar_events_user_id_end_at_idx on calendar_events (user_id, end_at);
 create index if not exists calendar_events_connection_id_idx on calendar_events (connection_id);
 create index if not exists calendar_events_calendar_id_idx on calendar_events (calendar_id);
+
+-- ── Admin overview aggregates ─────────────────────────────────────
+-- One service-role-only RPC answering every counting/window question the
+-- Admin Overview (app/api/admin/overview) needs, so one authorised
+-- request no longer issues ~40 database round trips. The route passes the
+-- same UTC cutoff timestamps it used to embed in per-query filters, so
+-- every window is identical; the function returns a single jsonb holding
+-- all totals, bounded slices and windowed groups. Anything that would
+-- otherwise read an unbounded table (prediction_log outcomes, the whole
+-- feedback_replies table, all of feedback, all push_subscriptions, the
+-- 200-row error sample) is reduced here to SQL aggregates and LIMIT-n
+-- slices.
+--
+-- SECURITY: called exclusively through the service-role client
+-- (lib/supabaseAdmin.ts) after the route's verifyUser/requireAdmin gate.
+-- It is SECURITY INVOKER (the default): the service role bypasses RLS and
+-- reads every table directly, while a session token can never invoke it —
+-- EXECUTE is revoked from PUBLIC and granted only to service_role.
+create or replace function public.admin_overview_aggregates(
+  p_d7 text,
+  p_d14 text,
+  p_d30 text,
+  p_h24 text,
+  p_today text
+)
+returns jsonb
+language sql
+stable
+as $$
+  with prediction_ratios as (
+    select actual_mins::float8 / greatest(estimated_mins, 1)::float8 as r
+    from prediction_log
+    where actual_mins is not null
+  ),
+  prediction_agg as (
+    select
+      count(*)::int as outcomes,
+      coalesce(avg(r), 1.0) as average_ratio,
+      coalesce(percentile_cont(0.5) within group (order by r), 1.0) as median_ratio
+    from prediction_ratios
+  ),
+  feedback_window as (
+    select id
+    from feedback
+    order by created_at desc
+    limit 200
+  ),
+  feedback_recent as (
+    select id, submitter_email, is_anonymous, message, page_context, created_at
+    from feedback
+    order by created_at desc
+    limit 6
+  )
+  select jsonb_build_object(
+    'tasks', jsonb_build_object(
+      'total', (select count(*)::int from tasks),
+      'open', (select count(*)::int from tasks where status <> 'done'),
+      'dueToday', (select count(*)::int from tasks where due_today and status <> 'done'),
+      'created30d', (select count(*)::int from tasks where created_at >= p_d30::timestamptz),
+      'completed7d', (select count(*)::int from tasks where completed_at >= p_d7::timestamptz),
+      'completed24h', (select count(*)::int from tasks where completed_at >= p_h24::timestamptz),
+      'completed30d', (select count(*)::int from tasks where completed_at >= p_d30::timestamptz),
+      'doneTotal', (select count(*)::int from tasks where status = 'done')
+    ),
+    'activeUsers7d', (select count(distinct user_id)::int from tasks where created_at >= p_d7::timestamptz or completed_at >= p_d7::timestamptz),
+    'jobs', jsonb_build_object(
+      'total', (select count(*)::int from jobs),
+      'created30d', (select count(*)::int from jobs where created_at >= p_d30::timestamptz),
+      'active30d', (select count(distinct job_id)::int from tasks where job_id is not null and created_at >= p_d30::timestamptz)
+    ),
+    'meetings', jsonb_build_object(
+      'total', (select count(*)::int from meetings),
+      'm30d', (select count(*)::int from meetings where created_at >= p_d30::timestamptz),
+      'w7d', (select count(*)::int from meetings where start_time >= p_d7::timestamptz),
+      'manual', (select count(*)::int from meetings where source = 'manual'),
+      'outlook', (select count(*)::int from meetings where source = 'outlook')
+    ),
+    'meetingEvidence', jsonb_build_object(
+      'observations', (select count(*)::int from meeting_observations),
+      'decisions', (select count(*)::int from meeting_decisions),
+      'actions', (select count(*)::int from meeting_actions),
+      'media', (select count(*)::int from meeting_media),
+      'participants', (select count(*)::int from meeting_participants)
+    ),
+    'travel', jsonb_build_object(
+      'tripsTotal', (select count(*)::int from trips),
+      'trips30d', (select count(*)::int from trips where created_at >= p_d30::timestamptz),
+      'tripsActive', (select count(*)::int from trips where start_date <= p_today::date and end_date >= p_today::date),
+      'tripDays', (select count(*)::int from trip_days),
+      'activitiesTotal', (select count(*)::int from activities),
+      'activitiesDone', (select count(*)::int from activities where status = 'done'),
+      'accommodationsTotal', (select count(*)::int from accommodations)
+    ),
+    'predictions', (select jsonb_build_object(
+      'total', (select count(*)::int from prediction_log),
+      'outcomes', p.outcomes,
+      'averageRatio', p.average_ratio,
+      'accuracyPercent', case
+        when p.outcomes = 0 then 100
+        else floor(least(100.0, (1.0 / greatest(p.average_ratio, 0.01)) * 100.0) + 0.5)::int
+      end,
+      'medianRatio', p.median_ratio
+    ) from prediction_agg p),
+    'accounts', (select jsonb_build_object(
+      'active', count(*) filter (where status = 'active')::int,
+      'terminated', count(*) filter (where status = 'terminated')::int,
+      'recentChanges', (select coalesce(jsonb_agg(jsonb_build_object(
+        'user_id', c.user_id, 'status', c.status, 'updated_at', c.updated_at
+      ) order by c.updated_at desc), '[]'::jsonb)
+        from (
+          select user_id, status, updated_at
+          from account_status
+          where updated_at > created_at + interval '1 second'
+          order by updated_at desc
+          limit 6
+        ) c)
+    ) from account_status),
+    'userSettings', (select jsonb_build_object(
+      'tiers', jsonb_build_object(
+        'trusted_tester', count(*) filter (where account_tier = 'trusted_tester')::int,
+        'free', count(*) filter (where account_tier = 'free')::int,
+        'premium', count(*) filter (where account_tier = 'premium')::int
+      ),
+      'notOnboarded', count(*) filter (where not onboarded)::int
+    ) from user_settings),
+    'surfaces', (select jsonb_build_object(
+      'today', count(*) filter (where surface = 'today')::int,
+      'jobs', count(*) filter (where surface = 'jobs')::int,
+      'travel', count(*) filter (where surface = 'travel')::int
+    ) from surface_events where created_at >= p_d14::timestamptz),
+    'errors', jsonb_build_object(
+      'h24', (select count(*)::int from error_logs where created_at >= p_h24::timestamptz),
+      'd7', (select count(*)::int from error_logs where created_at >= p_d7::timestamptz),
+      'unresolved', (select count(*)::int from error_logs where not resolved),
+      'dayBuckets', (select coalesce(jsonb_agg(jsonb_build_object('day', d, 'value', n) order by d), '[]'::jsonb)
+        from (
+          select to_char((created_at at time zone 'UTC')::date, 'YYYY-MM-DD') as d, count(*)::int as n
+          from error_logs
+          where created_at >= p_d14::timestamptz
+          group by 1
+        ) e),
+      'recent', (select coalesce(jsonb_agg(jsonb_build_object(
+        'id', r.id, 'source', r.source, 'route', r.route, 'message', r.message, 'created_at', r.created_at
+      ) order by r.created_at desc), '[]'::jsonb)
+        from (
+          select id, source, route, message, created_at
+          from error_logs
+          where created_at >= p_d14::timestamptz
+          order by created_at desc
+          limit 3
+        ) r)
+    ),
+    'feedback', jsonb_build_object(
+      'total', least((select count(*)::int from feedback), 200),
+      'replied', (select count(*)::int
+        from feedback_window w
+        where exists (
+          select 1 from feedback_replies rr
+          where rr.feedback_id = w.id and rr.author_type = 'admin'
+        )),
+      'recent', (select coalesce(jsonb_agg(jsonb_build_object(
+        'id', r.id,
+        'submitter_email', r.submitter_email,
+        'is_anonymous', r.is_anonymous,
+        'message', r.message,
+        'page_context', r.page_context,
+        'created_at', r.created_at,
+        'replies', (select count(*)::int from feedback_replies rr where rr.feedback_id = r.id)
+      ) order by r.created_at desc), '[]'::jsonb) from feedback_recent r),
+      'adminRepliesRecent', (select coalesce(jsonb_agg(jsonb_build_object(
+        'feedback_id', a.feedback_id, 'created_at', a.created_at
+      ) order by a.created_at desc), '[]'::jsonb)
+        from (
+          select feedback_id, created_at
+          from feedback_replies
+          where author_type = 'admin'
+          order by created_at desc
+          limit 2
+        ) a)
+    ),
+    'integrations', jsonb_build_object(
+      'adminSubscriptions', (select count(*)::int
+        from push_subscriptions
+        where user_id in (select user_id from admins))
+    )
+  );
+$$;
+
+revoke execute on function public.admin_overview_aggregates(text, text, text, text, text) from public;
+grant execute on function public.admin_overview_aggregates(text, text, text, text, text) to service_role;
+
+-- ── Admin overview query indexes ──────────────────────────────────
+-- The overview RPC aggregates across ALL users (service-role scans, so
+-- the existing user_id-led Today indexes cannot serve these filters).
+-- These btree indexes match the WHERE/ORDER shapes of the aggregate
+-- subqueries above, letting Postgres answer each bounded aggregate with
+-- an index scan instead of a full table scan:
+--   * tasks: status partitions (open vs done), completion/creation
+--     ranges, and the "due today, not done" filter
+--   * meetings: created and start_time ranges
+--   * jobs: creation range
+--   * feedback: the 200-window and 6-recent ORDER BY created_at DESC
+--   * feedback_replies: per-feedback_id reply tallies + newest-reply scan
+--   * error_logs: 24h/7d/14d-window counts, per-day grouping, newest-3
+--     scan, and the unresolved-only aggregate
+--   * push_subscriptions: subscriptions scan for the admin keyword list
+create index if not exists tasks_status_idx on tasks (status);
+create index if not exists tasks_created_at_idx on tasks (created_at);
+create index if not exists tasks_completed_at_idx on tasks (completed_at);
+create index if not exists tasks_due_today_status_idx on tasks (due_today, status);
+create index if not exists meetings_created_at_idx on meetings (created_at);
+create index if not exists meetings_start_time_idx on meetings (start_time);
+create index if not exists jobs_created_at_idx on jobs (created_at);
+create index if not exists feedback_created_at_idx on feedback (created_at desc);
+create index if not exists feedback_replies_feedback_id_idx on feedback_replies (feedback_id);
+create index if not exists feedback_replies_created_at_idx on feedback_replies (created_at);
+create index if not exists error_logs_created_at_idx on error_logs (created_at);
+create index if not exists error_logs_unresolved_partial_idx on error_logs (resolved) where not resolved;
+create index if not exists push_subscriptions_user_id_idx on push_subscriptions (user_id);

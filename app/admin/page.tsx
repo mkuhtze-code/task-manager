@@ -33,9 +33,12 @@ export default function AdminOverview() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inFlight = useRef(false);
 
   const load = useCallback(
     async (opts: { background?: boolean } = {}) => {
+      if (inFlight.current) return;
+      inFlight.current = true;
       if (opts.background) setRefreshing(true);
       else setLoading(true);
       setError('');
@@ -53,18 +56,43 @@ export default function AdminOverview() {
       } finally {
         setLoading(false);
         setRefreshing(false);
+        inFlight.current = false;
       }
     },
     [session]
   );
 
   useEffect(() => {
-    if (session) {
-      load();
-      timer.current = setInterval(() => load({ background: true }), 60_000);
-    }
-    return () => {
+    if (!session) return;
+
+    load();
+
+    const startTimer = () => {
       if (timer.current) clearInterval(timer.current);
+      timer.current = setInterval(() => load({ background: true }), 60_000);
+    };
+    const pauseTimer = () => {
+      if (timer.current) {
+        clearInterval(timer.current);
+        timer.current = null;
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        pauseTimer();
+      } else {
+        load({ background: true });
+        startTimer();
+      }
+    };
+
+    if (document.visibilityState === 'hidden') pauseTimer();
+    else startTimer();
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      pauseTimer();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [session, load]);
 
