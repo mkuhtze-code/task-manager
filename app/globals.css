@@ -5970,8 +5970,29 @@ button:focus-visible, input:focus-visible {
   margin: 10px 0 0;
 }
 
+/* ── Desktop: the Admin navigation is a permanent left window.
+      Locked at 1080px and above so the hamburger can never reappear
+      at desktop widths, regardless of base-state drift. ─────────── */
+@media (min-width: 1080px) {
+  .adm-menu-btn {
+    display: none;
+  }
+
+  .adm-sidebar-wrap {
+    position: static;
+    transform: none;
+    width: 232px;
+    background: var(--paper);
+    box-shadow: none;
+  }
+
+  .adm-scrim {
+    display: none;
+  }
+}
+
 /* ── Responsive: collapse the sidebar below desktop width ──────── */
-@media (max-width: 1080px) {
+@media (max-width: 1079px) {
   .adm-menu-btn {
     display: flex;
   }
