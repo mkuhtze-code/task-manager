@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyUser } from '@/lib/verifyUser';
 import { checkRateLimit } from '@/lib/ratelimit';
 import { logError } from '@/lib/logError';
-import { registerFcmToken, revokeFcmToken, supabaseFcmTokenStore } from '@/lib/fcm/registration';
+import { registerFcmToken, revokeFcmToken, supabaseFcmWebTokenStore } from '@/lib/fcm/registration';
 import { normalizeFcmToken } from '@/lib/fcm/tokenValidation';
 
 // Authenticated FCM token registration for the browser web-push path.
 //
 // This is deliberately separate from /api/subscribe (the legacy
-// web-push PushSubscription path): an FCM registration token is a
-// different artifact stored in its own table, and entangling the two
-// risks breaking the existing, working delivery path. Every write is
-// ownership-checked against the authenticated user — a token can never be
-// re-claimed by another account.
+// web-push PushSubscription path) and from the Android-owned
+// public.fcm_tokens table: browser registrations live in their own
+// fcm_web_tokens table, so neither delivery path can entangle with the
+// other platform's data. Every write is ownership-checked against the
+// authenticated user — a token can never be re-claimed by another
+// account.
 
 export async function POST(req: NextRequest) {
   const auth = await verifyUser(req);
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   let result;
   try {
-    result = await registerFcmToken(supabaseFcmTokenStore, auth.userId, {
+    result = await registerFcmToken(supabaseFcmWebTokenStore, auth.userId, {
       token: typeof token === 'string' ? token : '',
       platform: typeof platform === 'string' ? platform : '',
       userAgent: typeof userAgent === 'string' ? userAgent : null,
@@ -76,7 +77,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    const result = await revokeFcmToken(supabaseFcmTokenStore, auth.userId, token);
+    const result = await revokeFcmToken(supabaseFcmWebTokenStore, auth.userId, token);
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status ?? 500 });
   } catch (err) {
     await logError('server', 'fcm-token:revoke', err, {}, auth.userId);

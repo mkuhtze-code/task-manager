@@ -1,12 +1,15 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { normalizeFcmToken, sanitizeUserAgent } from '@/lib/fcm/tokenValidation';
 
-// Account-scoped FCM web registration store. The data model is the
-// existing Dokkit convention: every row belongs to exactly one auth.users
-// account, RLS keeps it private, and rows cascade away when the account
-// is deleted. One row per FCM token (globally unique) so the same
-// browser/device re-registering idempotently updates its own row instead
-// of piling up.
+// Account-scoped FCM *web* registration store, backed by the dedicated
+// fcm_web_tokens table (browser-only, explicitly separate from the
+// Android-owned public.fcm_tokens table — sharing storage with Android
+// registrations would entangle the two platforms' schemas and data).
+// The data model is the existing Dokkit convention: every row belongs to
+// exactly one auth.users account, RLS keeps it private, and rows cascade
+// away when the account is deleted. One row per FCM token (globally
+// unique) so the same browser/device re-registering idempotently updates
+// its own row instead of piling up.
 //
 // All token lookups go through the service-role client so a caller can
 // never read or claim a token by guessing it — ownership is always
@@ -109,10 +112,10 @@ export function isUniqueViolation(err: unknown): boolean {
 // other privileged route in the app: verifyUser has already confirmed the
 // caller, and token ownership is enforced in the queries themselves).
 
-export const supabaseFcmTokenStore: FcmTokenStore = {
+export const supabaseFcmWebTokenStore: FcmTokenStore = {
   async findByToken(token) {
     const { data } = await supabaseAdmin
-      .from('fcm_tokens')
+      .from('fcm_web_tokens')
       .select('id, user_id, token, revoked')
       .eq('token', token)
       .maybeSingle();
@@ -120,13 +123,13 @@ export const supabaseFcmTokenStore: FcmTokenStore = {
   },
 
   async insert(record) {
-    const { error } = await supabaseAdmin.from('fcm_tokens').insert(record);
+    const { error } = await supabaseAdmin.from('fcm_web_tokens').insert(record);
     if (error) throw error;
   },
 
   async updateOwnedToken(token, userId, patch) {
     const { data } = await supabaseAdmin
-      .from('fcm_tokens')
+      .from('fcm_web_tokens')
       .update(patch)
       .eq('token', token)
       .eq('user_id', userId)
@@ -136,7 +139,7 @@ export const supabaseFcmTokenStore: FcmTokenStore = {
 
   async revokeOwnedToken(token, userId) {
     const { data } = await supabaseAdmin
-      .from('fcm_tokens')
+      .from('fcm_web_tokens')
       .update({ revoked: true, updated_at: new Date().toISOString() })
       .eq('token', token)
       .eq('user_id', userId)
@@ -150,7 +153,7 @@ export const supabaseFcmTokenStore: FcmTokenStore = {
   // deliberately not scoped to a single user.
   async revokeByToken(token) {
     const { data } = await supabaseAdmin
-      .from('fcm_tokens')
+      .from('fcm_web_tokens')
       .update({ revoked: true, updated_at: new Date().toISOString() })
       .eq('token', token)
       .select('id');
