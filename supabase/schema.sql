@@ -154,6 +154,28 @@ create table if not exists push_subscriptions (
   created_at timestamptz not null default now()
 );
 
+-- ── FCM web push tokens (browser Firebase Cloud Messaging) ───────
+-- Separate from push_subscriptions: an FCM registration token is a
+-- different artifact from a PushSubscription (plain token string vs
+-- endpoint/p256dh/auth keys). One globally-unique row per token so a
+-- browser re-registering idempotently updates its own row; ownership is
+-- the standard "own fcm tokens" RLS policy and rows cascade away with the
+-- account. Tokens belong to the authenticated Dokkit account only — a
+-- registration can never be re-claimed by another user (enforced in
+-- lib/fcm/registration.ts).
+create table if not exists fcm_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  token text not null,
+  platform text not null default 'web' check (platform in ('web')),
+  user_agent text,
+  revoked boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists fcm_tokens_token_key on fcm_tokens (token);
+create index if not exists fcm_tokens_user_id_idx on fcm_tokens (user_id);
+
 -- ── Feedback ─────────────────────────────────────────────────────
 create table if not exists feedback (
   id uuid primary key default gen_random_uuid(),
@@ -321,6 +343,7 @@ alter table meetings enable row level security;
 alter table calendar_connections enable row level security;
 alter table time_logs enable row level security;
 alter table push_subscriptions enable row level security;
+alter table fcm_tokens enable row level security;
 alter table feedback enable row level security;
 alter table feedback_replies enable row level security;
 alter table admins enable row level security;
@@ -344,6 +367,7 @@ drop policy if exists "own meetings" on meetings;
 drop policy if exists "own calendar connections" on calendar_connections;
 drop policy if exists "own time logs" on time_logs;
 drop policy if exists "own push subs" on push_subscriptions;
+drop policy if exists "own fcm tokens" on fcm_tokens;
 drop policy if exists "own admin row" on admins;
 drop policy if exists "users can submit feedback" on feedback;
 drop policy if exists "admins can read feedback" on feedback;
@@ -396,6 +420,10 @@ create policy "own time logs" on time_logs
   with check (auth.uid() = user_id);
 
 create policy "own push subs" on push_subscriptions
+  for all using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "own fcm tokens" on fcm_tokens
   for all using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
@@ -529,6 +557,28 @@ create policy "admins can read allowed emails" on allowed_signup_emails
 -- Safe to rerun; only adds what's missing. Does not drop or overwrite
 -- existing data. Where a new column matters to existing rows, the column
 -- is backfilled once with the value that preserves current behaviour.
+
+-- FCM web push tokens: same definition as the fresh-install section
+-- above, brought here for existing installs (create table if not exists
+-- covers it, and the "own fcm tokens" policy is recreated idempotently in
+-- the same guarded pattern as the other additive tables).
+drop policy if exists "own fcm tokens" on fcm_tokens;
+create table if not exists fcm_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  token text not null,
+  platform text not null default 'web' check (platform in ('web')),
+  user_agent text,
+  revoked boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists fcm_tokens_token_key on fcm_tokens (token);
+create index if not exists fcm_tokens_user_id_idx on fcm_tokens (user_id);
+alter table fcm_tokens enable row level security;
+create policy "own fcm tokens" on fcm_tokens
+  for all using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 alter table user_settings add column if not exists timezone text;
 alter table user_settings add column if not exists sort_mode text;
