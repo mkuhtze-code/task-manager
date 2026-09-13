@@ -5287,6 +5287,45 @@ button:focus-visible, input:focus-visible {
   white-space: nowrap;
 }
 
+.adm-chip-button {
+  appearance: none;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+.adm-chip-button:hover:not(.adm-chip-active) {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.adm-chip-active {
+  background: var(--ink-soft);
+  border-color: var(--ink-soft);
+  color: var(--paper);
+}
+
+.adm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.adm-toolbar-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-showmore {
+  width: 100%;
+  margin-top: 8px;
+}
+
 .adm-count {
   font-size: 12px;
   font-weight: 700;
@@ -5696,6 +5735,11 @@ button:focus-visible, input:focus-visible {
 .adm-feed-dot-feedback { background: var(--steel); }
 .adm-feed-dot-feedback_reply { background: var(--steel); }
 .adm-feed-dot-error { background: var(--danger); }
+.adm-feed-dot-task_created { background: var(--moss); }
+.adm-feed-dot-task_completed { background: var(--overflow); }
+.adm-feed-dot-job_created { background: var(--steel); }
+.adm-feed-dot-meeting_created { background: var(--hazard); }
+.adm-feed-dot-trip_created { background: var(--ink-soft); }
 
 .adm-feed-body {
   flex: 1;

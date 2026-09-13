@@ -9,6 +9,11 @@ const TYPE_LABELS: Record<ActivityEvent['type'], string> = {
   feedback: 'Feedback',
   feedback_reply: 'Reply sent',
   error: 'Error',
+  task_created: 'Task created',
+  task_completed: 'Task completed',
+  job_created: 'Job created',
+  meeting_created: 'Meeting',
+  trip_created: 'Trip',
 };
 
 export default function ActivityFeed({ events }: { events: ActivityEvent[] }) {

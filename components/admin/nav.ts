@@ -24,7 +24,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     group: 'Command',
     items: [
       { slug: 'overview', title: 'Overview', href: '/admin', implemented: true, description: 'Command centre for the whole system.' },
-      { slug: 'activity', title: 'Activity', href: '/admin/activity', implemented: false, description: 'A chronological system activity stream across Dokkit.' },
+      { slug: 'activity', title: 'Activity', href: '/admin/activity', implemented: true, description: 'A chronological system activity stream across Dokkit.' },
       { slug: 'alerts', title: 'Alerts', href: '/admin/alerts', implemented: false, description: 'System alerts, thresholds and notification rules.' },
     ],
   },

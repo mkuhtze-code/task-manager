@@ -35,7 +35,17 @@ export type AttentionItem = {
 
 export type ActivityEvent = {
   id: string;
-  type: 'account' | 'account_status' | 'feedback' | 'feedback_reply' | 'error';
+  type:
+    | 'account'
+    | 'account_status'
+    | 'feedback'
+    | 'feedback_reply'
+    | 'error'
+    | 'task_created'
+    | 'task_completed'
+    | 'job_created'
+    | 'meeting_created'
+    | 'trip_created';
   title: string;
   detail?: string;
   timestamp: string;
