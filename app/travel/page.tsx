@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
-import { BackIcon, ChevronIcon, CloseIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import { BackIcon, ChevronIcon, CloseIcon, TrashIcon } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 
@@ -314,11 +314,12 @@ export default function TravelHome() {
         </div>
       )}
 
-      {trips.length > 0 && !createOpen && (
-        <button className="capture-fab" onClick={() => setCreateOpen(true)} aria-label="New trip"><PlusIcon size={24} /></button>
-      )}
-
-      <SurfaceNav active="travel" onNavigate={(s) => recordEvent(s, true)} />
+      <SurfaceNav
+        active="travel"
+        onNavigate={(s) => recordEvent(s, true)}
+        onAdd={!createOpen && trips.length > 0 ? () => setCreateOpen(true) : undefined}
+        addLabel="New trip"
+      />
     </div>
   );
 }

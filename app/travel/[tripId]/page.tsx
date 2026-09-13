@@ -1034,10 +1034,6 @@ export default function TripDayView() {
         </div>
       )}
 
-      {!captureOpen && (
-        <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Add stop"><PlusIcon size={24} /></button>
-      )}
-
       {openActivity && (
         <ActivityDetailSheet
           activity={openActivity}
@@ -1124,7 +1120,11 @@ export default function TripDayView() {
         />
       )}
 
-      <SurfaceNav active="travel" />
+      <SurfaceNav
+        active="travel"
+        onAdd={!captureOpen ? () => setCaptureOpen(true) : undefined}
+        addLabel="Add stop"
+      />
     </div>
   );
 }

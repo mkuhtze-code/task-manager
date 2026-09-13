@@ -1740,10 +1740,6 @@ export default function Home() {
         />
       )}
 
-      {!captureOpen && (
-        <button className="capture-fab" onClick={() => setCaptureOpen(true)} aria-label="Dock it"><PlusIcon size={24} /></button>
-      )}
-
       {activeTask && (
         <div
           className={activeOverEstimate ? 'active-timer-bar over' : 'active-timer-bar'}
@@ -1810,7 +1806,12 @@ export default function Home() {
         />
       )}
 
-      <SurfaceNav active="today" onNavigate={(s: Surface) => recordEvent(s, true)} />
+      <SurfaceNav
+        active="today"
+        onNavigate={(s: Surface) => recordEvent(s, true)}
+        onAdd={captureOpen ? undefined : () => setCaptureOpen(true)}
+        addLabel="Dock it"
+      />
     </div>
   );
 }

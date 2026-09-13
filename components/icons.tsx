@@ -166,3 +166,49 @@ export function LockIcon({ size = 16 }: { size?: number } = {}) {
     </svg>
   );
 }
+
+/* ── Surface section markers ──────────────────────────────────
+   One family: outline frame + single filled accent dot, drawn on
+   the same 24px grid with the shared 1.7 stroke so the four
+   switcher symbols stay optically consistent. Abstract wayfinding,
+   sized to sit in the bottom navigation at rest. */
+
+export function TodayIcon({ size = 22 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="7.4" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function JobsIcon({ size = 22 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <rect x="5" y="5" width="14" height="14" rx="3.5" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M5 9.8h14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <circle cx="12" cy="14.4" r="1.7" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function MeetingsIcon({ size = 22 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <rect x="4.5" y="6" width="15" height="12" rx="3.5" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M12 6v12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <circle cx="8.6" cy="12.5" r="1.7" fill="currentColor" />
+      <circle cx="15.4" cy="12.5" r="1.7" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function TravelIcon({ size = 22 }: { size?: number } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M7 16.5 17.5 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12.5 6h5v5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="7" cy="16.5" r="1.7" fill="currentColor" />
+    </svg>
+  );
+}

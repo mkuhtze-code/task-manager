@@ -10,7 +10,7 @@ import { isJobDone, jobNumeral, sortJobsForOverview } from '@/lib/jobUtils';
 import GearMenu from '@/components/GearMenu';
 import { NewJobSheet } from '@/components/JobSheets';
 import SurfaceNav from '@/components/SurfaceNav';
-import { BackIcon, CheckIcon, MapPinIcon, PlusIcon } from '@/components/icons';
+import { BackIcon, CheckIcon, MapPinIcon } from '@/components/icons';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 
 export default function JobsHome() {
@@ -167,13 +167,12 @@ export default function JobsHome() {
         />
       )}
 
-      {!newJobOpen && sorted.length > 0 && (
-        <button className="capture-fab" onClick={() => setNewJobOpen(true)} aria-label="New job">
-          <PlusIcon size={24} />
-        </button>
-      )}
-
-      <SurfaceNav active="jobs" onNavigate={(s) => recordEvent(s, true)} />
+      <SurfaceNav
+        active="jobs"
+        onNavigate={(s) => recordEvent(s, true)}
+        onAdd={!newJobOpen && sorted.length > 0 ? () => setNewJobOpen(true) : undefined}
+        addLabel="New job"
+      />
     </div>
   );
 }

@@ -812,9 +812,9 @@ button:focus-visible, input:focus-visible {
    and actions. Controls appear only when relevant. */
 
 /* ── Surface navigation ─────────────────────────────────────────
-   Persistent bottom bar — Today · Jobs · Travel. The GROUP
-   provides structural weight; individual labels stay restrained.
-   Quiet but unmistakable. */
+   Compact bottom bar. Left: one icon for the current section — the
+   trigger expands into a quiet switcher for the other three. Right:
+   the Add action. Both controls rest against the glass surface. */
 .surface-nav {
   position: fixed;
   left: 0;
@@ -827,41 +827,113 @@ button:focus-visible, input:focus-visible {
   border-top: 1px solid var(--line);
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-6);
+  justify-content: space-between;
+  padding: 0 var(--space-4) env(safe-area-inset-bottom);
   z-index: 15;
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
-.surface-nav-item {
+.surface-switcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.surface-switcher-trigger {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--ink-faint);
-  padding: 6px 0;
-  position: relative;
-  transition: color 0.15s var(--ease);
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  padding: 0;
+  transition: color 0.15s var(--ease), background 0.15s var(--ease);
 }
 
-.surface-nav-item:hover {
+.surface-switcher-trigger:hover,
+.surface-switcher-trigger[aria-expanded='true'] {
+  color: var(--ink);
+  background: var(--line);
+}
+
+.surface-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: var(--space-2);
+  min-width: 184px;
+  background: var(--paper-raised);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(var(--shadow-rgb), 0.18);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: expand-in 0.2s var(--spring);
+  z-index: 40;
+}
+
+.surface-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.surface-menu-item:hover {
+  background: var(--paper);
+}
+
+.surface-menu-icon {
+  display: flex;
+  align-items: center;
+  color: var(--ink-faint);
+}
+
+.surface-menu-item:hover .surface-menu-icon,
+.surface-menu-item.current .surface-menu-icon {
+  color: var(--ink);
+}
+
+.surface-menu-item.current {
   color: var(--ink-soft);
 }
 
-.surface-nav-item.active {
-  color: var(--ink);
-  font-weight: 700;
+.surface-menu-marker {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink);
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
-.surface-nav-item.active::after {
-  content: '';
-  position: absolute;
-  left: 25%;
-  right: 25%;
-  bottom: 0;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--ink);
+.surface-add {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--steel);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s var(--ease);
+}
+
+.surface-add:hover {
+  background: var(--steel-dark);
 }
 
 .today-header-top-right {
@@ -1300,28 +1372,6 @@ button:focus-visible, input:focus-visible {
 .icon-btn:hover {
   background: var(--paper);
   color: var(--ink-soft);
-}
-
-.capture-fab {
-  position: fixed;
-  right: var(--space-5);
-  bottom: calc(52px + var(--space-5));
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--steel);
-  color: white;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 14px rgba(var(--shadow-rgb), 0.3);
-  z-index: 20;
-  transition: transform 0.15s var(--ease), background 0.15s var(--ease);
-}
-
-.capture-fab:hover {
-  background: var(--steel-dark);
 }
 
 .capture-sheet {

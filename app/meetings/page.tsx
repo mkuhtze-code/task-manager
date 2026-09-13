@@ -10,7 +10,7 @@ import { sortMeetingsForOverview, fmtMeetingWindow } from '@/lib/meetingUtils';
 import { NewMeetingSheet, type NewMeetingPayload } from '@/components/MeetingSheets';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
-import { BackIcon, PlusIcon } from '@/components/icons';
+import { BackIcon } from '@/components/icons';
 
 export default function MeetingsHome() {
   const router = useRouter();
@@ -180,13 +180,11 @@ export default function MeetingsHome() {
         />
       )}
 
-      {!newMeetingOpen && hasMeetings && (
-        <button className="capture-fab" onClick={() => setNewMeetingOpen(true)} aria-label="Record a meeting">
-          <PlusIcon size={24} />
-        </button>
-      )}
-
-      <SurfaceNav active="meetings" />
+      <SurfaceNav
+        active="meetings"
+        onAdd={!newMeetingOpen && hasMeetings ? () => setNewMeetingOpen(true) : undefined}
+        addLabel="Record a meeting"
+      />
     </div>
   );
 }

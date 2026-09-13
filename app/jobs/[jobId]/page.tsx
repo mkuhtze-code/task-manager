@@ -14,7 +14,7 @@ import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import { JobEditSheet } from '@/components/JobSheets';
 import SurfaceNav from '@/components/SurfaceNav';
-import { BackIcon, CheckIcon, ChevronIcon, MapPinIcon, PlusIcon } from '@/components/icons';
+import { BackIcon, CheckIcon, ChevronIcon, MapPinIcon } from '@/components/icons';
 import {
   buildClusters,
   suggestEstimate,
@@ -666,19 +666,14 @@ export default function JobDetailPage() {
             />
           )}
 
-          {!captureOpen && tasks.length > 0 && (
-            <button
-              className="capture-fab"
-              onClick={() => { setCaptureJobId(jobId); setCaptureOpen(true); }}
-              aria-label="Add a task"
-            >
-              <PlusIcon size={24} />
-            </button>
-          )}
-        </>
+          </>
       ) : null}
 
-      <SurfaceNav active="jobs" />
+      <SurfaceNav
+        active="jobs"
+        onAdd={job && !captureOpen && tasks.length > 0 ? () => { setCaptureJobId(jobId); setCaptureOpen(true); } : undefined}
+        addLabel="Add a task"
+      />
     </div>
   );
 }
