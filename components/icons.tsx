@@ -173,7 +173,7 @@ export function LockIcon({ size = 16 }: { size?: number } = {}) {
    switcher symbols stay optically consistent. Abstract wayfinding,
    sized to sit in the bottom navigation at rest. */
 
-export function TodayIcon({ size = 22 }: { size?: number } = {}) {
+export function TodayIcon({ size = 24 }: { size?: number } = {}) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="7.4" stroke="currentColor" strokeWidth="1.7" />
@@ -182,7 +182,7 @@ export function TodayIcon({ size = 22 }: { size?: number } = {}) {
   );
 }
 
-export function JobsIcon({ size = 22 }: { size?: number } = {}) {
+export function JobsIcon({ size = 24 }: { size?: number } = {}) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <rect x="5" y="5" width="14" height="14" rx="3.5" stroke="currentColor" strokeWidth="1.7" />
@@ -192,7 +192,7 @@ export function JobsIcon({ size = 22 }: { size?: number } = {}) {
   );
 }
 
-export function MeetingsIcon({ size = 22 }: { size?: number } = {}) {
+export function MeetingsIcon({ size = 24 }: { size?: number } = {}) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <rect x="4.5" y="6" width="15" height="12" rx="3.5" stroke="currentColor" strokeWidth="1.7" />
@@ -203,7 +203,7 @@ export function MeetingsIcon({ size = 22 }: { size?: number } = {}) {
   );
 }
 
-export function TravelIcon({ size = 22 }: { size?: number } = {}) {
+export function TravelIcon({ size = 24 }: { size?: number } = {}) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <path d="M7 16.5 17.5 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
