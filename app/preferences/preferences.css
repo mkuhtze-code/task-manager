@@ -1,0 +1,58 @@
+/* ── Preferences page ─────────────────────────────────────────── */
+
+.prefs-page .prefs-body {
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding-bottom: var(--space-8);
+}
+
+.prefs-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.prefs-section-label {
+  font-size: var(--text-2xs, 11px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint, var(--ink-soft));
+  padding: 0 2px;
+}
+
+.prefs-page .settings-panel {
+  margin-bottom: 0;
+}
+
+.prefs-page .settings-panel-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.prefs-page .settings-help {
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.prefs-to {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.prefs-signin {
+  margin-top: var(--space-5);
+}
+
+/* Tighten sort options slightly on this page */
+.prefs-page .sort-option-desc {
+  font-size: var(--text-2xs);
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+.prefs-page .settings-label {
+  margin-top: 2px;
+}
