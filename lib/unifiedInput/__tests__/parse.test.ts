@@ -162,4 +162,29 @@ describe('parseThought', () => {
     expect(parseThought('14 Belgium Road', TODAY).locationHint).toBe('14 Belgium Road');
     expect(parseThought('Valley View Avenue next week', TODAY).locationHint).toBe('Valley View Avenue');
   });
+
+  // ── Subject-position locations stay in the title ───────────────────────
+  it('keeps a subject-position road phrase in the title and still surfaces it as location', () => {
+    // "Regent Street needs attention Monday at 10am" — the street is both the
+    // subject of the action and a place. It must not vanish from the label.
+    const parts = parseThought('Regent Street needs attention Monday at 10am', TODAY);
+    expect(parts.locationHint).toBe('Regent Street');
+    expect(parts.intent.toLowerCase()).toContain('regent street');
+    expect(parts.intent.toLowerCase()).toContain('needs attention');
+    expect(parts.date).toBe('2026-09-07');
+    expect(parts.time?.hour).toBe(10);
+    expect(parts.time?.minute).toBe(0);
+  });
+
+  it('still strips a leading place when a purpose "to …" clause follows', () => {
+    const parts = parseThought('Belgium Rd tomorrow at 10am to measure Rainwater Head', TODAY);
+    expect(parts.locationHint).toBe('Belgium Rd');
+    expect(parts.intent).toBe('measure Rainwater Head');
+  });
+
+  it('still strips a mid-sentence place adjunct after "at"', () => {
+    const parts = parseThought('Meeting with Tim at Belgium Rd tomorrow at 2pm', TODAY);
+    expect(parts.locationHint).toBe('Belgium Rd');
+    expect(parts.intent).toBe('Meeting with Tim');
+  });
 });
