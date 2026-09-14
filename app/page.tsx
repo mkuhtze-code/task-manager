@@ -231,7 +231,7 @@ export default function Home() {
     // A confirmed relationship the resolver auto-applied is as explicit as a
     // manual confirmation — attach the job (and its location) silently, so
     // no "Do you mean X?" prompt is ever shown again for the learned term.
-    if (resolution.state === 'known') {
+        if (resolution.state === 'known') {
       const c = resolution.candidate;
       setConfirmedJobId(c.jobId);
       setConfirmedLocation({
@@ -239,6 +239,17 @@ export default function Home() {
         lat: c.lat,
         lng: c.lng,
       });
+    }
+    // Seed the location field from an unresolved road-phrase hint so the
+    // place is visible and editable, and is saved even without a job match.
+    // Do not overwrite an explicit user edit (non-empty captureLocation).
+    if (
+      resolution.state === 'none' &&
+      parsed.locationHint &&
+      parsed.locationHint.length > 0
+    ) {
+      setCaptureLocation((prev) => (prev.trim().length > 0 ? prev : parsed.locationHint!));
+      setManualLocationToggle(true);
     }
   }, [taskText, jobs, entityMemory]);
 
@@ -1075,9 +1086,14 @@ export default function Home() {
     // A confirmed resolution wins over a manual pick; both are explicit and
     // never co-occur for the same facet in practice.
     const jobId = confirmedJobId ?? captureJobId;
+        // Unresolved road-phrase hints still belong on the task as free-text
+    // location — even when no job matched and the user did not open the
+    // location field. Never discard a place the user named.
     const locationText = confirmedLocation && confirmedLocation.text.length > 0
       ? confirmedLocation.text
-      : (captureLocation.trim().length > 0 ? captureLocation.trim() : null);
+      : (captureLocation.trim().length > 0
+          ? captureLocation.trim()
+          : (parsed?.locationHint && parsed.locationHint.length > 0 ? parsed.locationHint : null));
     const lat = confirmedLocation?.lat != null ? confirmedLocation.lat : (captureLocationCoords?.lat ?? null);
     const lng = confirmedLocation?.lng != null ? confirmedLocation.lng : (captureLocationCoords?.lng ?? null);
     const { data, error } = await supabase
