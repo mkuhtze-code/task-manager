@@ -1,5 +1,6 @@
 'use client';
 
+import '../travel.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -354,8 +355,9 @@ export default function TripDayView() {
 
   const nearbyCacheRef = useRef<Record<string, NearbySuggestion[]>>({});
 
-  const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
+    const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
   const [daySheetOpen, setDaySheetOpen] = useState(false);
+  const dayStripRef = useRef<HTMLDivElement | null>(null);
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
   const [captureFixedTime, setCaptureFixedTime] = useState('');
 
@@ -401,8 +403,15 @@ export default function TripDayView() {
     }
   }
 
-  useEffect(() => {
+    useEffect(() => {
     if (selectedDayId) loadActivities();
+  }, [selectedDayId]);
+
+  // Keep the active day chip in view on the persistent strip.
+  useEffect(() => {
+    if (!selectedDayId || !dayStripRef.current) return;
+    const el = dayStripRef.current.querySelector(`[data-day-id="${selectedDayId}"]`) as HTMLElement | null;
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [selectedDayId]);
 
   async function loadActivities(dayIdOverride?: string) {
@@ -809,7 +818,35 @@ export default function TripDayView() {
         <div className="app-header-right">
           <GearMenu context="travel" userId={session?.user.id ?? null} />
         </div>
-      </div>
+            </div>
+
+      {tripDays.length > 0 && (
+        <div className="trip-day-strip" ref={dayStripRef} role="tablist" aria-label="Trip days">
+          {tripDays.map((d, i) => {
+            const label = fmtDayLabel(d.date);
+            const active = d.id === selectedDayId;
+            const isDayToday = d.date === todayStr;
+            const dayNum = String(parseInt(d.date.slice(8, 10), 10));
+            return (
+              <button
+                key={d.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                data-day-id={d.id}
+                className={`trip-day-chip${active ? ' active' : ''}${isDayToday ? ' is-today' : ''}`}
+                onClick={() => setSelectedDayId(d.id)}
+              >
+                <span className="trip-day-chip-wd">{label.weekday}</span>
+                <span className="trip-day-chip-num mono">{dayNum}</span>
+                {tripDays.length > 1 && active && (
+                  <span className="trip-day-chip-pos">Day {i + 1}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {selectedDay && (
         <button
@@ -819,7 +856,7 @@ export default function TripDayView() {
         >
           <span className="day-head-left">
             <span className="day-head-label">{fmtDayLabel(selectedDay.date).weekday} {fmtDayLabel(selectedDay.date).date}</span>
-            <span className="day-head-pos">Day {selectedDayIndex + 1} of {tripDays.length}</span>
+            <span className="day-head-pos">Day {selectedDayIndex + 1} of {tripDays.length} · day detail</span>
           </span>
           <span className="day-head-right">
             {activities.length > 0 && minutesLeftToday > 0 && (
