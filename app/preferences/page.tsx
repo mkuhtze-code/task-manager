@@ -592,8 +592,8 @@ export default function Preferences() {
         </div>
 
         <span className="settings-label">Transcripts</span>
-        <button className="settings-check-row" onClick={() => toggleExportPref('writeTranscripts')} aria-pressed={Boolean(exportPrefs.writeTranscripts)} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
-          <span className="export-check">{Boolean(exportPrefs.writeTranscripts) ? (
+        <button className="settings-check-row" onClick={() => toggleExportPref('transcribe')} aria-pressed={Boolean(exportPrefs.transcribe)} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
+          <span className="export-check">{Boolean(exportPrefs.transcribe) ? (
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
               <path d="M1.5 5.5l2.5 2.5L9.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
