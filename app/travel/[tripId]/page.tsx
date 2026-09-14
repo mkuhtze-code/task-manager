@@ -1,5 +1,6 @@
 'use client';
 
+import '../travel.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -79,11 +80,6 @@ type DragState = {
   orderSnapshot: string[];
 };
 
-// fromId is null for the base→first-stop leg (nothing "is" the base as an
-// activity), and an activity id for every other leg. toId is always an
-// activity id. Matching legs by id (not text) is what fixes the bug where
-// two stops sharing a name would collide, and where sort-mode reordering
-// broke which "find nearby" button belonged to which leg.
 type Leg = {
   fromId: string | null;
   toId: string;
@@ -356,6 +352,7 @@ export default function TripDayView() {
 
   const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
   const [daySheetOpen, setDaySheetOpen] = useState(false);
+  const dayStripRef = useRef<HTMLDivElement | null>(null);
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
   const [captureFixedTime, setCaptureFixedTime] = useState('');
 
@@ -403,6 +400,13 @@ export default function TripDayView() {
 
   useEffect(() => {
     if (selectedDayId) loadActivities();
+  }, [selectedDayId]);
+
+  // Keep the active day chip in view on the persistent strip.
+  useEffect(() => {
+    if (!selectedDayId || !dayStripRef.current) return;
+    const el = dayStripRef.current.querySelector(`[data-day-id="${selectedDayId}"]`) as HTMLElement | null;
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [selectedDayId]);
 
   async function loadActivities(dayIdOverride?: string) {
@@ -542,9 +546,6 @@ export default function TripDayView() {
     recalculateDay();
   }
 
-  // A Library item was scheduled into tripDayId by the LibrarySheet, which
-  // already inserted the activity (copied name/location/coords). Switch to
-  // that day, reload it, and let the normal route engine take over.
   async function handleLibraryScheduled(tripDayId: string) {
     setLibraryOpen(false);
     setSelectedDayId(tripDayId);
@@ -552,69 +553,118 @@ export default function TripDayView() {
     recalculateDay(tripDayId);
   }
 
-  // ── Manual drag-to-reorder — same mechanic as Dokkit's task list ────
-  function handleDragHandlePointerDown(e: React.PointerEvent, activityId: string, currentOrderIds: string[]) {
-    (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    const originalIndex = currentOrderIds.indexOf(activityId);
-    const rowEl = rowElsRef.current[activityId];
-    const rect = rowEl?.getBoundingClientRect();
-    const rowHeight = (rect?.height || 60) + ROW_GAP;
+  async function changeSortMode(mode: TravelSortMode) {
+    setTravelSortMode(mode);
+    if (session) {
+      await supabase.from('user_settings').update({ travel_sort_mode: mode }).eq('user_id', session.user.id);
+    }
+  }
+
+  function onDragStart(e: React.PointerEvent, id: string, index: number) {
+    if (travelSortMode !== 'manual') return;
+    const row = rowElsRef.current[id];
+    if (!row) return;
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    const rect = row.getBoundingClientRect();
     setDragState({
-      id: activityId,
-      originalIndex,
-      currentIndex: originalIndex,
+      id,
+      originalIndex: index,
+      currentIndex: index,
       startY: e.clientY,
       offsetY: 0,
-      rowHeight,
-      orderSnapshot: currentOrderIds,
+      rowHeight: rect.height,
+      orderSnapshot: activities.map((a) => a.id),
     });
   }
 
-  function handleDragHandlePointerMove(e: React.PointerEvent) {
-    setDragState((prev) => {
-      if (!prev) return prev;
-      const deltaY = e.clientY - prev.startY;
-      const indexShift = Math.round(deltaY / prev.rowHeight);
-      const maxIndex = prev.orderSnapshot.length - 1;
-      const nextIndex = Math.min(Math.max(prev.originalIndex + indexShift, 0), maxIndex);
-      return { ...prev, offsetY: deltaY, currentIndex: nextIndex };
-    });
+  function onDragMove(e: React.PointerEvent) {
+    if (!dragState) return;
+    const dy = e.clientY - dragState.startY;
+    const step = dragState.rowHeight + ROW_GAP;
+    let nextIndex = dragState.originalIndex + Math.round(dy / step);
+    nextIndex = Math.max(0, Math.min(activities.length - 1, nextIndex));
+    setDragState((prev) => prev ? { ...prev, offsetY: dy, currentIndex: nextIndex } : null);
   }
 
-  async function handleDragHandlePointerUp() {
-    const finalState = dragState;
+  async function onDragEnd() {
+    if (!dragState) return;
+    const { id, originalIndex, currentIndex, orderSnapshot } = dragState;
     setDragState(null);
-    if (!finalState) return;
-    const { id, originalIndex, currentIndex, orderSnapshot } = finalState;
-    if (currentIndex === originalIndex) return;
-
-    const newOrderIds = [...orderSnapshot];
-    newOrderIds.splice(originalIndex, 1);
-    newOrderIds.splice(currentIndex, 0, id);
-
-    setActivities((prev) => {
-      const byId: Record<string, Activity> = {};
-      prev.forEach((a) => (byId[a.id] = a));
-      const reindexed = newOrderIds.filter((aid) => byId[aid]).map((aid, idx) => ({ ...byId[aid], order_index: idx }));
-      const others = prev.filter((a) => !newOrderIds.includes(a.id));
-      return [...reindexed, ...others];
+    if (originalIndex === currentIndex) return;
+    const next = [...orderSnapshot];
+    next.splice(originalIndex, 1);
+    next.splice(currentIndex, 0, id);
+    const reordered = next.map((nid, i) => {
+      const a = activities.find((x) => x.id === nid)!;
+      return { ...a, order_index: i + 1 };
     });
-
-    await Promise.all(
-      newOrderIds.map((aid, idx) => supabase.from('activities').update({ order_index: idx }).eq('id', aid))
-    );
+    setActivities(reordered);
+    for (const a of reordered) {
+      await supabase.from('activities').update({ order_index: a.order_index }).eq('id', a.id);
+    }
     recalculateDay();
   }
 
-  async function changeSortMode(mode: TravelSortMode) {
-    const previous = travelSortMode;
-    setTravelSortMode(mode);
-    if (!session) return;
-    const { error } = await supabase.from('user_settings').update({ travel_sort_mode: mode }).eq('user_id', session.user.id);
-    if (error) {
-      setTravelSortMode(previous);
-      alert('Could not save the order preference: ' + error.message);
+  async function findNearby(leg: Leg) {
+    setNearbyLeg(leg);
+    setNearbyInsertIndex(leg.insertIndex);
+    setNearbyOpen(true);
+    setNearbyError(null);
+    const cacheKey = `${leg.fromLat},${leg.fromLng}->${leg.toLat},${leg.toLng}:${nearbyCategory}`;
+    if (nearbyCacheRef.current[cacheKey]) {
+      setNearbySuggestions(nearbyCacheRef.current[cacheKey]);
+      setNearbyLoading(false);
+      return;
     }
+    setNearbyLoading(true);
+    try {
+      const json = await authedFetch('/api/travel/nearby-on-route', {
+        origin: { lat: leg.fromLat, lng: leg.fromLng },
+        destination: { lat: leg.toLat, lng: leg.toLng },
+        category: nearbyCategory,
+      });
+      if (json.error) {
+        setNearbyError(json.error);
+        setNearbySuggestions([]);
+      } else {
+        const list = json.suggestions || [];
+        nearbyCacheRef.current[cacheKey] = list;
+        setNearbySuggestions(list);
+        setNearbyContext(json.context || null);
+      }
+    } catch {
+      setNearbyError('Could not load suggestions');
+      setNearbySuggestions([]);
+    } finally {
+      setNearbyLoading(false);
+    }
+  }
+
+  async function addNearbyStop(s: NearbySuggestion) {
+    if (!selectedDayId || !session || nearbyInsertIndex === null) return;
+    const maxOrder = activities.reduce((m, a) => Math.max(m, a.order_index), 0);
+    const { data, error: insertError } = await supabase
+      .from('activities')
+      .insert({
+        user_id: session.user.id,
+        trip_day_id: selectedDayId,
+        text: s.name,
+        estimate_mins: 30,
+        drive_mins_to_next: 0,
+        location_text: s.address || s.name,
+        lat: s.lat,
+        lng: s.lng,
+        order_index: maxOrder + 1,
+      })
+      .select()
+      .single();
+    if (insertError) {
+      alert(insertError.message);
+      return;
+    }
+    setNearbyOpen(false);
+    setActivities((prev) => [...prev, data]);
+    recalculateDay();
   }
 
   const selectedDay = tripDays.find((d) => d.id === selectedDayId) || null;
@@ -622,22 +672,22 @@ export default function TripDayView() {
 
   const legs: Leg[] = useMemo(() => {
     if (!selectedDay) return [];
-    const out: Leg[] = [];
+    const located = activities.filter((a) => a.lat != null && a.lng != null);
     const hasBase = selectedDay.base_lat != null && selectedDay.base_lng != null;
-
-    if (hasBase && activities.length > 0 && activities[0].lat != null && activities[0].lng != null) {
+    const out: Leg[] = [];
+    if (hasBase && located.length > 0) {
+      const first = located[0];
       out.push({
         fromId: null,
-        toId: activities[0].id,
+        toId: first.id,
         fromLat: selectedDay.base_lat as number,
         fromLng: selectedDay.base_lng as number,
-        toLat: activities[0].lat,
-        toLng: activities[0].lng,
+        toLat: first.lat as number,
+        toLng: first.lng as number,
         directMins: selectedDay.drive_from_base_mins || 0,
         insertIndex: 0,
       });
     }
-
     for (let i = 0; i < activities.length - 1; i++) {
       const a = activities[i];
       const b = activities[i + 1];
@@ -649,151 +699,35 @@ export default function TripDayView() {
         fromLng: a.lng,
         toLat: b.lat,
         toLng: b.lng,
-        directMins: a.drive_mins_to_next,
+        directMins: a.drive_mins_to_next || 0,
         insertIndex: i + 1,
       });
     }
-
     return out;
   }, [selectedDay, activities]);
 
-  function legCacheKey(leg: Leg, category: string): string {
-    return `${leg.fromId ?? 'base'}__${leg.toId}__${category}`;
-  }
+  const fixedTimeConflicts = useMemo(() => findFixedTimeConflicts(activities), [activities]);
 
-  async function runNearbySearch(leg: Leg, category: string) {
-    const key = legCacheKey(leg, category);
-    const cached = nearbyCacheRef.current[key];
-    if (cached) {
-      setNearbySuggestions(cached);
-      setNearbyError(null);
-      setNearbyLoading(false);
-      return;
-    }
+  const openActivity = activities.find((a) => a.id === openActivityId) || null;
 
-    setNearbyLoading(true);
-    setNearbySuggestions([]);
-    setNearbyError(null);
-    try {
-      const json = await authedFetch('/api/travel/nearby-on-route', {
-        originLat: leg.fromLat,
-        originLng: leg.fromLng,
-        destLat: leg.toLat,
-        destLng: leg.toLng,
-        directMins: leg.directMins,
-        category,
-      });
-      if (json.error) {
-        setNearbyError(json.error);
-        return;
-      }
-      const results: NearbySuggestion[] = json.suggestions || [];
-      nearbyCacheRef.current[key] = results;
-      setNearbySuggestions(results);
-    } catch {
-      setNearbyError('Could not reach the server — check your connection and try again.');
-    } finally {
-      setNearbyLoading(false);
-    }
-  }
-
-  async function findNearby(leg: Leg) {
-    setNearbyLeg(leg);
-    setNearbyInsertIndex(leg.insertIndex);
-    const fromAct = leg.fromId ? activities.find((x) => x.id === leg.fromId) : null;
-    const toAct = activities.find((x) => x.id === leg.toId);
-    const toName = toAct?.location_text || toAct?.text || 'the next stop';
-    setNearbyContext(
-      fromAct
-        ? `On the way from ${fromAct.location_text || fromAct.text} to ${toName}`
-        : `On the way from ${selectedDay?.base_location_text || 'your base'} to ${toName}`
-    );
-    setNearbyOpen(true);
-    runNearbySearch(leg, nearbyCategory);
-  }
-
-  function handleCategoryChange(category: string) {
-    setNearbyCategory(category);
-    if (nearbyLeg) runNearbySearch(nearbyLeg, category);
-  }
-
-  async function insertNearbySuggestion(s: NearbySuggestion) {
-    if (!selectedDayId || !session || nearbyInsertIndex === null) return;
-    setNearbyOpen(false);
-
-    const { data: inserted, error: insertError } = await supabase
-      .from('activities')
-      .insert({
-        user_id: session.user.id,
-        trip_day_id: selectedDayId,
-        text: s.name,
-        estimate_mins: 30,
-        drive_mins_to_next: 0,
-        location_text: s.address,
-        lat: s.lat,
-        lng: s.lng,
-        order_index: 9999,
-      })
-      .select()
-      .single();
-
-    if (insertError || !inserted) {
-      alert(insertError?.message || 'Could not add stop');
-      return;
-    }
-
-    const currentIds = activities.map((a) => a.id);
-    const newOrderIds = [...currentIds];
-    newOrderIds.splice(nearbyInsertIndex, 0, inserted.id);
-
-    await Promise.all(
-      newOrderIds.map((id, idx) => supabase.from('activities').update({ order_index: idx }).eq('id', id))
-    );
-
-    await loadActivities();
-    recalculateDay();
-  }
-
+  const plannedMins = activities.reduce((s, a) => s + (a.estimate_mins || 0) + (a.drive_mins_to_next || 0), 0) +
+    (selectedDay?.drive_from_base_mins || 0);
   const effectiveDayStart = selectedDay?.arrival_time || selectedDay?.day_start || '08:00';
   const effectiveDayEnd = selectedDay?.departure_time || selectedDay?.day_end || '20:00';
-
   const dayStartMinutes = selectedDay ? timeStringToMinutes(effectiveDayStart) : 0;
   const dayEndMinutes = selectedDay ? timeStringToMinutes(effectiveDayEnd) : 0;
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
-
   const todayStr = now.toISOString().slice(0, 10);
   const isToday = selectedDay?.date === todayStr;
   const minutesLeftToday = isToday ? Math.max(dayEndMinutes - nowMinutesOfDay, 0) : Math.max(dayEndMinutes - dayStartMinutes, 0);
-
-  const driveFromBase = selectedDay?.drive_from_base_mins || 0;
-  const plannedMins = driveFromBase + activities.reduce((sum, a) => sum + a.estimate_mins + a.drive_mins_to_next, 0);
-  const overloaded = minutesLeftToday > 0 && plannedMins > minutesLeftToday;
   const spareMins = minutesLeftToday - plannedMins;
-
+  const overloaded = plannedMins > minutesLeftToday && activities.length > 0;
   const trackSpan = Math.max(dayEndMinutes - dayStartMinutes, 1);
   const nowPercent = isToday ? Math.min(Math.max((nowMinutesOfDay - dayStartMinutes) / trackSpan, 0), 1) : 0;
   const projectedFinish = (isToday ? nowMinutesOfDay : dayStartMinutes) + plannedMins;
-  const projectedPercent = (projectedFinish - dayStartMinutes) / trackSpan;
-  const planWidthPercent = Math.max(Math.min(projectedPercent, 1) - nowPercent, 0);
+  const planWidthPercent = Math.min(Math.max((projectedFinish - (isToday ? nowMinutesOfDay : dayStartMinutes)) / trackSpan, 0), 1 - nowPercent);
 
-  const referencePoint = selectedDay?.base_lat != null && selectedDay?.base_lng != null
-    ? { lat: selectedDay.base_lat, lng: selectedDay.base_lng }
-    : null;
-
-  const sortedActivities = useMemo(
-    () => sortActivities(activities as any, travelSortMode, referencePoint) as Activity[],
-    [activities, travelSortMode, referencePoint]
-  );
-
-  const fixedTimeConflicts = useMemo(
-    () => findFixedTimeConflicts(sortedActivities as any, dayStartMinutes),
-    [sortedActivities, dayStartMinutes]
-  );
-
-  const openActivity = openActivityId ? activities.find((a) => a.id === openActivityId) || null : null;
-  const orderedIds = activities.map((a) => a.id);
-
-  if (!session || !trip) {
+  if (!trip) {
     return <div className="app-shell" style={{ paddingTop: 40 }}>Loading…</div>;
   }
 
@@ -811,6 +745,34 @@ export default function TripDayView() {
         </div>
       </div>
 
+      {tripDays.length > 0 && (
+        <div className="trip-day-strip" ref={dayStripRef} role="tablist" aria-label="Trip days">
+          {tripDays.map((d, i) => {
+            const label = fmtDayLabel(d.date);
+            const active = d.id === selectedDayId;
+            const isDayToday = d.date === todayStr;
+            const dayNum = String(parseInt(d.date.slice(8, 10), 10));
+            return (
+              <button
+                key={d.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                data-day-id={d.id}
+                className={`trip-day-chip${active ? ' active' : ''}${isDayToday ? ' is-today' : ''}`}
+                onClick={() => setSelectedDayId(d.id)}
+              >
+                <span className="trip-day-chip-wd">{label.weekday}</span>
+                <span className="trip-day-chip-num mono">{dayNum}</span>
+                {tripDays.length > 1 && active && (
+                  <span className="trip-day-chip-pos">Day {i + 1}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {selectedDay && (
         <button
           className="day-head"
@@ -819,7 +781,7 @@ export default function TripDayView() {
         >
           <span className="day-head-left">
             <span className="day-head-label">{fmtDayLabel(selectedDay.date).weekday} {fmtDayLabel(selectedDay.date).date}</span>
-            <span className="day-head-pos">Day {selectedDayIndex + 1} of {tripDays.length}</span>
+            <span className="day-head-pos">Day {selectedDayIndex + 1} of {tripDays.length} · day detail</span>
           </span>
           <span className="day-head-right">
             {activities.length > 0 && minutesLeftToday > 0 && (
@@ -879,58 +841,39 @@ export default function TripDayView() {
             );
           })()
         )}
-        {sortedActivities.map((a, idx) => {
-          let rowStyle: React.CSSProperties = {};
-          if (dragState) {
-            if (a.id === dragState.id) {
-              rowStyle = {
-                transform: `translateY(${dragState.offsetY}px) scale(1.02)`,
-                transition: 'none',
-                zIndex: 30,
-                position: 'relative',
-                boxShadow: '0 10px 24px rgba(26,41,51,0.3)',
-              };
-            } else {
-              const { originalIndex, currentIndex, rowHeight } = dragState;
-              let shift = 0;
-              if (originalIndex < currentIndex && idx > originalIndex && idx <= currentIndex) shift = -1;
-              else if (originalIndex > currentIndex && idx >= currentIndex && idx < originalIndex) shift = 1;
-              rowStyle = {
-                transform: `translateY(${shift * rowHeight}px)`,
-                transition: 'transform 0.2s var(--ease)',
-                position: 'relative',
-                zIndex: 1,
-              };
-            }
-          }
 
-          const legAfterThis = legs.find((l) => l.fromId === a.id);
-          const nextStop = legAfterThis ? activities.find((x) => x.id === legAfterThis.toId) : null;
+        {activities.map((a, index) => {
           const conflict = !!fixedTimeConflicts[a.id];
-
+          const isDragging = dragState?.id === a.id;
+          const legAfter = legs.find((l) => l.fromId === a.id);
           return (
-            <div key={a.id} ref={(el) => { rowElsRef.current[a.id] = el; }} style={rowStyle}>
-              <div className={[
-                a.activity_type === 'stop' ? 'task-row' : 'task-row task-list-item',
-                conflict ? 'conflict' : '',
-              ].join(' ').trim()}>
+            <div key={a.id}>
+              <div
+                className={[
+                  'task-row',
+                  isDragging ? 'dragging' : '',
+                  conflict ? 'conflict' : '',
+                ].filter(Boolean).join(' ')}
+                ref={(el) => { rowElsRef.current[a.id] = el; }}
+                style={isDragging ? { transform: `translateY(${dragState!.offsetY}px)`, zIndex: 5 } : undefined}
+              >
                 <div className="task-main">
                   <button
                     className="check-btn"
-                    onClick={(e) => { e.stopPropagation(); completeActivity(a.id); }}
-                    aria-label="Mark complete"
+                    onClick={() => completeActivity(a.id)}
+                    aria-label="Complete"
                   >
-                    <CheckIcon done={false} />
+                    <CheckIcon />
                   </button>
                   <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
                     <div className="task-text">{a.text}</div>
-                    {((a.location_text && a.lat == null) || conflict) && (
+                    {(a.location_text || conflict) && (
                       <div className="activity-meta">
-                        {a.location_text && a.lat == null && (
+                        {a.location_text && (
                           <span className="activity-meta-loc" title={a.location_text}>
-                            <MapPinIcon size={12} />
+                            <MapPinIcon />
                             <span className="activity-meta-loc-text">{a.location_text}</span>
-                            <span className="activity-meta-hint">· not mapped</span>
+                            {a.lat == null && <span className="activity-meta-hint">· not mapped</span>}
                           </span>
                         )}
                         {conflict && <span className="activity-meta-conflict">won't make it</span>}
@@ -940,40 +883,31 @@ export default function TripDayView() {
                   <span className={conflict ? 'activity-glance conflict mono' : 'activity-glance mono'}>
                     {a.time_type === 'fixed' && a.fixed_time ? fmtClock(a.fixed_time) : fmtMins(a.estimate_mins)}
                   </span>
-                  {a.time_type === 'flexible' && travelSortMode === 'manual' ? (
+                  {travelSortMode === 'manual' && (
                     <button
                       className="drag-handle-btn"
-                      onPointerDown={(e) => { e.stopPropagation(); handleDragHandlePointerDown(e, a.id, orderedIds); }}
-                      onPointerMove={(e) => { e.stopPropagation(); handleDragHandlePointerMove(e); }}
-                      onPointerUp={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
-                      onPointerCancel={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
+                      onPointerDown={(e) => onDragStart(e, a.id, index)}
+                      onPointerMove={onDragMove}
+                      onPointerUp={onDragEnd}
+                      onPointerCancel={onDragEnd}
                       aria-label="Drag to reorder"
                     >
                       <DragHandleIcon />
                     </button>
-                  ) : a.time_type === 'fixed' ? (
-                    <span
-                      className="drag-handle-btn"
-                      style={{ color: 'var(--ink-faint)', cursor: 'default' }}
-                      title="Fixed time — locked in place"
-                      aria-label="Fixed time, locked in place"
-                    >
-                      <LockIcon />
-                    </span>
-                  ) : null}
+                  )}
                 </div>
-                {legAfterThis && legAfterThis.directMins > 0 && (
-                  <TravelLeg
-                    label={fmtMins(legAfterThis.directMins)}
-                    detail={`Drive to ${nextStop?.location_text || nextStop?.text || 'the next stop'}`}
-                    action={
-                      <button onClick={() => findNearby(legAfterThis)} aria-label="Find something nearby on this drive">
-                        <CompassIcon size={12} /> Nearby
-                      </button>
-                    }
-                  />
-                )}
               </div>
+              {legAfter && legAfter.directMins > 0 && (
+                <TravelLeg
+                  label={fmtMins(legAfter.directMins)}
+                  detail="Drive to next"
+                  action={
+                    <button onClick={() => findNearby(legAfter)} aria-label="Find something nearby on this drive">
+                      <CompassIcon size={12} /> Nearby
+                    </button>
+                  }
+                />
+              )}
             </div>
           );
         })}
@@ -992,12 +926,12 @@ export default function TripDayView() {
               type="text"
               value={captureText}
               onChange={(e) => setCaptureText(e.target.value)}
-              placeholder="What's the stop?"
+              placeholder="What are you doing?"
               autoFocus
             />
             <LocationAutocomplete
               value={captureLocation}
-              placeholder="Search for a place (optional)"
+              placeholder="Where?"
               onChange={setCaptureLocation}
               onPlaceSelected={(result) => {
                 setCaptureLocation(result.formattedAddress);
@@ -1005,28 +939,22 @@ export default function TripDayView() {
               }}
             />
             <div className="capture-row">
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ flex: 1 }}>
                 <span className="settings-label">About</span>
                 <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} />
               </div>
               <button
                 className={captureTimeType === 'fixed' ? 'capture-fixed-toggle active' : 'capture-fixed-toggle'}
                 onClick={() => setCaptureTimeType(captureTimeType === 'fixed' ? 'flexible' : 'fixed')}
-                aria-pressed={captureTimeType === 'fixed'}
               >
                 {captureTimeType === 'fixed' ? 'Fixed time' : 'Flexible'}
               </button>
             </div>
             {captureTimeType === 'fixed' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div>
                 <span className="settings-label">At</span>
                 <input type="time" value={captureFixedTime} onChange={(e) => setCaptureFixedTime(e.target.value)} />
               </div>
-            )}
-            {captureLocation.length > 0 && !captureCoords && (
-              <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
-                Pick a suggestion so drive times can be calculated.
-              </p>
             )}
             {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
             <button className="btn btn-steel" onClick={addActivity}>Add stop</button>
@@ -1046,25 +974,26 @@ export default function TripDayView() {
         />
       )}
 
-      {accommodationSheetOpen && (
+      {accommodationSheetOpen && selectedDay && (
         <AccommodationSheet
-          tripId={tripId}
-          tripStartDate={trip.start_date}
-          tripEndDate={trip.end_date}
+          tripDayId={selectedDay.id}
+          baseLocationText={selectedDay.base_location_text}
+          baseLat={selectedDay.base_lat}
+          baseLng={selectedDay.base_lng}
+          dayStart={selectedDay.day_start}
+          dayEnd={selectedDay.day_end}
+          arrivalTime={selectedDay.arrival_time}
+          departureTime={selectedDay.departure_time}
           onClose={() => setAccommodationSheetOpen(false)}
-          onSynced={async () => {
-            await loadTrip();
-            await refreshSelectedDay();
-            recalculateDay();
-          }}
+          onSaved={() => { refreshSelectedDay(); recalculateDay(); }}
         />
       )}
 
       {libraryOpen && (
         <LibrarySheet
           tripId={tripId}
-          tripName={trip.name}
           tripDays={tripDays}
+          selectedDayId={selectedDayId}
           onClose={() => setLibraryOpen(false)}
           onScheduled={handleLibraryScheduled}
         />
@@ -1073,20 +1002,20 @@ export default function TripDayView() {
       {nearbyOpen && (
         <NearbySheet
           loading={nearbyLoading}
-          error={nearbyError}
           suggestions={nearbySuggestions}
-          selectedCategory={nearbyCategory}
-          onCategoryChange={handleCategoryChange}
-          onClose={() => setNearbyOpen(false)}
-          onPick={insertNearbySuggestion}
           context={nearbyContext}
+          error={nearbyError}
+          category={nearbyCategory}
+          onCategoryChange={setNearbyCategory}
+          onSelect={addNearbyStop}
+          onClose={() => setNearbyOpen(false)}
+          onRetry={() => nearbyLeg && findNearby(nearbyLeg)}
         />
       )}
 
-      {mapOpen && (
+      {mapOpen && selectedDay && (
         <MapView
-          base={selectedDay ? {
-            location_text: selectedDay.base_location_text,
+          base={selectedDay.base_lat != null && selectedDay.base_lng != null ? {
             lat: selectedDay.base_lat,
             lng: selectedDay.base_lng,
             route_polyline: selectedDay.route_polyline,
