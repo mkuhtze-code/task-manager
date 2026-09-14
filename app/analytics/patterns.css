@@ -1,0 +1,242 @@
+/* ── Patterns mini-dashboard ─────────────────────────────────── */
+
+.patterns-glance {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.patterns-stat {
+  background: var(--paper-elevated, var(--paper));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 12px);
+  padding: var(--space-3) var(--space-2);
+  text-align: center;
+}
+
+.patterns-stat-value {
+  font-size: var(--text-lg, 18px);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.patterns-stat-label {
+  margin-top: 4px;
+  font-size: var(--text-2xs, 11px);
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.patterns-panel {
+  margin-top: var(--space-3);
+}
+
+.patterns-rates {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: var(--space-2);
+}
+
+.patterns-rate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) 40px;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.patterns-rate-label {
+  font-size: var(--text-sm);
+  color: var(--ink);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patterns-rate-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.patterns-rate-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--steel, #3d4f5f);
+  min-width: 0;
+  transition: width 0.25s ease;
+}
+
+.patterns-rate-pct {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+.patterns-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: var(--space-2);
+}
+
+.patterns-chip {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 8px);
+  padding: 10px 12px;
+  background: var(--paper);
+}
+
+.patterns-chip-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.patterns-chip-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patterns-chip-meta {
+  font-size: var(--text-2xs);
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+.patterns-chip-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 4px;
+  font-size: var(--text-2xs);
+  color: var(--ink-faint, var(--ink-soft));
+}
+
+.patterns-chip-place {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patterns-cal-row {
+  margin-top: var(--space-2);
+}
+
+.patterns-cal-gauge {
+  position: relative;
+  height: 8px;
+  border-radius: 99px;
+  background: linear-gradient(
+    90deg,
+    var(--moss-bg, #dcefe3) 0%,
+    var(--line) 45%,
+    var(--line) 55%,
+    #f3e6d8 100%
+  );
+  margin-bottom: 12px;
+}
+
+.patterns-cal-center {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--ink-soft);
+  transform: translateX(-50%);
+  opacity: 0.5;
+}
+
+.patterns-cal-needle {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--steel, #3d4f5f);
+  border: 2px solid var(--paper);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 1px var(--line-strong, var(--line));
+}
+
+.patterns-cal-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.patterns-cal-detail {
+  font-size: var(--text-2xs);
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.patterns-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: var(--space-1);
+}
+
+.patterns-signal {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.patterns-signal:last-child {
+  border-bottom: none;
+}
+
+.patterns-signal-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.patterns-signal-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.patterns-signal-meta {
+  margin-top: 2px;
+  margin-left: 16px;
+  font-size: var(--text-2xs);
+  color: var(--ink-soft);
+}
+
+.patterns-conf {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--line-strong, var(--line));
+}
+
+.patterns-conf-high {
+  background: var(--moss-text, #0f5c2a);
+}
+
+.patterns-conf-medium {
+  background: var(--steel, #3d4f5f);
+}
+
+.patterns-conf-low {
+  background: var(--ink-faint, #b0b0b0);
+}
