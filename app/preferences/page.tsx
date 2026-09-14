@@ -1,5 +1,6 @@
 'use client';
 
+import './preferences.css';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { apiUrl, authedFetch } from '@/lib/authedFetch';
@@ -27,7 +28,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i++) {
+  for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
@@ -93,9 +94,6 @@ export default function Preferences() {
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
-  // The user's Microsoft connections, each with its discovered calendars +
-  // current selection. Calendars are read-only external time; `selected`
-  // controls which ones feed Today's External Commitments.
   const [calendarConnectionsState, setCalendarConnectionsState] = useState<
     Array<{
       connection_id: string;
@@ -113,15 +111,9 @@ export default function Preferences() {
   const [calendarsSavingId, setCalendarsSavingId] = useState<string | null>(null);
   const [calendarListMsg, setCalendarListMsg] = useState('');
 
-  // Meeting export preferences — what a new export starts with, chosen in
-  // the per-export Review only for that export.
   const [exportPrefs, setExportPrefs] = useState<MeetingExportPreferences>(DEFAULT_MEETING_EXPORT_PREFS);
   const [exportPrefsMsg, setExportPrefsMsg] = useState('');
 
-  // ── Home & Work — the "base" pins geo_aware sort mode routes from,
-  // switching automatically between them based on work hours already
-  // set above, same base concept as Travel's accommodation, applied to
-  // an ordinary day instead of a trip.
   const [homeLocation, setHomeLocation] = useState('');
   const [homeCoords, setHomeCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [workLocation, setWorkLocation] = useState('');
@@ -216,8 +208,7 @@ export default function Preferences() {
         setCalendarConnectionsState(payload.connections);
       }
     } catch {
-      // Calendars are a progressive enhancement here — leave the panel
-      // showing just the connection state on failure.
+      // leave panel showing connection state on failure
     }
   }
 
@@ -424,16 +415,19 @@ export default function Preferences() {
     return (
       <div className="app-shell">
         <AppHeader title="Preferences" backHref="/" />
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>Sign in on the main page first.</p>
+        <p className="settings-help prefs-signin">Sign in on the main page first.</p>
       </div>
     );
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell prefs-page">
       <AppHeader title="Preferences" backHref="/" />
 
-      <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
+      <div className="prefs-body">
+        <div className="prefs-section">
+          <div className="prefs-section-label">Look</div>
+      <div className="settings-panel">
         <div className="settings-panel-title">Appearance</div>
         <div className="segmented">
           {([
@@ -451,12 +445,15 @@ export default function Preferences() {
           ))}
         </div>
       </div>
+        </div>
 
+        <div className="prefs-section">
+          <div className="prefs-section-label">Day</div>
       <div className="settings-panel">
         <div className="settings-panel-title">Work hours</div>
         <div className="settings-row">
           <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
-          <span>to</span>
+          <span className="prefs-to">to</span>
           <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
         </div>
 
@@ -481,10 +478,9 @@ export default function Preferences() {
       </div>
 
       <div className="settings-panel">
-        <div className="settings-panel-title">Home &amp; work</div>
+        <div className="settings-panel-title">Home & work</div>
         <p className="settings-help">
-          Used as the starting and ending point when Dokkit works out drive time for located tasks —
-          your office during work hours (set above), home otherwise, switching automatically.
+          Base pins for drive time — work during work hours, home otherwise.
         </p>
 
         <span className="settings-label">Home</span>
@@ -497,27 +493,17 @@ export default function Preferences() {
             setHomeCoords({ lat: result.lat, lng: result.lng });
           }}
         />
-        {homeLocation.length > 0 && !homeCoords && (
-          <p className="settings-hint">
-            Pick a suggestion from the list so this can anchor drive-time calculations.
-          </p>
-        )}
 
-        <span className="settings-label" style={{ marginTop: 'var(--space-2)' }}>Work / office</span>
+        <span className="settings-label">Work / office</span>
         <LocationAutocomplete
           value={workLocation}
-          placeholder="Office address"
+          placeholder="Work address"
           onChange={setWorkLocation}
           onPlaceSelected={(result) => {
             setWorkLocation(result.formattedAddress);
             setWorkCoords({ lat: result.lat, lng: result.lng });
           }}
         />
-        {workLocation.length > 0 && !workCoords && (
-          <p className="settings-hint">
-            Pick a suggestion from the list so this can anchor drive-time calculations.
-          </p>
-        )}
 
         <div className="settings-row">
           <button className="btn btn-ghost" onClick={saveHomeWork} disabled={placesSaving}>
@@ -526,18 +512,20 @@ export default function Preferences() {
           {placesSavedMsg && <span className="settings-saved">{placesSavedMsg}</span>}
         </div>
       </div>
+        </div>
 
+        <div className="prefs-section">
+          <div className="prefs-section-label">Today</div>
       <div className="settings-panel">
         <div className="settings-panel-title">Task order</div>
         <p className="settings-help">
-          How your task list is arranged. Choose "Manual" to drag tasks into whatever order matters
-          to you — a drag handle appears on each task once this is selected.
+          How Today arranges the list. Manual adds drag handles.
         </p>
         <div className="sort-option-grid">
           {([
-            { value: 'capacity_first', label: 'Fits today first', desc: 'Tasks that realistically fit in the time you have left float to the top — the rest are flagged, not hidden' },
+            { value: 'capacity_first', label: 'Fits today first', desc: 'Tasks that fit the time left float up — the rest are flagged, not hidden' },
             { value: 'due_today_first', label: 'Due today first', desc: 'Due-today tasks float to the top' },
-            { value: 'geo_aware', label: 'Route-aware', desc: 'Located tasks are ordered by real drive distance from home or work, whichever applies right now' },
+            { value: 'geo_aware', label: 'Route-aware', desc: 'Located tasks ordered by drive distance from home or work' },
             { value: 'manual', label: 'Manual', desc: 'Drag to arrange exactly how you want' },
             { value: 'oldest_first', label: 'Oldest first', desc: 'By when each task was added' },
             { value: 'newest_first', label: 'Newest first', desc: 'Most recently added on top' },
@@ -554,12 +542,14 @@ export default function Preferences() {
         </div>
         {sortSavedMsg && <span className="settings-saved">{sortSavedMsg}</span>}
       </div>
+        </div>
 
+        <div className="prefs-section">
+          <div className="prefs-section-label">Meetings</div>
       <div className="settings-panel">
-        <div className="settings-panel-title">Meetings → Export</div>
+        <div className="settings-panel-title">Export defaults</div>
         <p className="settings-help">
-          What a new meeting export starts with. You can still adjust everything in the per-export review —
-          changes there apply to that export only, these stay the default.
+          Starting point for new exports — changeable on Review each time.
         </p>
 
         <span className="settings-label">Export type</span>
@@ -579,7 +569,7 @@ export default function Preferences() {
           ))}
         </div>
 
-        <span className="settings-label" style={{ marginTop: 'var(--space-3)' }}>Include by default</span>
+        <span className="settings-label">Include by default</span>
         <div className="settings-check-list">
           {([
             { key: 'includeParticipants', label: 'Participants' },
@@ -591,23 +581,23 @@ export default function Preferences() {
             { key: 'includeAudio', label: 'Voice notes' },
           ] as { key: keyof MeetingExportPreferences; label: string }[]).map((row) => (
             <button key={row.key} className="settings-check-row" onClick={() => toggleExportPref(row.key)} aria-pressed={Boolean(exportPrefs[row.key])}>
-              <span className="export-check">{Boolean(exportPrefs[row.key]) && (
+              <span className="export-check">{Boolean(exportPrefs[row.key]) ? (
                 <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
                   <path d="M1.5 5.5l2.5 2.5L9.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              )}</span>
+              ) : null}</span>
               <span className="settings-check-label">{row.label}</span>
             </button>
           ))}
         </div>
 
-        <span className="settings-label" style={{ marginTop: 'var(--space-3)' }}>Transcripts</span>
-        <button className="settings-check-row" onClick={() => toggleExportPref('transcribe')} aria-pressed={exportPrefs.transcribe}>
-          <span className="export-check">{exportPrefs.transcribe && (
+        <span className="settings-label">Transcripts</span>
+        <button className="settings-check-row" onClick={() => toggleExportPref('writeTranscripts')} aria-pressed={Boolean(exportPrefs.writeTranscripts)} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
+          <span className="export-check">{Boolean(exportPrefs.writeTranscripts) ? (
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
               <path d="M1.5 5.5l2.5 2.5L9.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          )}</span>
+          ) : null}</span>
           <span className="settings-check-label">Write transcripts of voice notes</span>
         </button>
         <p className="settings-hint">
@@ -615,7 +605,7 @@ export default function Preferences() {
           Voice notes always export with or without a transcript.
         </p>
 
-        <span className="settings-label" style={{ marginTop: 'var(--space-3)' }}>PDF photo quality</span>
+        <span className="settings-label">PDF photo quality</span>
         <div className="segmented">
           {([
             { value: 'standard', label: 'Standard' },
@@ -635,6 +625,7 @@ export default function Preferences() {
 
         {exportPrefsMsg && <span className="settings-saved">{exportPrefsMsg}</span>}
       </div>
+        </div>
 
       {CALENDAR_CONNECT_ENABLED && (
       <div className="settings-panel">
@@ -644,68 +635,41 @@ export default function Preferences() {
           <>
             <p className="settings-help">
               Connected Microsoft{calendarConnection.connected_email ? ` as ${calendarConnection.connected_email}` : ''}.
-              Your external commitments are pulled into Today automatically and drop off your workload once
-              they end — nothing to schedule or manage.
+              External commitments pull into Today and drop off when they end.
             </p>
             <p className="settings-hint">
               ✓ Calendar access (read-only).{calendarConnection.sync_status === 'error'
-                ? ' The last sync failed — Dokkit retries automatically.'
+                ? ` Sync issue: ${calendarConnection.sync_error || 'unknown'}.`
                 : ''}
             </p>
-
-{calendarConnectionsState.length > 0 && (
+            {calendarConnectionsState.map((conn) => (
+              <div key={conn.connection_id}>
+                {conn.calendars.length > 0 && (
                   <>
-                    <span className="settings-label" style={{ marginTop: 'var(--space-3)' }}>
-                      Calendars
-                    </span>
-                    <p className="settings-help">
-                      Dokkit plans around the calendars you select below. Pick the ones that hold your
-                      real commitments — birthdays and shared calendars stay unselected so they don't
-                      quietly eat into your day.
-                    </p>
-                    {calendarConnectionsState.map((conn) => (
-                      <div key={conn.connection_id}>
-                        {calendarConnectionsState.length > 1 && (
-                          <span className="settings-label" style={{ marginTop: 'var(--space-2)' }}>
-                            {conn.connected_email || 'Calendar account'}
-                          </span>
-                        )}
-                        {conn.calendars.length === 0 ? (
-                          <p className="settings-hint">No calendars linked yet — they appear after the first sync.</p>
-                        ) : (
-                          <div className="settings-check-list">
-                            {conn.calendars.map((cal) => (
-                              <button
-                                key={cal.id}
-                                className="settings-check-row"
-                                aria-pressed={cal.selected}
-                                onClick={() => toggleExternalCalendar(cal)}
-                                disabled={calendarsSavingId === cal.id}
-                              >
-                                <span className="export-check">
-                                  {cal.selected && (
-                                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
-                                      <path d="M1.5 5.5l2.5 2.5L9.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                  )}
-                                </span>
-                                <span className="settings-check-label">
-                                  {cal.name}
-                                  {cal.is_default ? ' · default' : ''}
-                                </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <span className="settings-label">Calendars for Today</span>
+                    <div className="settings-check-list">
+                      {conn.calendars.map((cal) => (
+                        <button
+                          key={cal.id}
+                          className="settings-check-row"
+                          onClick={() => toggleExternalCalendar(cal)}
+                          aria-pressed={cal.selected}
+                          disabled={calendarsSavingId === cal.id}
+                        >
+                          <span className="export-check">{cal.selected ? (
+                            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                              <path d="M1.5 5.5l2.5 2.5L9.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          ) : null}</span>
+                          <span className="settings-check-label">{cal.name}{cal.is_default ? ' (default)' : ''}</span>
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                <p className="settings-hint">
-                  Read-only — Dokkit never edits these calendars. Changes take effect on the next sync.
-                </p>
-                {calendarListMsg && <span className="settings-saved">{calendarListMsg}</span>}
-              </>
-            )}
-
+                  </>
+                )}
+              </div>
+            ))}
+            {calendarListMsg && <span className="settings-status">{calendarListMsg}</span>}
             <button className="btn btn-ghost" onClick={disconnectCalendar} disabled={disconnecting}>
               {disconnecting ? 'Disconnecting…' : 'Disconnect calendar'}
             </button>
@@ -713,9 +677,7 @@ export default function Preferences() {
         ) : (
           <>
             <p className="settings-help">
-              Connect your Microsoft calendar and Dokkit treats your meetings as external commitments in
-              Today — they block capacity while they run and free it up as soon as they end. Read-only,
-              synced automatically.
+              Meetings block capacity in Today while they run. Read-only, synced automatically.
             </p>
             <button className="btn btn-steel" onClick={connectCalendar} disabled={connecting}>
               {connecting ? 'Connecting…' : 'Connect Microsoft Calendar'}
@@ -725,11 +687,12 @@ export default function Preferences() {
       </div>
       )}
 
+        <div className="prefs-section">
+          <div className="prefs-section-label">Alerts</div>
       <div className="settings-panel">
         <div className="settings-panel-title">Notifications</div>
         <p className="settings-help">
-          A nudge when a task is nearing its estimate, and again if it runs over — enough to keep
-          you aware, not enough to nag.
+          A quiet nudge near and over estimate — aware, not nagging.
         </p>
 
         <div className="settings-row">
@@ -760,9 +723,10 @@ export default function Preferences() {
         <div className="settings-info-note">
           <InfoIcon />
           <span>
-            Right now, Dokkit runs as a web app. this means notifications only get pushed while your screen is awake — background
-            delivery while it's closed is being finalized. This note will go away once that's live.
+            Web app for now — notifications push while the screen is awake. Background delivery is on the way.
           </span>
+        </div>
+      </div>
         </div>
       </div>
     </div>
