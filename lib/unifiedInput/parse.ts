@@ -258,15 +258,30 @@ export function parseThought(raw: string, today: string = localDateStr(new Date(
   }
 
   // Extract a road-type location hint (first occurrence).
+  // Always surface the phrase as locationHint so an unresolved place is never
+  // forgotten. Whether it is also removed from the task *title* depends on
+  // role: a mid-sentence place adjunct ("… at Belgium Rd …") or a leading
+  // place followed by a purpose clause ("Belgium Rd … to measure X") is
+  // pure location context and is stripped from the label; a subject-position
+  // place that the rest of the sentence is about ("Regent Street needs
+  // attention …") stays in the title so the action still names its subject.
   let locationHint: string | null = null;
   const roadMatch = extractRoadPhrase(working, consumed);
   if (roadMatch) {
     locationHint = roadMatch.phrase;
-    consumed.push({ start: roadMatch.start, end: roadMatch.end });
-    // Consume a leading "at" / "to" / "on" if one rides on the phrase.
-    const before = working.slice(0, roadMatch.start).match(/(\s+(?:at|to|on))\s*$/i);
-    if (before) {
-      consumed.push({ start: roadMatch.start - before[1].length, end: roadMatch.start });
+    const beforePrep = working.slice(0, roadMatch.start).match(/(\s+(?:at|to|on|in|near|by))\s*$/i);
+    const afterPhrase = working.slice(roadMatch.end);
+    // Remainder with only date/time tokens removed — used to detect a purpose
+    // "to <verb>" clause that marks the road phrase as pure place context.
+    const afterWithoutDateTime = stripDateTimeTokens(afterPhrase, today).trim();
+    const hasPurposeClause = /^(?:to|and)\s+\S+/i.test(afterWithoutDateTime);
+    const isPlaceAdjunct = !!beforePrep || hasPurposeClause;
+
+    if (isPlaceAdjunct) {
+      consumed.push({ start: roadMatch.start, end: roadMatch.end });
+      if (beforePrep) {
+        consumed.push({ start: roadMatch.start - beforePrep[1].length, end: roadMatch.start });
+      }
     }
   }
 
@@ -314,6 +329,40 @@ function matchDateWord(
   if (diff === 0) diff = 7; // the same-named day is always in the future
   if (isNext) diff += 7;
   return { date: addDays(today, diff), matchLength };
+}
+
+
+// Remove date/time tokens from a slice so we can inspect the remaining action
+// structure (e.g. a purpose "to measure …" clause) without those facets
+// interfering. Purely local to the subject-vs-adjunct decision; does not
+// mutate the main walk.
+function stripDateTimeTokens(slice: string, today: string): string {
+  let out = slice;
+  // Iteratively strip leading whitespace + one date or clock token.
+  let guard = 0;
+  while (guard < 8) {
+    guard++;
+    const trimmed = out.replace(/^\s+/, '');
+    if (trimmed.length === 0) return '';
+    // leading "at" before a clock
+    const atClock = trimmed.match(/^at\s+/i);
+    const from = atClock ? trimmed.slice(atClock[0].length) : trimmed;
+    const clock = parseClockMatch(from, 0);
+    if (clock) {
+      out = from.slice(clock.token.length);
+      continue;
+    }
+    const onDate = from.match(/^(?:on|next|this)\s+/i);
+    const dateFrom = onDate ? from.slice(onDate[0].length) : from;
+    const dateMatch = matchDateWord(dateFrom, today);
+    if (dateMatch) {
+      out = dateFrom.slice(dateMatch.matchLength);
+      continue;
+    }
+    // No more leading date/time — return what remains (may still have leading space)
+    return out;
+  }
+  return out;
 }
 
 // ── Road-phrase extraction ─────────────────────────────────────────────
