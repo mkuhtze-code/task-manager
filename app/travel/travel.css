@@ -1,0 +1,84 @@
+/* ── Travel: persistent day strip ─────────────────────────────── */
+
+.trip-day-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin: var(--space-3) 0 0;
+  padding: 2px 2px 4px;
+  scroll-snap-type: x proximity;
+}
+
+.trip-day-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.trip-day-chip {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 52px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.trip-day-chip-wd {
+  font-size: var(--text-2xs, 11px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.trip-day-chip-num {
+  font-size: var(--text-base);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.trip-day-chip-pos {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 1px;
+}
+
+.trip-day-chip.is-today:not(.active) {
+  border-color: var(--steel);
+  box-shadow: inset 0 0 0 1px rgba(var(--shadow-rgb, 30, 40, 50), 0.04);
+}
+
+.trip-day-chip.is-today:not(.active) .trip-day-chip-wd {
+  color: var(--steel);
+}
+
+.trip-day-chip.active {
+  background: var(--steel);
+  border-color: var(--steel);
+  color: white;
+}
+
+.trip-day-chip.active .trip-day-chip-num {
+  color: white;
+}
+
+.trip-day-chip:active {
+  transform: scale(0.97);
+}
+
+/* Day head sits tighter under the strip */
+.trip-day-strip + .day-head {
+  margin-top: var(--space-2);
+}
