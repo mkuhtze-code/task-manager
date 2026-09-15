@@ -87,3 +87,190 @@
 .task-list {
   touch-action: pan-y;
 }
+
+/* ── Travel: trip overview sheet ──────────────────────────────── */
+
+.trip-overview-sheet {
+  max-height: min(88vh, 720px);
+}
+
+.trip-overview-lead {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.trip-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+@media (min-width: 480px) {
+  .trip-overview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.trip-overview-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 12px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.12s var(--ease);
+}
+
+.trip-overview-card:active {
+  transform: scale(0.98);
+}
+
+.trip-overview-card.is-today:not(.active) {
+  border-color: var(--steel);
+}
+
+.trip-overview-card.active {
+  background: var(--steel);
+  border-color: var(--steel);
+  color: white;
+}
+
+.trip-overview-card.over:not(.active) {
+  border-color: var(--hazard, #c45c26);
+}
+
+.trip-overview-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 6px;
+}
+
+.trip-overview-wd {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.trip-overview-card.active .trip-overview-wd {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.trip-overview-today {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--steel);
+}
+
+.trip-overview-card.active .trip-overview-today {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.trip-overview-num {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.05;
+  margin-top: 2px;
+}
+
+.trip-overview-date {
+  font-size: var(--text-xs, 12px);
+  color: var(--ink-soft);
+}
+
+.trip-overview-card.active .trip-overview-date {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.trip-overview-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.trip-overview-stops {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trip-overview-stops.faint {
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.trip-overview-card.active .trip-overview-stops.faint {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.trip-overview-fit {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.trip-overview-fit.over {
+  color: var(--hazard, #c45c26);
+}
+
+.trip-overview-card.active .trip-overview-fit {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.trip-overview-card.active .trip-overview-fit.over {
+  color: #ffd0b8;
+}
+
+.trip-overview-pos {
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.trip-overview-card.active .trip-overview-pos {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* All-days control at the end of the strip */
+.trip-day-overview-btn {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 52px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 1px dashed var(--line-strong);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.trip-day-overview-btn:active {
+  transform: scale(0.97);
+}
+
+.trip-day-overview-btn svg {
+  display: block;
+}
