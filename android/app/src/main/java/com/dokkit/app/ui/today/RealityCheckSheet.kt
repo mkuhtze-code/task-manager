@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,7 +35,6 @@ import com.dokkit.app.core.theme.DokkitType
 import com.dokkit.app.domain.model.RealityOutcome
 import com.dokkit.app.domain.model.RealityUpdate
 import com.dokkit.app.domain.model.Task
-import com.dokkit.app.util.fmtMins
 
 /**
  * Reality Check surface — low-friction capture of what actually happened,
@@ -65,7 +62,6 @@ fun RealityCheckSheet(
         }
     }
     val actualMins = remember { mutableStateMapOf<String, Int?>() }
-    var overallNote by remember { mutableStateOf("") }
 
     DokkitSheet(
         onDismiss = onDismiss,
@@ -273,7 +269,6 @@ private fun DurationChip(
     }
 }
 
-// Local helper so this file stays self-contained if TimeFormat is not yet public.
 private fun fmtMins(mins: Int): String {
     if (mins < 60) return "${mins}m"
     val h = mins / 60
