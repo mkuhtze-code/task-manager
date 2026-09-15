@@ -82,3 +82,8 @@
 .trip-day-strip + .day-head {
   margin-top: var(--space-2);
 }
+
+/* Hint that the itinerary is swipeable between days */
+.task-list {
+  touch-action: pan-y;
+}
