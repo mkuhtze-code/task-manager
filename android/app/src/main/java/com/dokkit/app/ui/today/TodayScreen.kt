@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -26,9 +25,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.dokkit.app.core.control.DokkitButton
 import com.dokkit.app.core.control.DokkitButtonVariant
 import com.dokkit.app.core.control.DokkitCheck
@@ -41,21 +39,21 @@ import com.dokkit.app.core.control.DokkitReveal
 import com.dokkit.app.core.control.DokkitTag
 import com.dokkit.app.core.control.DokkitTextButton
 import com.dokkit.app.core.icon.DokkitIcons
-import com.dokkit.app.core.sheet.DokkitSheet
 import com.dokkit.app.core.surface.DokkitSurface
 import com.dokkit.app.core.surface.dokkitSurface
 import com.dokkit.app.core.theme.DokkitTheme
 import com.dokkit.app.core.theme.DokkitThemePreference
 import com.dokkit.app.core.theme.DokkitThemeState
 import com.dokkit.app.core.theme.DokkitType
+import com.dokkit.app.domain.model.RealityUpdate
+import com.dokkit.app.domain.model.Task
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
  * Representative Today surface — a *visual prototype* of the real grammar.
- * Not the complete Today feature: no timers, routing, subtasks persistence,
- * or full task model. Enough real structure to test the design system on
- * product-shaped content.
+ * Reality Check is wired so the loop is reachable and testable against
+ * sample tasks. Full repository / offline reshape comes next.
  */
 @Composable
 fun TodayScreen(
@@ -63,7 +61,11 @@ fun TodayScreen(
     onOpenDesignLab: () -> Unit,
 ) {
     val colors = DokkitTheme.colors
-    var sheetOpen by remember { mutableStateOf(false) }
+    var realityCheckOpen by remember { mutableStateOf(false) }
+    var reshapeMessage by remember { mutableStateOf<String?>(null) }
+
+    // Prototype samples mapped to domain Tasks for RealityCheckSheet.
+    val todayTasks = remember { Samples.asDomainTasks() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -76,9 +78,26 @@ fun TodayScreen(
             TodayHeader(
                 themeState = themeState,
                 onOpenDesignLab = onOpenDesignLab,
+                onOpenRealityCheck = { realityCheckOpen = true },
             )
             Spacer(Modifier.height(18.dp))
             CapacityRail()
+            Spacer(Modifier.height(8.dp))
+
+            // Quiet entry point — secondary to the day, not a primary CTA.
+            DokkitTextButton(
+                text = "Reality check",
+                onClick = { realityCheckOpen = true },
+            )
+
+            reshapeMessage?.let { msg ->
+                Spacer(Modifier.height(6.dp))
+                BasicText(
+                    text = msg,
+                    style = DokkitType.caption.copy(color = colors.mossText),
+                )
+            }
+
             Spacer(Modifier.height(14.dp))
 
             Samples.tasks.forEachIndexed { index, sample ->
@@ -94,12 +113,23 @@ fun TodayScreen(
         }
 
         DokkitFab(
-            onClick = { sheetOpen = true },
+            onClick = { /* capture sheet — reserved */ },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .navigationBarsPadding()
                 .padding(end = 20.dp, bottom = 20.dp),
         )
+
+        if (realityCheckOpen) {
+            RealityCheckSheet(
+                tasks = todayTasks,
+                onDismiss = { realityCheckOpen = false },
+                onReshape = { updates ->
+                    realityCheckOpen = false
+                    reshapeMessage = formatReshapeConfirmation(updates)
+                },
+            )
+        }
     }
 }
 
@@ -109,6 +139,7 @@ fun TodayScreen(
 private fun TodayHeader(
     themeState: DokkitThemeState,
     onOpenDesignLab: () -> Unit,
+    onOpenRealityCheck: () -> Unit,
 ) {
     val colors = DokkitTheme.colors
     val today = LocalDate.now()
@@ -134,6 +165,12 @@ private fun TodayHeader(
                 style = DokkitType.displaySmall.copy(color = colors.ink),
             )
         }
+        DokkitIconButton(
+            icon = DokkitIcons.Fit,
+            contentDescription = "Reality check",
+            onClick = onOpenRealityCheck,
+            tint = colors.inkFaint,
+        )
         DokkitIconButton(
             icon = DokkitIcons.Gear,
             contentDescription = "Theme (light / dark / system)",
@@ -190,6 +227,7 @@ private fun CapacityRail() {
 // ── Task row sample ─────────────────────────────────────────────────────
 
 private data class TaskSample(
+    val id: String,
     val text: String,
     val estimateMins: Int,
     val progress: Float,
@@ -201,6 +239,7 @@ private data class TaskSample(
 private object Samples {
     val tasks = listOf(
         TaskSample(
+            id = "sample-1",
             text = "Review the site-map lightbox",
             estimateMins = 45,
             progress = 0.62f,
@@ -209,6 +248,7 @@ private object Samples {
             expanded = true,
         ),
         TaskSample(
+            id = "sample-2",
             text = "Draft home screen copy",
             estimateMins = 75,
             progress = 0f,
@@ -216,7 +256,26 @@ private object Samples {
             due = false,
             expanded = false,
         ),
+        TaskSample(
+            id = "sample-3",
+            text = "Site visit · Harbour Street",
+            estimateMins = 60,
+            progress = 0f,
+            meta = "Travel 12 min",
+            due = true,
+            expanded = false,
+        ),
     )
+
+    fun asDomainTasks(): List<Task> = tasks.map { sample ->
+        Task(
+            id = sample.id,
+            text = sample.text,
+            estimateMins = sample.estimateMins,
+            status = "pending",
+            dueToday = sample.due,
+        )
+    }
 }
 
 @Composable
@@ -233,7 +292,6 @@ private fun TaskRowSample(sample: TaskSample) {
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Completion control.
             DokkitCheck(done = done, onClick = { done = !done })
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -277,7 +335,6 @@ private fun TaskRowSample(sample: TaskSample) {
             DokkitDisclosureChevron(expanded = open)
         }
 
-        // Progressive disclosure tier — reveals under the row.
         DokkitReveal(visible = open) {
             Column(modifier = Modifier.padding(start = 36.dp, top = 10.dp)) {
                 Box(
@@ -302,6 +359,18 @@ private fun TaskRowSample(sample: TaskSample) {
                 }
             }
         }
+    }
+}
+
+private fun formatReshapeConfirmation(updates: List<RealityUpdate>): String {
+    val done = updates.count { it.outcome == "done" }
+    val carried = updates.count { it.outcome == "carried" || it.outcome == "partial" }
+    val skipped = updates.count { it.outcome == "skipped" }
+    return buildString {
+        append("Plan updated.")
+        if (done > 0) append(" $done done.")
+        if (carried > 0) append(" $carried carried forward.")
+        if (skipped > 0) append(" $skipped skipped.")
     }
 }
 
