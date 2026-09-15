@@ -358,6 +358,7 @@ export default function TripDayView() {
     const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
   const [daySheetOpen, setDaySheetOpen] = useState(false);
   const dayStripRef = useRef<HTMLDivElement | null>(null);
+    const swipeRef = useRef<{ x: number; y: number; active: boolean } | null>(null);
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
   const [captureFixedTime, setCaptureFixedTime] = useState('');
 
@@ -629,6 +630,42 @@ export default function TripDayView() {
   const selectedDay = tripDays.find((d) => d.id === selectedDayId) || null;
   const selectedDayIndex = tripDays.findIndex((d) => d.id === selectedDayId);
 
+    function goToAdjacentDay(dir: -1 | 1) {
+    if (selectedDayIndex < 0 || tripDays.length < 2) return;
+    const next = selectedDayIndex + dir;
+    if (next < 0 || next >= tripDays.length) return;
+    setSelectedDayId(tripDays[next].id);
+  }
+
+  function onDaySwipeStart(e: React.TouchEvent) {
+    if (dragState || tripDays.length < 2) return;
+    const t = e.touches[0];
+    swipeRef.current = { x: t.clientX, y: t.clientY, active: true };
+  }
+
+  function onDaySwipeMove(e: React.TouchEvent) {
+    const s = swipeRef.current;
+    if (!s?.active) return;
+    const t = e.touches[0];
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
+    // Vertical intent → abandon so drag-reorder wins
+    if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx)) {
+      swipeRef.current = null;
+    }
+  }
+
+  function onDaySwipeEnd(e: React.TouchEvent) {
+    const s = swipeRef.current;
+    swipeRef.current = null;
+    if (!s?.active || dragState) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
+    if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    goToAdjacentDay(dx < 0 ? 1 : -1);
+  }
+
   const legs: Leg[] = useMemo(() => {
     if (!selectedDay) return [];
     const out: Leg[] = [];
@@ -875,7 +912,12 @@ export default function TripDayView() {
         </button>
       )}
 
-      <div className="task-list">
+            <div
+        className="task-list"
+        onTouchStart={onDaySwipeStart}
+        onTouchMove={onDaySwipeMove}
+        onTouchEnd={onDaySwipeEnd}
+      >
         {activities.length === 0 && (
           <div className="empty-state">
             <div className="empty-state-title">
