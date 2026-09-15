@@ -103,6 +103,74 @@ data class TimeLog(
     @SerialName("logged_at") val loggedAt: String = "",
 )
 
+// ── Reality Capture ─────────────────────────────────────────────────────
+
+/**
+ * Outcome of a single task in a Reality Check.
+ * Default is [Carried] — unfinished work simply continues.
+ */
+enum class RealityOutcome {
+    /** Task finished. Optional actual duration feeds learning. */
+    Done,
+
+    /** Some progress; remaining estimate carries forward. */
+    Partial,
+
+    /** Not done. Carries to the next surface date (default). */
+    Carried,
+
+    /** Explicitly removed from the plan for today. */
+    Skipped,
+}
+
+/**
+ * One task's update during a Reality Check.
+ * Kept local-first; repositories persist as task patches + TimeLog rows.
+ */
+@Serializable
+data class RealityUpdate(
+    @SerialName("task_id") val taskId: String,
+    /** done | partial | carried | skipped */
+    val outcome: String = "carried",
+    @SerialName("actual_mins") val actualMins: Int? = null,
+    /** Remaining estimate when outcome is partial. */
+    @SerialName("remaining_mins") val remainingMins: Int? = null,
+    val note: String? = null,
+    val timestamp: String = "",
+)
+
+/**
+ * A closed day after the user has reshaped the plan.
+ * Optional persistence; most state can be derived from task + time_log updates.
+ */
+@Serializable
+data class DayClose(
+    val date: String, // YYYY-MM-DD
+    val updates: List<RealityUpdate> = emptyList(),
+    @SerialName("overall_note") val overallNote: String? = null,
+    @SerialName("reshaped_at") val reshapedAt: String = "",
+)
+
+/**
+ * A single calm insight shown after reshape, only when confidence is high.
+ * Never a score or productivity judgement.
+ */
+data class PatternInsight(
+    val message: String,
+    /** e.g. "Quote revision usually 45m · well known" */
+    val detail: String? = null,
+)
+
+/**
+ * Result of applying a Reality Check and reshaping the plan.
+ */
+data class ReshapeResult(
+    val updatedTasks: List<Task>,
+    val carriedCount: Int,
+    val doneCount: Int,
+    val insight: PatternInsight? = null,
+)
+
 // ── Travel ──────────────────────────────────────────────────────────────
 
 @Serializable
