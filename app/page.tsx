@@ -9,6 +9,7 @@ import { TravelLeg } from '@/components/TravelLeg';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
+import { RealityCheckSheet } from '@/components/RealityCheckSheet';
 import { TodayHeader } from '@/components/TodayHeader';
 import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
@@ -55,6 +56,12 @@ import {
   timeStringToMinutes,
 } from '@/lib/timeFormat';
 import { computeAvailability } from '@/lib/calendar/planning';
+import {
+  nextWorkSurfaceDate,
+  summarizeReshape,
+  tasksForRealityCheck,
+  type RealityUpdate,
+} from '@/lib/realityCapture';
 
 // One-shot browser geolocation for the route's start point. Resolves to
 // null when the API is unavailable, permission is denied, or the fix
@@ -122,6 +129,9 @@ export default function Home() {
   const [workDays, setWorkDays] = useState<number[]>(DEFAULT_WORK_DAYS);
   const [sortMode, setSortMode] = useState<SortMode>('capacity_first');
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [realityCheckOpen, setRealityCheckOpen] = useState(false);
+  const [realityCheckBusy, setRealityCheckBusy] = useState(false);
+  const [realityCheckMessage, setRealityCheckMessage] = useState<string | null>(null);
 
   // ── Home & Work base pins, and the route state geo_aware sort mode
   // depends on. driveFromBaseMins/basePolyline are never persisted —
@@ -1242,6 +1252,118 @@ export default function Home() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'pending', started_at: null, logged_mins: newLogged } : t)));
   }
 
+
+  async function applyRealityUpdates(updates: RealityUpdate[]) {
+    if (!session) return;
+    setRealityCheckBusy(true);
+    const carryDate = nextWorkSurfaceDate(new Date(), workDays);
+    const summary = summarizeReshape(updates);
+    try {
+      for (const u of updates) {
+        const task = tasks.find((t) => t.id === u.taskId);
+        if (!task) continue;
+
+        if (u.outcome === 'done') {
+          let finalLogged = task.logged_mins;
+          if (task.status === 'active' && task.started_at) {
+            finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
+          }
+          const actual =
+            u.actualMins != null ? u.actualMins : Math.round(finalLogged) || task.estimate_mins;
+          const { error } = await supabase
+            .from('tasks')
+            .update({
+              status: 'done',
+              started_at: null,
+              logged_mins: actual,
+              actual_mins: actual,
+              completed_at: new Date().toISOString(),
+            })
+            .eq('id', u.taskId);
+          if (error) {
+            console.error(error);
+            alert('Could not update a task: ' + error.message);
+            return;
+          }
+          setTasks((prev) => prev.filter((t) => t.id !== u.taskId));
+          setHistory((prev) => [
+            {
+              text: task.text,
+              actual_mins: actual,
+              location_text: task.location_text,
+              lat: task.lat,
+              lng: task.lng,
+            },
+            ...prev,
+          ]);
+        } else if (u.outcome === 'partial') {
+          const remaining = u.remainingMins ?? Math.max(5, Math.round(task.estimate_mins / 2));
+          const { error } = await supabase
+            .from('tasks')
+            .update({
+              status: 'pending',
+              started_at: null,
+              estimate_mins: remaining,
+              surface_date: carryDate,
+              due_today: false,
+            })
+            .eq('id', u.taskId);
+          if (error) {
+            console.error(error);
+            alert('Could not update a task: ' + error.message);
+            return;
+          }
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === u.taskId
+                ? {
+                    ...t,
+                    status: 'pending' as const,
+                    started_at: null,
+                    estimate_mins: remaining,
+                    surface_date: carryDate,
+                    due_today: false,
+                  }
+                : t
+            )
+          );
+        } else if (u.outcome === 'carried' || u.outcome === 'skipped') {
+          const { error } = await supabase
+            .from('tasks')
+            .update({
+              status: 'pending',
+              started_at: null,
+              surface_date: carryDate,
+              due_today: false,
+            })
+            .eq('id', u.taskId);
+          if (error) {
+            console.error(error);
+            alert('Could not update a task: ' + error.message);
+            return;
+          }
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === u.taskId
+                ? {
+                    ...t,
+                    status: 'pending' as const,
+                    started_at: null,
+                    surface_date: carryDate,
+                    due_today: false,
+                  }
+                : t
+            )
+          );
+        }
+      }
+      setRealityCheckOpen(false);
+      setRealityCheckMessage(summary.message);
+    } finally {
+      setRealityCheckBusy(false);
+    }
+  }
+
   async function completeTask(id: string) {
     const task = tasks.find((t) => t.id === id);
     let finalLogged = task ? task.logged_mins : 0;
@@ -1610,6 +1732,36 @@ export default function Home() {
         commitments={activeCommitments}
       />
 
+      {tasks.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            margin: '0 0 var(--space-3)',
+            padding: '0 var(--space-page, 16px)',
+          }}
+        >
+          <button
+            type="button"
+            className="btn-text"
+            style={{ padding: 0 }}
+            onClick={() => setRealityCheckOpen(true)}
+          >
+            Reality check
+          </button>
+          {realityCheckMessage && (
+            <span
+              className="settings-help"
+              style={{ color: 'var(--moss-text, var(--moss))', margin: 0 }}
+            >
+              {realityCheckMessage}
+            </span>
+          )}
+        </div>
+      )}
+
+
       <div className="task-list">
         {taskLoadError ? (
           <div className="empty-state">
@@ -1629,6 +1781,14 @@ export default function Home() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <PlusIcon size={16} /> Add a task
+              </button>
+              <button
+                type="button"
+                className="btn-text"
+                onClick={() => setRealityCheckOpen(true)}
+                style={{ marginLeft: 8 }}
+              >
+                Reality check
               </button>
             </div>
           )
@@ -1718,6 +1878,15 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {realityCheckOpen && (
+        <RealityCheckSheet
+          tasks={tasksForRealityCheck(tasks)}
+          busy={realityCheckBusy}
+          onClose={() => setRealityCheckOpen(false)}
+          onReshape={applyRealityUpdates}
+        />
+      )}
 
       {captureOpen && (
         <CaptureSheet
