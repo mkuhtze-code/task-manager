@@ -34,12 +34,19 @@ export function TodayHeader(props: {
     end_at: string;
     all_day: boolean;
   }>;
+  // Optional end-of-day Reality Check entry (shown near work end).
+  onRealityCheck?: () => void;
+  showRealityCheck?: boolean;
+  realityCheckMessage?: string | null;
 }) {
   const {
     overloaded, weekdayLabel, dateOnlyLabel, isWorkDay, minutesLeftToday,
     remainingWorkMins, nowPercent, planWidthPercent, workStart, workEnd, geoAware,
     recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError, hasRoute, onViewMap, userId,
     commitments,
+    onRealityCheck,
+    showRealityCheck,
+    realityCheckMessage,
   } = props;
 
   const [capacityOpen, setCapacityOpen] = useState(false);
@@ -109,6 +116,38 @@ export function TodayHeader(props: {
               <ChevronIcon size={14} />
             </span>
           </button>
+
+          {showRealityCheck && onRealityCheck && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginTop: 8,
+                flexWrap: 'wrap',
+              }}
+            >
+              <button
+                type="button"
+                className="btn-text"
+                style={{ padding: 0 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRealityCheck();
+                }}
+              >
+                Reality check
+              </button>
+              {realityCheckMessage && (
+                <span
+                  className="settings-help"
+                  style={{ color: 'var(--moss-text, var(--moss))', margin: 0 }}
+                >
+                  {realityCheckMessage}
+                </span>
+              )}
+            </div>
+          )}
 
           {capacityOpen && (
             <div className="today-capacity-detail">
@@ -182,6 +221,16 @@ export function TodayHeader(props: {
         <div className="header-off-row">
           <div className="header-compare-number mono">Off</div>
           <div className="header-compare-label">{fmtMins(remainingWorkMins)} carrying forward</div>
+          {showRealityCheck && onRealityCheck && (
+            <button
+              type="button"
+              className="btn-text"
+              style={{ padding: 0, marginLeft: 8 }}
+              onClick={onRealityCheck}
+            >
+              Reality check
+            </button>
+          )}
         </div>
       )}
     </div>
