@@ -1577,6 +1577,15 @@ export default function Home() {
   const workStartMinutes = timeStringToMinutes(workStart);
   const workEndMinutes = timeStringToMinutes(workEnd);
   const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
+  
+  // Soft end-of-day nudge: offer Reality Check in the last hour of the workday
+  // (or after work end if anything is still on the plate).
+  const REALITY_CHECK_WINDOW_MINS = 30;
+  const showRealityCheck =
+    tasks.length > 0 &&
+    (isWorkDay
+      ? minutesLeftToday <= REALITY_CHECK_WINDOW_MINS
+      : true);
 
   // External commitments only consume capacity while they overlap the time
   // remaining in the workday: an ended commitment stops blocking, one that
@@ -1728,38 +1737,12 @@ export default function Home() {
         routeError={routeError}
         hasRoute={hasRoute}
         onViewMap={() => setMapOpen(true)}
-        userId={session.user.id}
+         userId={session.user.id}
         commitments={activeCommitments}
+        onRealityCheck={() => setRealityCheckOpen(true)}
+        showRealityCheck={showRealityCheck}
+        realityCheckMessage={realityCheckMessage}
       />
-
-      {tasks.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            margin: '0 0 var(--space-3)',
-            padding: '0 var(--space-page, 16px)',
-          }}
-        >
-          <button
-            type="button"
-            className="btn-text"
-            style={{ padding: 0 }}
-            onClick={() => setRealityCheckOpen(true)}
-          >
-            Reality check
-          </button>
-          {realityCheckMessage && (
-            <span
-              className="settings-help"
-              style={{ color: 'var(--moss-text, var(--moss))', margin: 0 }}
-            >
-              {realityCheckMessage}
-            </span>
-          )}
-        </div>
-      )}
 
 
       <div className="task-list">
