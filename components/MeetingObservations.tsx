@@ -125,6 +125,22 @@ export default function MeetingObservations(props: {
         </div>
       </div>
 
+      {capturing && (
+        <ObservationCapture
+          saving={saving}
+          text={draftText}
+          media={draftMedia}
+          recording={recording}
+          captureError={captureError}
+          onTextChange={onTextChange}
+          onAddPhoto={onAddPhoto}
+          onToggleVoice={onToggleVoice}
+          onRemoveMedia={onRemoveDraftMedia}
+          onSave={handleSaveObservation}
+          onCancel={onCancelObservation}
+        />
+      )}
+
       {count === 0 && !capturing && <p className="meeting-empty">No evidence captured yet.</p>}
 
       {count > 0 && view === 'carousel' && (
@@ -148,22 +164,6 @@ export default function MeetingObservations(props: {
             setIndex(i);
             setView('carousel');
           }}
-        />
-      )}
-
-      {capturing && (
-        <ObservationCapture
-          saving={saving}
-          text={draftText}
-          media={draftMedia}
-          recording={recording}
-          captureError={captureError}
-          onTextChange={onTextChange}
-          onAddPhoto={onAddPhoto}
-          onToggleVoice={onToggleVoice}
-          onRemoveMedia={onRemoveDraftMedia}
-          onSave={handleSaveObservation}
-          onCancel={onCancelObservation}
         />
       )}
 
