@@ -1,8 +1,8 @@
 /**
  * Day fit — honest capacity when estimates are missing, and overflow carry
- * when new work arrives on a full day.
+ * when the day is full.
  *
- * Deterministic. No AI. Aligns with: tool conforms to the user.
+ * Deterministic. No AI. Tool conforms to the user.
  *
  * Capacity (what fits):
  * 1. Typed estimate > 0 (blended with learned when confident)
@@ -10,12 +10,13 @@
  * 3. Personal median of all actuals
  * 4. Soft floor so untimed work never costs zero
  *
- * Carry under pressure (what can move):
- * - Never auto-move: the task just captured, anything with intended_time,
- *   or work that usually finishes same-day (behavioural anchor).
- * - due_today alone does NOT block carry (DB defaults / casual flags
- *   would otherwise freeze the whole list).
- * - Prefer: flexible (often moves) → neutral → everything else eligible.
+ * Auto-carry under pressure (strict — avoid displacing important work):
+ * - ONLY auto-carry tasks with clear "often moves forward" history (flexible).
+ * - Never auto-carry: intended_time, active timer, strong same-day history.
+ * - Neutrals (unknown importance) are NOT silently carried — better to show
+ *   "day is full" than to drop something that might matter more.
+ * - The newly docked task is NOT privileged: if *it* is flexible, it is the
+ *   one that carries, not an older neutral that may be more important.
  */
 
 import {
@@ -41,7 +42,7 @@ export type DayFitProfile = {
   urgency: UrgencyClass;
   inferred: boolean;
   behaviourHint: string | null;
-  /** Hard protect from auto-carry (intended time or strong same-day pattern). */
+  /** Hard protect: never auto-carry. */
   protectFromCarry: boolean;
 };
 
@@ -147,9 +148,13 @@ export function capacityMinsForTask(
 }
 
 export function urgencyForTask(
-  task: Pick<Task, 'text' | 'due_today' | 'intended_time' | 'estimate_mins'>,
+  task: Pick<Task, 'text' | 'due_today' | 'intended_time' | 'estimate_mins' | 'status'>,
   history: HistoricalTask[]
 ): { urgency: UrgencyClass; behaviourHint: string | null; protectFromCarry: boolean } {
+  if (task.status === 'active') {
+    return { urgency: 'anchor', behaviourHint: null, protectFromCarry: true };
+  }
+
   if (task.intended_time && task.intended_time.length > 0) {
     return { urgency: 'anchor', behaviourHint: null, protectFromCarry: true };
   }
@@ -170,12 +175,7 @@ export function urgencyForTask(
     };
   }
 
-  // due_today is a soft preference only — does not block auto-carry.
-  if (task.due_today) {
-    return { urgency: 'neutral', behaviourHint: null, protectFromCarry: false };
-  }
-
-  return { urgency: 'neutral', behaviourHint: null, protectFromCarry: false };
+  return { urgency: 'neutral', behaviourHint: null, protectFromCarry: true };
 }
 
 export function profileTask(
@@ -200,6 +200,7 @@ export function planOverflowCarry(params: {
   clusters?: TaskCluster[];
   remainingWindowMins: number;
   incomingCostMins: number;
+  /** @deprecated No longer shields the new task; flexibility decides. */
   protectId?: string | null;
   workDays?: number[];
 }): OverflowCarryPlan {
@@ -209,7 +210,6 @@ export function planOverflowCarry(params: {
     clusters,
     remainingWindowMins,
     incomingCostMins,
-    protectId,
     workDays = [1, 2, 3, 4, 5],
   } = params;
 
@@ -227,19 +227,12 @@ export function planOverflowCarry(params: {
     return { carryIds: [], message: '' };
   }
 
-  const rank = (u: UrgencyClass) => (u === 'flexible' ? 0 : u === 'neutral' ? 1 : 2);
-
   const candidates = profiles
-    .filter(
-      (p) =>
-        p.task.id !== protectId &&
-        !p.profile.protectFromCarry &&
-        p.task.status !== 'active'
-    )
+    .filter((p) => p.profile.urgency === 'flexible' && !p.profile.protectFromCarry)
     .sort((a, b) => {
-      const d = rank(a.profile.urgency) - rank(b.profile.urgency);
-      if (d !== 0) return d;
-      return b.profile.capacityMins - a.profile.capacityMins;
+      const bySize = b.profile.capacityMins - a.profile.capacityMins;
+      if (bySize !== 0) return bySize;
+      return a.task.order_index - b.task.order_index;
     });
 
   const carryIds: string[] = [];
@@ -252,26 +245,29 @@ export function planOverflowCarry(params: {
     load -= c.profile.capacityMins;
   }
 
+  const next = nextWorkSurfaceDate(new Date(), workDays);
+
   if (carryIds.length === 0) {
     return {
       carryIds: [],
       message:
         load > window
-          ? 'Day is full — everything left usually needs today or is in progress.'
+          ? 'Day is full. Nothing here usually moves forward on its own — carry something manually if needed.'
           : '',
     };
   }
 
-  const next = nextWorkSurfaceDate(new Date(), workDays);
   const label =
     carriedTitles.length === 1
-      ? `“${truncate(carriedTitles[0], 40)}” carried to make room.`
-      : `${carriedTitles.length} items carried to make room.`;
+      ? `“${truncate(carriedTitles[0], 40)}” carried (often moves forward).`
+      : `${carriedTitles.length} items carried (often move forward).`;
 
-  return {
-    carryIds,
-    message: label + (next ? ` Surfaces ${next}.` : ''),
-  };
+  let message = label + (next ? ` Surfaces ${next}.` : '');
+  if (load > window) {
+    message += ' Day is still full.';
+  }
+
+  return { carryIds, message };
 }
 
 function truncate(s: string, n: number): string {
