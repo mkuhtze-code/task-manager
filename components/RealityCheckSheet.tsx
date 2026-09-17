@@ -44,10 +44,17 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
   function handleReshape() {
     const updates: RealityUpdate[] = tasks.map((t) => {
       const outcome = outcomes[t.id] ?? 'carried';
+      const userActual = actualMins[t.id];
+      const logged = t.logged_mins > 0 ? Math.round(t.logged_mins) : null;
       return {
         taskId: t.id,
         outcome,
-        actualMins: outcome === 'done' ? actualMins[t.id] ?? null : null,
+        actualMins:
+          outcome === 'done'
+            ? userActual ?? logged ?? null
+            : outcome === 'partial'
+              ? userActual ?? logged ?? null
+              : null,
         remainingMins:
           outcome === 'partial'
             ? Math.max(5, Math.round(t.estimate_mins / 2))
@@ -121,24 +128,39 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
                     })}
                   </div>
 
-                  {outcome === 'done' && (
+                  {(outcome === 'done' || outcome === 'partial') && (
                     <div style={{ marginTop: 10 }}>
                       <div className="settings-help" style={{ marginBottom: 6 }}>
-                        How long did it take?
+                        {outcome === 'done' ? 'How long did it take?' : 'Time spent so far'}
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {(
-                          [
-                            {
-                              label: 'Less',
-                              mins: Math.max(5, Math.round(task.estimate_mins * 0.7)),
-                            },
-                            { label: 'About right', mins: task.estimate_mins },
-                            {
-                              label: 'Longer',
-                              mins: Math.round(task.estimate_mins * 1.4),
-                            },
-                          ] as const
+                          outcome === 'done'
+                            ? [
+                                {
+                                  label: 'Less',
+                                  mins: Math.max(5, Math.round(task.estimate_mins * 0.7)),
+                                },
+                                { label: 'About right', mins: task.estimate_mins },
+                                {
+                                  label: 'Longer',
+                                  mins: Math.round(task.estimate_mins * 1.4),
+                                },
+                              ]
+                            : [
+                                {
+                                  label: 'Less',
+                                  mins: Math.max(5, Math.round(task.estimate_mins * 0.3)),
+                                },
+                                {
+                                  label: 'Half',
+                                  mins: Math.max(5, Math.round(task.estimate_mins * 0.5)),
+                                },
+                                {
+                                  label: 'More',
+                                  mins: Math.max(5, Math.round(task.estimate_mins * 0.7)),
+                                },
+                              ]
                         ).map(({ label, mins }) => {
                           const selected = actualMins[task.id] === mins;
                           return (

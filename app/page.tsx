@@ -1297,12 +1297,20 @@ export default function Home() {
             ...prev,
           ]);
         } else if (u.outcome === 'partial') {
+          let spent = task.logged_mins;
+          if (task.status === 'active' && task.started_at) {
+            spent += (Date.now() - new Date(task.started_at).getTime()) / 60000;
+          }
+          spent = u.actualMins != null ? u.actualMins : Math.round(spent);
           const remaining = u.remainingMins ?? Math.max(5, Math.round(task.estimate_mins / 2));
+          const totalObserved = spent + remaining;
+
           const { error } = await supabase
             .from('tasks')
             .update({
               status: 'pending',
               started_at: null,
+              logged_mins: spent,
               estimate_mins: remaining,
               surface_date: carryDate,
               due_today: false,
@@ -1320,6 +1328,7 @@ export default function Home() {
                     ...t,
                     status: 'pending' as const,
                     started_at: null,
+                    logged_mins: spent,
                     estimate_mins: remaining,
                     surface_date: carryDate,
                     due_today: false,
@@ -1327,6 +1336,29 @@ export default function Home() {
                 : t
             )
           );
+          if (spent > 0 || totalObserved > 0) {
+            setHistory((prev) => [
+              {
+                text: task.text,
+                actual_mins: totalObserved,
+                location_text: task.location_text,
+                lat: task.lat,
+                lng: task.lng,
+              },
+              ...prev,
+            ]);
+            const suggestion = suggestEstimate(task.text, history, clusters);
+            logCompletionOutcome({
+              userId: session.user.id,
+              taskText: task.text,
+              clusterLabel: suggestion?.matchedLabel ?? null,
+              clusterCount: suggestion?.sampleCount ?? 0,
+              estimatedMins: task.estimate_mins,
+              suggestedMins: suggestion?.suggestedMins ?? null,
+              confidence: suggestion?.confidence ?? 'low',
+              actualMins: totalObserved,
+            }).catch(() => {});
+          }
         } else if (u.outcome === 'carried' || u.outcome === 'skipped') {
           const { error } = await supabase
             .from('tasks')
