@@ -1,19 +1,21 @@
 /**
  * Day fit — honest capacity when estimates are missing, and overflow carry
- * when new anchor work arrives on a full day.
+ * when new work arrives on a full day.
  *
  * Deterministic. No AI. Aligns with: tool conforms to the user.
  *
- * Priority of signals:
- * 1. Typed estimate > 0
+ * Capacity (what fits):
+ * 1. Typed estimate > 0 (blended with learned when confident)
  * 2. Learned duration from similar completed work
- * 3. Personal median of all actuals (when cluster has no useful mins)
- * 4. Soft floor so untimed work never pretends to cost zero
+ * 3. Personal median of all actuals
+ * 4. Soft floor so untimed work never costs zero
  *
- * Urgency when duration is weak:
- * - high same-day completion rate → anchor (protect)
- * - low same-day / high carry-like lag → flexible (safe to surface later)
- * - explicit due_today / intended_time → always anchor
+ * Carry under pressure (what can move):
+ * - Never auto-move: the task just captured, anything with intended_time,
+ *   or work that usually finishes same-day (behavioural anchor).
+ * - due_today alone does NOT block carry (DB defaults / casual flags
+ *   would otherwise freeze the whole list).
+ * - Prefer: flexible (often moves) → neutral → everything else eligible.
  */
 
 import {
@@ -25,34 +27,26 @@ import {
 import type { Task } from '@/lib/taskTypes';
 import { nextWorkSurfaceDate } from '@/lib/realityCapture';
 
-/** Soft floor (minutes) when nothing else is known. Capacity only — not shown as the user estimate. */
+/** Soft floor (minutes) when nothing else is known. Capacity only. */
 export const SOFT_DEFAULT_MINS = 30;
 
-/** Minimum samples before same-day rate influences urgency. */
 const MIN_BEHAVIOUR_SAMPLES = 2;
-
-/** same-day rate ≥ this → treat as anchor when duration is weak. */
 const ANCHOR_SAME_DAY_RATE = 0.55;
-
-/** same-day rate ≤ this → treat as flexible (safe to carry under pressure). */
 const FLEXIBLE_SAME_DAY_RATE = 0.4;
 
 export type UrgencyClass = 'anchor' | 'flexible' | 'neutral';
 
 export type DayFitProfile = {
-  /** Minutes this task should consume in capacity math (never 0 for open work). */
   capacityMins: number;
   urgency: UrgencyClass;
-  /** True when capacity came from soft default or weak history, not a typed estimate. */
   inferred: boolean;
-  /** Optional calm label for UI, e.g. "Often moves forward". */
   behaviourHint: string | null;
+  /** Hard protect from auto-carry (intended time or strong same-day pattern). */
+  protectFromCarry: boolean;
 };
 
 export type OverflowCarryPlan = {
-  /** Task ids to carry to next work day, lowest-urgency first. */
   carryIds: string[];
-  /** One calm sentence for the user. */
   message: string;
 };
 
@@ -73,7 +67,6 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return inter / (a.size + b.size - inter);
 }
 
-/** Personal median of positive actuals, or null if none. */
 export function personalMedianActual(history: HistoricalTask[]): number | null {
   const vals = history
     .map((h) => h.actual_mins)
@@ -84,10 +77,6 @@ export function personalMedianActual(history: HistoricalTask[]): number | null {
   return vals.length % 2 === 0 ? Math.round((vals[mid - 1] + vals[mid]) / 2) : vals[mid];
 }
 
-/**
- * Same-day completion rate among history items similar to `text`.
- * Uses completed_at vs created_at when both exist; otherwise null.
- */
 export function similarSameDayRate(
   text: string,
   history: HistoricalTask[],
@@ -104,9 +93,7 @@ export function similarSameDayRate(
     if (score < threshold) continue;
     if (!(h.created_at && h.completed_at)) continue;
     matched++;
-    if (sameCalendarDay(h.created_at, h.completed_at)) {
-      sameDay++;
-    }
+    if (sameCalendarDay(h.created_at, h.completed_at)) sameDay++;
   }
 
   if (matched < MIN_BEHAVIOUR_SAMPLES) return null;
@@ -123,10 +110,6 @@ function sameCalendarDay(a: string, b: string): boolean {
   );
 }
 
-/**
- * Capacity minutes for an open task. Display estimate stays on the task;
- * this is only for "what fits".
- */
 export function capacityMinsForTask(
   task: Pick<Task, 'text' | 'estimate_mins' | 'logged_mins' | 'status' | 'started_at' | 'due_today' | 'intended_time'>,
   history: HistoricalTask[],
@@ -146,12 +129,18 @@ export function capacityMinsForTask(
 
   const suggestion = suggestEstimate(task.text, history, clusters);
   if (suggestion && suggestion.suggestedMins > 0) {
-    return { mins: Math.max(suggestion.suggestedMins - logged, SOFT_DEFAULT_MINS * 0.5), inferred: true };
+    return {
+      mins: Math.max(suggestion.suggestedMins - logged, SOFT_DEFAULT_MINS * 0.5),
+      inferred: true,
+    };
   }
 
   const median = personalMedianActual(history);
   if (median != null && median > 0) {
-    return { mins: Math.max(median - logged, SOFT_DEFAULT_MINS * 0.5), inferred: true };
+    return {
+      mins: Math.max(median - logged, SOFT_DEFAULT_MINS * 0.5),
+      inferred: true,
+    };
   }
 
   return { mins: Math.max(SOFT_DEFAULT_MINS - logged, 5), inferred: true };
@@ -160,29 +149,33 @@ export function capacityMinsForTask(
 export function urgencyForTask(
   task: Pick<Task, 'text' | 'due_today' | 'intended_time' | 'estimate_mins'>,
   history: HistoricalTask[]
-): { urgency: UrgencyClass; behaviourHint: string | null } {
-  if (task.due_today || (task.intended_time && task.intended_time.length > 0)) {
-    return { urgency: 'anchor', behaviourHint: null };
+): { urgency: UrgencyClass; behaviourHint: string | null; protectFromCarry: boolean } {
+  if (task.intended_time && task.intended_time.length > 0) {
+    return { urgency: 'anchor', behaviourHint: null, protectFromCarry: true };
   }
 
   const behaviour = similarSameDayRate(task.text, history);
-  if (!behaviour) {
-    return { urgency: 'neutral', behaviourHint: null };
-  }
-
-  if (behaviour.rate >= ANCHOR_SAME_DAY_RATE) {
+  if (behaviour && behaviour.rate >= ANCHOR_SAME_DAY_RATE) {
     return {
       urgency: 'anchor',
       behaviourHint: 'Usually finished same day',
+      protectFromCarry: true,
     };
   }
-  if (behaviour.rate <= FLEXIBLE_SAME_DAY_RATE) {
+  if (behaviour && behaviour.rate <= FLEXIBLE_SAME_DAY_RATE) {
     return {
       urgency: 'flexible',
       behaviourHint: 'Often moves forward',
+      protectFromCarry: false,
     };
   }
-  return { urgency: 'neutral', behaviourHint: null };
+
+  // due_today is a soft preference only — does not block auto-carry.
+  if (task.due_today) {
+    return { urgency: 'neutral', behaviourHint: null, protectFromCarry: false };
+  }
+
+  return { urgency: 'neutral', behaviourHint: null, protectFromCarry: false };
 }
 
 export function profileTask(
@@ -197,13 +190,10 @@ export function profileTask(
     urgency: urg.urgency,
     inferred: cap.inferred,
     behaviourHint: urg.behaviourHint,
+    protectFromCarry: urg.protectFromCarry,
   };
 }
 
-/**
- * When adding incomingCost minutes would overflow remaining window,
- * pick flexible (then neutral) tasks to carry until the day fits — never anchors.
- */
 export function planOverflowCarry(params: {
   openTasks: Task[];
   history: HistoricalTask[];
@@ -223,6 +213,8 @@ export function planOverflowCarry(params: {
     workDays = [1, 2, 3, 4, 5],
   } = params;
 
+  const window = Math.max(0, remainingWindowMins);
+
   const profiles = openTasks.map((t) => ({
     task: t,
     profile: profileTask(t, history, clusters),
@@ -231,14 +223,20 @@ export function planOverflowCarry(params: {
   let load =
     profiles.reduce((s, p) => s + p.profile.capacityMins, 0) + Math.max(0, incomingCostMins);
 
-  if (load <= remainingWindowMins) {
+  if (load <= window) {
     return { carryIds: [], message: '' };
   }
 
+  const rank = (u: UrgencyClass) => (u === 'flexible' ? 0 : u === 'neutral' ? 1 : 2);
+
   const candidates = profiles
-    .filter((p) => p.task.id !== protectId && p.profile.urgency !== 'anchor')
+    .filter(
+      (p) =>
+        p.task.id !== protectId &&
+        !p.profile.protectFromCarry &&
+        p.task.status !== 'active'
+    )
     .sort((a, b) => {
-      const rank = (u: UrgencyClass) => (u === 'flexible' ? 0 : u === 'neutral' ? 1 : 2);
       const d = rank(a.profile.urgency) - rank(b.profile.urgency);
       if (d !== 0) return d;
       return b.profile.capacityMins - a.profile.capacityMins;
@@ -248,7 +246,7 @@ export function planOverflowCarry(params: {
   const carriedTitles: string[] = [];
 
   for (const c of candidates) {
-    if (load <= remainingWindowMins) break;
+    if (load <= window) break;
     carryIds.push(c.task.id);
     carriedTitles.push(c.task.text);
     load -= c.profile.capacityMins;
@@ -258,8 +256,8 @@ export function planOverflowCarry(params: {
     return {
       carryIds: [],
       message:
-        load > remainingWindowMins
-          ? 'Day is full of work that usually needs today — nothing safe to move automatically.'
+        load > window
+          ? 'Day is full — everything left usually needs today or is in progress.'
           : '',
     };
   }
@@ -268,7 +266,7 @@ export function planOverflowCarry(params: {
   const label =
     carriedTitles.length === 1
       ? `“${truncate(carriedTitles[0], 40)}” carried to make room.`
-      : `${carriedTitles.length} flexible items carried to make room.`;
+      : `${carriedTitles.length} items carried to make room.`;
 
   return {
     carryIds,
@@ -281,7 +279,6 @@ function truncate(s: string, n: number): string {
   return t.length <= n ? t : t.slice(0, n - 1) + '…';
 }
 
-/** Incoming cost for a brand-new capture before it exists as a Task. */
 export function incomingCaptureCost(params: {
   text: string;
   estimateMins: number;
