@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, RefObject } from 'react';
 import type { MeetingMedia, MeetingObservation } from '@/lib/meetingTypes';
 import { clampIndex, type CapturedMedia } from '@/lib/meetingCapture';
@@ -66,7 +66,19 @@ export default function MeetingObservations(props: {
     photoInputRef,
     onPhotoInputChange,
   } = props;
-  const count = observations.length;
+
+  const sortedObservations = useMemo(() => {
+    return [...observations].sort((a, b) => {
+      const timeA = a.created_at || a.captured_at || '';
+      const timeB = b.created_at || b.captured_at || '';
+      if (timeA !== timeB) {
+        return timeB.localeCompare(timeA);
+      }
+      return b.id.localeCompare(a.id);
+    });
+  }, [observations]);
+
+  const count = sortedObservations.length;
 
   const [view, setView] = useState<'carousel' | 'grid'>('carousel');
   const [index, setIndex] = useState(0);
@@ -117,7 +129,7 @@ export default function MeetingObservations(props: {
 
       {count > 0 && view === 'carousel' && (
         <MeetingObservationCarousel
-          observations={observations}
+          observations={sortedObservations}
           mediaByObservation={mediaByObservation}
           saving={saving}
           index={index}
@@ -130,7 +142,7 @@ export default function MeetingObservations(props: {
 
       {count > 0 && view === 'grid' && (
         <MeetingObservationGrid
-          observations={observations}
+          observations={sortedObservations}
           mediaByObservation={mediaByObservation}
           onOpen={(i) => {
             setIndex(i);

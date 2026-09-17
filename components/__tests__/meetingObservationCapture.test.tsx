@@ -306,4 +306,71 @@ describe('observation capture interaction: the surface CONFIRMS', () => {
     expect(screen.getByText('Existing evidence.')).not.toBeNull();
     expect(screen.getByRole('button', { name: '+ Photo' })).not.toBeNull();
   });
+
+  it('Test J: MeetingObservations renders newest observation first regardless of input array order', () => {
+    const obsOldest: MeetingObservation = {
+      id: 'o1',
+      user_id: 'u1',
+      meeting_id: 'm-1',
+      text: 'First/oldest observation',
+      captured_at: '2026-06-01T09:00:00.000Z',
+      created_at: '2026-06-01T09:00:00.000Z',
+    };
+    const obsMiddle: MeetingObservation = {
+      id: 'o2',
+      user_id: 'u1',
+      meeting_id: 'm-1',
+      text: 'Middle observation',
+      captured_at: '2026-06-01T10:00:00.000Z',
+      created_at: '2026-06-01T10:00:00.000Z',
+    };
+    const obsNewest: MeetingObservation = {
+      id: 'o3',
+      user_id: 'u1',
+      meeting_id: 'm-1',
+      text: 'Newest observation',
+      captured_at: '2026-06-01T11:00:00.000Z',
+      created_at: '2026-06-01T11:00:00.000Z',
+    };
+
+    // Pass in ascending order (oldest first)
+    render(
+      <MeetingObservations
+        observations={[obsOldest, obsMiddle, obsNewest]}
+        mediaByObservation={new Map()}
+        saving={false}
+        onSaveObservation={async () => true}
+        onDelete={() => {}}
+        onAddMedia={async () => true}
+        onSaveEdit={async () => true}
+        capturing={false}
+        onStartObservation={() => {}}
+        draftText=""
+        draftMedia={[]}
+        recording={false}
+        captureError={null}
+        onTextChange={() => {}}
+        onAddPhoto={() => {}}
+        onToggleVoice={() => {}}
+        onRemoveDraftMedia={() => {}}
+        onCancelObservation={() => {}}
+        photoInputRef={{ current: null }}
+        onPhotoInputChange={() => {}}
+      />
+    );
+
+    // In carousel view, index 0 is active (1 of 3) and shows the newest observation text
+    expect(screen.getByText('Newest observation')).not.toBeNull();
+    expect(screen.getByText('1 of 3')).not.toBeNull();
+
+    // Switch to Grid view
+    fireEvent.click(screen.getByRole('button', { name: 'Grid' }));
+
+    // Grid should display all 3 tiles with Newest first
+    const tiles = screen.getAllByRole('button', { name: /Open observation/i });
+    expect(tiles).toHaveLength(3);
+    expect(tiles[0].textContent).toContain('Newest observation');
+    expect(tiles[1].textContent).toContain('Middle observation');
+    expect(tiles[2].textContent).toContain('First/oldest observation');
+  });
 });
