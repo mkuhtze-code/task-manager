@@ -65,6 +65,10 @@ import {
   consumeMorningPlanMessage,
   type RealityUpdate,
 } from '@/lib/realityCapture';
+import {
+  capacityMinsForTask,
+  planOverflowCarry,
+} from '@/lib/dayFit';
 
 // One-shot browser geolocation for the route's start point. Resolves to
 // null when the API is unavailable, permission is denied, or the fix
@@ -589,7 +593,7 @@ export default function Home() {
     // Start this at the same time as the other reads.
     const historyPromise = supabase
       .from('tasks')
-      .select('text, actual_mins, location_text, lat, lng, job_id, created_at')
+      .select('text, actual_mins, location_text, lat, lng, job_id, created_at, completed_at')
       .eq('status', 'done')
       .not('actual_mins', 'is', null)
       .order('completed_at', { ascending: false })
@@ -750,6 +754,7 @@ export default function Home() {
         lng: r.lng,
         job_id: r.job_id,
         created_at: r.created_at,
+        completed_at: r.completed_at,
       }))
     );
 
@@ -1157,6 +1162,54 @@ export default function Home() {
     setThought(null);
     setLocationResolution(null);
     setCaptureOpen(false);
+
+    // If today is full, carry flexible work (often moves forward) to make room.
+    // Anchors (due today / usually same-day) are never auto-moved.
+    const windowLeft = isWorkDay
+      ? Math.max(
+          timeStringToMinutes(workEnd) - (now.getHours() * 60 + now.getMinutes()),
+          0
+        )
+      : 0;
+    const overflowPlan = planOverflowCarry({
+      openTasks: [...tasks.filter((x) => x.id !== data.id), data],
+      history,
+      clusters,
+      remainingWindowMins: windowLeft,
+      incomingCostMins: 0,
+      protectId: data.id,
+      workDays,
+    });
+    if (overflowPlan.carryIds.length > 0) {
+      const carryDate = nextWorkSurfaceDate(new Date(), workDays);
+      for (const id of overflowPlan.carryIds) {
+        const { error: carryErr } = await supabase
+          .from('tasks')
+          .update({
+            status: 'pending',
+            started_at: null,
+            surface_date: carryDate,
+            due_today: false,
+          })
+          .eq('id', id);
+        if (carryErr) console.error(carryErr);
+      }
+      setTasks((prev) =>
+        prev.map((t) =>
+          overflowPlan.carryIds.includes(t.id)
+            ? {
+                ...t,
+                status: 'pending' as const,
+                started_at: null,
+                surface_date: carryDate,
+                due_today: false,
+              }
+            : t
+        )
+      );
+      if (overflowPlan.message) setRealityCheckMessage(overflowPlan.message);
+    }
+
     if (data.lat != null && sortMode === 'geo_aware') recalcRoute();
 
     // Log the engine's prediction at capture time so it can be compared
@@ -1588,12 +1641,10 @@ export default function Home() {
   // capacity_first sort) is calibrated by reality — without ever touching
   // the number the person actually sees on the task itself.
   function effectiveRemainingForTask(t: Task): number {
-    let logged = t.logged_mins;
-    if (t.status === 'active' && t.started_at) {
-      logged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
-    }
-    const effEstimate = learnedEffectiveEstimates.get(t.id) ?? t.estimate_mins;
-    return Math.max(effEstimate - logged - completedSubtaskMins(t.id), 0);
+    // Capacity uses dayFit: typed/learned duration, or soft floor when untimed —
+    // never treats missing estimates as zero work.
+    const { mins } = capacityMinsForTask(t, history, clusters);
+    return Math.max(mins - completedSubtaskMins(t.id), 0);
   }
 
   const todayStr = localDateStr(now);
