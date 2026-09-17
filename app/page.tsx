@@ -60,6 +60,9 @@ import {
   nextWorkSurfaceDate,
   summarizeReshape,
   tasksForRealityCheck,
+  historyObservationForUpdate,
+  saveDayClose,
+  consumeMorningPlanMessage,
   type RealityUpdate,
 } from '@/lib/realityCapture';
 
@@ -375,6 +378,13 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       setHasSignedInBefore(window.localStorage.getItem(HAS_SIGNED_IN_KEY) === 'true');
     }
+  }, []);
+    // Calm morning line from yesterday’s reshape (once per day, non-blocking).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const today = localDateStr(new Date());
+    const msg = consumeMorningPlanMessage(today);
+    if (msg) setRealityCheckMessage(msg);
   }, []);
 
   useEffect(() => {
@@ -1258,10 +1268,16 @@ export default function Home() {
     setRealityCheckBusy(true);
     const carryDate = nextWorkSurfaceDate(new Date(), workDays);
     const summary = summarizeReshape(updates);
-    try {
+        try {
       for (const u of updates) {
         const task = tasks.find((t) => t.id === u.taskId);
         if (!task) continue;
+
+        // Reality → history (Done / Partial only). Carry & Skip never train.
+        const observation = historyObservationForUpdate(task, u);
+        if (observation) {
+          setHistory((prev) => [observation, ...prev]);
+        }
 
         if (u.outcome === 'done') {
           let finalLogged = task.logged_mins;
@@ -1286,16 +1302,6 @@ export default function Home() {
             return;
           }
           setTasks((prev) => prev.filter((t) => t.id !== u.taskId));
-          setHistory((prev) => [
-            {
-              text: task.text,
-              actual_mins: actual,
-              location_text: task.location_text,
-              lat: task.lat,
-              lng: task.lng,
-            },
-            ...prev,
-          ]);
         } else if (u.outcome === 'partial') {
           let spent = task.logged_mins;
           if (task.status === 'active' && task.started_at) {
@@ -1389,8 +1395,15 @@ export default function Home() {
           );
         }
       }
-      setRealityCheckOpen(false);
-      setRealityCheckMessage(summary.message);
+          setRealityCheckOpen(false);
+    setRealityCheckMessage(summary.message);
+    saveDayClose({
+      date: localDateStr(new Date()),
+      doneCount: summary.doneCount,
+      carriedCount: summary.carriedCount,
+      skippedCount: summary.skippedCount,
+      message: summary.message,
+    });
     } finally {
       setRealityCheckBusy(false);
     }
