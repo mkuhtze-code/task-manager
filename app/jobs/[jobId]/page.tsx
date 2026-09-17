@@ -43,6 +43,7 @@ export default function JobDetailPage() {
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
   const [editOpen, setEditOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [doneOpen, setDoneOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -208,10 +209,12 @@ export default function JobDetailPage() {
   }
 
   async function saveJob(name: string, client: string, locationText: string, lat: number | null, lng: number | null) {
+    setSaving(true);
     const { error: err } = await supabase
       .from('jobs')
       .update({ name, client: client || null, location_text: locationText || null, lat, lng })
       .eq('id', jobId);
+    setSaving(false);
     if (err) {
       console.error(err);
       return;
@@ -559,7 +562,7 @@ export default function JobDetailPage() {
                   <span>{todayCount === 1 ? '1 on Today' : `${todayCount} on Today`}</span>
                 )}
                 {nextTask && !nextNeedsToday && (
-                  <span>Next: {nextTask.text.length > 40 ? nextTask.text.slice(0, 39) + '…' : nextTask.text}</span>
+                  <span>Next: {nextTask.text.length > 40 ? nextTask.text.slice(0, 39) + '\u2026' : nextTask.text}</span>
                 )}
               </div>
               {nextNeedsToday && nextTask && (
@@ -569,7 +572,7 @@ export default function JobDetailPage() {
                   style={{ padding: 0, alignSelf: 'flex-start' }}
                   onClick={() => surfaceOnToday(nextTask.id)}
                 >
-                  Put “{nextTask.text.length > 28 ? nextTask.text.slice(0, 27) + '…' : nextTask.text}” on today
+                  Put \u201c{nextTask.text.length > 28 ? nextTask.text.slice(0, 27) + '\u2026' : nextTask.text}\u201d on today
                 </button>
               )}
             </div>
@@ -645,6 +648,7 @@ export default function JobDetailPage() {
           {editOpen && (
             <JobEditSheet
               job={job}
+              saving={saving}
               onClose={() => setEditOpen(false)}
               onSave={saveJob}
               onDelete={deleteJob}
