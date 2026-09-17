@@ -7,6 +7,7 @@ import { fmtMins, minsToInput, fmtClock } from '@/lib/timeFormat';
 import type { Job } from '@/lib/jobTypes';
 import type { ThoughtParts } from '@/lib/unifiedInput/parse';
 import { hasEntityResolution, type JobLocationResolution, type JobLocationCandidate } from '@/lib/unifiedInput/resolve';
+import { oneShotGate } from '@/lib/unifiedInput/oneShot';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { MapPinIcon } from '@/components/icons';
@@ -42,6 +43,7 @@ export function CaptureSheet(props: {
   declinedResolution: boolean;
   onConfirmResolution: (c: JobLocationCandidate) => void;
   onDeclineResolution: () => void;
+  confirmedJobId?: string | null;
   error: string;
   onClose: () => void;
 }) {
@@ -52,44 +54,43 @@ export function CaptureSheet(props: {
     manualLocationToggle, setManualLocationToggle, showReminderField, setShowReminderField,
     captureSurfaceDate, setCaptureSurfaceDate, jobs, captureJobId, setCaptureJobId,
     thought, intendedTime, locationResolution, declinedResolution, onConfirmResolution, onDeclineResolution,
-    error, onClose,
+    confirmedJobId = null, error, onClose,
   } = props;
+
+  const gate = oneShotGate({
+    rawText: taskText,
+    thought,
+    locationResolution,
+    declinedResolution,
+    confirmedJobId: confirmedJobId ?? null,
+  });
+
+  function tryDock() {
+    addTask();
+  }
 
   const [showJobField, setShowJobField] = useState(false);
   const chosenJob = jobs.find((j) => j.id === captureJobId);
 
-  // V1.2: a resolution that demands (or has already resolved) the user's
-  // attention. 'known' is a previously confirmed relationship the resolver
-  // auto-applied — the user is told (quietly) and can detach, but never
-  // re-asked. The panel shows for these even when the thought carried no
-  // date/time/road facets, so a bare "Kitchen" that resolves to a job is
-  // still visible and correctable.
   const resolutionFocused = !!locationResolution &&
     (locationResolution.state === 'proposed' ||
       locationResolution.state === 'choose' ||
       locationResolution.state === 'known');
 
-  // Auto-fill job from capture context when authority >= 'suggest'.
-  // The context composes job inference, current surface, and gravity.
-  // Only fires when no job is currently selected — explicit user input
-  // always takes precedence. The user can remove the auto-fill at any time.
   useEffect(() => {
     if (captureJobId) return;
     if (captureContext && captureContext.authority !== 'observe' && captureContext.suggestedJobId) {
       const suggestedJob = jobs.find((j) => j.id === captureContext.suggestedJobId);
       if (suggestedJob) {
-        setCaptureJobId(captureContext.suggestedJobId);
+        setCaptureJobId(suggestedJob.id);
       }
     }
   }, [captureContext, captureJobId, jobs, setCaptureJobId]);
 
-  // Auto-fill location from strong engine memory. When the location field
-  // is visible and the engine has strong confidence, fill it silently.
-  // The user can always override by typing a different location.
   useEffect(() => {
     if (!locationFieldVisible) return;
-    if (captureLocationCoords) return; // already has a location
-    if (captureLocationMemorySuggestion && captureLocationMemorySuggestion.authority === 'strong') {
+    if (captureLocationCoords) return;
+    if (captureLocationMemorySuggestion && captureLocationMemorySuggestion.lat != null) {
       setCaptureLocation(captureLocationMemorySuggestion.locationText);
       setCaptureLocationCoords({
         lat: captureLocationMemorySuggestion.lat,
@@ -106,7 +107,14 @@ export function CaptureSheet(props: {
             type="text"
             value={taskText}
             onChange={(e) => setTaskText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                tryDock();
+              }
+            }}
             placeholder="What needs doing?"
+            autoFocus
           />
           <MicButton
             onResult={(text) =>
@@ -115,12 +123,6 @@ export function CaptureSheet(props: {
           />
         </div>
 
-        {/* The live interpretation panel. Shown when the thought carried any
-            facet, OR when a job/location entity was independently recognised —
-            a proposed/choose resolution stands on its own and must not depend
-            on a date/time/priority being present. 'known' (a confirmed
-            relationship V1.2 auto-applied) is surfaced the same way, so a bare
-            term that resolves to a job is still visible and correctable. */}
         {thought && (thought.hadFacets || hasEntityResolution(locationResolution) || resolutionFocused) && (
           <div className="unified-thought-panel">
             {thought.hadFacets && (
@@ -147,7 +149,6 @@ export function CaptureSheet(props: {
                   <button
                     type="button"
                     className="btn btn-steel"
-                    style={{ flex: 1 }}
                     onClick={() => onConfirmResolution(locationResolution.candidate)}
                   >
                     Yes
@@ -205,8 +206,18 @@ export function CaptureSheet(props: {
             placeholder="0m"
             style={{ width: 80 }}
           />
-          <button className="btn btn-steel" style={{ flex: 1 }} onClick={addTask}>Add task</button>
+          <button
+            className="btn btn-steel"
+            style={{ flex: 1 }}
+            onClick={tryDock}
+            disabled={taskText.trim().length === 0}
+          >
+            {gate.ready ? 'Dock' : 'Add task'}
+          </button>
         </div>
+        {gate.blockReason && (
+          <div className="settings-help" style={{ marginTop: 4 }}>{gate.blockReason}</div>
+        )}
 
         {!locationFieldVisible ? (
           <button
@@ -220,49 +231,22 @@ export function CaptureSheet(props: {
           <>
             <LocationAutocomplete
               value={captureLocation}
-              placeholder="Where does this happen?"
               onChange={setCaptureLocation}
-              onPlaceSelected={(result) => {
+              onResolved={(result) => {
                 setCaptureLocation(result.formattedAddress);
                 setCaptureLocationCoords({ lat: result.lat, lng: result.lng });
               }}
             />
-            {captureLocationMemorySuggestion && !captureLocationCoords && captureLocationMemorySuggestion.authority !== 'strong' && (
-              <button
-                type="button"
-                className="estimate-suggestion-chip"
-                onClick={() => {
-                  setCaptureLocation(captureLocationMemorySuggestion.locationText);
-                  setCaptureLocationCoords({ lat: captureLocationMemorySuggestion.lat, lng: captureLocationMemorySuggestion.lng });
-                }}
-              >
-                <MapPinIcon size={13} />
-                <span>{captureLocationMemorySuggestion.locationText} ({captureLocationMemorySuggestion.occurrenceCount}×)</span>
-              </button>
-            )}
-            {!captureLocationMemorySuggestion && captureLocationSuggestion && !captureLocationCoords && (
-              <button
-                type="button"
-                className="estimate-suggestion-chip"
-                onClick={() => {
-                  setCaptureLocation(captureLocationSuggestion.location.text);
-                  setCaptureLocationCoords({ lat: captureLocationSuggestion.location.lat, lng: captureLocationSuggestion.location.lng });
-                }}
-              >
-                <MapPinIcon size={13} />
-                <span>{captureLocationSuggestion.location.text} usual ({captureLocationSuggestion.sampleCount}×)</span>
-              </button>
-            )}
             <button
               type="button"
               className="btn-text"
               onClick={() => {
+                setManualLocationToggle(false);
                 setCaptureLocation('');
                 setCaptureLocationCoords(null);
-                setManualLocationToggle(false);
               }}
             >
-              Remove location
+              Clear location
             </button>
           </>
         )}
@@ -273,48 +257,39 @@ export function CaptureSheet(props: {
             className="reveal-reminder-link"
             onClick={() => setShowReminderField(true)}
           >
-            Remind me later instead
+            + Remind me on a day
           </button>
         ) : (
-          <div className="reminder-date-row">
+          <div className="capture-row">
             <input
               type="date"
               value={captureSurfaceDate}
               onChange={(e) => setCaptureSurfaceDate(e.target.value)}
             />
-            <button
-              type="button"
-              className="btn-text"
-              onClick={() => { setShowReminderField(false); setCaptureSurfaceDate(''); }}
-            >
-              Cancel
+            <button type="button" className="btn-text" onClick={() => { setShowReminderField(false); setCaptureSurfaceDate(''); }}>
+              Clear
             </button>
           </div>
         )}
 
-        {captureJobId && chosenJob ? (
-          <div className="reminder-date-row">
-            <span className="settings-help">In <strong>{chosenJob.name}</strong></span>
-            <button type="button" className="btn-text" onClick={() => { setCaptureJobId(null); setShowJobField(false); }}>
-              Remove
-            </button>
-          </div>
-        ) : !showJobField ? (
+        {!showJobField && !captureJobId ? (
           <button
             type="button"
             className="reveal-reminder-link"
             onClick={() => setShowJobField(true)}
           >
-            + Add to a job
+            + Attach a job
           </button>
-        ) : jobs.length === 0 ? (
-          <div className="reminder-date-row">
-            <span className="settings-help">No jobs yet — create one from the Jobs tab</span>
-            <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
+        ) : captureJobId ? (
+          <div className="capture-row" style={{ alignItems: 'center' }}>
+            <span className="settings-help" style={{ margin: 0 }}>Job: {chosenJob?.name ?? '…'}</span>
+            <button type="button" className="btn-text" onClick={() => { setCaptureJobId(null); setShowJobField(false); }}>
+              Clear
+            </button>
           </div>
         ) : (
-          <div className="job-picker">
-            {jobs.map((j) => (
+          <div className="sheet-inline-options">
+            {jobs.slice(0, 8).map((j) => (
               <button
                 type="button"
                 key={j.id}
@@ -328,8 +303,7 @@ export function CaptureSheet(props: {
           </div>
         )}
 
-        {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-        <button className="btn-text" onClick={onClose}>Cancel</button>
+        {error && <div className="recalc-error">{error}</div>}
       </div>
     </div>
   );
