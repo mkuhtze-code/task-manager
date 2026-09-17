@@ -1258,6 +1258,7 @@ export default function Home() {
     setRealityCheckBusy(true);
     const carryDate = nextWorkSurfaceDate(new Date(), workDays);
     const summary = summarizeReshape(updates);
+    let currentHistory = history;
     try {
       for (const u of updates) {
         const task = tasks.find((t) => t.id === u.taskId);
@@ -1286,16 +1287,27 @@ export default function Home() {
             return;
           }
           setTasks((prev) => prev.filter((t) => t.id !== u.taskId));
-          setHistory((prev) => [
-            {
-              text: task.text,
-              actual_mins: actual,
-              location_text: task.location_text,
-              lat: task.lat,
-              lng: task.lng,
-            },
-            ...prev,
-          ]);
+          const newObs: HistoricalTask = {
+            text: task.text,
+            actual_mins: actual,
+            location_text: task.location_text,
+            lat: task.lat,
+            lng: task.lng,
+          };
+          setHistory((prev) => [newObs, ...prev]);
+          currentHistory = [newObs, ...currentHistory];
+          const updatedClusters = buildClusters(currentHistory);
+          const suggestion = suggestEstimate(task.text, currentHistory, updatedClusters);
+          logCompletionOutcome({
+            userId: session.user.id,
+            taskText: task.text,
+            clusterLabel: suggestion?.matchedLabel ?? null,
+            clusterCount: suggestion?.sampleCount ?? 0,
+            estimatedMins: task.estimate_mins,
+            suggestedMins: suggestion?.suggestedMins ?? null,
+            confidence: suggestion?.confidence ?? 'low',
+            actualMins: actual,
+          }).catch(() => {});
         } else if (u.outcome === 'partial') {
           let spent = task.logged_mins;
           if (task.status === 'active' && task.started_at) {
@@ -1337,17 +1349,17 @@ export default function Home() {
             )
           );
           if (spent > 0 || totalObserved > 0) {
-            setHistory((prev) => [
-              {
-                text: task.text,
-                actual_mins: totalObserved,
-                location_text: task.location_text,
-                lat: task.lat,
-                lng: task.lng,
-              },
-              ...prev,
-            ]);
-            const suggestion = suggestEstimate(task.text, history, clusters);
+            const newObs: HistoricalTask = {
+              text: task.text,
+              actual_mins: totalObserved,
+              location_text: task.location_text,
+              lat: task.lat,
+              lng: task.lng,
+            };
+            setHistory((prev) => [newObs, ...prev]);
+            currentHistory = [newObs, ...currentHistory];
+            const updatedClusters = buildClusters(currentHistory);
+            const suggestion = suggestEstimate(task.text, currentHistory, updatedClusters);
             logCompletionOutcome({
               userId: session.user.id,
               taskText: task.text,
@@ -1417,21 +1429,21 @@ export default function Home() {
     // eligible to inform the very next suggestion, not just after the
     // next page load.
     if (task) {
-      setHistory((prev) => [
-        {
-          text: task.text,
-          actual_mins: Math.round(finalLogged),
-          location_text: task.location_text,
-          lat: task.lat,
-          lng: task.lng,
-        },
-        ...prev,
-      ]);
+      const newObs: HistoricalTask = {
+        text: task.text,
+        actual_mins: Math.round(finalLogged),
+        location_text: task.location_text,
+        lat: task.lat,
+        lng: task.lng,
+      };
+      setHistory((prev) => [newObs, ...prev]);
       // Log the prediction outcome for the thinking engine's evidence
       // loop. This records what the engine predicted vs what actually
       // happened, so the Patterns surface can show calibration data
       // and the engine can measure its own accuracy over time.
-      const suggestion = suggestEstimate(task.text, history, clusters);
+      const updatedHistory = [newObs, ...history];
+      const updatedClusters = buildClusters(updatedHistory);
+      const suggestion = suggestEstimate(task.text, updatedHistory, updatedClusters);
       logCompletionOutcome({
         userId: session.user.id,
         taskText: task.text,
