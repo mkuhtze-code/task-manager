@@ -93,8 +93,8 @@ export function CaptureSheet(props: {
     if (captureLocationMemorySuggestion && captureLocationMemorySuggestion.lat != null) {
       setCaptureLocation(captureLocationMemorySuggestion.locationText);
       setCaptureLocationCoords({
-        lat: captureLocationMemorySuggestion.lat!,
-        lng: captureLocationMemorySuggestion.lng!,
+        lat: captureLocationMemorySuggestion.lat,
+        lng: captureLocationMemorySuggestion.lng,
       });
     }
   }, [locationFieldVisible, captureLocationCoords, captureLocationMemorySuggestion, setCaptureLocation, setCaptureLocationCoords]);
@@ -146,7 +146,13 @@ export function CaptureSheet(props: {
                   {locationResolution.candidate.matchedField === 'location' ? ` (${locationResolution.candidate.jobName})` : ''}?
                 </span>
                 <div className="unified-thought-actions">
-                  <button type="button" className="btn btn-steel" onClick={() => onConfirmResolution(locationResolution.candidate)}>Yes</button>
+                  <button
+                    type="button"
+                    className="btn btn-steel"
+                    onClick={() => onConfirmResolution(locationResolution.candidate)}
+                  >
+                    Yes
+                  </button>
                   <button type="button" className="btn-text" onClick={onDeclineResolution}>Not this</button>
                 </div>
               </div>
@@ -157,7 +163,12 @@ export function CaptureSheet(props: {
                 <span className="unified-thought-prompt">Which one?</span>
                 <div className="sheet-inline-options">
                   {locationResolution.candidates.map((c) => (
-                    <button type="button" key={c.jobId} className="move-day-option" onClick={() => onConfirmResolution(c)}>
+                    <button
+                      type="button"
+                      key={c.jobId}
+                      className="move-day-option"
+                      onClick={() => onConfirmResolution(c)}
+                    >
                       {c.matchedField === 'location' && c.locationText ? `${c.locationText} (${c.jobName})` : c.jobName}
                     </button>
                   ))}
@@ -179,13 +190,28 @@ export function CaptureSheet(props: {
         )}
 
         {captureSuggestion && (
-          <button type="button" className="estimate-suggestion-chip" onClick={() => setTaskTime(minsToInput(captureSuggestion.suggestedMins))}>
+          <button
+            type="button"
+            className="estimate-suggestion-chip"
+            onClick={() => setTaskTime(minsToInput(captureSuggestion.suggestedMins))}
+          >
             ≈ {fmtMins(captureSuggestion.suggestedMins)} usual ({captureSuggestion.sampleCount}×)
           </button>
         )}
         <div className="capture-row">
-          <input type="text" value={taskTime} onChange={(e) => setTaskTime(e.target.value)} placeholder="0m" style={{ width: 80 }} />
-          <button className="btn btn-steel" style={{ flex: 1 }} onClick={tryDock} disabled={taskText.trim().length === 0}>
+          <input
+            type="text"
+            value={taskTime}
+            onChange={(e) => setTaskTime(e.target.value)}
+            placeholder="0m"
+            style={{ width: 80 }}
+          />
+          <button
+            className="btn btn-steel"
+            style={{ flex: 1 }}
+            onClick={tryDock}
+            disabled={taskText.trim().length === 0}
+          >
             {gate.ready ? 'Dock' : 'Add task'}
           </button>
         </div>
@@ -194,73 +220,118 @@ export function CaptureSheet(props: {
         )}
 
         {!locationFieldVisible ? (
-          <button type="button" className="reveal-reminder-link" onClick={() => setManualLocationToggle(true)}>
+          <button
+            type="button"
+            className="reveal-reminder-link"
+            onClick={() => setManualLocationToggle(true)}
+          >
             + Add a location
           </button>
         ) : (
           <>
             <LocationAutocomplete
               value={captureLocation}
+              placeholder="Where does this happen?"
               onChange={setCaptureLocation}
-              onSelect={(place) => {
-                setCaptureLocation(place.description);
-                if (place.lat != null && place.lng != null) {
-                  setCaptureLocationCoords({ lat: place.lat, lng: place.lng });
-                }
+              onPlaceSelected={(result) => {
+                setCaptureLocation(result.formattedAddress);
+                setCaptureLocationCoords({ lat: result.lat, lng: result.lng });
               }}
             />
-            {captureLocationSuggestion && !captureLocation && (
-              <button type="button" className="estimate-suggestion-chip" onClick={() => {
-                setCaptureLocation(captureLocationSuggestion.locationText);
-                if (captureLocationSuggestion.lat != null) {
-                  setCaptureLocationCoords({ lat: captureLocationSuggestion.lat, lng: captureLocationSuggestion.lng! });
-                }
-              }}>
-                <MapPinIcon size={12} /> {captureLocationSuggestion.locationText}
+            {captureLocationMemorySuggestion && !captureLocationCoords && captureLocationMemorySuggestion.authority !== 'strong' && (
+              <button
+                type="button"
+                className="estimate-suggestion-chip"
+                onClick={() => {
+                  setCaptureLocation(captureLocationMemorySuggestion.locationText);
+                  setCaptureLocationCoords({ lat: captureLocationMemorySuggestion.lat, lng: captureLocationMemorySuggestion.lng });
+                }}
+              >
+                <MapPinIcon size={13} />
+                <span>{captureLocationMemorySuggestion.locationText} ({captureLocationMemorySuggestion.occurrenceCount}×)</span>
               </button>
             )}
+            {!captureLocationMemorySuggestion && captureLocationSuggestion && !captureLocationCoords && (
+              <button
+                type="button"
+                className="estimate-suggestion-chip"
+                onClick={() => {
+                  setCaptureLocation(captureLocationSuggestion.location.text);
+                  setCaptureLocationCoords({ lat: captureLocationSuggestion.location.lat, lng: captureLocationSuggestion.location.lng });
+                }}
+              >
+                <MapPinIcon size={13} />
+                <span>{captureLocationSuggestion.location.text} usual ({captureLocationSuggestion.sampleCount}×)</span>
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => {
+                setCaptureLocation('');
+                setCaptureLocationCoords(null);
+                setManualLocationToggle(false);
+              }}
+            >
+              Remove location
+            </button>
           </>
         )}
 
         {!showReminderField ? (
-          <button type="button" className="reveal-reminder-link" onClick={() => setShowReminderField(true)}>
+          <button
+            type="button"
+            className="reveal-reminder-link"
+            onClick={() => setShowReminderField(true)}
+          >
             + Surface on a day
           </button>
         ) : (
           <div className="capture-row">
-            <input type="date" value={captureSurfaceDate} onChange={(e) => setCaptureSurfaceDate(e.target.value)} />
-            <button type="button" className="btn-text" onClick={() => { setShowReminderField(false); setCaptureSurfaceDate(''); }}>Clear</button>
+            <input
+              type="date"
+              value={captureSurfaceDate}
+              onChange={(e) => setCaptureSurfaceDate(e.target.value)}
+            />
+            <button type="button" className="btn-text" onClick={() => { setShowReminderField(false); setCaptureSurfaceDate(''); }}>
+              Clear
+            </button>
           </div>
         )}
 
-        {jobs.length > 0 && (
-          !showJobField && !captureJobId ? (
-            <button type="button" className="reveal-reminder-link" onClick={() => setShowJobField(true)}>
-              + Job
+        {!showJobField && !captureJobId ? (
+          <button
+            type="button"
+            className="reveal-reminder-link"
+            onClick={() => setShowJobField(true)}
+          >
+            + Job
+          </button>
+        ) : captureJobId ? (
+          <div className="capture-row" style={{ alignItems: 'center', gap: 8 }}>
+            <span className="settings-help" style={{ margin: 0 }}>Job: {chosenJob?.name ?? '…'}</span>
+            <button type="button" className="btn-text" onClick={() => { setCaptureJobId(null); setShowJobField(false); }}>
+              Clear
             </button>
-          ) : (
-            <div className="capture-job-row">
-              {captureJobId ? (
-                <button type="button" className="btn-text" onClick={() => setCaptureJobId(null)}>
-                  In job: {chosenJob?.name || ''} ×
-                </button>
-              ) : (
-                <>
-                  <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
-                  <div className="sheet-inline-options">
-                    {jobs.map((j) => (
-                      <button type="button" key={j.id} className="move-day-option" onClick={() => { setCaptureJobId(j.id); setShowJobField(false); }}>
-                        {j.name}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )
+          </div>
+        ) : (
+          <div className="job-picker">
+            {jobs.map((j) => (
+              <button
+                type="button"
+                key={j.id}
+                className="move-day-option"
+                onClick={() => { setCaptureJobId(j.id); setShowJobField(false); }}
+              >
+                {j.name}
+              </button>
+            ))}
+            <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
+          </div>
         )}
 
-        {error ? <div className="sheet-error">{error}</div> : null}
+        {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+        <button className="btn-text" onClick={onClose}>Cancel</button>
       </div>
     </div>
   );
