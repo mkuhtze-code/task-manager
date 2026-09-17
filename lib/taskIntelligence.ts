@@ -49,6 +49,8 @@ export type HistoricalTask = {
   lng?: number | null;
   job_id?: string | null;
   created_at?: string | null;
+  /** When set with created_at, powers same-day vs carry behaviour. */
+  completed_at?: string | null;
 };
 
 export type ClusterLocation = {
@@ -314,7 +316,7 @@ function historicalToFacts(h: HistoricalTask): CompletedTaskFacts {
     actual_mins: h.actual_mins,
     logged_mins: h.actual_mins,
     created_at: h.created_at || '',
-    completed_at: null,
+    completed_at: h.completed_at ?? null,
     started_at: null,
     surface_date: null,
     location_text: h.location_text ?? null,
