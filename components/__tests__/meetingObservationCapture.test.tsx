@@ -373,4 +373,46 @@ describe('observation capture interaction: the surface CONFIRMS', () => {
     expect(tiles[1].textContent).toContain('Middle observation');
     expect(tiles[2].textContent).toContain('First/oldest observation');
   });
+
+  it('Test K: starting capture places the capture UI above existing observations in DOM order', () => {
+    const obs: MeetingObservation = {
+      id: 'o1',
+      user_id: 'u1',
+      meeting_id: 'm-1',
+      text: 'Existing observation item',
+      captured_at: '2026-06-01T10:00:00.000Z',
+      created_at: '2026-06-01T10:00:00.000Z',
+    };
+
+    render(
+      <MeetingObservations
+        observations={[obs]}
+        mediaByObservation={new Map()}
+        saving={false}
+        onSaveObservation={async () => true}
+        onDelete={() => {}}
+        onAddMedia={async () => true}
+        onSaveEdit={async () => true}
+        capturing={true}
+        onStartObservation={() => {}}
+        draftText=""
+        draftMedia={[]}
+        recording={false}
+        captureError={null}
+        onTextChange={() => {}}
+        onAddPhoto={() => {}}
+        onToggleVoice={() => {}}
+        onRemoveDraftMedia={() => {}}
+        onCancelObservation={() => {}}
+        photoInputRef={{ current: null }}
+        onPhotoInputChange={() => {}}
+      />
+    );
+
+    const textarea = screen.getByPlaceholderText(COMPOSER_PLACEHOLDER);
+    const existingObsText = screen.getByText('Existing observation item');
+
+    // Compare DOM position: capture textarea must appear before existing observation content
+    expect(textarea.compareDocumentPosition(existingObsText) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
