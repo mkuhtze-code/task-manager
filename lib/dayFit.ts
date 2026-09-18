@@ -267,11 +267,13 @@ export function planOverflowCarry(params: {
 
   const carryIds: string[] = [];
   const carriedTitles: string[] = [];
+  const carriedHints: string[] = [];
 
   for (const c of candidates) {
     if (load <= window) break;
     carryIds.push(c.task.id);
     carriedTitles.push(c.task.text);
+    if (c.profile.behaviourHint) carriedHints.push(c.profile.behaviourHint);
     load -= c.profile.capacityMins;
   }
 
@@ -287,10 +289,24 @@ export function planOverflowCarry(params: {
     };
   }
 
-  const label =
-    carriedTitles.length === 1
-      ? `“${truncate(carriedTitles[0], 40)}” carried (often moves forward).`
-      : `${carriedTitles.length} items carried (often move forward).`;
+  // Prefer the engine's behaviourHint so the banner explains *why* this moved.
+  const uniqueHints = [...new Set(carriedHints.filter(Boolean))];
+  let label: string;
+  if (carriedTitles.length === 1) {
+    const title = truncate(carriedTitles[0], 40);
+    if (uniqueHints.length === 1) {
+      const hint = uniqueHints[0];
+      const soft = hint.charAt(0).toLowerCase() + hint.slice(1);
+      label = `“${title}” carried — ${soft}.`;
+    } else {
+      label = `“${title}” carried (often moves forward).`;
+    }
+  } else if (uniqueHints.length === 1) {
+    const soft = uniqueHints[0].charAt(0).toLowerCase() + uniqueHints[0].slice(1);
+    label = `${carriedTitles.length} items carried — ${soft}.`;
+  } else {
+    label = `${carriedTitles.length} items carried (often move forward).`;
+  }
 
   let message = label + (next ? ` Surfaces ${next}.` : '');
   if (load > window) {
