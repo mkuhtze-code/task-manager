@@ -69,7 +69,10 @@ import {
 import {
   capacityMinsForTask,
   planOverflowCarry,
+  buildRuntimeObservations,
 } from '@/lib/dayFit';
+import { calibrateFromOutcomes } from '@/lib/thinking/calibration';
+import { getBuffer } from '@/lib/thinking/evidence';
 
 // One-shot browser geolocation for the route's start point. Resolves to
 // null when the API is unavailable, permission is denied, or the fix
@@ -314,7 +317,15 @@ export default function Home() {
   // effective (learned) estimates below. Location suggestions ride the
   // same clusters now — see suggestLocation in taskIntelligence.ts.
   const [history, setHistory] = useState<HistoricalTask[]>([]);
-  const clusters = useMemo(() => buildClusters(history), [history]);
+  // One shared brain slice: duration + behaviour + calibrated soft floor.
+  const runtime = useMemo(() => {
+    const cal = calibrateFromOutcomes(getBuffer());
+    return buildRuntimeObservations(history, {
+      softFloorMins: cal.softFloorMins,
+      calibrationExplain: cal.explain,
+    });
+  }, [history]);
+  const clusters = runtime.clusters;
 
   // ── Learned effective estimates, cached per task id ─────────────
   // The one-second clock re-renders Home constantly; suggestEstimate()'s
@@ -1202,6 +1213,7 @@ export default function Home() {
         )
       : 0;
     const overflowPlan = planOverflowCarry({
+      runtime,
       openTasks: [...tasks.filter((x) => x.id !== data.id), data],
       history,
       clusters,
@@ -1673,7 +1685,7 @@ export default function Home() {
   function effectiveRemainingForTask(t: Task): number {
     // Capacity uses dayFit: typed/learned duration, or soft floor when untimed —
     // never treats missing estimates as zero work.
-    const { mins } = capacityMinsForTask(t, history, clusters);
+    const { mins } = capacityMinsForTask(t, history, clusters, Date.now(), runtime);
     return Math.max(mins - completedSubtaskMins(t.id), 0);
   }
 
