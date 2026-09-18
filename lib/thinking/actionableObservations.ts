@@ -33,7 +33,8 @@ function actionabilityBoost(obs: StructuredObservation): number {
   if (t.includes('time_of_day') || sem.includes('temporal')) boost += 10;
   if (obs.confidence === 'high') boost += 10;
   else if (obs.confidence === 'medium') boost += 5;
-  if (obs.staleness === 'stale' || obs.staleness === 'expired') boost -= 20;
+  // StalenessStatus is 'current' | 'stale' only
+  if (obs.staleness === 'stale') boost -= 20;
   return boost;
 }
 
