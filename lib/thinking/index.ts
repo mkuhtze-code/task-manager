@@ -200,6 +200,11 @@ export {
   logCompletionOutcome,
 } from './evidence/predictionLog';
 
+export {
+  closeCompletionLoop,
+} from './evidence/closeCompletionLoop';
+export type { CloseCompletionLoopParams } from './evidence/closeCompletionLoop';
+
 // Decision-value ranking for quiet product surfaces (Patterns)
 export {
   rankActionableObservations,
