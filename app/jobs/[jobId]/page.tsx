@@ -551,6 +551,10 @@ export default function JobDetailPage() {
       lng: c.lng,
     });
     setDeclinedResolution(false);
+    if (thought) {
+      const alias = deriveAliasTerm(thought, c);
+      persistEntityAlias(alias, c.jobId).catch(() => {});
+    }
   }
 
   function declineResolution() {
@@ -559,51 +563,356 @@ export default function JobDetailPage() {
     setDeclinedResolution(true);
   }
 
-  async function saveAlias(alias: string, entityType: 'job' | 'location', entityId: string) {
+  async function persistEntityAlias(alias: string, targetJobId: string) {
     if (!session) return;
-    const term = deriveAliasTerm(alias);
-    if (!term) return;
-    await supabase
+    const normalized = alias.trim().toLowerCase();
+    if (normalized.length === 0) return;
+    const upsert = await supabase
       .from('entity_aliases')
       .upsert(
         {
           user_id: session.user.id,
-          alias: term,
-          entity_type: entityType,
-          entity_id: entityId,
-          source: 'user',
+          alias: normalized,
+          entity_type: 'job',
+          entity_id: targetJobId,
+          source: 'user_confirmed',
           active: true,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'user_id,alias,entity_type,entity_id' }
-      );
+      )
+      .select('*')
+      .single();
+    if (upsert.error) {
+      console.error('Could not persist entity relationship:', upsert.error.message);
+      return;
+    }
+    setEntityAliases((prev) => {
+      const next = prev.filter((a) => !(a.alias === normalized && a.entityId === targetJobId));
+      return [...next, { alias: normalized, entityType: 'job', entityId: targetJobId, active: true }];
+    });
   }
 
-  // Capture handler — truncated rest restored from local full file in follow-up if needed
-  // NOTE: Full remainder of file continues below in standard job detail implementation.
+  async function addTask() {
+    const originalInput = captureText.trim();
+    if (originalInput.length === 0) {
+      setCaptureError('Give the task a name');
+      return;
+    }
+    const parsed = thought;
+    const text =
+      parsed && parsed.hadFacets && parsed.intent && parsed.intent.length > 0
+        ? parsed.intent
+        : originalInput;
+    const mins = parseMins(captureTime || '0m');
+    if (mins === null) {
+      setCaptureError("Couldn't read that time — try 15m or 1.5h");
+      return;
+    }
+    setCaptureError('');
+    const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order_index), 0);
+    const surfaceDate =
+      showReminderField && captureSurfaceDate.length > 0
+        ? captureSurfaceDate
+        : (parsed?.date ?? null);
+    const intended =
+      intendedTime && intendedTime.length > 0
+        ? intendedTime
+        : (parsed?.time ? parsed.time.label : null);
+    const dockJobId = confirmedJobId ?? captureJobId ?? jobId;
+    const locationText =
+      confirmedLocation && confirmedLocation.text.length > 0
+        ? confirmedLocation.text
+        : (captureLocation.trim().length > 0
+            ? captureLocation.trim()
+            : (parsed?.locationHint && parsed.locationHint.length > 0
+                ? parsed.locationHint
+                : (job?.location_text ?? null)));
+    const lat =
+      confirmedLocation?.lat != null
+        ? confirmedLocation.lat
+        : (captureLocationCoords?.lat ?? job?.lat ?? null);
+    const lng =
+      confirmedLocation?.lng != null
+        ? confirmedLocation.lng
+        : (captureLocationCoords?.lng ?? job?.lng ?? null);
+
+    const { data, error: err } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: session.user.id,
+        text,
+        estimate_mins: mins,
+        source: 'planned',
+        order_index: maxOrder + 1,
+        job_id: dockJobId,
+        surface_date: surfaceDate,
+        intended_time: intended,
+        location_text: locationText,
+        lat,
+        lng,
+        original_input: originalInput,
+      })
+      .select()
+      .single();
+    if (err) {
+      console.error(err);
+      setCaptureError("Couldn't add the task");
+      return;
+    }
+    if (data.job_id === jobId) {
+      setTasks((prev) => [...prev, data as Task]);
+    }
+    setCaptureOpen(false);
+    setCaptureText('');
+    setCaptureTime('');
+    setCaptureLocation('');
+    setCaptureLocationCoords(null);
+    setManualLocationToggle(false);
+    setShowReminderField(false);
+    setCaptureSurfaceDate('');
+    setCaptureJobId(null);
+    setCaptureError('');
+    setThought(null);
+    setLocationResolution(null);
+    setIntendedTime('');
+    setConfirmedJobId(null);
+    setConfirmedLocation(null);
+    setDeclinedResolution(false);
+  }
+
+  function completedSubtaskMins(taskId: string): number {
+    return (subtasksByTask[taskId] || []).filter((s) => s.done).reduce((sum, s) => sum + s.mins, 0);
+  }
+
+  function remainingForTask(t: Task): number {
+    let logged = t.logged_mins;
+    if (t.status === 'active' && t.started_at) {
+      logged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
+    }
+    return Math.max(t.estimate_mins - logged - completedSubtaskMins(t.id), 0);
+  }
+
+  const todayStr = localDateStr(new Date());
+  const progress = jobProgress(tasks, history, clusters);
+  const nextTask = jobNextTask(tasks, todayStr);
+  const todayCount = onTodayCount(tasks, todayStr);
+  const nextNeedsToday = nextTask != null && isScheduledForLater(nextTask, todayStr);
+  const done = isJobDone(tasks);
+  const groups = useMemo(() => groupJobTasks(tasks, todayStr), [tasks, todayStr]);
+  const doneTasks = useMemo(() => doneTasksOf(tasks), [tasks]);
+  const openTask = tasks.find((t) => t.id === openTaskId) || null;
+  const anyActive = tasks.some((x) => x.status === 'active' && x.estimate_mins > 0);
+
+  let openTaskRemaining = 0;
+  let openTaskLiveLogged = 0;
+  if (openTask) {
+    openTaskRemaining = remainingForTask(openTask);
+    openTaskLiveLogged = openTask.logged_mins;
+    if (openTask.status === 'active' && openTask.started_at) {
+      openTaskLiveLogged += (Date.now() - new Date(openTask.started_at).getTime()) / 60000;
+    }
+  }
+
+  const captureLocationFieldVisible =
+    suggestsLocation(captureText) || captureLocation.length > 0 || manualLocationToggle;
 
   return (
     <div className="app-shell">
       <div className="app-header">
         <div className="app-header-left">
-          <button className="back-link" onClick={() => router.push('/jobs')} aria-label="Back">
+          <Link href="/jobs" className="back-link" aria-label="Back to jobs">
             <BackIcon />
-          </button>
-          <h1 className="app-title">{job?.name || 'Job'}</h1>
+          </Link>
+          <h1 className="app-title">{job ? job.name : 'Job'}</h1>
         </div>
         <div className="app-header-right">
           <GearMenu context="jobs" userId={session?.user.id ?? null} />
         </div>
       </div>
-      {loading && <div className="empty-state">Loading…</div>}
+
       {error && (
-        <button className="empty-state" onClick={() => load()}>
+        <button className="recalc-error" onClick={load} disabled={loading}>
           {error}
         </button>
       )}
-      {!loading && !error && job && (
-        <p className="settings-help">Job detail restored — if UI is incomplete, restore from git history before this commit.</p>
-      )}
+
+      {loading ? (
+        <div className="empty-state">Loading…</div>
+      ) : job ? (
+        <>
+          <button className="job-head" onClick={() => setEditOpen(true)} aria-expanded={editOpen}>
+            <span className="job-head-left">
+              {job.client && <span className="job-head-context">{job.client}</span>}
+              {job.location_text && (
+                <span className="job-head-location">
+                  <MapPinIcon size={12} />
+                  <span className="activity-meta-loc-text">{job.location_text}</span>
+                </span>
+              )}
+            </span>
+            <span className="job-head-right">
+              {tasks.length > 0 && (
+                <span className={done ? 'job-head-progress done' : 'job-head-progress'}>
+                  {done
+                    ? `Complete · ${progress.done} of ${progress.total}`
+                    : `${progress.done} of ${progress.total} · ${fmtMins(progress.remainingMins)} left`}
+                </span>
+              )}
+              <span className="job-head-chev"><ChevronIcon size={16} /></span>
+            </span>
+          </button>
+
+          {!done && tasks.length > 0 && (
+            <div style={{ padding: '0 var(--space-page, 16px) var(--space-3)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="settings-help" style={{ margin: 0, display: 'flex', flexWrap: 'wrap', gap: '6px 12px' }}>
+                {todayCount > 0 && (
+                  <span>{todayCount === 1 ? '1 on Today' : `${todayCount} on Today`}</span>
+                )}
+                {nextTask && !nextNeedsToday && (
+                  <span>Next: {nextTask.text.length > 40 ? nextTask.text.slice(0, 39) + '…' : nextTask.text}</span>
+                )}
+              </div>
+              {nextNeedsToday && nextTask && (
+                <button type="button" className="btn-text" style={{ padding: 0, alignSelf: 'flex-start' }} onClick={() => surfaceOnToday(nextTask.id)}>
+                  Put “{nextTask.text.length > 28 ? nextTask.text.slice(0, 27) + '…' : nextTask.text}” on today
+                </button>
+              )}
+            </div>
+          )}
+
+          {tasks.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-title">Nothing here yet.</div>
+              <div className="empty-state-sub">Add a task to start the job — it will show up on Today when it is due.</div>
+              <button className="btn btn-steel" onClick={openCapture}>Add a task</button>
+            </div>
+          ) : (
+            <div className="task-list">
+              {groups.map((group) => (
+                <div key={group.label}>
+                  <div className="job-group-label">{group.label}</div>
+                  {group.tasks.map((t) => (
+                    <TaskCard
+                      key={t.id}
+                      task={t}
+                      remainingForThis={remainingForTask(t)}
+                      liveLogged={
+                        t.status === 'active' && t.started_at
+                          ? t.logged_mins + (Date.now() - new Date(t.started_at).getTime()) / 60000
+                          : t.logged_mins
+                      }
+                      overCap={false}
+                      anyActive={anyActive}
+                      subs={subtasksByTask[t.id] || []}
+                      learnedHint={null}
+                      jobLabel={null}
+                      expanded={expandedId === t.id}
+                      onToggleExpand={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
+                      onOpenDetails={() => { setExpandedId(null); setOpenTaskId(t.id); }}
+                      onComplete={completeTask}
+                      onStart={startTask}
+                      onStop={stopTask}
+                      onToggleSubtaskDone={toggleSubtaskDone}
+                      onSaveInfo={saveTaskInfo}
+                    />
+                  ))}
+                </div>
+              ))}
+              {doneTasks.length > 0 && (
+                <div>
+                  <button type="button" className="job-group-label" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', width: '100%', textAlign: 'left' }} onClick={() => setDoneOpen((v) => !v)}>
+                    Done · {doneTasks.length}
+                  </button>
+                  {doneOpen && doneTasks.map((t) => (
+                    <div key={t.id} className="job-row completed" style={{ opacity: 0.7 }}>
+                      <div className="job-row-top">
+                        <span className="job-row-name">{t.text}</span>
+                        <span className="job-row-done-mark" aria-label="Complete"><CheckIcon done /></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {editOpen && (
+            <JobEditSheet job={job} saving={saving} onClose={() => setEditOpen(false)} onSave={saveJob} onDelete={deleteJob} />
+          )}
+
+          {openTask && (
+            <TaskDetailSheet
+              task={openTask}
+              subs={subtasksByTask[openTask.id] || []}
+              remainingForThis={openTaskRemaining}
+              liveLogged={openTaskLiveLogged}
+              anyActive={anyActive}
+              context="job"
+              jobs={jobs}
+              onClose={() => setOpenTaskId(null)}
+              onSave={updateTask}
+              onComplete={completeTask}
+              onStart={startTask}
+              onStop={stopTask}
+              onToggleDue={toggleDueToday}
+              onAddSubtask={addSubtask}
+              onToggleSubtaskDone={toggleSubtaskDone}
+              onDeleteSubtask={deleteSubtask}
+              onDelete={deleteTask}
+              onSaveInfo={saveTaskInfo}
+              onMoveToJob={moveTaskToJob}
+              subDraftText={subDraftText[openTask.id] || ''}
+              subDraftTime={subDraftTime[openTask.id] || ''}
+              setSubDraftText={(v) => setSubDraftText((prev) => ({ ...prev, [openTask.id]: v }))}
+              setSubDraftTime={(v) => setSubDraftTime((prev) => ({ ...prev, [openTask.id]: v }))}
+            />
+          )}
+
+          {captureOpen && (
+            <CaptureSheet
+              taskText={captureText}
+              setTaskText={setCaptureText}
+              taskTime={captureTime}
+              setTaskTime={setCaptureTime}
+              captureSuggestion={captureSuggestion}
+              captureLocationSuggestion={captureLocationSuggestion}
+              captureLocationMemorySuggestion={captureLocationMemorySuggestion}
+              captureJobSuggestion={captureJobSuggestion}
+              captureContext={captureContext}
+              locationFieldVisible={captureLocationFieldVisible}
+              addTask={addTask}
+              captureLocation={captureLocation}
+              setCaptureLocation={setCaptureLocation}
+              captureLocationCoords={captureLocationCoords}
+              setCaptureLocationCoords={setCaptureLocationCoords}
+              manualLocationToggle={manualLocationToggle}
+              setManualLocationToggle={setManualLocationToggle}
+              showReminderField={showReminderField}
+              setShowReminderField={setShowReminderField}
+              captureSurfaceDate={captureSurfaceDate}
+              setCaptureSurfaceDate={setCaptureSurfaceDate}
+              jobs={jobs}
+              captureJobId={captureJobId}
+              setCaptureJobId={setCaptureJobId}
+              thought={thought}
+              intendedTime={intendedTime}
+              locationResolution={locationResolution}
+              declinedResolution={declinedResolution}
+              onConfirmResolution={confirmResolution}
+              onDeclineResolution={declineResolution}
+              error={captureError}
+              onClose={() => setCaptureOpen(false)}
+            />
+          )}
+        </>
+      ) : null}
+
+      <SurfaceNav
+        active="jobs"
+        onAdd={job && !captureOpen ? () => openCapture() : undefined}
+        addLabel="Add a task"
+      />
     </div>
   );
 }
