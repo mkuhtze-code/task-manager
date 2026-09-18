@@ -30,6 +30,8 @@ export type RuntimeObservations = {
   personalMedian: number | null;
   behaviourByLabel: Record<string, ClusterBehaviour>;
   softFloorMins: number;
+  /** Scales lean on learned duration (from calibration). */
+  blendScale: number;
   calibrationExplain: string | null;
 };
 
@@ -99,7 +101,11 @@ function personalMedianActual(history: HistoricalTask[]): number | null {
 
 export function buildRuntimeObservations(
   history: HistoricalTask[],
-  options?: { softFloorMins?: number; calibrationExplain?: string | null }
+  options?: {
+    softFloorMins?: number;
+    blendScale?: number;
+    calibrationExplain?: string | null;
+  }
 ): RuntimeObservations {
   const clusters = buildClusters(history);
   const behaviourByLabel: Record<string, ClusterBehaviour> = {};
@@ -128,6 +134,7 @@ export function buildRuntimeObservations(
     personalMedian: personalMedianActual(history),
     behaviourByLabel,
     softFloorMins: options?.softFloorMins ?? 30,
+    blendScale: options?.blendScale ?? 1,
     calibrationExplain: options?.calibrationExplain ?? null,
   };
 }
