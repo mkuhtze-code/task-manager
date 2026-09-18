@@ -31,6 +31,7 @@ import {
 import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
 import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
 import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
+import { oneShotGate, formatDockSummary } from '@/lib/unifiedInput/oneShot';
 import { resolveJobAndLocation, deriveAliasTerm, type JobLocationResolution, type JobLocationCandidate, type EntityAliasMemory, type EntityRelationshipMemory } from '@/lib/unifiedInput/resolve';
 import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
 import type { SurfaceEvent, Surface } from '@/lib/thinking/types';
@@ -136,6 +137,8 @@ export default function Home() {
   const [workDays, setWorkDays] = useState<number[]>(DEFAULT_WORK_DAYS);
   const [sortMode, setSortMode] = useState<SortMode>('capacity_first');
   const [captureOpen, setCaptureOpen] = useState(false);
+  /** Quiet post-dock line: what landed + optional clear. */
+  const [dockSummary, setDockSummary] = useState<string | null>(null);
   const [realityCheckOpen, setRealityCheckOpen] = useState(false);
   const [realityCheckBusy, setRealityCheckBusy] = useState(false);
   const [realityCheckMessage, setRealityCheckMessage] = useState<string | null>(null);
@@ -1088,13 +1091,28 @@ export default function Home() {
   async function addTask() {
     const originalInput = taskText.trim();
     if (originalInput.length === 0) return;
+    const gate = oneShotGate({
+      rawText: originalInput,
+      thought,
+      locationResolution,
+      declinedResolution,
+      confirmedJobId,
+    });
+    if (!gate.ready) {
+      setError(gate.blockReason || 'Confirm or skip the place first');
+      return;
+    }
     const parsed = thought;
     // The action is the parsed intent when the thought carried consumable
     // facets; otherwise it is the raw text, unchanged.
     const text = parsed && parsed.hadFacets && parsed.intent && parsed.intent.length > 0
       ? parsed.intent
       : originalInput;
-    const mins = parseMins(taskTime);
+    // One-shot: empty time is allowed (untimed work). Soft parse only when typed.
+    const mins =
+      taskTime.trim().length === 0
+        ? 0
+        : parseMins(taskTime);
     if (mins === null) {
       setError('Could not read that time, try 15m or 1.5h');
       return;
@@ -1146,6 +1164,18 @@ export default function Home() {
       return;
     }
 
+    const dockedJobName = (confirmedJobId ?? captureJobId)
+      ? jobs.find((j) => j.id === (confirmedJobId ?? captureJobId))?.name ?? null
+      : null;
+    setDockSummary(
+      formatDockSummary({
+        text,
+        surfaceDate: surfaceDate,
+        intendedTime: intendedTime,
+        locationText: locationText,
+        jobName: dockedJobName,
+      })
+    );
     setTasks((prev) => [...prev, data]);
     setTaskText('');
     setTaskTime('');
@@ -1842,6 +1872,25 @@ export default function Home() {
 
 
       <div className="task-list">
+      {dockSummary && (
+        <div
+          className="settings-help"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            padding: '8px var(--space-page, 16px)',
+            margin: 0,
+          }}
+        >
+          <span>Docked · {dockSummary}</span>
+          <button type="button" className="btn-text" style={{ padding: 0, flexShrink: 0 }} onClick={() => setDockSummary(null)}>
+            OK
+          </button>
+        </div>
+      )}
+
         {taskLoadError ? (
           <div className="empty-state">
             <div className="empty-state-title">Couldn't load your tasks.</div>
@@ -1999,6 +2048,7 @@ export default function Home() {
           declinedResolution={declinedResolution}
           onConfirmResolution={confirmResolution}
           onDeclineResolution={declineResolution}
+          confirmedJobId={confirmedJobId}
           error={error}
           onClose={() => setCaptureOpen(false)}
         />
