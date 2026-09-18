@@ -404,13 +404,18 @@ export function hasMeaningfulDivergence(typedMins: number, suggestedMins: number
   return _hasMeaningfulDivergence(typedMins, suggestedMins);
 }
 
-export function effectiveEstimate(typedMins: number, suggestion: EstimateSuggestion | null): number {
+export function effectiveEstimate(
+  typedMins: number,
+  suggestion: EstimateSuggestion | null,
+  blendScale?: number
+): number {
   if (!suggestion) return typedMins;
   const decision = _computeEffectiveEstimate({
     typedMins,
     suggestedMins: suggestion.suggestedMins,
     confidence: suggestion.confidence,
     clusterCount: suggestion.sampleCount,
+    blendScale,
   });
   return decision.blendedMins;
 }
