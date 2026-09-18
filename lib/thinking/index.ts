@@ -200,6 +200,13 @@ export {
   logCompletionOutcome,
 } from './evidence/predictionLog';
 
+// Decision-value ranking for quiet product surfaces (Patterns)
+export {
+  rankActionableObservations,
+  topActionableObservations,
+  formatObservationLine,
+} from './actionableObservations';
+
 // ── Thinking Engine V2 / V2.1 ─────────────────────────────────────
 export {
   runObservationPipeline,
