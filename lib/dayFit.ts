@@ -4,19 +4,9 @@
  *
  * Deterministic. No AI. Tool conforms to the user.
  *
- * Capacity (what fits):
- * 1. Typed estimate > 0 (blended with learned when confident)
- * 2. Learned duration from similar completed work
- * 3. Personal median of all actuals
- * 4. Soft floor so untimed work never costs zero
- *
- * Auto-carry under pressure (strict — avoid displacing important work):
- * - ONLY auto-carry tasks with clear "often moves forward" history (flexible).
- * - Never auto-carry: intended_time, active timer, strong same-day history.
- * - Neutrals (unknown importance) are NOT silently carried.
- *
  * Runtime observations (optional): pass buildRuntimeObservations(history)
  * so duration + behaviour match the same cluster as capture chips.
+ * softFloorMins on the runtime bundle may be calibrated from prediction outcomes.
  */
 
 import {
@@ -134,6 +124,7 @@ export function capacityMinsForTask(
     signals?.estimate ??
     suggestEstimate(task.text, history, clusters ?? runtime?.clusters);
   const median = runtime?.personalMedian ?? personalMedianActual(history);
+  const softFloor = runtime?.softFloorMins ?? SOFT_DEFAULT_MINS;
 
   if (task.estimate_mins > 0) {
     const eff = effectiveEstimate(task.estimate_mins, suggestion);
@@ -146,7 +137,7 @@ export function capacityMinsForTask(
 
   if (suggestion && suggestion.suggestedMins > 0) {
     return {
-      mins: Math.max(suggestion.suggestedMins - logged, SOFT_DEFAULT_MINS * 0.5),
+      mins: Math.max(suggestion.suggestedMins - logged, softFloor * 0.5),
       inferred: true,
       explain: signals?.explainDuration ?? null,
     };
@@ -154,16 +145,18 @@ export function capacityMinsForTask(
 
   if (median != null && median > 0) {
     return {
-      mins: Math.max(median - logged, SOFT_DEFAULT_MINS * 0.5),
+      mins: Math.max(median - logged, softFloor * 0.5),
       inferred: true,
       explain: signals?.explainDuration ?? `≈ ${median}m typical for you`,
     };
   }
 
   return {
-    mins: Math.max(SOFT_DEFAULT_MINS - logged, 5),
+    mins: Math.max(softFloor - logged, 5),
     inferred: true,
-    explain: 'Not enough history yet — using a soft default',
+    explain:
+      runtime?.calibrationExplain ??
+      'Not enough history yet — using a soft default',
   };
 }
 
