@@ -10,6 +10,8 @@ import {
   buildUserPatterns,
   summarizeAccuracy,
   runObservationPipeline,
+  topActionableObservations,
+  formatObservationLine,
   type CompletedTaskFacts,
   type EstimateAccuracyObservation,
   type Confidence,
@@ -282,12 +284,14 @@ export default function Analytics() {
       .slice(0, 6);
   }, [v2Observations]);
 
-  // Top signals for the period — skip cluster types already shown above
-  const topSignals = useMemo(() => {
-    return v2Observations
-      .filter((o) => o.type !== 'cluster')
-      .slice(0, 6);
-  }, [v2Observations]);
+  // Decision-value signals from full history (not the period window).
+  // Rank by what changes capture / capacity / carry — max 5, quiet by default.
+  const actionableSignals = useMemo(() => {
+    return topActionableObservations(allFacts, {
+      timezone: userTimezone || 'UTC',
+      limit: 5,
+    }).filter((o) => o.confidence !== 'low' && o.staleness !== 'stale');
+  }, [allFacts, userTimezone]);
 
   if (!session) {
     return (
@@ -377,6 +381,36 @@ export default function Analytics() {
             </div>
           </div>
 
+          {/* Worth noticing — decision-value only, full history */}
+          {actionableSignals.length > 0 && (
+            <div className="settings-panel patterns-panel">
+              <div className="settings-panel-title">Worth noticing</div>
+              <p className="settings-help" style={{ marginTop: 4, marginBottom: 8 }}>
+                Quiet signals that tend to change how your day fits.
+              </p>
+              <div className="patterns-signals">
+                {actionableSignals.map((obs) => (
+                  <div key={obs.id} className="patterns-signal">
+                    <div className="patterns-signal-top">
+                      <span
+                        className={`patterns-conf patterns-conf-${obs.confidence}`}
+                        title={`${obs.confidence} confidence`}
+                      />
+                      <span className="patterns-signal-title">
+                        {formatObservationLine(obs, 100)}
+                      </span>
+                    </div>
+                    {obs.affectedContext.location && (
+                      <div className="patterns-signal-meta">
+                        {obs.affectedContext.location}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* How you capture */}
           {periodUserPatterns && periodUserPatterns.totalCompleted > 0 && (
             <div className="settings-panel patterns-panel">
@@ -450,32 +484,10 @@ export default function Analytics() {
             </div>
           )}
 
-          {/* Signals — short cards, not essays */}
-          {topSignals.length > 0 && (
-            <div className="settings-panel patterns-panel">
-              <div className="settings-panel-title">Signals</div>
-              <div className="patterns-signals">
-                {topSignals.map((obs) => (
-                  <div key={obs.id} className="patterns-signal">
-                    <div className="patterns-signal-top">
-                      <span className={`patterns-conf patterns-conf-${obs.confidence}`} title={`${obs.confidence} confidence`} />
-                      <span className="patterns-signal-title">{obs.title}</span>
-                    </div>
-                    {obs.affectedContext.location && (
-                      <div className="patterns-signal-meta">
-                        {obs.affectedContext.location}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {!loading &&
             totalCompleted === 0 &&
             clusterInsights.length === 0 &&
-            topSignals.length === 0 && (
+            actionableSignals.length === 0 && (
               <p className="settings-help">
                 Keep completing tasks — patterns show up once there is enough history.
               </p>
