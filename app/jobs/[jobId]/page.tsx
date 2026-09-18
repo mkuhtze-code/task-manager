@@ -238,14 +238,16 @@ export default function JobDetailPage() {
       setSubtasksByTask(grouped);
     }
 
+    // User-wide history so job remaining mins share the same runtime
+    // observations as Today and the Jobs overview (not only this job's tasks).
     const { data: historyRows } = await supabase
       .from('tasks')
       .select('text, actual_mins, location_text, lat, lng, job_id, created_at, completed_at')
-      .eq('job_id', jobId)
+      .eq('user_id', userId)
       .eq('status', 'done')
       .not('actual_mins', 'is', null)
       .order('completed_at', { ascending: false })
-      .limit(200);
+      .limit(500);
     setHistory(
       (historyRows || []).map((r: any) => ({
         text: r.text,
