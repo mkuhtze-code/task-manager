@@ -28,7 +28,8 @@ import {
   suggestLocationMemory,
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
-import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
+import { logCapturePrediction } from '@/lib/thinking/evidence/predictionLog';
+import { closeCompletionLoop } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
 import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
 import { oneShotGate, formatDockSummary } from '@/lib/unifiedInput/oneShot';
@@ -1457,17 +1458,14 @@ export default function Home() {
               },
               ...prev,
             ]);
-            const suggestion = suggestEstimate(task.text, history, clusters);
-            logCompletionOutcome({
-              userId: session.user.id,
+            closeCompletionLoop({
+              userId: session?.user?.id,
               taskText: task.text,
-              clusterLabel: suggestion?.matchedLabel ?? null,
-              clusterCount: suggestion?.sampleCount ?? 0,
-              estimatedMins: task.estimate_mins,
-              suggestedMins: suggestion?.suggestedMins ?? null,
-              confidence: suggestion?.confidence ?? 'low',
+              estimateMins: task.estimate_mins,
               actualMins: totalObserved,
-            }).catch(() => {});
+              history,
+              clusters,
+            });
           }
         } else if (u.outcome === 'carried' || u.outcome === 'skipped') {
           const { error } = await supabase
@@ -1521,7 +1519,7 @@ export default function Home() {
     }
     const { error } = await supabase
       .from('tasks')
-      .update({ status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: Math.round(finalLogged), completed_at: new Date().toISOString() })
+      .update({ status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: Math.round(finalLogged) > 0 ? Math.round(finalLogged) : Math.round(task?.estimate_mins || 0), completed_at: new Date().toISOString() })
       .eq('id', id);
     if (error) {
       console.error(error);
@@ -1534,31 +1532,31 @@ export default function Home() {
     // eligible to inform the very next suggestion, not just after the
     // next page load.
     if (task) {
-      setHistory((prev) => [
-        {
-          text: task.text,
-          actual_mins: Math.round(finalLogged),
-          location_text: task.location_text,
-          lat: task.lat,
-          lng: task.lng,
-        },
-        ...prev,
-      ]);
-      // Log the prediction outcome for the thinking engine's evidence
-      // loop. This records what the engine predicted vs what actually
-      // happened, so the Patterns surface can show calibration data
-      // and the engine can measure its own accuracy over time.
-      const suggestion = suggestEstimate(task.text, history, clusters);
-      logCompletionOutcome({
-        userId: session.user.id,
+      // Prefer timer-observed time; fall back to estimate so zero-timer
+      // completes still feed the loop when the user had an estimate.
+      const actual = Math.round(finalLogged) > 0
+        ? Math.round(finalLogged)
+        : Math.round(task.estimate_mins || 0);
+      if (actual > 0) {
+        setHistory((prev) => [
+          {
+            text: task.text,
+            actual_mins: actual,
+            location_text: task.location_text,
+            lat: task.lat,
+            lng: task.lng,
+          },
+          ...prev,
+        ]);
+      }
+      closeCompletionLoop({
+        userId: session?.user?.id,
         taskText: task.text,
-        clusterLabel: suggestion?.matchedLabel ?? null,
-        clusterCount: suggestion?.sampleCount ?? 0,
-        estimatedMins: task.estimate_mins,
-        suggestedMins: suggestion?.suggestedMins ?? null,
-        confidence: suggestion?.confidence ?? 'low',
-        actualMins: Math.round(finalLogged),
-      }).catch(() => {}); // fire-and-forget; evidence logging is best-effort
+        estimateMins: task.estimate_mins,
+        actualMins: actual,
+        history,
+        clusters,
+      });
     }
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
   }
