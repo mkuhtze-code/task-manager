@@ -17,6 +17,9 @@ import MeetingObservationGrid from '@/components/MeetingObservationGrid';
 // page — without cancelling the draft. The hidden photo input is rendered
 // below UNGATED by capture state, so it (and the handshake callback behind
 // it) survive the picker lifecycle.
+//
+// Capture sits ABOVE the carousel/grid so the composer is always in view
+// when + Observation is tapped — never under existing evidence.
 export default function MeetingObservations(props: {
   observations: MeetingObservation[];
   mediaByObservation: Map<string, MeetingMedia[]>;
@@ -125,6 +128,22 @@ export default function MeetingObservations(props: {
         </div>
       </div>
 
+      {capturing && (
+        <ObservationCapture
+          saving={saving}
+          text={draftText}
+          media={draftMedia}
+          recording={recording}
+          captureError={captureError}
+          onTextChange={onTextChange}
+          onAddPhoto={onAddPhoto}
+          onToggleVoice={onToggleVoice}
+          onRemoveMedia={onRemoveDraftMedia}
+          onSave={handleSaveObservation}
+          onCancel={onCancelObservation}
+        />
+      )}
+
       {count === 0 && !capturing && <p className="meeting-empty">No evidence captured yet.</p>}
 
       {count > 0 && view === 'carousel' && (
@@ -148,22 +167,6 @@ export default function MeetingObservations(props: {
             setIndex(i);
             setView('carousel');
           }}
-        />
-      )}
-
-      {capturing && (
-        <ObservationCapture
-          saving={saving}
-          text={draftText}
-          media={draftMedia}
-          recording={recording}
-          captureError={captureError}
-          onTextChange={onTextChange}
-          onAddPhoto={onAddPhoto}
-          onToggleVoice={onToggleVoice}
-          onRemoveMedia={onRemoveDraftMedia}
-          onSave={handleSaveObservation}
-          onCancel={onCancelObservation}
         />
       )}
 
