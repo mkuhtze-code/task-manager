@@ -3,6 +3,10 @@ import { fmtMins, fmtSurfaceDate, isScheduledForLater, localDateStr } from '@/li
 import { capacityMinsForTask, buildRuntimeObservations } from '@/lib/dayFit';
 import type { HistoricalTask, TaskCluster } from '@/lib/taskIntelligence';
 
+// ── Derived Job state — everything the Jobs surfaces show is computed
+// here from the Job's Tasks. Jobs carry no status, dates or estimates of
+// their own, so none of these live in the database.
+
 export function openTasksOf(jobTasks: Task[]): Task[] {
   return jobTasks.filter((t) => t.status !== 'done');
 }
@@ -13,7 +17,8 @@ export function isJobDone(jobTasks: Task[]): boolean {
 
 /**
  * Remaining capacity minutes across open tasks.
- * Uses dayFit + shared runtime so untimed work doesn't read as zero.
+ * Uses dayFit when history is provided so untimed work doesn't read as zero.
+ * Falls back to typed estimate − logged when history is omitted.
  */
 export function jobRemainingMins(
   jobTasks: Task[],
@@ -45,6 +50,22 @@ export function jobRemainingMins(
   );
 }
 
+// The one mono numeral for an overview row: remaining time across open
+// Tasks (falling back to the open-Task count when there's no timed or
+// inferred work to add up). Prefer passing history so untimed tasks still
+// contribute a soft capacity cost.
+export function jobNumeral(
+  jobTasks: Task[],
+  history: HistoricalTask[] = [],
+  clusters?: TaskCluster[]
+): string {
+  const open = openTasksOf(jobTasks);
+  if (open.length === 0) return '';
+  const mins = jobRemainingMins(jobTasks, history, clusters);
+  if (mins > 0) return fmtMins(mins);
+  return open.length === 1 ? '1 open' : `${open.length} open`;
+}
+
 export function jobProgress(
   jobTasks: Task[],
   history: HistoricalTask[] = [],
@@ -56,20 +77,45 @@ export function jobProgress(
   return { done, total, remainingMins };
 }
 
-export function jobNextTask(jobTasks: Task[], todayStr: string): Task | null {
+export function onTodayCount(jobTasks: Task[], todayStr?: string): number {
+  const today = todayStr ?? localDateStr(new Date());
+  return openTasksOf(jobTasks).filter((t) => !isScheduledForLater(t, today)).length;
+}
+
+export function jobNextTask(jobTasks: Task[], todayStr?: string): Task | null {
+  const today = todayStr ?? localDateStr(new Date());
   const open = openTasksOf(jobTasks);
   if (open.length === 0) return null;
-  const onToday = open.filter((t) => !isScheduledForLater(t, todayStr));
+  const onToday = open.filter((t) => !isScheduledForLater(t, today));
   const pool = onToday.length > 0 ? onToday : open;
   return [...pool].sort((a, b) => a.order_index - b.order_index)[0] ?? null;
 }
 
-export function onTodayCount(jobTasks: Task[], todayStr: string): number {
-  return openTasksOf(jobTasks).filter((t) => !isScheduledForLater(t, todayStr)).length;
+export function jobOverviewMeta(
+  jobTasks: Task[],
+  todayStr?: string
+): { todayCount: number; nextLabel: string | null } {
+  const today = todayStr ?? localDateStr(new Date());
+  const todayCount = onTodayCount(jobTasks, today);
+  const next = jobNextTask(jobTasks, today);
+  const nextLabel = next
+    ? next.text.length > 36
+      ? next.text.slice(0, 35) + '…'
+      : next.text
+    : null;
+  return { todayCount, nextLabel };
 }
 
-export function doneTasksOf(jobTasks: Task[]): Task[] {
-  return jobTasks.filter((t) => t.status === 'done');
+export function sortJobsForOverview<T extends { id: string; created_at: string }>(
+  jobs: T[],
+  tasksByJob: Record<string, Task[]>
+): T[] {
+  return [...jobs].sort((a, b) => {
+    const aDone = isJobDone(tasksByJob[a.id] || []);
+    const bDone = isJobDone(tasksByJob[b.id] || []);
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    return b.created_at.localeCompare(a.created_at);
+  });
 }
 
 export type JobTaskGroup = { label: string; tasks: Task[] };
@@ -97,8 +143,10 @@ export function groupJobTasks(jobTasks: Task[], todayStr: string): JobTaskGroup[
   return groups;
 }
 
-export function formatJobRemaining(mins: number, openCount: number): string {
-  if (mins > 0) return fmtMins(mins);
-  if (openCount > 0) return openCount === 1 ? '1 open' : `${openCount} open`;
-  return '';
+export function doneTasksOf(jobTasks: Task[]): Task[] {
+  return jobTasks.filter((t) => t.status === 'done');
+}
+
+export function visibleNowOf(jobTasks: Task[], todayStr: string): Task[] {
+  return openTasksOf(jobTasks).filter((t) => !isScheduledForLater(t, todayStr));
 }
