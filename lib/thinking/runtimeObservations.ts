@@ -28,8 +28,9 @@ export type RuntimeObservations = {
   history: HistoricalTask[];
   clusters: TaskCluster[];
   personalMedian: number | null;
-  /** cluster.label → same-day close rate among members with created+completed */
   behaviourByLabel: Record<string, ClusterBehaviour>;
+  softFloorMins: number;
+  calibrationExplain: string | null;
 };
 
 export type TaskSignals = {
@@ -38,9 +39,7 @@ export type TaskSignals = {
   sameDaySamples: number;
   location: ClusterLocation | null;
   matchedLabel: string | null;
-  /** Calm one-liner for duration, or null */
   explainDuration: string | null;
-  /** Calm one-liner for carry/urgency behaviour, or null */
   explainBehaviour: string | null;
 };
 
@@ -98,11 +97,10 @@ function personalMedianActual(history: HistoricalTask[]): number | null {
   return vals.length % 2 === 0 ? Math.round((vals[mid - 1] + vals[mid]) / 2) : vals[mid];
 }
 
-/**
- * Build once per history load / history change. Pass the result into
- * dayFit and capture lookups so capacity and chips share one match.
- */
-export function buildRuntimeObservations(history: HistoricalTask[]): RuntimeObservations {
+export function buildRuntimeObservations(
+  history: HistoricalTask[],
+  options?: { softFloorMins?: number; calibrationExplain?: string | null }
+): RuntimeObservations {
   const clusters = buildClusters(history);
   const behaviourByLabel: Record<string, ClusterBehaviour> = {};
 
@@ -129,12 +127,11 @@ export function buildRuntimeObservations(history: HistoricalTask[]): RuntimeObse
     clusters,
     personalMedian: personalMedianActual(history),
     behaviourByLabel,
+    softFloorMins: options?.softFloorMins ?? 30,
+    calibrationExplain: options?.calibrationExplain ?? null,
   };
 }
 
-/**
- * Single lookup for a task/capture string against the runtime bundle.
- */
 export function lookupTaskSignals(text: string, runtime: RuntimeObservations): TaskSignals {
   const empty: TaskSignals = {
     estimate: null,
