@@ -1,0 +1,32 @@
+/* Observation UI layout fix
+   Horizontal carousels need each slide sized to the viewport, not the
+   growing flex content. Without flex-basis: 100%, slides expand and
+   scroll-snap / "N of M" break. */
+
+.observation-carousel-viewport,
+.meeting-carousel-track {
+  width: 100%;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+}
+
+.observation-carousel-slide,
+.meeting-carousel-slide {
+  flex: 0 0 100% !important;
+  width: 100% !important;
+  max-width: 100%;
+  scroll-snap-stop: always;
+  box-sizing: border-box;
+}
+
+.observation-tile {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.observation-carousel,
+.meeting-carousel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
