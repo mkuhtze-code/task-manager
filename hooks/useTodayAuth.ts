@@ -99,6 +99,7 @@ export function useTodayAuth() {
     forgotPasswordSent,
     setForgotPasswordSent,
     signInError,
+    setSignInError,
     hasSignedInBefore,
     isNewUser,
     setIsNewUser,
