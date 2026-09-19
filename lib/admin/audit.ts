@@ -11,7 +11,9 @@ export type AdminAuditAction =
   | 'errors.list'
   | 'errors.resolve'
   | 'audit.list'
-  | 'admin_access.list';
+  | 'admin_access.list'
+  | 'product_snapshot.view'
+  | 'system_snapshot.view';
 
 /**
  * Best-effort write to admin_audit_events. Never throws to the caller —
