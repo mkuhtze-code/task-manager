@@ -415,6 +415,17 @@ export default function Preferences() {
       ]);
 
       setNotifStatus('Creating subscription...');
+      // Browsers only allow one push subscription per registration. If a
+      // previous install used a different VAPID key (or FCM sender id),
+      // subscribe() fails until that subscription is removed.
+      const existing = await registration.pushManager.getSubscription();
+      if (existing) {
+        try {
+          await existing.unsubscribe();
+        } catch {
+          // Continue — subscribe may still succeed after a partial clear.
+        }
+      }
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
