@@ -10,7 +10,8 @@ export type AdminAuditAction =
   | 'fcm.test_send'
   | 'errors.list'
   | 'errors.resolve'
-  | 'audit.list';
+  | 'audit.list'
+  | 'admin_access.list';
 
 /**
  * Best-effort write to admin_audit_events. Never throws to the caller —

@@ -5,7 +5,7 @@ import { useAdminSession } from '../AdminContext';
 import { apiUrl } from '@/lib/authedFetch';
 import { formatRelative } from '@/components/admin/format';
 
-const FILTERS = ['all', 'users', 'feedback', 'activity', 'overview', 'fcm', 'errors', 'audit'] as const;
+const FILTERS = ['all', 'users', 'feedback', 'activity', 'overview', 'fcm', 'errors', 'audit', 'admin_access'] as const;
 type FilterKey = (typeof FILTERS)[number];
 
 const FILTER_LABELS: Record<FilterKey, string> = {
@@ -17,6 +17,7 @@ const FILTER_LABELS: Record<FilterKey, string> = {
   fcm: 'FCM',
   errors: 'Errors',
   audit: 'Audit',
+  admin_access: 'Admin access',
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -30,6 +31,7 @@ const ACTION_LABELS: Record<string, string> = {
   'errors.list': 'Listed errors',
   'errors.resolve': 'Toggled error resolved',
   'audit.list': 'Viewed audit log',
+  'admin_access.list': 'Viewed admin membership',
 };
 
 type AuditEvent = {

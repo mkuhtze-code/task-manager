@@ -78,7 +78,13 @@ export const ADMIN_NAV: AdminNavGroup[] = [
   {
     group: 'Security',
     items: [
-      { slug: 'admin-access', title: 'Admin Access', href: '/admin/admin-access', implemented: false, description: 'Administrator membership management.' },
+      {
+        slug: 'admin-access',
+        title: 'Admin Access',
+        href: '/admin/admin-access',
+        implemented: true,
+        description: 'Who holds administrator membership (read-only; grant/revoke via SQL).',
+      },
       {
         slug: 'audit-log',
         title: 'Audit Log',
