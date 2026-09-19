@@ -2,7 +2,7 @@
 
 import { useAdminSession } from '../AdminContext';
 import { useAdminFetch } from '@/lib/admin/useAdminFetch';
-import MetricGrid from '@/components/admin/MetricGrid';
+import SimpleMetricGrid from '@/components/admin/SimpleMetricGrid';
 
 type Snapshot = {
   privacyNote: string;
@@ -34,7 +34,7 @@ export default function AdminMeetingsPage() {
       {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
       {data && (
         <>
-          <MetricGrid
+          <SimpleMetricGrid
             cells={[
               { label: 'Total recorded', value: String(data.meetings.total) },
               { label: 'This week', value: String(data.meetings.thisWeek) },

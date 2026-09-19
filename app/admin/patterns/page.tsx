@@ -2,7 +2,7 @@
 
 import { useAdminSession } from '../AdminContext';
 import { useAdminFetch } from '@/lib/admin/useAdminFetch';
-import MetricGrid from '@/components/admin/MetricGrid';
+import SimpleMetricGrid from '@/components/admin/SimpleMetricGrid';
 
 type Snapshot = {
   privacyNote: string;
@@ -28,7 +28,7 @@ export default function AdminPatternsPage() {
       {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
       {data && (
         <>
-          <MetricGrid
+          <SimpleMetricGrid
             cells={[
               { label: 'Completed tasks (history)', value: String(data.patterns.completedTasks) },
               {

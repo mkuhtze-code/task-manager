@@ -1,29 +1,17 @@
-export type MetricCell = {
-  label: string;
-  value: string;
-  note?: string;
-};
+import type { OverviewMetric } from '@/lib/admin/types';
 
-export default function MetricGrid({ cells }: { cells: MetricCell[] }) {
+// Dense label/value chip used inside panels (accounts, product usage).
+// Not clickable — these are detail read-outs, not navigation.
+export default function MetricGrid({ metrics, cols = 4 }: { metrics: OverviewMetric[]; cols?: number }) {
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-        gap: 12,
-      }}
-    >
-      {cells.map((c) => (
-        <div
-          key={c.label}
-          className="settings-panel"
-          style={{ margin: 0, padding: '12px 14px' }}
-        >
-          <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginBottom: 4 }}>{c.label}</div>
-          <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)' }}>{c.value}</div>
-          {c.note && (
-            <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 4 }}>{c.note}</div>
-          )}
+    <div className="adm-metric-grid" style={{ '--adm-cols': cols } as React.CSSProperties}>
+      {metrics.map((m) => (
+        <div key={m.key} className="adm-stat" title={m.note}>
+          <div className="adm-stat-value">
+            {m.display}
+            {m.note && <span className="adm-stat-note" title={m.note}>ⓘ</span>}
+          </div>
+          <div className="adm-stat-label">{m.label}</div>
         </div>
       ))}
     </div>

@@ -2,7 +2,7 @@
 
 import { useAdminSession } from '../AdminContext';
 import { useAdminFetch } from '@/lib/admin/useAdminFetch';
-import MetricGrid from '@/components/admin/MetricGrid';
+import SimpleMetricGrid from '@/components/admin/SimpleMetricGrid';
 
 type Snapshot = {
   privacyNote: string;
@@ -32,7 +32,7 @@ export default function AdminThinkingPage() {
       {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
       {t && (
         <>
-          <MetricGrid
+          <SimpleMetricGrid
             cells={[
               { label: 'Predictions logged', value: String(t.predictions) },
               { label: 'With outcomes', value: String(t.outcomes) },

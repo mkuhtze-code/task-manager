@@ -2,7 +2,7 @@
 
 import { useAdminSession } from '../AdminContext';
 import { useAdminFetch } from '@/lib/admin/useAdminFetch';
-import MetricGrid from '@/components/admin/MetricGrid';
+import SimpleMetricGrid from '@/components/admin/SimpleMetricGrid';
 
 type Snapshot = {
   generatedAt: string;
@@ -32,7 +32,7 @@ export default function AdminTodayPage() {
       {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
       {data && (
         <>
-          <MetricGrid
+          <SimpleMetricGrid
             cells={[
               { label: 'Due today', value: String(data.today.dueToday) },
               { label: 'Open tasks', value: String(data.today.open) },
