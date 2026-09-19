@@ -21,12 +21,6 @@ try {
 }
 
 // ── FCM background-message handling ───────────────────────────────
-// The configuration arrives as a JS file emitted by
-// /app/api/firebase-config (importScripts is synchronous, so the config
-// is available before any message can arrive; a null config simply skips
-// FCM entirely). Marked as 'fcm' via dokkit_source and rendered here so
-// the legacy push handler can ignore these messages and we never raise a
-// duplicate notification.
 (function initFcm() {
   if (typeof firebase === 'undefined') return;
   try {
@@ -41,20 +35,13 @@ try {
   try {
     firebase.initializeApp(cfg);
     firebase.messaging().onBackgroundMessage(function (payload) {
-      // Only render genuine Dokkit FCM messages (stamped by
-      // lib/fcm/send.ts). The FCM SDK dispatches every non-notification
-      // push to this callback — including the legacy web-push payloads,
-      // which must keep flowing to the plain push handler below instead of
-      // producing a duplicate default notification here.
       var d = (payload && payload.data) || null;
       if (!d || d.dokkit_source !== 'fcm') return;
       var title = d.title || 'Dokkit';
       var options = {
         body: d.body || 'You have a notification.',
-        icon: '/app/android-chrome-192.png',
-        // Android status-bar / shade icon: must be a white alpha mask.
-        // Full-colour PWA icons render as a white box.
-        badge: '/app/notification-badge.png',
+        icon: '/app/favicon-192.png',
+        badge: '/app/favicon-192.png',
         silent: !!d.silent,
         data: {
           destination: d.destination || null,
@@ -72,7 +59,7 @@ try {
   }
 })();
 
-const CACHE_VERSION = 'dokkit-v3';
+const CACHE_VERSION = 'dokkit-v4';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -82,7 +69,7 @@ const APP_SHELL_URLS = [
   '/app/manifest.json',
   '/app/android-chrome-192.png',
   '/app/android-chrome-512.png',
-  '/app/notification-badge.png',
+  '/app/favicon-192.png',
 ];
 
 self.addEventListener('install', function (event) {
@@ -147,10 +134,6 @@ self.addEventListener('fetch', function (event) {
   }
 });
 
-// Legacy web-push path (plain VAPID subscriptions registered via
-// /api/subscribe). FCM messages carry dokkit_source='fcm' and are
-// rendered by the onBackgroundMessage handler above, so those are skipped
-// here to avoid duplicate notifications.
 self.addEventListener('push', function (event) {
   var data = { title: 'Dokkit', body: 'You have a notification.', silent: false };
   var parsed = null;
@@ -170,9 +153,8 @@ self.addEventListener('push', function (event) {
 
   var options = {
     body: data.body,
-    icon: '/app/android-chrome-192.png',
-    // Android status-bar / shade icon: white alpha mask only.
-    badge: '/app/notification-badge.png',
+    icon: '/app/favicon-192.png',
+    badge: '/app/favicon-192.png',
     silent: !!data.silent,
   };
   event.waitUntil(
