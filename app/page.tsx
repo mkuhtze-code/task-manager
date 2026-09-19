@@ -14,7 +14,7 @@ import { TodayHeader } from '@/components/TodayHeader';
 import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
 import { AuthScreen, OnboardingScreen } from '@/components/AuthScreen';
-import { PlusIcon, StopIcon } from '@/components/icons';
+import { PlusIcon } from '@/components/icons';
 import { useDragReorder } from '@/hooks/useDragReorder';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import {
@@ -80,6 +80,7 @@ import {
 } from '@/lib/today/taskRemaining';
 import { useNow } from '@/hooks/useNow';
 import { useTodayAuth } from '@/hooks/useTodayAuth';
+import { notifyTaskActivity } from '@/hooks/useActiveTask';
 
 export default function Home() {
   const router = useRouter();
@@ -107,6 +108,33 @@ export default function Home() {
     signInWithGoogle,
   } = useTodayAuth();
   const now = useNow();
+
+  // Keep Today in sync when the global player stops a task.
+  useEffect(() => {
+    function onActivity(e: Event) {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail.type === 'stopped' && detail.taskId) {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === detail.taskId
+              ? {
+                  ...t,
+                  status: 'pending' as const,
+                  started_at: null,
+                  logged_mins:
+                    typeof detail.logged_mins === 'number'
+                      ? detail.logged_mins
+                      : t.logged_mins,
+                }
+              : t
+          )
+        );
+      }
+    }
+    window.addEventListener('dokkit:task-activity', onActivity);
+    return () => window.removeEventListener('dokkit:task-activity', onActivity);
+  }, []);
+
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
@@ -1265,6 +1293,7 @@ export default function Home() {
       return;
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'active', started_at: startedAt } : t)));
+    notifyTaskActivity({ type: 'started', taskId: id });
   }
 
   async function stopTask(id: string) {
@@ -1279,6 +1308,7 @@ export default function Home() {
       return;
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'pending', started_at: null, logged_mins: newLogged } : t)));
+    notifyTaskActivity({ type: 'stopped', taskId: id, logged_mins: newLogged });
   }
 
 
@@ -1476,6 +1506,7 @@ export default function Home() {
       }).catch(() => {}); // fire-and-forget; evidence logging is best-effort
     }
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
+    notifyTaskActivity({ type: 'completed', taskId: id });
   }
 
   async function deleteTask(id: string) {
@@ -1751,15 +1782,8 @@ export default function Home() {
     }
   }
 
-  const activeTask = visibleTasks.find((t) => t.status === 'active' && t.estimate_mins > 0) || null;
-  let activeLiveLogged = 0;
-  if (activeTask && activeTask.started_at) {
-    activeLiveLogged = activeTask.logged_mins + (Date.now() - new Date(activeTask.started_at).getTime()) / 60000;
-  }
-  const activeOverEstimate = !!activeTask && activeTask.estimate_mins > 0 && activeLiveLogged > activeTask.estimate_mins;
-
   return (
-    <div className={activeTask ? 'app-shell has-active' : 'app-shell'}>
+    <div className="app-shell">
       <TravelAwarenessBanner userId={session.user.id} />
 
       <TodayHeader
@@ -1970,28 +1994,6 @@ export default function Home() {
           error={error}
           onClose={() => setCaptureOpen(false)}
         />
-      )}
-
-      {activeTask && (
-        <div
-          className={activeOverEstimate ? 'active-timer-bar over' : 'active-timer-bar'}
-          onClick={() => { if (activeTask) setOpenTaskId(activeTask.id); }}
-        >
-          <span className="active-timer-info">
-            <span className="active-timer-dot" />
-            <span className="active-timer-text">{activeTask.text}</span>
-          </span>
-          <span className="active-timer-actions">
-            <span className="active-timer-elapsed mono">{fmtMins(activeLiveLogged)}</span>
-            <button
-              className="active-timer-stop"
-              onClick={(e) => { e.stopPropagation(); if (activeTask) stopTask(activeTask.id); }}
-              aria-label="Stop timer"
-            >
-              <StopIcon />
-            </button>
-          </span>
-        </div>
       )}
 
       {openTask && (
