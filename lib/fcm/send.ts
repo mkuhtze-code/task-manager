@@ -1,19 +1,6 @@
 import crypto from 'node:crypto';
 
 // Server-side FCM web push foundation.
-//
-// This is the isolated delivery seam for browser push: it maps a narrow,
-// structured intent (title/body/destination/type/entityId) onto an FCM
-// HTTP v1 message and sends it.
-//
-// Configuration: FIREBASE_SERVICE_ACCOUNT_JSON (the raw contents of a
-// Firebase service-account JSON file). When it is missing,
-// sendWebPushNotification returns a typed `not_configured` result so the
-// caller can degrade without breaking the rest of the application.
-//
-// The OAuth access-token minting is kept dependency-free on purpose
-// (Node crypto + global fetch): the repo otherwise has no Firebase Admin
-// dependency, and FCM v1 needs only a signed JWT + one REST call.
 
 export interface WebPushMessage {
   token: string;
@@ -24,18 +11,16 @@ export interface WebPushMessage {
   entityId?: string;
   /** When true, SW shows the notification without sound/vibration. */
   silent?: boolean;
+  /** Active-timer fields (for closed-app ongoing notification). */
+  startedAt?: string;
+  estimateMins?: number;
+  loggedMins?: number;
+  text?: string;
 }
 
 export type SendWebPushResult =
   | { ok: true }
   | { ok: false; code: 'not_configured' | 'auth_failed' | 'unregistered' | 'delivery_failed'; message: string };
-
-// ── Payload construction ─────────────────────────────────────────
-// The message is data-only on purpose: the browser Service Worker owns
-// notification rendering via onBackgroundMessage, which prevents the
-// double notification you get when 'notification' is present AND the SW
-// shows one itself. dokkit_source marks these as FCM messages so the
-// legacy web-push push handler in the SW skips them.
 
 export function resolveWebPushDestination(destination: string | undefined, basePath = '/app'): string {
   if (!destination) return basePath;
@@ -59,14 +44,13 @@ export function buildFcmMessage(msg: WebPushMessage): {
   if (msg.type) data.type = String(msg.type);
   if (msg.entityId) data.entityId = String(msg.entityId);
   if (msg.silent) data.silent = '1';
+  if (msg.startedAt) data.startedAt = String(msg.startedAt);
+  if (msg.estimateMins != null) data.estimateMins = String(msg.estimateMins);
+  if (msg.loggedMins != null) data.loggedMins = String(msg.loggedMins);
+  if (msg.text) data.text = String(msg.text);
 
   return { message: { token: msg.token, data } };
 }
-
-// ── Service-account access token ──────────────────────────────────
-// https://developers.google.com/identity/protocols/oauth2/service-account
-// Minimal RS256 JWT assertion signed with the service-account PEM key,
-// exchanged for a short-lived OAuth access token (cached until expiry).
 
 export interface FirebaseServiceAccount {
   project_id?: string;
