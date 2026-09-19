@@ -1,16 +1,6 @@
 // Dokkit PWA Service Worker.
-//
-// This worker serves the web app shell (caching), the legacy web-push
-// delivery path (plain VAPID subscriptions), and — since FCM background
-// messages are only ever delivered to the single active worker for the
-// /app/ scope — the FCM web push path. The FCM parts are fully guarded:
-// if the CDN SDK or the Firebase configuration is unavailable the worker
-// degrades to the pre-existing caching + legacy-push behaviour instead of
-// failing to install.
+// Shell caching + legacy web-push + FCM + ongoing active-task timer notification.
 
-// ── Firebase Messaging SDK (loaded from the gstatic CDN) ──────────
-// Matches the client-side `firebase@10.12.2` package. Wrapped so a CDN
-// outage never prevents the PWA worker from installing.
 try {
   self.importScripts(
     'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
@@ -20,7 +10,74 @@ try {
   console.error('[dokkit:fcm] Firebase SDK failed to load', e);
 }
 
-// ── FCM background-message handling ───────────────────────────────
+var TIMER_TAG = 'dokkit-active-timer';
+
+function fmtMins(mins) {
+  var m = Math.max(0, Math.round(Number(mins) || 0));
+  if (m < 60) return m + 'm';
+  var h = Math.floor(m / 60);
+  var r = m % 60;
+  return r === 0 ? h + 'h' : h + 'h ' + r + 'm';
+}
+
+function elapsedFromPayload(p) {
+  var started = p.startedAt ? new Date(p.startedAt).getTime() : Date.now();
+  var logged = Number(p.loggedMins) || 0;
+  var session = (Date.now() - started) / 60000;
+  return logged + Math.max(0, session);
+}
+
+function buildTimerNotification(p) {
+  var elapsed = elapsedFromPayload(p);
+  var estimate = Number(p.estimateMins) || 0;
+  var body;
+  if (estimate > 0) {
+    if (elapsed > estimate) {
+      body = fmtMins(elapsed) + ' elapsed · over by ' + fmtMins(elapsed - estimate);
+    } else {
+      body = fmtMins(elapsed) + ' elapsed · ' + fmtMins(estimate - elapsed) + ' left';
+    }
+  } else {
+    body = fmtMins(elapsed) + ' elapsed';
+  }
+  return {
+    title: p.text || 'Dokkit timer',
+    options: {
+      body: body,
+      icon: '/app/favicon-192.png',
+      badge: '/app/favicon-192.png',
+      tag: TIMER_TAG,
+      renotify: false,
+      requireInteraction: true,
+      silent: true,
+      data: {
+        type: 'active_timer',
+        taskId: p.taskId || null,
+        startedAt: p.startedAt || null,
+        estimateMins: estimate,
+        loggedMins: Number(p.loggedMins) || 0,
+        text: p.text || '',
+        destination: '/app',
+      },
+      actions: [
+        { action: 'stop', title: 'Stop' },
+        { action: 'open', title: 'Open' },
+      ],
+    },
+  };
+}
+
+function showTimerNotification(p) {
+  var built = buildTimerNotification(p);
+  return self.registration.showNotification(built.title, built.options);
+}
+
+function clearTimerNotification() {
+  return self.registration.getNotifications({ tag: TIMER_TAG }).then(function (list) {
+    list.forEach(function (n) { n.close(); });
+  });
+}
+
 (function initFcm() {
   if (typeof firebase === 'undefined') return;
   try {
@@ -37,6 +94,23 @@ try {
     firebase.messaging().onBackgroundMessage(function (payload) {
       var d = (payload && payload.data) || null;
       if (!d || d.dokkit_source !== 'fcm') return;
+
+      if (d.type === 'active_timer') {
+        showTimerNotification({
+          taskId: d.entityId || d.taskId,
+          text: d.title || d.text || 'Dokkit timer',
+          startedAt: d.startedAt,
+          estimateMins: Number(d.estimateMins) || 0,
+          loggedMins: Number(d.loggedMins) || 0,
+        }).catch(function () {});
+        return;
+      }
+
+      if (d.type === 'active_timer_clear') {
+        clearTimerNotification().catch(function () {});
+        return;
+      }
+
       var title = d.title || 'Dokkit';
       var options = {
         body: d.body || 'You have a notification.',
@@ -59,7 +133,7 @@ try {
   }
 })();
 
-const CACHE_VERSION = 'dokkit-v4';
+const CACHE_VERSION = 'dokkit-v5';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -134,6 +208,17 @@ self.addEventListener('fetch', function (event) {
   }
 });
 
+self.addEventListener('message', function (event) {
+  var data = event.data || {};
+  if (data.type === 'TIMER_SHOW') {
+    event.waitUntil(showTimerNotification(data));
+    return;
+  }
+  if (data.type === 'TIMER_CLEAR') {
+    event.waitUntil(clearTimerNotification());
+  }
+});
+
 self.addEventListener('push', function (event) {
   var data = { title: 'Dokkit', body: 'You have a notification.', silent: false };
   var parsed = null;
@@ -150,6 +235,19 @@ self.addEventListener('push', function (event) {
     }
   }
   if (data && data.dokkit_source === 'fcm') return;
+
+  if (data && data.type === 'active_timer') {
+    event.waitUntil(
+      showTimerNotification({
+        taskId: data.taskId || data.entityId,
+        text: data.title || data.text,
+        startedAt: data.startedAt,
+        estimateMins: data.estimateMins,
+        loggedMins: data.loggedMins,
+      })
+    );
+    return;
+  }
 
   var options = {
     body: data.body,
@@ -175,12 +273,26 @@ function resolveClickUrl(destination) {
 }
 
 self.addEventListener('notificationclick', function (event) {
-  event.notification.close();
+  var n = event.notification;
+  var data = n.data || {};
+  n.close();
+
   if (self.registration.clearAppBadge) {
     self.registration.clearAppBadge().catch(function () {});
   }
-  var destination = event.notification.data && event.notification.data.destination;
-  var url = resolveClickUrl(destination);
+
+  var url;
+  if (data.type === 'active_timer' || n.tag === TIMER_TAG) {
+    if (event.action === 'stop') {
+      var id = data.taskId ? encodeURIComponent(data.taskId) : '';
+      url = self.location.origin + '/app?stopActive=1' + (id ? '&taskId=' + id : '');
+    } else {
+      url = self.location.origin + '/app';
+    }
+  } else {
+    url = resolveClickUrl(data.destination);
+  }
+
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then(function (clientList) {
       var best = null;
@@ -188,12 +300,14 @@ self.addEventListener('notificationclick', function (event) {
         var client = clientList[i];
         if (client.url.indexOf(self.location.origin + '/app') !== 0) continue;
         if (!best) best = client;
-        if (url !== self.location.origin + '/app' && client.url.indexOf(url) === 0) {
-          best = client;
-          break;
-        }
       }
-      if (best && 'focus' in best) return best.focus();
+      if (best && 'focus' in best) {
+        return best.focus().then(function () {
+          if (event.action === 'stop' && best.postMessage) {
+            best.postMessage({ type: 'STOP_ACTIVE_TIMER', taskId: data.taskId });
+          }
+        });
+      }
       if (clients.openWindow) return clients.openWindow(url);
     })
   );
