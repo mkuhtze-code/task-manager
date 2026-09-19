@@ -29,7 +29,26 @@ export async function GET() {
   let sent = 0;
 
   for (const task of activeTasks || []) {
-    if (!task.started_at || !task.estimate_mins || task.estimate_mins <= 0) continue;
+    if (!task.started_at) continue;
+
+    // Always refresh the closed-app ongoing timer notification (silent FCM).
+    {
+      await deliverFcmToUser(task.user_id, {
+        title: task.text || 'Dokkit timer',
+        body: 'Timer running',
+        destination: '/app',
+        type: 'active_timer',
+        entityId: task.id,
+        silent: true,
+        startedAt: task.started_at,
+        estimateMins: task.estimate_mins || 0,
+        loggedMins: task.logged_mins || 0,
+        text: task.text || 'Dokkit timer',
+      });
+    }
+
+    // Near / over alerts only when there is an estimate to measure against
+    if (!task.estimate_mins || task.estimate_mins <= 0) continue;
 
     const started = new Date(task.started_at).getTime();
     const elapsedMins = (now.getTime() - started) / 60000;
