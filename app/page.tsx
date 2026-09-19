@@ -39,7 +39,6 @@ import { determineBase, nearestNeighborOrder, weaveGeoOrder, type Coords } from 
 import { sortTasks } from '@/lib/taskSort';
 import { authedFetch, apiUrl } from '@/lib/authedFetch';
 import {
-  HAS_SIGNED_IN_KEY,
   INITIALIZED_FOR_KEY,
   DEFAULT_WORK_DAYS,
   type Meeting,
@@ -67,7 +66,6 @@ import {
   type RealityUpdate,
 } from '@/lib/realityCapture';
 import {
-  capacityMinsForTask,
   planOverflowCarry,
   buildRuntimeObservations,
   lookupTaskSignals,
@@ -76,19 +74,38 @@ import { calibrateFromOutcomes } from '@/lib/thinking/calibration';
 import { getBuffer } from '@/lib/thinking/evidence';
 import { getGpsPosition } from '@/lib/today/geolocation';
 import { TASK_COLUMNS, PASSIVE_TODAY_KEY } from '@/lib/today/constants';
+import {
+  remainingForTask as remainingForTaskPure,
+  effectiveRemainingForTask as effectiveRemainingForTaskPure,
+} from '@/lib/today/taskRemaining';
+import { useNow } from '@/hooks/useNow';
+import { useTodayAuth } from '@/hooks/useTodayAuth';
 
 export default function Home() {
   const router = useRouter();
-  const [session, setSession] = useState<any>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
-  const [signInError, setSignInError] = useState('');
-  const [hasSignedInBefore, setHasSignedInBefore] = useState(false);
-  const [isNewUser, setIsNewUser] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [signingInWithGoogle, setSigningInWithGoogle] = useState(false);
+  const {
+    session,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    magicLinkSent,
+    setMagicLinkSent,
+    forgotPasswordSent,
+    setForgotPasswordSent,
+    signInError,
+    hasSignedInBefore,
+    isNewUser,
+    setIsNewUser,
+    showForgotPassword,
+    setShowForgotPassword,
+    signingInWithGoogle,
+    signInWithPassword,
+    handleForgotPassword,
+    handleMagicLink,
+    signInWithGoogle,
+  } = useTodayAuth();
+  const now = useNow();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
@@ -253,7 +270,6 @@ export default function Home() {
   // Surfaced in the task list when the tasks query itself fails, so a
   // load failure is never mistaken for "Nothing on your plate yet."
   const [taskLoadError, setTaskLoadError] = useState('');
-  const [now, setNow] = useState(new Date());
   const recordEvent = useRecordSurfaceEvent();
   const hasRedirected = useRef(false);
   // Guards Today's data load so it runs once per authenticated user.
@@ -374,11 +390,6 @@ export default function Home() {
   // the optional location field without forcing it on every task.
   const locationFieldVisible = suggestsLocation(taskText) || captureLocation.length > 0 || manualLocationToggle;
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setHasSignedInBefore(window.localStorage.getItem(HAS_SIGNED_IN_KEY) === 'true');
-    }
-  }, []);
     // Calm morning line from yesterday’s reshape (once per day, non-blocking).
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -387,22 +398,6 @@ export default function Home() {
     if (msg) setRealityCheckMessage(msg);
   }, []);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (session && typeof window !== 'undefined') {
-      window.localStorage.setItem(HAS_SIGNED_IN_KEY, 'true');
-    }
-  }, [session]);
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   // ── Load surface events for Personal Gravity ────────────────────
   // Fetches recent navigation events so the gravity decision can
@@ -797,60 +792,6 @@ export default function Home() {
     setShowOnboarding(false);
   }
 
-  async function signInWithPassword(e: React.FormEvent) {
-    e.preventDefault();
-    setSignInError('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setSignInError('Invalid email or password.');
-      return;
-    }
-  }
-
-  async function handleForgotPassword(e: React.FormEvent) {
-    e.preventDefault();
-    setSignInError('');
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) {
-      setSignInError('Could not send reset email. Please check the email address.');
-      return;
-    }
-    setForgotPasswordSent(true);
-  }
-
-  async function handleMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setSignInError('');
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: `${window.location.origin}`,
-      },
-    });
-    if (error) {
-      setSignInError('Could not send a sign-in link. Please check the email address and try again.');
-      return;
-    }
-    setMagicLinkSent(true);
-  }
-
-  async function signInWithGoogle() {
-    setSigningInWithGoogle(true);
-    setSignInError('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}`,
-      },
-    });
-    if (error) {
-      setSignInError('Failed to sign in with Google.');
-      setSigningInWithGoogle(false);
-    }
-  }
 
   // Merges the per-task legs the route API persisted straight into local
   // task state — replacing the previous full task refetch after every
@@ -1644,31 +1585,12 @@ export default function Home() {
     );
   }
 
-  function completedSubtaskMins(taskId: string): number {
-    return (subtasksByTask[taskId] || []).filter((s) => s.done).reduce((sum, s) => sum + s.mins, 0);
-  }
-
-  // Display-facing remaining time: driven purely by what the person typed.
-  // Never silently changes — this is "what does the progress bar on this
-  // specific task say", and it should always match what you set.
   function remainingForTask(t: Task): number {
-    let logged = t.logged_mins;
-    if (t.status === 'active' && t.started_at) {
-      logged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
-    }
-    return Math.max(t.estimate_mins - logged - completedSubtaskMins(t.id), 0);
+    return remainingForTaskPure(t, subtasksByTask, now.getTime());
   }
 
-  // Capacity-facing remaining time: the "brain". Blends the typed estimate
-  // with what history says this kind of task actually takes, so the
-  // aggregate capacity picture (the ring, the day rail, overflow flags,
-  // capacity_first sort) is calibrated by reality — without ever touching
-  // the number the person actually sees on the task itself.
   function effectiveRemainingForTask(t: Task): number {
-    // Capacity uses dayFit: typed/learned duration, or soft floor when untimed —
-    // never treats missing estimates as zero work.
-    const { mins } = capacityMinsForTask(t, history, clusters, Date.now(), runtime);
-    return Math.max(mins - completedSubtaskMins(t.id), 0);
+    return effectiveRemainingForTaskPure(t, subtasksByTask, history, clusters, runtime, now.getTime());
   }
 
   const todayStr = localDateStr(now);
