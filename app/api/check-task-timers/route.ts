@@ -43,8 +43,9 @@ export async function GET() {
 
     const workEnd = settings?.work_end || '16:00';
     const tz = settings?.timezone || 'Pacific/Auckland';
-    const localNow = getUserLocalTime(now, tz);
-    const localMins = localNow.getHours() * 60 + localNow.getMinutes();
+    const local = getUserLocalTime(tz, now);
+    const localMins =
+      local?.minutesOfDay ?? now.getUTCHours() * 60 + now.getUTCMinutes();
     const workEndMins = timeStringToMinutes(workEnd);
     const pastWorkEnd = localMins >= workEndMins;
 
