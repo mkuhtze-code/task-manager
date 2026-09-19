@@ -1,31 +1,17 @@
 import { NextResponse } from 'next/server';
-import { verifyUser } from '@/lib/verifyUser';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function GET(req: Request) {
-  const verify = await verifyUser(req);
-  if (!verify.ok) {
-    return NextResponse.json({ error: verify.error }, { status: verify.status });
-  }
-
-  const { data: adminRow } = await supabaseAdmin
-    .from('admins')
-    .select('user_id')
-    .eq('user_id', verify.userId)
-    .maybeSingle();
-
-  if (!adminRow) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const access = await requireAdmin(req);
+  if (!access.ok) return access.response;
 
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: tierRows } = await supabaseAdmin
-    .from('user_settings')
-    .select('account_tier, onboarded');
+  const { data: tierRows } = await supabaseAdmin.from('user_settings').select('account_tier, onboarded');
 
   const tierCounts = { trusted_tester: 0, free: 0, premium: 0 };
   let notOnboarded = 0;
@@ -58,9 +44,7 @@ export async function GET(req: Request) {
   const activeUserSet = new Set((recentTaskUsers || []).map((r) => r.user_id));
   const activeUsersLast7Days = activeUserSet.size;
 
-  const { data: feedbackRows } = await supabaseAdmin
-    .from('feedback')
-    .select('id');
+  const { data: feedbackRows } = await supabaseAdmin.from('feedback').select('id');
 
   const { data: repliedIdsRows } = await supabaseAdmin
     .from('feedback_replies')
@@ -85,14 +69,23 @@ export async function GET(req: Request) {
   const recentUnresolvedErrors = (errorRows || [])
     .filter((e) => !e.resolved)
     .slice(0, 5)
-    .map((e) => ({ id: e.id, source: e.source, route: e.route, message: e.message, createdAt: e.created_at }));
+    .map((e) => ({
+      id: e.id,
+      source: e.source,
+      route: e.route,
+      message: e.message,
+      createdAt: e.created_at,
+    }));
 
   const attention: { level: 'warning' | 'critical'; label: string; detail: string }[] = [];
   if (errorsLast24h > 0) {
     attention.push({
       level: errorsLast24h >= 5 ? 'critical' : 'warning',
       label: `${errorsLast24h} error${errorsLast24h === 1 ? '' : 's'} in the last 24 hours`,
-      detail: unresolvedErrors > 0 ? `${unresolvedErrors} remain unresolved.` : 'All recorded errors are resolved.',
+      detail:
+        unresolvedErrors > 0
+          ? `${unresolvedErrors} remain unresolved.`
+          : 'All recorded errors are resolved.',
     });
   }
   if (openFeedback > 0) {
@@ -111,7 +104,11 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({
-    status: attention.some((item) => item.level === 'critical') ? 'attention' : attention.length ? 'watch' : 'healthy',
+    status: attention.some((item) => item.level === 'critical')
+      ? 'attention'
+      : attention.length
+        ? 'watch'
+        : 'healthy',
     attention,
     recentUnresolvedErrors,
     users: {

@@ -1,40 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { verifyUser } from '@/lib/verifyUser';
 import { logError } from '@/lib/logError';
+import { requireAdmin } from '@/lib/admin/requireAdmin';
+import { writeAdminAudit } from '@/lib/admin/audit';
 import { sendWebPushNotification } from '@/lib/fcm/send';
 import { normalizeFcmToken } from '@/lib/fcm/tokenValidation';
 import { selectTestTargetToken, buildTestWebPushMessage } from '@/lib/fcm/adminTestSend';
 
 // Admin-only controlled test send for the browser FCM web-push path.
-//
-// Sends exactly ONE data-only FCM message to a registered, non-revoked
-// fcm_web_tokens entry (the most recently updated web token by default, or
-// an optional explicit `token` to retarget a specific device). This is a
-// development/verification tool — it is NOT wired to any real Dokkit
-// notification event and never touches the Android-owned fcm_tokens table.
-// The caller must be an authenticated admin (mirrors every other /api/admin
-// route); there is no unauthenticated or user-scoped send path here.
-
-async function requireAdmin(req: Request) {
-  const auth = await verifyUser(req);
-  if (!auth.ok) {
-    return { response: NextResponse.json({ error: auth.error }, { status: auth.status }) };
-  }
-  const { data: adminRow } = await supabaseAdmin
-    .from('admins')
-    .select('user_id')
-    .eq('user_id', auth.userId)
-    .maybeSingle();
-  if (!adminRow) {
-    return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
-  }
-  return { userId: auth.userId };
-}
+// Never returns the full device token in the response body.
 
 export async function POST(req: NextRequest) {
-  const gate = await requireAdmin(req);
-  if ('response' in gate) return gate.response;
+  const access = await requireAdmin(req);
+  if (!access.ok) return access.response;
 
   let requestedToken: string | null = null;
   try {
@@ -56,7 +34,7 @@ export async function POST(req: NextRequest) {
     .order('updated_at', { ascending: false });
 
   if (error) {
-    await logError('server', 'fcm-test-send:query', error, {}, gate.userId);
+    await logError('server', 'fcm-test-send:query', error, {}, access.userId);
     return NextResponse.json({ error: 'Could not look up web FCM tokens' }, { status: 500 });
   }
 
@@ -69,12 +47,18 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await sendWebPushNotification(buildTestWebPushMessage(token));
+  await writeAdminAudit({
+    actorId: access.userId,
+    action: 'fcm.test_send',
+    metadata: { ok: result.ok, code: result.ok ? undefined : result.code },
+  });
+
   if (!result.ok) {
     return NextResponse.json(
-      { error: result.message, code: result.code, token },
+      { error: result.message, code: result.code },
       { status: result.code === 'not_configured' ? 503 : 502 }
     );
   }
 
-  return NextResponse.json({ ok: true, token });
+  return NextResponse.json({ ok: true });
 }

@@ -1,16 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { useAdminSession } from '../AdminContext';
+import { apiUrl } from '@/lib/authedFetch';
 
 type FeedbackRow = {
   id: string;
-  submitter_email: string | null;
+  submitterEmail: string | null;
+  submitterLabel: string;
   message: string;
-  is_anonymous: boolean;
-  page_context: string | null;
-  created_at: string;
+  isAnonymous: boolean;
+  pageContext: string | null;
+  createdAt: string;
 };
 
 type Reply = {
@@ -26,34 +27,33 @@ export default function FeedbackInbox() {
   const [items, setItems] = useState<FeedbackRow[]>([]);
   const [repliesByFeedback, setRepliesByFeedback] = useState<Record<string, Reply[]>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [replyDraft, setReplyDraft] = useState<Record<string, string>>({});
   const [replySending, setReplySending] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadFeedback();
-  }, []);
+  }, [session]);
 
   async function loadFeedback() {
-    const { data } = await supabase
-      .from('feedback')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setItems(data || []);
-
-    if (data && data.length > 0) {
-      const ids = data.map((i) => i.id);
-      const { data: replies } = await supabase
-        .from('feedback_replies')
-        .select('*')
-        .in('feedback_id', ids)
-        .order('created_at', { ascending: true });
-      const grouped: Record<string, Reply[]> = {};
-      (replies || []).forEach((r) => {
-        if (!grouped[r.feedback_id]) grouped[r.feedback_id] = [];
-        grouped[r.feedback_id].push(r);
-      });
-      setRepliesByFeedback(grouped);
+    setLoading(true);
+    setError('');
+    const response = await fetch(apiUrl('/api/admin/feedback'), {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      setError(payload.error || 'Could not load feedback.');
+      setLoading(false);
+      return;
     }
+    setItems(payload.items || []);
+    const grouped: Record<string, Reply[]> = {};
+    for (const r of (payload.replies || []) as Reply[]) {
+      if (!grouped[r.feedback_id]) grouped[r.feedback_id] = [];
+      grouped[r.feedback_id].push(r);
+    }
+    setRepliesByFeedback(grouped);
     setLoading(false);
   }
 
@@ -62,23 +62,25 @@ export default function FeedbackInbox() {
     if (text.length === 0) return;
 
     setReplySending((prev) => ({ ...prev, [feedbackId]: true }));
-    const { data, error } = await supabase
-      .from('feedback_replies')
-      .insert({
-        feedback_id: feedbackId,
-        author_type: 'admin',
-        author_id: session.user.id,
-        message: text,
-      })
-      .select()
-      .single();
+    const response = await fetch(apiUrl('/api/admin/feedback'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ feedbackId, message: text }),
+    });
+    const payload = await response.json();
     setReplySending((prev) => ({ ...prev, [feedbackId]: false }));
 
-    if (error || !data) return;
+    if (!response.ok || !payload.reply) {
+      setError(payload.error || 'Could not send reply.');
+      return;
+    }
 
     setRepliesByFeedback((prev) => ({
       ...prev,
-      [feedbackId]: [...(prev[feedbackId] || []), data],
+      [feedbackId]: [...(prev[feedbackId] || []), payload.reply],
     }));
     setReplyDraft((prev) => ({ ...prev, [feedbackId]: '' }));
   }
@@ -91,7 +93,11 @@ export default function FeedbackInbox() {
         <div className="settings-panel-title">
           {items.length} {items.length === 1 ? 'message' : 'messages'}
         </div>
-        {items.length === 0 && (
+        <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '4px 0 0' }}>
+          Loaded through the admin API. Labels are masked; full email is only kept for non-anonymous threads so you can reply.
+        </p>
+        {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
+        {items.length === 0 && !error && (
           <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>Nothing yet.</p>
         )}
       </div>
@@ -104,9 +110,9 @@ export default function FeedbackInbox() {
               {item.message}
             </p>
             <div className="feedback-meta">
-              <span>{item.is_anonymous ? 'Anonymous' : item.submitter_email || 'Unknown'}</span>
+              <span title={item.submitterEmail || undefined}>{item.submitterLabel}</span>
               <span>
-                {new Date(item.created_at).toLocaleString(undefined, {
+                {new Date(item.createdAt).toLocaleString(undefined, {
                   month: 'short',
                   day: 'numeric',
                   hour: 'numeric',
@@ -114,21 +120,30 @@ export default function FeedbackInbox() {
                 })}
               </span>
             </div>
-            {item.page_context && (
-              <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>from {item.page_context}</div>
+            {item.pageContext && (
+              <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>from {item.pageContext}</div>
             )}
 
-            {!item.is_anonymous && (
+            {!item.isAnonymous && (
               <div className="thread-body" style={{ marginTop: 'var(--space-2)' }}>
                 {replies.map((r) => (
                   <div
                     key={r.id}
-                    className={r.author_type === 'admin' ? 'thread-bubble thread-bubble-admin' : 'thread-bubble thread-bubble-user'}
+                    className={
+                      r.author_type === 'admin'
+                        ? 'thread-bubble thread-bubble-admin'
+                        : 'thread-bubble thread-bubble-user'
+                    }
                   >
                     {r.author_type === 'admin' && <div className="thread-bubble-label">You</div>}
                     <div className="thread-bubble-text">{r.message}</div>
                     <div className="thread-bubble-time">
-                      {new Date(r.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      {new Date(r.created_at).toLocaleString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
                     </div>
                   </div>
                 ))}
@@ -139,7 +154,9 @@ export default function FeedbackInbox() {
                     placeholder="Reply to this user…"
                     value={replyDraft[item.id] || ''}
                     onChange={(e) => setReplyDraft((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                    onKeyDown={(e) => { if (e.key === 'Enter') sendReply(item.id); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') sendReply(item.id);
+                    }}
                   />
                   <button
                     className="btn btn-ghost"
