@@ -4,6 +4,7 @@ import './preferences.css';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { apiUrl, authedFetch } from '@/lib/authedFetch';
+import { registerWebPushSubscription } from '@/lib/fcm/client';
 import AppHeader from '@/components/AppHeader';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import type { MeetingExportPreferences } from '@/lib/meetingExport';
@@ -373,79 +374,21 @@ export default function Preferences() {
   async function enableNotifications() {
     setNotifStatus('Requesting permission...');
     try {
-      if (typeof window === 'undefined' || !('Notification' in window)) {
-        setNotifStatus('Notifications are not supported in this browser.');
+      // FCM path: permission → service worker → Firebase token → fcm_web_tokens.
+      // This is the channel that can wake the SW when Chrome is closed.
+      const result = await registerWebPushSubscription();
+      if (!result.ok) {
+        const hints: Record<string, string> = {
+          'permission-denied': 'Permission was not granted. Allow notifications for this site in browser settings.',
+          'firebase-not-configured': 'Push is not configured (Firebase web config / VAPID key missing on the server build).',
+          'service-worker-unavailable': 'Service worker failed to start. Refresh and try again.',
+          unsupported: 'Push is not supported in this browser.',
+          'token-unavailable': 'Could not get a push token. Try again, or check that notifications are allowed.',
+          'api-error': result.error || 'Could not register this device.',
+        };
+        setNotifStatus(hints[result.reason] || result.error || result.reason || 'Could not enable notifications.');
         return;
       }
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        setNotifStatus('Push is not supported in this browser.');
-        return;
-      }
-
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        setNotifStatus(
-          permission === 'denied'
-            ? 'Permission blocked — allow notifications for this site in browser settings.'
-            : 'Permission was not granted.'
-        );
-        return;
-      }
-
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidKey) {
-        setNotifStatus('Push is not configured (missing VAPID public key on the server build).');
-        return;
-      }
-
-      setNotifStatus('Setting up this device...');
-      let registration = await navigator.serviceWorker.getRegistration('/app/');
-      if (!registration) {
-        registration = await navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' });
-      }
-
-      registration = await Promise.race([
-        navigator.serviceWorker.ready,
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error('Service worker took too long. Refresh and try again.')),
-            15000
-          )
-        ),
-      ]);
-
-      setNotifStatus('Creating subscription...');
-      // Browsers only allow one push subscription per registration. If a
-      // previous install used a different VAPID key (or FCM sender id),
-      // subscribe() fails until that subscription is removed.
-      const existing = await registration.pushManager.getSubscription();
-      if (existing) {
-        try {
-          await existing.unsubscribe();
-        } catch {
-          // Continue — subscribe may still succeed after a partial clear.
-        }
-      }
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
-      });
-
-      setNotifStatus('Saving...');
-      const res = await fetch(apiUrl('/api/subscribe'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ subscription }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setNotifStatus('Could not save subscription: ' + ((data as any).error || res.status));
-        return;
-      }
-
       setNotifStatus('Notifications enabled.');
     } catch (e: any) {
       setNotifStatus('Something went wrong: ' + (e?.message || String(e)));
@@ -778,7 +721,7 @@ export default function Preferences() {
         <div className="settings-info-note">
           <InfoIcon />
           <span>
-            Web app for now — notifications push while the screen is awake. Background delivery is on the way.
+            Uses Firebase Cloud Messaging when configured. Keep notifications allowed for this site; on Android, set Chrome battery use to Unrestricted for best background delivery.
           </span>
         </div>
       </div>
