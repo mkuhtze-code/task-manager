@@ -17,6 +17,7 @@ const ACTION_FILTERS = [
   'fcm',
   'errors',
   'audit',
+  'admin_access',
 ] as const;
 
 type ActionFilter = (typeof ACTION_FILTERS)[number];
@@ -41,6 +42,7 @@ function actionMatchesFilter(action: string, filter: ActionFilter): boolean {
   if (filter === 'fcm') return action.startsWith('fcm.');
   if (filter === 'errors') return action.startsWith('errors.');
   if (filter === 'audit') return action.startsWith('audit.');
+  if (filter === 'admin_access') return action.startsWith('admin_access.');
   return true;
 }
 
@@ -66,9 +68,6 @@ export async function GET(req: NextRequest) {
   const limit = parsePageParam(params.get('limit'), DEFAULT_LIMIT, 1, PAGE_LIMIT_MAX);
 
   try {
-    // Fetch a bounded window then filter in memory when needed so we keep
-    // a single indexed scan on created_at. For "all", offset/limit map
-    // directly to the query.
     const fetchCap = filter === 'all' ? offset + limit : Math.min(1000, offset + limit + 200);
 
     const { data, error } = await supabaseAdmin
@@ -109,8 +108,6 @@ export async function GET(req: NextRequest) {
       createdAt: r.created_at,
     }));
 
-    // Viewing the audit log is itself a privileged read — record it, but
-    // keep metadata minimal to avoid recursive noise.
     await writeAdminAudit({
       actorId: access.userId,
       action: 'audit.list',
