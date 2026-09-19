@@ -44,6 +44,10 @@ export async function deliverFcmToUser(
       type: message.type,
       entityId: message.entityId,
       silent: message.silent,
+      startedAt: message.startedAt,
+      estimateMins: message.estimateMins,
+      loggedMins: message.loggedMins,
+      text: message.text,
     });
 
     if (result.ok) {
