@@ -1,40 +1,25 @@
-/* Persistent active-task player (Spotify-style mini bar) */
+/* Active-task banner — top of every main surface, in normal flow so content is pushed down */
 .dokkit-player {
-  position: fixed;
-  left: max(var(--space-4), env(safe-area-inset-left));
-  right: max(var(--space-4), env(safe-area-inset-right));
-  bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 10px);
-  max-width: 560px;
-  margin: 0 auto;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 10px 10px 14px;
-  border-radius: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
   background: var(--steel);
   color: #fff;
-  box-shadow: 0 8px 28px rgba(var(--shadow-rgb), 0.35);
-  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
 }
 
 .dokkit-player--over {
   background: var(--hazard);
 }
 
-.dokkit-player-track {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.dokkit-player-track-fill {
-  height: 100%;
-  background: rgba(255, 255, 255, 0.85);
-  transition: width 1s linear;
+.dokkit-player-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: max(10px, env(safe-area-inset-top, 0px)) var(--space-4) 10px;
 }
 
 .dokkit-player-main {
@@ -114,7 +99,13 @@
   background: rgba(255, 255, 255, 0.32);
 }
 
-/* Room above bottom nav so lists aren't hidden under the player */
-body:has(.dokkit-player) .app-shell {
-  padding-bottom: 140px;
+.dokkit-player-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.dokkit-player-track-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  transition: width 1s linear;
 }
