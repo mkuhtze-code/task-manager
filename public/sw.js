@@ -52,7 +52,9 @@ try {
       var options = {
         body: d.body || 'You have a notification.',
         icon: '/app/android-chrome-192.png',
-        badge: '/app/android-chrome-192.png',
+        // Android status-bar / shade icon: must be a white alpha mask.
+        // Full-colour PWA icons render as a white box.
+        badge: '/app/notification-badge.png',
         silent: !!d.silent,
         data: {
           destination: d.destination || null,
@@ -70,7 +72,7 @@ try {
   }
 })();
 
-const CACHE_VERSION = 'dokkit-v2';
+const CACHE_VERSION = 'dokkit-v3';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -80,6 +82,7 @@ const APP_SHELL_URLS = [
   '/app/manifest.json',
   '/app/android-chrome-192.png',
   '/app/android-chrome-512.png',
+  '/app/notification-badge.png',
 ];
 
 self.addEventListener('install', function (event) {
@@ -168,7 +171,8 @@ self.addEventListener('push', function (event) {
   var options = {
     body: data.body,
     icon: '/app/android-chrome-192.png',
-    badge: '/app/android-chrome-192.png',
+    // Android status-bar / shade icon: white alpha mask only.
+    badge: '/app/notification-badge.png',
     silent: !!data.silent,
   };
   event.waitUntil(
