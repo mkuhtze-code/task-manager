@@ -79,7 +79,13 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     group: 'Security',
     items: [
       { slug: 'admin-access', title: 'Admin Access', href: '/admin/admin-access', implemented: false, description: 'Administrator membership management.' },
-      { slug: 'audit-log', title: 'Audit Log', href: '/admin/audit-log', implemented: false, description: 'Administrative action audit trail.' },
+      {
+        slug: 'audit-log',
+        title: 'Audit Log',
+        href: '/admin/audit-log',
+        implemented: true,
+        description: 'Administrative action audit trail — who did what, when.',
+      },
       { slug: 'oauth', title: 'OAuth', href: '/admin/oauth', implemented: false, description: 'OAuth applications and grants.' },
     ],
   },
