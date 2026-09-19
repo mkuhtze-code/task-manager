@@ -94,6 +94,7 @@ export default function Home() {
     forgotPasswordSent,
     setForgotPasswordSent,
     signInError,
+    setSignInError, 
     hasSignedInBefore,
     isNewUser,
     setIsNewUser,
