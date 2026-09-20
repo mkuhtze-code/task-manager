@@ -33,7 +33,7 @@ export function TaskDetailSheet(props: {
   subDraftTime: string;
   setSubDraftText: (v: string) => void;
   setSubDraftTime: (v: string) => void;
-  /** Desktop dashboard: render as main-pane detail instead of bottom sheet. */
+  /** Desktop dashboard: main-pane detail instead of bottom sheet. */
   presentation?: 'sheet' | 'pane';
 }) {
   const {
@@ -72,6 +72,8 @@ export function TaskDetailSheet(props: {
       return;
     }
     const mins = parseMins(timeStr);
+    // 0 is valid — that's what makes this a list item / reminder rather
+    // than a timed task. Only reject unparseable or negative input.
     if (mins === null || mins < 0) {
       setError('Could not read that time, try 15m, 1.5h, or 0m');
       return;
@@ -81,8 +83,8 @@ export function TaskDetailSheet(props: {
       task.id,
       trimmed,
       mins,
-      surfaceDate || null,
-      locationText.trim() || null,
+      surfaceDate.length > 0 ? surfaceDate : null,
+      locationText.trim().length > 0 ? locationText.trim() : null,
       locationCoords?.lat ?? null,
       locationCoords?.lng ?? null
     );
@@ -139,21 +141,38 @@ export function TaskDetailSheet(props: {
           <button
             type="button"
             className={task.due_today ? 'btn-quiet active' : 'btn-quiet'}
-            onClick={() => onToggleDue(task.id, task.due_today)}
+            onClick={() => onToggleDue(task.id, !!task.due_today)}
           >
-            {task.due_today ? 'Due today' : 'Not due today'}
+            {task.due_today ? 'Due today' : 'Mark due today'}
           </button>
+          <input
+            type="text"
+            className="time-input"
+            value={timeStr}
+            onChange={(e) => setTimeStr(e.target.value)}
+            onBlur={commit}
+            placeholder="15m"
+            aria-label="Estimate"
+          />
         </div>
+
+        {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
 
         <span className="settings-label">Location (optional)</span>
         <LocationAutocomplete
           value={locationText}
-          onChange={(v, coords) => {
-            setLocationText(v);
-            setLocationCoords(coords);
+          placeholder="Where does this happen?"
+          onChange={setLocationText}
+          onPlaceSelected={(result) => {
+            setLocationText(result.formattedAddress);
+            setLocationCoords({ lat: result.lat, lng: result.lng });
           }}
-          onBlur={commit}
         />
+        {locationText.length > 0 && !locationCoords && (
+          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+            Pick a suggestion from the list so this can factor into route-aware capacity.
+          </p>
+        )}
 
         <span className="settings-label">{context === 'job' ? 'When' : 'Reminder'}</span>
         <div className="reminder-date-row">
@@ -163,58 +182,54 @@ export function TaskDetailSheet(props: {
             onChange={(e) => setSurfaceDate(e.target.value)}
             onBlur={commit}
           />
-          {surfaceDate && (
+          {surfaceDate.length > 0 && (
             <button className="btn-text" onClick={() => { setSurfaceDate(''); commit(); }}>
               Clear
             </button>
           )}
         </div>
-
-        <span className="settings-label">Estimate</span>
-        <div className="capture-row">
-          <input
-            type="text"
-            className="time-input"
-            value={timeStr}
-            onChange={(e) => setTimeStr(e.target.value)}
-            onBlur={commit}
-            placeholder="15m"
-          />
-          <MicButton onResult={(v) => setTimeStr(v)} />
-        </div>
+        {surfaceDate.length > 0 && (
+          <p style={{ color: 'var(--ink-soft)', fontSize: 12, margin: 0 }}>
+            Hidden from your list until {fmtSurfaceDate(surfaceDate)}.
+          </p>
+        )}
 
         <span className="settings-label">Information</span>
-        <TaskInfo value={task.info || ''} onSave={(info) => onSaveInfo(task.id, info)} surface="paper" />
+        <TaskInfo
+          value={task.info || ''}
+          onSave={(info) => onSaveInfo(task.id, info)}
+          surface="raised"
+        />
 
         <button
           type="button"
           className={jobMoveOpen ? 'detail-reveal active' : 'detail-reveal'}
-          onClick={() => setJobMoveOpen((v) => !v)}
+          onClick={() => setJobMoveOpen((o) => !o)}
         >
-          {task.job_id ? 'Move to another job' : 'Add to a job'}
+          <span>{task.job_id ? 'Filed under a job' : 'Add to a job'}</span>
           <ChevronIcon size={14} />
         </button>
         {jobMoveOpen && (
           <div className="move-day-list">
             <button
+              type="button"
               className="move-day-option"
-              onClick={() => { onMoveToJob(task.id, null); setJobMoveOpen(false); }}
+              onClick={() => onMoveToJob(task.id, null)}
             >
               No job
             </button>
             {jobs.map((j) => (
               <button
                 key={j.id}
+                type="button"
                 className="move-day-option"
-                onClick={() => { onMoveToJob(task.id, j.id); setJobMoveOpen(false); }}
+                onClick={() => onMoveToJob(task.id, j.id)}
               >
                 {j.name}
               </button>
             ))}
           </div>
         )}
-
-        {error && <div className="settings-help" style={{ color: 'var(--danger)' }}>{error}</div>}
 
         <div className="task-detail-actions">
           {task.estimate_mins > 0 && (
@@ -237,28 +252,33 @@ export function TaskDetailSheet(props: {
           <div className="subtask-header">
             <div className="settings-panel-title">Sub-tasks</div>
             <button
+              type="button"
               className="subtask-add-btn"
-              onClick={() => setShowAddForm((v) => !v)}
-            >
-              Add
-            </button>
+              onClick={() => setShowAddForm(!showAddForm)}
+            >+</button>
           </div>
           {showAddForm && (
             <div className="subtask-add-row">
               <input
                 type="text"
+                placeholder="Sub-task"
                 value={subDraftText}
                 onChange={(e) => setSubDraftText(e.target.value)}
-                placeholder="Sub-task"
+              />
+              <MicButton
+                size="small"
+                onResult={(text) =>
+                  setSubDraftText(subDraftText.trim().length > 0 ? `${subDraftText.trim()} ${text}` : text)
+                }
               />
               <input
                 type="text"
-                className="time-input"
+                placeholder="15m"
+                style={{ width: 60 }}
                 value={subDraftTime}
                 onChange={(e) => setSubDraftTime(e.target.value)}
-                placeholder="0m"
               />
-              <button className="btn btn-steel" onClick={() => onAddSubtask(task.id)}>Add</button>
+              <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => { onAddSubtask(task.id); setShowAddForm(false); }}>add</button>
             </div>
           )}
           {subs.map((s) => (
@@ -266,9 +286,10 @@ export function TaskDetailSheet(props: {
               <button
                 className={s.done ? 'subtask-check done' : 'subtask-check'}
                 onClick={() => onToggleSubtaskDone(s.id, task.id, s.done)}
-                aria-label="Toggle sub-task"
+                aria-label="Complete sub-task"
               />
               <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
+              <span className="tag mono">{fmtMins(s.mins)}</span>
               <button className="icon-btn" onClick={() => onDeleteSubtask(s.id, task.id)} aria-label="Delete sub-task">×</button>
             </div>
           ))}
