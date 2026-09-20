@@ -68,12 +68,13 @@ export async function showActiveTimerNotification(
 
     const reg = await navigator.serviceWorker.ready;
 
-    await reg.showNotification(payload.text || 'Dokkit timer', {
+    const options: NotificationOptions & {
+      actions?: { action: string; title: string }[];
+    } = {
       body: buildBody(payload),
       icon: '/app/favicon-192.png',
       badge: '/app/favicon-192.png',
       tag: TIMER_TAG,
-      renotify: false,
       requireInteraction: true,
       silent: true,
       data: {
@@ -89,7 +90,8 @@ export async function showActiveTimerNotification(
         { action: 'stop', title: 'Stop' },
         { action: 'open', title: 'Open' },
       ],
-    });
+    };
+    await reg.showNotification(payload.text || 'Dokkit timer', options);
 
     const worker = reg.active;
     if (worker) {
