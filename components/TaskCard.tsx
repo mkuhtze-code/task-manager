@@ -21,9 +21,6 @@ export function TaskCard(props: {
   anyActive: boolean;
   subs: Subtask[];
   learnedHint: string | null;
-  // Job name shown as faint secondary context under the task name (Today).
-  // Purely presentational — null/undefined renders exactly like an
-  // unassigned task.
   jobLabel?: string | null;
   expanded: boolean;
   onToggleExpand: () => void;
@@ -68,28 +65,16 @@ export function TaskCard(props: {
 
   const doneSubs = subs.filter((s) => s.done).length;
 
-  // Subtask rows are a second reveal, not part of the default expanded
-  // state. The header ("SUBTASKS · 2/4") is the glance-level signal;
-  // tapping it unfolds (and re-folds) the actual rows.
   const [subsOpen, setSubsOpen] = useState(false);
   useEffect(() => {
     if (!expanded) setSubsOpen(false);
   }, [expanded]);
 
-  // Progress is only shown when there is something real to communicate —
-  // the task is running, or it has already logged some progress. An idle,
-  // unstarted timed task gets no decorative bar and no repeated
-  // "X remaining" label (the collapsed glance already carries that).
   const progressPct = timed
     ? Math.min((1 - remainingForThis / Math.max(t.estimate_mins, 1)) * 100, 100)
     : 0;
   const showProgress = timed && (running || progressPct > 0);
 
-  // Exactly one quiet glance signal per card:
-  //  - timed + running → elapsed time + active dot
-  //  - timed + idle    → remaining time
-  //  - untimed + subs  → subtask progress (2/4)
-  //  - plain untimed   → nothing (the card is just its name)
   let glanceRight: string | null = null;
   let glanceKind: 'elapsed' | 'time' | 'subs' | null = null;
   if (running) {
@@ -103,8 +88,6 @@ export function TaskCard(props: {
     glanceKind = 'subs';
   }
 
-  // Stops pointer/click bubbling so inner controls never toggle the card,
-  // then runs the action.
   function isolate(action: () => void) {
     return (e: React.PointerEvent | React.MouseEvent) => {
       e.stopPropagation();
@@ -135,6 +118,18 @@ export function TaskCard(props: {
         >
           <div className="task-text">{t.text}</div>
           {jobLabel && <div className="task-card-job">{jobLabel}</div>}
+          <div className="task-desk-meta">
+            {t.due_today && <span className="task-desk-chip due">Due today</span>}
+            {t.location_text && (
+              <span className="task-desk-chip location" title={t.location_text}>
+                <MapPinIcon size={12} />
+                {t.location_text}
+              </span>
+            )}
+            {learnedHint && (
+              <span className="task-desk-chip muted">usually ~{learnedHint}</span>
+            )}
+          </div>
         </div>
         <div className="task-card-glance" onClick={onToggleExpand}>
           {running && <span className="task-card-active-dot" />}
