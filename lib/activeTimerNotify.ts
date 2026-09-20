@@ -11,6 +11,9 @@ export type TimerNotifyPayload = {
 
 const TIMER_TAG = 'dokkit-active-timer';
 
+let lastShowAt = 0;
+let lastShowTaskId = '';
+
 function fmtElapsed(mins: number): string {
   const totalSec = Math.max(0, Math.floor(mins * 60));
   const h = Math.floor(totalSec / 3600);
@@ -114,6 +117,16 @@ export async function showActiveTimerNotification(
       return false;
     }
 
+    // Debounce non-urgent updates so we don't thrash the shade.
+    const now = Date.now();
+    if (
+      !payload.urgent &&
+      payload.taskId === lastShowTaskId &&
+      now - lastShowAt < 8000
+    ) {
+      return true;
+    }
+
     const { icon, badge } = iconUrls();
     const title = (payload.text && String(payload.text).trim()) || 'Dokkit timer';
     const body = buildBody(payload);
@@ -146,10 +159,10 @@ export async function showActiveTimerNotification(
     const reg = await getSwRegistration();
     if (reg) {
       try {
-        // Force replace — some Android builds keep a stale body with same tag.
-        const existing = await reg.getNotifications({ tag: TIMER_TAG });
-        existing.forEach((n) => n.close());
+        // Same tag replaces in place — do NOT close first (flicker / vanish).
         await reg.showNotification(title, options);
+        lastShowAt = Date.now();
+        lastShowTaskId = payload.taskId;
         const worker = reg.active;
         if (worker) {
           worker.postMessage({ type: 'TIMER_SHOW', ...payload });
@@ -160,7 +173,12 @@ export async function showActiveTimerNotification(
       }
     }
 
-    return pageLevelNotification(title, body, icon, silent);
+    const ok = pageLevelNotification(title, body, icon, silent);
+    if (ok) {
+      lastShowAt = Date.now();
+      lastShowTaskId = payload.taskId;
+    }
+    return ok;
   } catch (err) {
     console.error('[dokkit-timer] show failed', err);
     return false;

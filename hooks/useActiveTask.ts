@@ -123,8 +123,8 @@ export function useActiveTask() {
     pushNotification(task);
 
     const tick = window.setInterval(() => setNowMs(Date.now()), 1000);
-    // Refresh OS notification often enough that seconds in the body move.
-    const notif = window.setInterval(() => pushNotification(task), 10_000);
+    // Quiet shade updates — debounce in showActiveTimerNotification also helps.
+    const notif = window.setInterval(() => pushNotification(task), 30_000);
 
     const onHide = () => {
       pushNotification(task);
