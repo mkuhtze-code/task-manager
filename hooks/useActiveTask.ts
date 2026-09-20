@@ -21,13 +21,14 @@ function liveLogged(task: ActiveTaskSnapshot, nowMs: number): number {
   return (task.logged_mins || 0) + Math.max(0, session);
 }
 
-function pushNotification(task: ActiveTaskSnapshot) {
+function pushNotification(task: ActiveTaskSnapshot, urgent = false) {
   void showActiveTimerNotification({
     taskId: task.id,
     text: task.text,
     startedAt: task.started_at,
     estimateMins: task.estimate_mins || 0,
     loggedMins: task.logged_mins || 0,
+    urgent,
   });
 }
 
@@ -77,7 +78,27 @@ export function useActiveTask() {
     };
     window.addEventListener('focus', onFocus);
 
-    const onLocal = () => {
+    const onLocal = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      // Immediate show on Start — still inside / near the user gesture.
+      if (
+        detail.type === 'started' &&
+        detail.taskId &&
+        detail.startedAt &&
+        detail.text
+      ) {
+        void showActiveTimerNotification({
+          taskId: String(detail.taskId),
+          text: String(detail.text),
+          startedAt: String(detail.startedAt),
+          estimateMins: Number(detail.estimateMins) || 0,
+          loggedMins: Number(detail.loggedMins) || 0,
+          urgent: true,
+        });
+      }
+      if (detail.type === 'stopped' || detail.type === 'completed') {
+        void clearActiveTimerNotification();
+      }
       void refresh();
     };
     window.addEventListener('dokkit:task-activity', onLocal);
@@ -106,9 +127,7 @@ export function useActiveTask() {
     const notif = window.setInterval(() => pushNotification(task), 20_000);
 
     const onHide = () => {
-      if (document.visibilityState === 'hidden') {
-        pushNotification(task);
-      }
+      if (document.visibilityState === 'hidden') pushNotification(task);
     };
     const onPageHide = () => {
       pushNotification(task);

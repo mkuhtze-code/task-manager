@@ -6,6 +6,8 @@ export type TimerNotifyPayload = {
   startedAt: string;
   estimateMins: number;
   loggedMins: number;
+  /** First show after Start — use sound so the user can confirm it appeared. */
+  urgent?: boolean;
 };
 
 const TIMER_TAG = 'dokkit-active-timer';
@@ -36,16 +38,30 @@ function buildBody(payload: TimerNotifyPayload): string {
   return `${fmtMins(elapsed)} elapsed`;
 }
 
+function iconUrls(): { icon: string; badge: string } {
+  if (typeof window === 'undefined') {
+    return { icon: '/app/favicon-192.png', badge: '/app/favicon-192.png' };
+  }
+  const base = window.location.origin;
+  return {
+    icon: `${base}/app/favicon-192.png`,
+    badge: `${base}/app/favicon-192.png`,
+  };
+}
+
 /**
  * Show the ongoing timer notification.
- * Uses ServiceWorkerRegistration.showNotification from the page (reliable)
- * and also posts to the SW so background ticks can refresh the same tag.
+ * Prefer calling this in the same turn as the user tapping Start
+ * (mobile browsers often block notifications outside a user gesture).
  */
 export async function showActiveTimerNotification(
   payload: TimerNotifyPayload
-): Promise<void> {
-  if (typeof window === 'undefined') return;
-  if (!('Notification' in window)) return;
+): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  if (!('Notification' in window)) {
+    console.warn('[dokkit-timer] Notification API missing');
+    return false;
+  }
 
   try {
     let permission = Notification.permission;
@@ -53,30 +69,26 @@ export async function showActiveTimerNotification(
       permission = await Notification.requestPermission();
     }
     if (permission !== 'granted') {
-      console.warn('[dokkit-timer] Notification permission not granted');
-      return;
+      console.warn('[dokkit-timer] permission=', permission);
+      return false;
     }
 
-    if (!('serviceWorker' in navigator)) {
-      new Notification(payload.text || 'Dokkit timer', {
-        body: buildBody(payload),
-        tag: TIMER_TAG,
-        silent: true,
-      });
-      return;
-    }
-
-    const reg = await navigator.serviceWorker.ready;
+    const { icon, badge } = iconUrls();
+    const title = payload.text || 'Dokkit timer';
+    const body = buildBody(payload);
+    // Audible on the first post-Start show so you can verify it worked.
+    // Later refreshes stay silent.
+    const silent = payload.urgent ? false : true;
 
     const options: NotificationOptions & {
       actions?: { action: string; title: string }[];
     } = {
-      body: buildBody(payload),
-      icon: '/app/favicon-192.png',
-      badge: '/app/favicon-192.png',
+      body,
+      icon,
+      badge,
       tag: TIMER_TAG,
       requireInteraction: true,
-      silent: true,
+      silent,
       data: {
         type: 'active_timer',
         taskId: payload.taskId,
@@ -91,14 +103,23 @@ export async function showActiveTimerNotification(
         { action: 'open', title: 'Open' },
       ],
     };
-    await reg.showNotification(payload.text || 'Dokkit timer', options);
 
-    const worker = reg.active;
-    if (worker) {
-      worker.postMessage({ type: 'TIMER_SHOW', ...payload });
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, options);
+      const worker = reg.active;
+      if (worker) {
+        worker.postMessage({ type: 'TIMER_SHOW', ...payload });
+      }
+    } else {
+      new Notification(title, { body, tag: TIMER_TAG, silent, icon });
     }
+
+    console.info('[dokkit-timer] notification shown', title);
+    return true;
   } catch (err) {
     console.error('[dokkit-timer] show failed', err);
+    return false;
   }
 }
 
