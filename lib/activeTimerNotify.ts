@@ -6,13 +6,11 @@ export type TimerNotifyPayload = {
   startedAt: string;
   estimateMins: number;
   loggedMins: number;
-  /** First show after Start — use sound so the user can confirm it appeared. */
   urgent?: boolean;
 };
 
 const TIMER_TAG = 'dokkit-active-timer';
 
-/** Live-friendly elapsed string (includes seconds under 1h so the shade updates). */
 function fmtElapsed(mins: number): string {
   const totalSec = Math.max(0, Math.floor(mins * 60));
   const h = Math.floor(totalSec / 3600);
@@ -148,6 +146,9 @@ export async function showActiveTimerNotification(
     const reg = await getSwRegistration();
     if (reg) {
       try {
+        // Force replace — some Android builds keep a stale body with same tag.
+        const existing = await reg.getNotifications({ tag: TIMER_TAG });
+        existing.forEach((n) => n.close());
         await reg.showNotification(title, options);
         const worker = reg.active;
         if (worker) {
