@@ -1,1 +1,4 @@
-PLACEHOLDER_WILL_FAIL
+'use client';
+
+// RESTORE FAILED - SEE PR COMMENT
+export default function Home() { return null; }
