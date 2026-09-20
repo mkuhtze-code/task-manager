@@ -121,25 +121,15 @@
   flex-direction: column;
 }
 
-/* Page-registered status banner (capacity, trip context, …) */
+/* Page-registered status banner */
 .desk-banner {
   flex-shrink: 0;
   border-bottom: 1px solid var(--line);
   background: rgba(var(--glass-rgb), 0.88);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
-  padding: var(--space-3) var(--space-6);
+  padding: var(--space-2) var(--space-6);
   z-index: 15;
-}
-
-.desk-banner .today-header-card {
-  margin: 0;
-  box-shadow: none;
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  padding: var(--space-2) 0;
-  border-radius: 0;
 }
 
 /* Floating primary action */
@@ -226,17 +216,60 @@
   max-width: 280px;
 }
 
-/* Detail rendered as an in-pane surface (not a bottom sheet) */
+/* Detail in main pane — full dashboard form, not a phone sheet */
 .desk-pane-detail {
-  max-width: 640px;
+  min-height: 0;
+  overflow-y: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.desk-pane-detail-inner {
+  max-width: 720px;
   margin: 0 auto;
+  padding: var(--space-6) var(--space-8) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .desk-pane-detail .task-detail-name {
-  font-size: var(--text-display-sm);
+  font-size: var(--text-display-md);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+  width: 100%;
 }
 
-/* Compact list rows inside secondary rail */
+.desk-pane-detail .task-detail-header {
+  margin-bottom: var(--space-2);
+}
+
+.desk-pane-detail .capture-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.desk-pane-detail .task-detail-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.desk-pane-detail .subtask-panel {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+}
+
+/* Compact list rows */
 .desk-secondary .task-list {
   gap: 6px;
 }
@@ -262,7 +295,7 @@
   box-shadow: inset 3px 0 0 var(--steel);
 }
 
-/* Global desktop shell rules */
+/* Global desktop shell */
 html[data-surface='desktop'] .app-shell {
   max-width: none;
   margin: 0;
@@ -285,49 +318,104 @@ html[data-surface='desktop'] .gear-menu-wrap {
   display: none;
 }
 
-/* Legacy Today two-col (pre–DesktopWorkspace pages) */
+/* Today master–detail grid */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   column-gap: 0;
   row-gap: 0;
   max-width: none;
   align-items: stretch;
   flex: 1;
   min-height: 0;
+  height: 100%;
 }
 
-html[data-surface='desktop'] .app-shell:has(> .today-header-card) > *:not(.today-header-card):not(.task-list) {
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > *:not(.today-header-card):not(.task-list):not(.desk-pane-detail) {
   grid-column: 1 / -1;
 }
 
+/* Compact day strip — one dense row of signal, not a tall card */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .today-header-card {
   grid-column: 1 / -1;
+  grid-row: 1;
   position: sticky;
   top: 0;
   z-index: 5;
   margin: 0;
   border-radius: 0;
   border-bottom: 1px solid var(--line);
-  background: rgba(var(--glass-rgb), 0.9);
+  background: rgba(var(--glass-rgb), 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 10px var(--space-5) 10px var(--space-5);
+  box-shadow: none;
 }
 
+html[data-surface='desktop'] .today-header-top-row {
+  margin-bottom: 0;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+html[data-surface='desktop'] .today-header-weekday {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+html[data-surface='desktop'] .today-header-date {
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  line-height: 1.2;
+}
+
+html[data-surface='desktop'] .today-commitments {
+  margin: 6px 0 0;
+  max-height: 28px;
+  overflow: hidden;
+}
+
+html[data-surface='desktop'] .today-commitment {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+html[data-surface='desktop'] .today-capacity {
+  margin-top: 6px;
+}
+
+html[data-surface='desktop'] .today-capacity-toggle {
+  min-height: 32px;
+  padding: 4px 0;
+}
+
+html[data-surface='desktop'] .today-capacity-title {
+  font-size: var(--text-sm);
+}
+
+/* Hide bulky expanded capacity chrome until opened */
+html[data-surface='desktop'] .today-header-card .today-capacity-body {
+  max-width: 480px;
+}
+
+/* Task list = secondary rail */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
   grid-column: 1;
   grid-row: 2;
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-4);
+  padding: var(--space-3) var(--space-3) var(--space-6);
   border-right: 1px solid var(--line);
   background: rgba(var(--glass-rgb), 0.35);
-  gap: 6px;
+  gap: 4px;
 }
 
-/* When only list exists as board content, leave room for a future pane
-   by not forcing the list full-width — a quiet empty pane sits right. */
-html[data-surface='desktop'] .app-shell:has(> .today-header-card)::after {
-  content: 'Select a task';
+/* Empty main pane hint when no task selected */
+html[data-surface='desktop'] .app-shell:has(> .today-header-card):not(.has-desk-detail)::after {
+  content: 'Select a task to open it here';
   grid-column: 2;
   grid-row: 2;
   display: flex;
@@ -339,8 +427,22 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card)::after {
   padding: var(--space-8);
 }
 
+html[data-surface='desktop'] .app-shell.has-desk-detail::after {
+  display: none;
+}
+
+/* Selected task fills the main pane */
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-pane-detail {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--paper);
+  border-left: none;
+}
+
 html[data-surface='desktop'] .task-list {
-  gap: var(--space-2);
+  gap: 4px;
 }
 
 html[data-surface='desktop'] .task-row.task-list-item,
@@ -355,6 +457,12 @@ html[data-surface='desktop'] .task-row {
 html[data-surface='desktop'] .task-row:hover {
   background: var(--paper-raised);
   border-color: var(--line);
+}
+
+html[data-surface='desktop'] .task-row.expanded {
+  background: var(--paper-raised);
+  border-color: var(--steel-wash);
+  box-shadow: inset 3px 0 0 var(--steel);
 }
 
 html[data-surface='desktop'] .task-desk-meta {
