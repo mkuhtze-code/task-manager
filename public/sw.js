@@ -211,11 +211,15 @@ self.addEventListener('fetch', function (event) {
 self.addEventListener('message', function (event) {
   var data = event.data || {};
   if (data.type === 'TIMER_SHOW') {
-    event.waitUntil(showTimerNotification(data));
+    var p = showTimerNotification(data);
+    if (event.waitUntil) event.waitUntil(p);
+    else p.catch(function () {});
     return;
   }
   if (data.type === 'TIMER_CLEAR') {
-    event.waitUntil(clearTimerNotification());
+    var c = clearTimerNotification();
+    if (event.waitUntil) event.waitUntil(c);
+    else c.catch(function () {});
   }
 });
 
