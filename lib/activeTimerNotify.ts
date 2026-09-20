@@ -12,12 +12,19 @@ export type TimerNotifyPayload = {
 
 const TIMER_TAG = 'dokkit-active-timer';
 
-function fmtMins(mins: number): string {
-  const m = Math.max(0, Math.round(mins));
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  return r === 0 ? `${h}h` : `${h}h ${r}m`;
+/** Live-friendly elapsed string (includes seconds under 1h so the shade updates). */
+function fmtElapsed(mins: number): string {
+  const totalSec = Math.max(0, Math.floor(mins * 60));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) {
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+  if (m > 0) {
+    return `${m}m ${String(s).padStart(2, '0')}s`;
+  }
+  return `${s}s`;
 }
 
 function elapsedMins(payload: TimerNotifyPayload): number {
@@ -31,11 +38,11 @@ function buildBody(payload: TimerNotifyPayload): string {
   const estimate = payload.estimateMins || 0;
   if (estimate > 0) {
     if (elapsed > estimate) {
-      return `${fmtMins(elapsed)} elapsed · over by ${fmtMins(elapsed - estimate)}`;
+      return `${fmtElapsed(elapsed)} elapsed · over by ${fmtElapsed(elapsed - estimate)}`;
     }
-    return `${fmtMins(elapsed)} elapsed · ${fmtMins(estimate - elapsed)} left`;
+    return `${fmtElapsed(elapsed)} elapsed · ${fmtElapsed(estimate - elapsed)} left`;
   }
-  return `${fmtMins(elapsed)} elapsed`;
+  return `${fmtElapsed(elapsed)} elapsed`;
 }
 
 function iconUrls(): { icon: string; badge: string } {
@@ -49,7 +56,6 @@ function iconUrls(): { icon: string; badge: string } {
   };
 }
 
-/** Resolve a registration without hanging forever on .ready */
 async function getSwRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
     return null;
@@ -91,10 +97,6 @@ function pageLevelNotification(
   }
 }
 
-/**
- * Show the ongoing timer notification.
- * Prefer calling this in the same turn as the user tapping Start.
- */
 export async function showActiveTimerNotification(
   payload: TimerNotifyPayload
 ): Promise<boolean> {
@@ -151,17 +153,13 @@ export async function showActiveTimerNotification(
         if (worker) {
           worker.postMessage({ type: 'TIMER_SHOW', ...payload });
         }
-        console.info('[dokkit-timer] SW notification shown', title);
         return true;
       } catch (err) {
         console.warn('[dokkit-timer] SW show failed, falling back', err);
       }
     }
 
-    // Fallback: page-level notification (works while app is open / just backgrounded)
-    const ok = pageLevelNotification(title, body, icon, silent);
-    if (ok) console.info('[dokkit-timer] page notification shown', title);
-    return ok;
+    return pageLevelNotification(title, body, icon, silent);
   } catch (err) {
     console.error('[dokkit-timer] show failed', err);
     return false;
