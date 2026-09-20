@@ -33,12 +33,15 @@ export function TaskDetailSheet(props: {
   subDraftTime: string;
   setSubDraftText: (v: string) => void;
   setSubDraftTime: (v: string) => void;
+  /** Desktop dashboard: render as main-pane detail instead of bottom sheet. */
+  presentation?: 'sheet' | 'pane';
 }) {
   const {
     task, subs, remainingForThis, liveLogged, anyActive, context, jobs, onClose, onSave,
     onComplete, onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
     onDelete, onSaveInfo, onMoveToJob,
     subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
+    presentation = 'sheet',
   } = props;
 
   const [text, setText] = useState(task.text);
@@ -69,8 +72,6 @@ export function TaskDetailSheet(props: {
       return;
     }
     const mins = parseMins(timeStr);
-    // 0 is valid — that's what makes this a list item / reminder rather
-    // than a timed task. Only reject unparseable or negative input.
     if (mins === null || mins < 0) {
       setError('Could not read that time, try 15m, 1.5h, or 0m');
       return;
@@ -80,8 +81,8 @@ export function TaskDetailSheet(props: {
       task.id,
       trimmed,
       mins,
-      surfaceDate.length > 0 ? surfaceDate : null,
-      locationText.trim().length > 0 ? locationText.trim() : null,
+      surfaceDate || null,
+      locationText.trim() || null,
       locationCoords?.lat ?? null,
       locationCoords?.lng ?? null
     );
@@ -93,10 +94,17 @@ export function TaskDetailSheet(props: {
   }
 
   const startDisabled = anyActive && task.status !== 'active';
+  const isPane = presentation === 'pane';
 
   return (
-    <div className="sheet-backdrop" onClick={handleClose}>
-      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={isPane ? 'desk-pane-detail' : 'sheet-backdrop'}
+      onClick={isPane ? undefined : handleClose}
+    >
+      <div
+        className={isPane ? 'task-detail-sheet desk-pane-detail-inner' : 'capture-sheet task-detail-sheet'}
+        onClick={isPane ? undefined : (e) => e.stopPropagation()}
+      >
         <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
           <button
             className="gear-btn"
@@ -128,32 +136,24 @@ export function TaskDetailSheet(props: {
         )}
 
         <div className="capture-row">
-          <input type="text" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} onBlur={commit} style={{ width: 90 }} />
           <button
+            type="button"
             className={task.due_today ? 'btn-quiet active' : 'btn-quiet'}
-            style={{ flex: 1 }}
             onClick={() => onToggleDue(task.id, task.due_today)}
           >
-            {task.due_today ? '✓ Important' : 'Important'}
+            {task.due_today ? 'Due today' : 'Not due today'}
           </button>
         </div>
-        {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
 
         <span className="settings-label">Location (optional)</span>
         <LocationAutocomplete
           value={locationText}
-          placeholder="Where does this happen?"
-          onChange={setLocationText}
-          onPlaceSelected={(result) => {
-            setLocationText(result.formattedAddress);
-            setLocationCoords({ lat: result.lat, lng: result.lng });
+          onChange={(v, coords) => {
+            setLocationText(v);
+            setLocationCoords(coords);
           }}
+          onBlur={commit}
         />
-        {locationText.length > 0 && !locationCoords && (
-          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
-            Pick a suggestion from the list so this can factor into route-aware capacity.
-          </p>
-        )}
 
         <span className="settings-label">{context === 'job' ? 'When' : 'Reminder'}</span>
         <div className="reminder-date-row">
@@ -163,56 +163,58 @@ export function TaskDetailSheet(props: {
             onChange={(e) => setSurfaceDate(e.target.value)}
             onBlur={commit}
           />
-          {surfaceDate.length > 0 && (
+          {surfaceDate && (
             <button className="btn-text" onClick={() => { setSurfaceDate(''); commit(); }}>
               Clear
             </button>
           )}
         </div>
-        {surfaceDate.length > 0 && (
-          <p style={{ color: 'var(--ink-soft)', fontSize: 12, margin: 0 }}>
-            Hidden from your list until {fmtSurfaceDate(surfaceDate)}.
-          </p>
-        )}
+
+        <span className="settings-label">Estimate</span>
+        <div className="capture-row">
+          <input
+            type="text"
+            className="time-input"
+            value={timeStr}
+            onChange={(e) => setTimeStr(e.target.value)}
+            onBlur={commit}
+            placeholder="15m"
+          />
+          <MicButton onResult={(v) => setTimeStr(v)} />
+        </div>
 
         <span className="settings-label">Information</span>
-        <TaskInfo
-          value={task.info || ''}
-          onSave={(info) => onSaveInfo(task.id, info)}
-          surface="edit"
-        />
+        <TaskInfo value={task.info || ''} onSave={(info) => onSaveInfo(task.id, info)} surface="paper" />
 
         <button
+          type="button"
           className={jobMoveOpen ? 'detail-reveal active' : 'detail-reveal'}
           onClick={() => setJobMoveOpen((v) => !v)}
-          aria-expanded={jobMoveOpen}
         >
-          <span>{task.job_id ? `In job: ${jobs.find((j) => j.id === task.job_id)?.name || ''}` : 'Job'}</span>
+          {task.job_id ? 'Move to another job' : 'Add to a job'}
           <ChevronIcon size={14} />
         </button>
         {jobMoveOpen && (
           <div className="move-day-list">
             <button
               className="move-day-option"
-              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
               onClick={() => { onMoveToJob(task.id, null); setJobMoveOpen(false); }}
             >
               No job
-              {!task.job_id && <span style={{ marginLeft: 'auto' }}><CheckIcon done /></span>}
             </button>
             {jobs.map((j) => (
               <button
                 key={j.id}
                 className="move-day-option"
-                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                 onClick={() => { onMoveToJob(task.id, j.id); setJobMoveOpen(false); }}
               >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.name}</span>
-                {task.job_id === j.id && <span style={{ marginLeft: 'auto' }}><CheckIcon done /></span>}
+                {j.name}
               </button>
             ))}
           </div>
         )}
+
+        {error && <div className="settings-help" style={{ color: 'var(--danger)' }}>{error}</div>}
 
         <div className="task-detail-actions">
           {task.estimate_mins > 0 && (
@@ -227,7 +229,7 @@ export function TaskDetailSheet(props: {
             )
           )}
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { onComplete(task.id); onClose(); }}>
-            Complete
+            <CheckIcon done /> Done
           </button>
         </div>
 
@@ -236,32 +238,27 @@ export function TaskDetailSheet(props: {
             <div className="settings-panel-title">Sub-tasks</div>
             <button
               className="subtask-add-btn"
-              aria-label="Add sub-task"
-              onClick={() => setShowAddForm(!showAddForm)}
-            >+</button>
+              onClick={() => setShowAddForm((v) => !v)}
+            >
+              Add
+            </button>
           </div>
           {showAddForm && (
             <div className="subtask-add-row">
               <input
                 type="text"
-                placeholder="Sub-task"
                 value={subDraftText}
                 onChange={(e) => setSubDraftText(e.target.value)}
-              />
-              <MicButton
-                size="small"
-                onResult={(text) =>
-                  setSubDraftText(subDraftText.trim().length > 0 ? `${subDraftText.trim()} ${text}` : text)
-                }
+                placeholder="Sub-task"
               />
               <input
                 type="text"
-                placeholder="15m"
-                style={{ width: 60 }}
+                className="time-input"
                 value={subDraftTime}
                 onChange={(e) => setSubDraftTime(e.target.value)}
+                placeholder="0m"
               />
-              <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => { onAddSubtask(task.id); setShowAddForm(false); }}>add</button>
+              <button className="btn btn-steel" onClick={() => onAddSubtask(task.id)}>Add</button>
             </div>
           )}
           {subs.map((s) => (
@@ -269,10 +266,9 @@ export function TaskDetailSheet(props: {
               <button
                 className={s.done ? 'subtask-check done' : 'subtask-check'}
                 onClick={() => onToggleSubtaskDone(s.id, task.id, s.done)}
-                aria-label="Complete sub-task"
+                aria-label="Toggle sub-task"
               />
               <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
-              <span className="tag mono">{fmtMins(s.mins)}</span>
               <button className="icon-btn" onClick={() => onDeleteSubtask(s.id, task.id)} aria-label="Delete sub-task">×</button>
             </div>
           ))}
