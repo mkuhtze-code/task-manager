@@ -80,7 +80,6 @@ export function useActiveTask() {
 
     const onLocal = (e: Event) => {
       const detail = (e as CustomEvent).detail || {};
-      // Immediate show on Start — still inside / near the user gesture.
       if (
         detail.type === 'started' &&
         detail.taskId &&
@@ -124,10 +123,11 @@ export function useActiveTask() {
     pushNotification(task);
 
     const tick = window.setInterval(() => setNowMs(Date.now()), 1000);
-    const notif = window.setInterval(() => pushNotification(task), 20_000);
+    // Refresh OS notification often enough that seconds in the body move.
+    const notif = window.setInterval(() => pushNotification(task), 10_000);
 
     const onHide = () => {
-      if (document.visibilityState === 'hidden') pushNotification(task);
+      pushNotification(task);
     };
     const onPageHide = () => {
       pushNotification(task);
