@@ -113,3 +113,66 @@ html[data-surface='desktop'] .app-header,
 html[data-surface='desktop'] .today-header-card {
   border-radius: var(--radius-md);
 }
+
+/* ── Today desktop dashboard ─────────────────────────────────────── */
+html[data-surface='desktop'] .app-shell.desk-today {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  column-gap: var(--space-6);
+  row-gap: var(--space-4);
+  max-width: 1200px;
+  align-items: start;
+  padding-bottom: var(--space-8);
+}
+
+/* Banner spans full width when present */
+html[data-surface='desktop'] .app-shell.desk-today > .travel-awareness-banner,
+html[data-surface='desktop'] .app-shell.desk-today > [class*='TravelAwareness'],
+html[data-surface='desktop'] .app-shell.desk-today > :first-child:not(.today-header-card):not(.task-list):not(.desk-today-toolbar) {
+  grid-column: 1 / -1;
+}
+
+html[data-surface='desktop'] .app-shell.desk-today > .today-header-card {
+  grid-column: 1;
+  position: sticky;
+  top: var(--space-4);
+  margin: 0;
+  align-self: start;
+}
+
+html[data-surface='desktop'] .app-shell.desk-today > .desk-today-toolbar {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 40px;
+  margin: 0;
+}
+
+html[data-surface='desktop'] .app-shell.desk-today > .task-list {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.desk-today-list-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.desk-dock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Sheets / overlays should not participate in the dashboard grid */
+html[data-surface='desktop'] .app-shell.desk-today > .sheet-root,
+html[data-surface='desktop'] .app-shell.desk-today > [class*='Sheet'],
+html[data-surface='desktop'] .app-shell.desk-today > [class*='sheet'] {
+  grid-column: 1 / -1;
+}
