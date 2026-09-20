@@ -22,7 +22,7 @@ function liveLogged(task: ActiveTaskSnapshot, nowMs: number): number {
 }
 
 function pushNotification(task: ActiveTaskSnapshot) {
-  showActiveTimerNotification({
+  void showActiveTimerNotification({
     taskId: task.id,
     text: task.text,
     startedAt: task.started_at,
@@ -31,11 +31,6 @@ function pushNotification(task: ActiveTaskSnapshot) {
   });
 }
 
-/**
- * Tracks the single active timed task for the signed-in user.
- * Keeps the in-app banner and the OS notification in sync so the timer
- * remains visible after the app is backgrounded or closed (PWA + push).
- */
 export function useActiveTask() {
   const [task, setTask] = useState<ActiveTaskSnapshot | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -46,7 +41,7 @@ export function useActiveTask() {
     const uid = sessionData.session?.user?.id;
     if (!uid) {
       setTask(null);
-      clearActiveTimerNotification();
+      void clearActiveTimerNotification();
       return;
     }
 
@@ -67,7 +62,7 @@ export function useActiveTask() {
     const next = data as ActiveTaskSnapshot | null;
     setTask(next);
     if (next) pushNotification(next);
-    else clearActiveTimerNotification();
+    else void clearActiveTimerNotification();
   }, []);
 
   useEffect(() => {
@@ -81,7 +76,6 @@ export function useActiveTask() {
       void refresh();
     };
     window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onFocus);
 
     const onLocal = () => {
       void refresh();
@@ -95,7 +89,6 @@ export function useActiveTask() {
     return () => {
       sub.subscription.unsubscribe();
       window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onFocus);
       window.removeEventListener('dokkit:task-activity', onLocal);
       window.clearInterval(poll);
     };
@@ -103,24 +96,31 @@ export function useActiveTask() {
 
   useEffect(() => {
     if (!task) {
-      clearActiveTimerNotification();
+      void clearActiveTimerNotification();
       return;
     }
     setNowMs(Date.now());
     pushNotification(task);
 
     const tick = window.setInterval(() => setNowMs(Date.now()), 1000);
-    const notif = window.setInterval(() => pushNotification(task), 30_000);
+    const notif = window.setInterval(() => pushNotification(task), 20_000);
 
     const onHide = () => {
-      if (document.visibilityState === 'hidden') pushNotification(task);
+      if (document.visibilityState === 'hidden') {
+        pushNotification(task);
+      }
+    };
+    const onPageHide = () => {
+      pushNotification(task);
     };
     document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onPageHide);
 
     return () => {
       window.clearInterval(tick);
       window.clearInterval(notif);
       document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onPageHide);
     };
   }, [task?.id, task?.started_at, task?.text, task?.estimate_mins, task?.logged_mins]);
 
@@ -172,7 +172,7 @@ export function useActiveTask() {
         return;
       }
       setTask(null);
-      clearActiveTimerNotification();
+      void clearActiveTimerNotification();
       window.dispatchEvent(
         new CustomEvent('dokkit:task-activity', {
           detail: { type: 'stopped', taskId: task.id, logged_mins: newLogged },
@@ -205,7 +205,6 @@ export function useActiveTask() {
   };
 }
 
-/** Call after start/stop/complete on Today so the global player stays in sync. */
 export function notifyTaskActivity(detail?: Record<string, unknown>) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(
