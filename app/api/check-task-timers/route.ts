@@ -32,16 +32,30 @@ export async function GET() {
     if (!task.started_at) continue;
 
     // Always refresh the closed-app ongoing timer notification (silent FCM).
+    // Body includes live elapsed so the shade updates even if the SW only
+    // echoes the payload text (and so we can see cron ticks working).
     {
+      const startedMs = new Date(task.started_at).getTime();
+      const elapsed =
+        (task.logged_mins || 0) + (now.getTime() - startedMs) / 60000;
+      const estimate = task.estimate_mins || 0;
+      let body = `${fmtMinsServer(elapsed)} elapsed`;
+      if (estimate > 0) {
+        if (elapsed > estimate) {
+          body = `${fmtMinsServer(elapsed)} elapsed · over by ${fmtMinsServer(elapsed - estimate)}`;
+        } else {
+          body = `${fmtMinsServer(elapsed)} elapsed · ${fmtMinsServer(estimate - elapsed)} left`;
+        }
+      }
       await deliverFcmToUser(task.user_id, {
         title: task.text || 'Dokkit timer',
-        body: 'Timer running',
+        body,
         destination: '/app',
         type: 'active_timer',
         entityId: task.id,
         silent: true,
         startedAt: task.started_at,
-        estimateMins: task.estimate_mins || 0,
+        estimateMins: estimate,
         loggedMins: task.logged_mins || 0,
         text: task.text || 'Dokkit timer',
       });
