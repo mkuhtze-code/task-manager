@@ -4,14 +4,6 @@ import { authedFetch } from '@/lib/authedFetch';
 import { getFirebaseWebConfig, getFirebaseVapidKey, FirebaseWebConfig } from '@/lib/fcm/config';
 import { getWebPushSupport, classifyGetTokenError } from '@/lib/fcm/clientSupport';
 
-// Browser-side FCM registration layer.
-//
-// Nothing here runs automatically: Dokkit must explicitly request
-// notification permission, so the app calls registerWebPushSubscription()
-// when the user opts in (the Preferences screen is the eventual call
-// site). All failure modes return typed reasons instead of throwing, so a
-// notification hiccup can never break the surrounding UI.
-
 const SERVICE_WORKER_URL = '/app/sw.js';
 const SERVICE_WORKER_SCOPE = '/app/';
 
@@ -31,24 +23,28 @@ function toMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-// Registers an already-obtained FCM token against the authenticated
-// Dokkit account. Exposed separately so the token-refresh handler can
-// re-register a rotated token without re-prompting for permission.
 export async function registerWebPushToken(
   token: string,
   opts?: { userAgent?: string }
 ): Promise<RegisterTokenResult> {
-  const userAgent = opts?.userAgent ?? (typeof navigator !== 'undefined' ? navigator.userAgent : null);
+  const userAgent =
+    opts?.userAgent ?? (typeof navigator !== 'undefined' ? navigator.userAgent : null);
   try {
-    const res: any = await authedFetch('/api/fcm-token', { token, platform: 'web', userAgent });
+    const res: any = await authedFetch('/api/fcm-token', {
+      token,
+      platform: 'web',
+      userAgent,
+    });
     if (res && res.ok) return { ok: true };
-    return { ok: false, error: res?.error || 'Could not register this device for notifications.' };
+    return {
+      ok: false,
+      error: res?.error || 'Could not register this device for notifications.',
+    };
   } catch (err) {
     return { ok: false, error: toMessage(err) };
   }
 }
 
-// Requests notification permission. Only call from explicit user intent.
 export async function requestPushPermission(): Promise<WebPushPermission> {
   if (!getWebPushSupport().supported) return 'unsupported';
   try {
@@ -58,8 +54,6 @@ export async function requestPushPermission(): Promise<WebPushPermission> {
   }
 }
 
-// Full opt-in flow: capability check → permission → service worker
-// registration → FCM token → authenticated Dokkit API registration.
 export async function registerWebPushSubscription(): Promise<WebPushRegistrationResult> {
   const support = getWebPushSupport();
   if (!support.supported) return { ok: false, reason: support.reason };
@@ -81,9 +75,36 @@ export async function registerWebPushSubscription(): Promise<WebPushRegistration
       registration = await navigator.serviceWorker.register(SERVICE_WORKER_URL, {
         scope: SERVICE_WORKER_SCOPE,
       });
-      await navigator.serviceWorker.ready;
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+      await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<ServiceWorkerRegistration>((resolve, reject) => {
+          const deadline = Date.now() + 12000;
+          const tick = () => {
+            if (registration.active) {
+              resolve(registration);
+              return;
+            }
+            if (Date.now() > deadline) {
+              reject(new Error('Service worker did not activate in time'));
+              return;
+            }
+            setTimeout(tick, 200);
+          };
+          tick();
+        }),
+      ]);
+      registration =
+        (await navigator.serviceWorker.getRegistration(SERVICE_WORKER_SCOPE)) ||
+        registration;
     } catch (err) {
-      return { ok: false, reason: 'service-worker-unavailable', error: toMessage(err) };
+      return {
+        ok: false,
+        reason: 'service-worker-unavailable',
+        error: toMessage(err),
+      };
     }
 
     const messaging = getMessaging(ensureFirebaseApp(firebaseConfig));
@@ -108,14 +129,6 @@ export async function registerWebPushSubscription(): Promise<WebPushRegistration
   }
 }
 
-// Polls the Firebase SDK for FCM token rotation and re-registers each new
-// token against Dokkit. firebase/messaging no longer exposes a browser-side
-// onTokenRefresh callback (it moved to the service-worker entry), so this
-// watches getToken() results instead: the SDK only returns a *different*
-// token after it has rotated the underlying subscription, which is exactly
-// the case we need to re-register. Returns an unsubscribe function.
-// Best-effort: a failed check or re-registration is silently skipped and
-// never throws into the app.
 const TOKEN_REFRESH_CHECK_MS = 5 * 60 * 1000;
 
 export function watchWebPushTokenRefresh(onNewToken: (token: string) => void): () => void {
@@ -141,8 +154,7 @@ export function watchWebPushTokenRefresh(onNewToken: (token: string) => void): (
       lastRegistered = token;
       onNewToken(token);
     } catch {
-      // A rotated token that fails to re-register is surfaced to the
-      // caller rather than thrown into the app.
+      // ignore
     }
   };
 
