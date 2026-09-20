@@ -1,4 +1,4 @@
-// Dokkit PWA Service Worker v8.
+// Dokkit PWA Service Worker v9.
 // Shell caching + web-push + FCM + ongoing active-task timer notification.
 
 try {
@@ -77,7 +77,13 @@ function buildTimerNotification(p) {
 
 function showTimerNotification(p) {
   var built = buildTimerNotification(p);
-  return self.registration.showNotification(built.title, built.options);
+  if (p.body) {
+    built.options.body = String(p.body);
+  }
+  return self.registration.getNotifications({ tag: TIMER_TAG }).then(function (list) {
+    list.forEach(function (n) { n.close(); });
+    return self.registration.showNotification(built.title, built.options);
+  });
 }
 
 function clearTimerNotification() {
@@ -108,6 +114,7 @@ function ensureFcm() {
         showTimerNotification({
           taskId: d.entityId || d.taskId,
           text: safeText(d.title || d.text, 'Dokkit timer'),
+          body: d.body || null,
           startedAt: d.startedAt,
           estimateMins: Number(d.estimateMins) || 0,
           loggedMins: Number(d.loggedMins) || 0,
@@ -146,7 +153,7 @@ function ensureFcm() {
   }
 }
 
-const CACHE_VERSION = 'dokkit-v8';
+const CACHE_VERSION = 'dokkit-v9';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -276,6 +283,7 @@ self.addEventListener('push', function (event) {
         showTimerNotification({
           taskId: data.taskId || data.entityId,
           text: fcmTitle,
+          body: fcmBody,
           startedAt: data.startedAt,
           estimateMins: data.estimateMins,
           loggedMins: data.loggedMins,
@@ -304,6 +312,7 @@ self.addEventListener('push', function (event) {
       showTimerNotification({
         taskId: data.taskId || data.entityId,
         text: data.title || data.text,
+        body: data.body || null,
         startedAt: data.startedAt,
         estimateMins: data.estimateMins,
         loggedMins: data.loggedMins,
