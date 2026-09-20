@@ -81,6 +81,7 @@ import {
 import { useNow } from '@/hooks/useNow';
 import { useTodayAuth } from '@/hooks/useTodayAuth';
 import { notifyTaskActivity } from '@/hooks/useActiveTask';
+import { showActiveTimerNotification } from '@/lib/activeTimerNotify';
 
 export default function Home() {
   const router = useRouter();
@@ -1285,6 +1286,7 @@ export default function Home() {
   async function startTask(id: string) {
     const alreadyActive = tasks.find((t) => t.status === 'active');
     if (alreadyActive) return;
+    const task = tasks.find((t) => t.id === id);
     const startedAt = new Date().toISOString();
     const { error } = await supabase.from('tasks').update({ status: 'active', started_at: startedAt, near_notified: false, over_notified: false, last_overdue_ping_at: null }).eq('id', id);
     if (error) {
@@ -1293,7 +1295,25 @@ export default function Home() {
       return;
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'active', started_at: startedAt } : t)));
-    notifyTaskActivity({ type: 'started', taskId: id });
+    // Fire OS notification immediately (same turn as the Start tap).
+    if (task) {
+      void showActiveTimerNotification({
+        taskId: id,
+        text: task.text,
+        startedAt,
+        estimateMins: task.estimate_mins || 0,
+        loggedMins: task.logged_mins || 0,
+        urgent: true,
+      });
+    }
+    notifyTaskActivity({
+      type: 'started',
+      taskId: id,
+      text: task?.text,
+      startedAt,
+      estimateMins: task?.estimate_mins || 0,
+      loggedMins: task?.logged_mins || 0,
+    });
   }
 
   async function stopTask(id: string) {
