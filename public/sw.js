@@ -1,4 +1,4 @@
-// Dokkit PWA Service Worker v9.
+// Dokkit PWA Service Worker v10.
 // Shell caching + web-push + FCM + ongoing active-task timer notification.
 
 try {
@@ -80,10 +80,8 @@ function showTimerNotification(p) {
   if (p.body) {
     built.options.body = String(p.body);
   }
-  return self.registration.getNotifications({ tag: TIMER_TAG }).then(function (list) {
-    list.forEach(function (n) { n.close(); });
-    return self.registration.showNotification(built.title, built.options);
-  });
+  // Replace by tag only — closing first makes the shade flicker / vanish.
+  return self.registration.showNotification(built.title, built.options);
 }
 
 function clearTimerNotification() {
@@ -153,7 +151,7 @@ function ensureFcm() {
   }
 }
 
-const CACHE_VERSION = 'dokkit-v9';
+const CACHE_VERSION = 'dokkit-v10';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
