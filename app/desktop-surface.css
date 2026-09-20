@@ -110,17 +110,47 @@
   flex: 1;
   min-width: 0;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Sticky top-right primary action (Dock it / Add …) */
+.desk-main-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Page-registered status banner (capacity, trip context, …) */
+.desk-banner {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line);
+  background: rgba(var(--glass-rgb), 0.88);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  padding: var(--space-3) var(--space-6);
+  z-index: 15;
+}
+
+.desk-banner .today-header-card {
+  margin: 0;
+  box-shadow: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: var(--space-2) 0;
+  border-radius: 0;
+}
+
+/* Floating primary action */
 .desk-primary-bar {
-  position: sticky;
-  top: 0;
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-6);
   z-index: 30;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: var(--space-4) var(--space-6) 0;
   pointer-events: none;
 }
 
@@ -129,46 +159,245 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.12);
+  box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.14);
 }
 
-html[data-surface='desktop'] .app-shell {
-  max-width: 800px;
+/* ── Master–detail workspace ─────────────────────────────────────── */
+.desk-workspace {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.desk-secondary {
+  border-right: 1px solid var(--line);
+  background: rgba(var(--glass-rgb), 0.35);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.desk-secondary-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.desk-pane {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+
+.desk-pane-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+
+.desk-pane-empty {
+  height: 100%;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--ink-soft);
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.desk-pane-empty-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.desk-pane-empty-sub {
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+  max-width: 280px;
+}
+
+/* Detail rendered as an in-pane surface (not a bottom sheet) */
+.desk-pane-detail {
+  max-width: 640px;
   margin: 0 auto;
-  padding: 0 var(--space-6) var(--space-8);
+}
+
+.desk-pane-detail .task-detail-name {
+  font-size: var(--text-display-sm);
+}
+
+/* Compact list rows inside secondary rail */
+.desk-secondary .task-list {
+  gap: 6px;
+}
+
+.desk-secondary .task-row,
+.desk-secondary .task-row.task-list-item {
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 10px 12px;
+  box-shadow: none;
+}
+
+.desk-secondary .task-row:hover {
+  background: var(--paper-raised);
+  border-color: var(--line);
+}
+
+.desk-secondary .task-row.expanded,
+.desk-secondary .task-row[data-selected='true'] {
+  background: var(--paper-raised);
+  border-color: var(--steel-wash);
+  box-shadow: inset 3px 0 0 var(--steel);
+}
+
+/* Global desktop shell rules */
+html[data-surface='desktop'] .app-shell {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 html[data-surface='desktop'] .app-shell.has-active {
-  padding-bottom: var(--space-8);
+  padding-bottom: 0;
 }
 
 html[data-surface='desktop'] .surface-nav {
   display: none;
 }
 
-/* Gear lives in the sidebar on desktop */
 html[data-surface='desktop'] .gear-menu-wrap {
   display: none;
 }
 
-html[data-surface='desktop'] .app-header,
-html[data-surface='desktop'] .today-header-card {
-  border-radius: var(--radius-md);
+/* Legacy Today two-col (pre–DesktopWorkspace pages) */
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  column-gap: 0;
+  row-gap: 0;
+  max-width: none;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 
-/* Today: single readable column, sticky capacity — not a broken 2-col squeeze */
-html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
-  max-width: 720px;
-  padding-top: var(--space-2);
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > *:not(.today-header-card):not(.task-list) {
+  grid-column: 1 / -1;
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .today-header-card {
+  grid-column: 1 / -1;
   position: sticky;
-  top: var(--space-4);
+  top: 0;
   z-index: 5;
-  margin: 0 0 var(--space-5);
+  margin: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  background: rgba(var(--glass-rgb), 0.9);
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
+  grid-column: 1;
+  grid-row: 2;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
+  border-right: 1px solid var(--line);
+  background: rgba(var(--glass-rgb), 0.35);
+  gap: 6px;
+}
+
+/* When only list exists as board content, leave room for a future pane
+   by not forcing the list full-width — a quiet empty pane sits right. */
+html[data-surface='desktop'] .app-shell:has(> .today-header-card)::after {
+  content: 'Select a task';
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-faint);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: var(--space-8);
+}
+
+html[data-surface='desktop'] .task-list {
+  gap: var(--space-2);
+}
+
+html[data-surface='desktop'] .task-row.task-list-item,
+html[data-surface='desktop'] .task-row {
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 10px 12px;
+  box-shadow: none;
+}
+
+html[data-surface='desktop'] .task-row:hover {
+  background: var(--paper-raised);
+  border-color: var(--line);
+}
+
+html[data-surface='desktop'] .task-desk-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.task-desk-meta {
+  display: none;
+}
+
+html[data-surface='desktop'] .task-desk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-surface='desktop'] .task-desk-chip.due {
+  color: var(--steel-dark);
+  background: var(--steel-wash);
+  border-color: transparent;
+}
+
+html[data-surface='desktop'] .task-desk-chip.location {
+  max-width: 200px;
+}
+
+html[data-surface='desktop'] .task-desk-chip.muted {
+  color: var(--ink-faint);
+  border-color: transparent;
+  background: transparent;
+  padding-left: 0;
 }

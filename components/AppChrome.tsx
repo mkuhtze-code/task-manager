@@ -1,15 +1,17 @@
 'use client';
 
 import ActiveTimerBar from '@/components/ActiveTimerBar';
+import DesktopBannerHost from '@/components/DesktopBannerHost';
 import DesktopPrimaryBar from '@/components/DesktopPrimaryBar';
 import DesktopSidebar from '@/components/DesktopSidebar';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 
 /**
- * Client chrome shared across the app.
- * - Always mounts the active-task banner.
- * - Applies data-surface on <html> via useSurfaceMode.
- * - On desktop: left sidebar + sticky primary action + fluid main.
+ * Desktop chrome:
+ *   primary sidebar | main column
+ *     ├ optional day/status banner (page-registered)
+ *     ├ floating primary action (Dock it / Add …)
+ *     └ page body (prefer DesktopWorkspace = secondary list + detail pane)
  */
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const { isDesktop } = useSurfaceMode();
@@ -20,8 +22,9 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
         <DesktopSidebar />
         <div className="desk-main">
           <ActiveTimerBar />
+          <DesktopBannerHost />
           <DesktopPrimaryBar />
-          {children}
+          <div className="desk-main-body">{children}</div>
         </div>
       </div>
     );
