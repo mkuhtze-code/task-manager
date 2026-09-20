@@ -1,1 +1,3 @@
-@import './globals-main.css';
+/* Temporary: full stylesheet from main (5c6e247) via jsDelivr while
+   desktop surface work is in progress. Replace with in-repo copy on merge. */
+@import url('https://cdn.jsdelivr.net/gh/mkuhtze-code/task-manager@5c6e2470870d8c9d7f6eed7e6768b892bd44ef11/app/globals.css');
