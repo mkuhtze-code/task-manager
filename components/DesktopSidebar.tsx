@@ -5,10 +5,12 @@ import { usePathname } from 'next/navigation';
 import {
   JobsIcon,
   MeetingsIcon,
+  PlusIcon,
   TodayIcon,
   TravelIcon,
 } from '@/components/icons';
 import type { NavSurface } from '@/components/SurfaceNav';
+import { requestCaptureOpen } from '@/lib/captureOpen';
 
 type NavItem = {
   key: NavSurface | 'patterns';
@@ -93,12 +95,11 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 
 /**
  * Persistent left rail for desktop surface mode.
- * First slice: primary surfaces + Patterns; Account lives in Gear.
  */
 export default function DesktopSidebar() {
   const pathname = usePathname() || '/';
-  // basePath is /app — usePathname in Next still returns path without basePath
   const path = pathname;
+  const onToday = path === '/' || path === '';
 
   return (
     <aside className="desk-sidebar" aria-label="Main navigation">
@@ -115,6 +116,17 @@ export default function DesktopSidebar() {
           ))}
         </div>
       </nav>
+      {onToday && (
+        <div className="desk-sidebar-dock">
+          <button
+            type="button"
+            className="btn btn-steel"
+            onClick={() => requestCaptureOpen()}
+          >
+            <PlusIcon size={16} /> Dock it
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
