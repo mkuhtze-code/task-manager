@@ -10,7 +10,7 @@
   position: sticky;
   top: 0;
   align-self: flex-start;
-  width: 220px;
+  width: 240px;
   flex-shrink: 0;
   height: 100vh;
   padding: var(--space-5) var(--space-3);
@@ -20,8 +20,9 @@
   -webkit-backdrop-filter: blur(16px) saturate(160%);
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-5);
   z-index: 20;
+  overflow-y: auto;
 }
 
 .desk-sidebar-brand {
@@ -63,6 +64,12 @@
   font-size: var(--text-sm);
   font-weight: 600;
   transition: background 0.15s var(--ease), color 0.15s var(--ease);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .desk-nav-item:hover {
@@ -73,6 +80,15 @@
 .desk-nav-item-active {
   background: var(--steel-wash);
   color: var(--steel-dark);
+}
+
+.desk-nav-item-danger {
+  color: var(--danger-text, var(--danger));
+}
+
+.desk-nav-item-danger:hover {
+  background: var(--danger-bg);
+  color: var(--danger-dark, var(--danger));
 }
 
 .desk-nav-icon {
@@ -90,13 +106,34 @@
 }
 
 .desk-main {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 100vh;
 }
 
+/* Sticky top-right primary action (Dock it / Add …) */
+.desk-primary-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: var(--space-4) var(--space-6) 0;
+  pointer-events: none;
+}
+
+.desk-primary-bar .desk-primary-btn {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.12);
+}
+
 html[data-surface='desktop'] .app-shell {
-  max-width: 1100px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 0 var(--space-6) var(--space-8);
 }
@@ -109,50 +146,29 @@ html[data-surface='desktop'] .surface-nav {
   display: none;
 }
 
+/* Gear lives in the sidebar on desktop */
+html[data-surface='desktop'] .gear-menu-wrap {
+  display: none;
+}
+
 html[data-surface='desktop'] .app-header,
 html[data-surface='desktop'] .today-header-card {
   border-radius: var(--radius-md);
 }
 
-/* ── Today desktop dashboard (Today page has .today-header-card) ─── */
+/* Today: single readable column, sticky capacity — not a broken 2-col squeeze */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
-  display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
-  column-gap: var(--space-6);
-  row-gap: var(--space-4);
-  max-width: 1200px;
-  align-items: start;
-  padding-bottom: var(--space-8);
-}
-
-html[data-surface='desktop'] .app-shell:has(> .today-header-card) > :first-child:not(.today-header-card):not(.task-list) {
-  grid-column: 1 / -1;
+  max-width: 720px;
+  padding-top: var(--space-2);
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .today-header-card {
-  grid-column: 1;
   position: sticky;
   top: var(--space-4);
-  margin: 0;
-  align-self: start;
+  z-index: 5;
+  margin: 0 0 var(--space-5);
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
-  grid-column: 2;
   min-width: 0;
-}
-
-/* Sidebar dock control */
-.desk-sidebar-dock {
-  margin-top: auto;
-  padding: var(--space-3);
-  border-top: 1px solid var(--line);
-}
-
-.desk-sidebar-dock .btn {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
 }
