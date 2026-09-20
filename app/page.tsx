@@ -17,6 +17,7 @@ import { AuthScreen, OnboardingScreen } from '@/components/AuthScreen';
 import { PlusIcon } from '@/components/icons';
 import { useDragReorder } from '@/hooks/useDragReorder';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
+import { registerCaptureOpen } from '@/lib/captureOpen';
 import {
   buildClusters,
   suggestEstimate,
@@ -161,6 +162,9 @@ export default function Home() {
   const [workDays, setWorkDays] = useState<number[]>(DEFAULT_WORK_DAYS);
   const [sortMode, setSortMode] = useState<SortMode>('capacity_first');
   const [captureOpen, setCaptureOpen] = useState(false);
+
+  // Desktop sidebar Dock it → open capture sheet
+  useEffect(() => registerCaptureOpen(() => setCaptureOpen(true)), []);
   /** Quiet post-dock line: what landed + optional clear. */
   const [dockSummary, setDockSummary] = useState<string | null>(null);
   const [realityCheckOpen, setRealityCheckOpen] = useState(false);
