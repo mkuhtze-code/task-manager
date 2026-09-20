@@ -1,5 +1,5 @@
-// Dokkit PWA Service Worker.
-// Shell caching + legacy web-push + FCM + ongoing active-task timer notification.
+// Dokkit PWA Service Worker v7.
+// Shell caching + web-push + FCM + ongoing active-task timer notification.
 
 try {
   self.importScripts(
@@ -11,6 +11,13 @@ try {
 }
 
 var TIMER_TAG = 'dokkit-active-timer';
+
+function safeText(v, fallback) {
+  if (v == null) return fallback;
+  var s = String(v);
+  if (!s || s === 'undefined' || s === 'null') return fallback;
+  return s;
+}
 
 function fmtMins(mins) {
   var m = Math.max(0, Math.round(Number(mins) || 0));
@@ -41,7 +48,7 @@ function buildTimerNotification(p) {
     body = fmtMins(elapsed) + ' elapsed';
   }
   return {
-    title: p.text || 'Dokkit timer',
+    title: safeText(p.text, 'Dokkit timer'),
     options: {
       body: body,
       icon: '/app/favicon-192.png',
@@ -77,9 +84,6 @@ function clearTimerNotification() {
   });
 }
 
-// FCM must not run importScripts('/app/api/firebase-config') at parse time —
-// a slow or failing API response prevents the worker from installing at all,
-// which makes navigator.serviceWorker.ready hang until timeout.
 var fcmReady = false;
 function ensureFcm() {
   if (fcmReady) return true;
@@ -101,7 +105,7 @@ function ensureFcm() {
       if (d.type === 'active_timer') {
         showTimerNotification({
           taskId: d.entityId || d.taskId,
-          text: d.title || d.text || 'Dokkit timer',
+          text: safeText(d.title || d.text, 'Dokkit timer'),
           startedAt: d.startedAt,
           estimateMins: Number(d.estimateMins) || 0,
           loggedMins: Number(d.loggedMins) || 0,
@@ -114,12 +118,13 @@ function ensureFcm() {
         return;
       }
 
-      var title = d.title || 'Dokkit';
+      var title = safeText(d.title, 'Dokkit');
+      var body = safeText(d.body, 'You have a notification.');
       var options = {
-        body: d.body || 'You have a notification.',
+        body: body,
         icon: '/app/favicon-192.png',
         badge: '/app/favicon-192.png',
-        silent: !!d.silent,
+        silent: d.silent === true || d.silent === '1' || d.silent === 'true',
         data: {
           destination: d.destination || null,
           type: d.type || null,
@@ -139,7 +144,7 @@ function ensureFcm() {
   }
 }
 
-const CACHE_VERSION = 'dokkit-v6';
+const CACHE_VERSION = 'dokkit-v7';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -260,7 +265,37 @@ self.addEventListener('push', function (event) {
       data = parsed;
     }
   }
-  if (data && data.dokkit_source === 'fcm') return;
+
+  if (data && data.dokkit_source === 'fcm') {
+    var fcmTitle = safeText(data.title, 'Dokkit');
+    var fcmBody = safeText(data.body, 'You have a notification.');
+    if (data.type === 'active_timer') {
+      event.waitUntil(
+        showTimerNotification({
+          taskId: data.taskId || data.entityId,
+          text: fcmTitle,
+          startedAt: data.startedAt,
+          estimateMins: data.estimateMins,
+          loggedMins: data.loggedMins,
+        })
+      );
+      return;
+    }
+    event.waitUntil(
+      self.registration.showNotification(fcmTitle, {
+        body: fcmBody,
+        icon: '/app/favicon-192.png',
+        badge: '/app/favicon-192.png',
+        silent: data.silent === true || data.silent === '1' || data.silent === 'true',
+        data: {
+          destination: data.destination || null,
+          type: data.type || null,
+          entityId: data.entityId || null,
+        },
+      })
+    );
+    return;
+  }
 
   if (data && data.type === 'active_timer') {
     event.waitUntil(
@@ -276,14 +311,14 @@ self.addEventListener('push', function (event) {
   }
 
   var options = {
-    body: data.body,
+    body: safeText(data.body, 'You have a notification.'),
     icon: '/app/favicon-192.png',
     badge: '/app/favicon-192.png',
     silent: !!data.silent,
   };
   event.waitUntil(
     Promise.all([
-      self.registration.showNotification(data.title, options),
+      self.registration.showNotification(safeText(data.title, 'Dokkit'), options),
       self.registration.setAppBadge ? self.registration.setAppBadge(1).catch(function () {}) : Promise.resolve(),
     ])
   );
