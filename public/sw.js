@@ -47,7 +47,6 @@ function buildTimerNotification(p) {
       icon: '/app/favicon-192.png',
       badge: '/app/favicon-192.png',
       tag: TIMER_TAG,
-      renotify: false,
       requireInteraction: true,
       silent: true,
       data: {
@@ -78,17 +77,21 @@ function clearTimerNotification() {
   });
 }
 
-(function initFcm() {
-  if (typeof firebase === 'undefined') return;
+// FCM must not run importScripts('/app/api/firebase-config') at parse time —
+// a slow or failing API response prevents the worker from installing at all,
+// which makes navigator.serviceWorker.ready hang until timeout.
+var fcmReady = false;
+function ensureFcm() {
+  if (fcmReady) return true;
+  if (typeof firebase === 'undefined') return false;
   try {
     self.importScripts('/app/api/firebase-config');
   } catch (e) {
     console.error('[dokkit:fcm] Config load failed', e);
-    return;
+    return false;
   }
   var cfg = self.DOKKIT_FIREBASE_CONFIG;
-  if (!cfg) return;
-
+  if (!cfg) return false;
   try {
     firebase.initializeApp(cfg);
     firebase.messaging().onBackgroundMessage(function (payload) {
@@ -128,12 +131,15 @@ function clearTimerNotification() {
         self.registration.setAppBadge(1).catch(function () {});
       }
     });
+    fcmReady = true;
+    return true;
   } catch (e) {
     console.error('[dokkit:fcm] Initialization failed', e);
+    return false;
   }
-})();
+}
 
-const CACHE_VERSION = 'dokkit-v5';
+const CACHE_VERSION = 'dokkit-v6';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -149,7 +155,15 @@ const APP_SHELL_URLS = [
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(APP_SHELL_CACHE)
-      .then(function (cache) { return cache.addAll(APP_SHELL_URLS); })
+      .then(function (cache) {
+        return Promise.all(
+          APP_SHELL_URLS.map(function (url) {
+            return cache.add(url).catch(function (err) {
+              console.warn('[dokkit:sw] cache skip', url, err);
+            });
+          })
+        );
+      })
       .then(function () { return self.skipWaiting(); })
   );
 });
@@ -164,7 +178,10 @@ self.addEventListener('activate', function (event) {
           })
           .map(function (key) { return caches.delete(key); })
       );
-    }).then(function () { return self.clients.claim(); })
+    }).then(function () {
+      try { ensureFcm(); } catch (e) {}
+      return self.clients.claim();
+    })
   );
 });
 
@@ -210,6 +227,10 @@ self.addEventListener('fetch', function (event) {
 
 self.addEventListener('message', function (event) {
   var data = event.data || {};
+  if (data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
   if (data.type === 'TIMER_SHOW') {
     var p = showTimerNotification(data);
     if (event.waitUntil) event.waitUntil(p);
@@ -224,6 +245,7 @@ self.addEventListener('message', function (event) {
 });
 
 self.addEventListener('push', function (event) {
+  try { ensureFcm(); } catch (e) {}
   var data = { title: 'Dokkit', body: 'You have a notification.', silent: false };
   var parsed = null;
   if (event.data) {
