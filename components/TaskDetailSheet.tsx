@@ -33,12 +33,15 @@ export function TaskDetailSheet(props: {
   subDraftTime: string;
   setSubDraftText: (v: string) => void;
   setSubDraftTime: (v: string) => void;
+  /** Desktop dashboard: main-pane detail instead of bottom sheet. */
+  presentation?: 'sheet' | 'pane';
 }) {
   const {
     task, subs, remainingForThis, liveLogged, anyActive, context, jobs, onClose, onSave,
     onComplete, onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
     onDelete, onSaveInfo, onMoveToJob,
     subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
+    presentation = 'sheet',
   } = props;
 
   const [text, setText] = useState(task.text);
@@ -93,10 +96,17 @@ export function TaskDetailSheet(props: {
   }
 
   const startDisabled = anyActive && task.status !== 'active';
+  const isPane = presentation === 'pane';
 
   return (
-    <div className="sheet-backdrop" onClick={handleClose}>
-      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={isPane ? 'desk-pane-detail' : 'sheet-backdrop'}
+      onClick={isPane ? undefined : handleClose}
+    >
+      <div
+        className={isPane ? 'task-detail-sheet desk-pane-detail-inner' : 'capture-sheet task-detail-sheet'}
+        onClick={isPane ? undefined : (e) => e.stopPropagation()}
+      >
         <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
           <button
             className="gear-btn"
@@ -128,15 +138,24 @@ export function TaskDetailSheet(props: {
         )}
 
         <div className="capture-row">
-          <input type="text" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} onBlur={commit} style={{ width: 90 }} />
           <button
+            type="button"
             className={task.due_today ? 'btn-quiet active' : 'btn-quiet'}
-            style={{ flex: 1 }}
-            onClick={() => onToggleDue(task.id, task.due_today)}
+            onClick={() => onToggleDue(task.id, !!task.due_today)}
           >
-            {task.due_today ? '✓ Important' : 'Important'}
+            {task.due_today ? 'Due today' : 'Mark due today'}
           </button>
+          <input
+            type="text"
+            className="time-input"
+            value={timeStr}
+            onChange={(e) => setTimeStr(e.target.value)}
+            onBlur={commit}
+            placeholder="15m"
+            aria-label="Estimate"
+          />
         </div>
+
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
 
         <span className="settings-label">Location (optional)</span>
@@ -179,36 +198,34 @@ export function TaskDetailSheet(props: {
         <TaskInfo
           value={task.info || ''}
           onSave={(info) => onSaveInfo(task.id, info)}
-          surface="edit"
+          surface="raised"
         />
 
         <button
+          type="button"
           className={jobMoveOpen ? 'detail-reveal active' : 'detail-reveal'}
-          onClick={() => setJobMoveOpen((v) => !v)}
-          aria-expanded={jobMoveOpen}
+          onClick={() => setJobMoveOpen((o) => !o)}
         >
-          <span>{task.job_id ? `In job: ${jobs.find((j) => j.id === task.job_id)?.name || ''}` : 'Job'}</span>
+          <span>{task.job_id ? 'Filed under a job' : 'Add to a job'}</span>
           <ChevronIcon size={14} />
         </button>
         {jobMoveOpen && (
           <div className="move-day-list">
             <button
+              type="button"
               className="move-day-option"
-              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-              onClick={() => { onMoveToJob(task.id, null); setJobMoveOpen(false); }}
+              onClick={() => onMoveToJob(task.id, null)}
             >
               No job
-              {!task.job_id && <span style={{ marginLeft: 'auto' }}><CheckIcon done /></span>}
             </button>
             {jobs.map((j) => (
               <button
                 key={j.id}
+                type="button"
                 className="move-day-option"
-                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-                onClick={() => { onMoveToJob(task.id, j.id); setJobMoveOpen(false); }}
+                onClick={() => onMoveToJob(task.id, j.id)}
               >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.name}</span>
-                {task.job_id === j.id && <span style={{ marginLeft: 'auto' }}><CheckIcon done /></span>}
+                {j.name}
               </button>
             ))}
           </div>
@@ -227,7 +244,7 @@ export function TaskDetailSheet(props: {
             )
           )}
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { onComplete(task.id); onClose(); }}>
-            Complete
+            <CheckIcon done /> Done
           </button>
         </div>
 
@@ -235,8 +252,8 @@ export function TaskDetailSheet(props: {
           <div className="subtask-header">
             <div className="settings-panel-title">Sub-tasks</div>
             <button
+              type="button"
               className="subtask-add-btn"
-              aria-label="Add sub-task"
               onClick={() => setShowAddForm(!showAddForm)}
             >+</button>
           </div>
