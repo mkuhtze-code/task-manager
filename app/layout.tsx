@@ -1,4 +1,5 @@
 import './globals.css';
+import './desktop-surface.css';
 import './dokkit-splash.css';
 import './observation-layout-fix.css';
 import './dokkit-player.css';

@@ -1,0 +1,115 @@
+/* ── Desktop surface mode (data-surface on <html>) ───────────────── */
+.desk-shell {
+  display: flex;
+  min-height: 100vh;
+  align-items: stretch;
+  background: var(--paper);
+}
+
+.desk-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  width: 220px;
+  flex-shrink: 0;
+  height: 100vh;
+  padding: var(--space-5) var(--space-3);
+  border-right: 1px solid var(--line);
+  background: rgba(var(--glass-rgb), 0.72);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  z-index: 20;
+}
+
+.desk-sidebar-brand {
+  font-size: var(--text-md);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  padding: 0 var(--space-3);
+}
+
+.desk-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  flex: 1;
+  min-height: 0;
+}
+
+.desk-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.desk-nav-group-secondary {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+.desk-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.desk-nav-item:hover {
+  background: var(--line);
+  color: var(--ink);
+}
+
+.desk-nav-item-active {
+  background: var(--steel-wash);
+  color: var(--steel-dark);
+}
+
+.desk-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.desk-nav-label {
+  min-width: 0;
+}
+
+.desk-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 100vh;
+}
+
+html[data-surface='desktop'] .app-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--space-6) var(--space-8);
+}
+
+html[data-surface='desktop'] .app-shell.has-active {
+  padding-bottom: var(--space-8);
+}
+
+html[data-surface='desktop'] .surface-nav {
+  display: none;
+}
+
+html[data-surface='desktop'] .app-header,
+html[data-surface='desktop'] .today-header-card {
+  border-radius: var(--radius-md);
+}
