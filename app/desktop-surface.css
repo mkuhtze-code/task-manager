@@ -112,15 +112,15 @@
   min-height: 100vh;
 }
 
-/* Sticky top-right primary action (Dock it / Add …) */
+/* Floating primary action — does not consume vertical workspace */
 .desk-primary-bar {
-  position: sticky;
-  top: 0;
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-6);
   z-index: 30;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: var(--space-4) var(--space-6) 0;
   pointer-events: none;
 }
 
@@ -129,13 +129,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.12);
+  box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.14);
 }
 
 html[data-surface='desktop'] .app-shell {
-  max-width: 800px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 0 var(--space-6) var(--space-8);
+  padding: var(--space-5) var(--space-6) var(--space-8);
 }
 
 html[data-surface='desktop'] .app-shell.has-active {
@@ -156,19 +156,139 @@ html[data-surface='desktop'] .today-header-card {
   border-radius: var(--radius-md);
 }
 
-/* Today: single readable column, sticky capacity — not a broken 2-col squeeze */
+/* ── Today workspace: capacity | task board ──────────────────────── */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
-  max-width: 720px;
-  padding-top: var(--space-2);
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  column-gap: var(--space-6);
+  row-gap: var(--space-4);
+  max-width: 1120px;
+  align-items: start;
+}
+
+/* Banner / non-board siblings span full width */
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > *:not(.today-header-card):not(.task-list) {
+  grid-column: 1 / -1;
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .today-header-card {
+  grid-column: 1;
   position: sticky;
-  top: var(--space-4);
+  top: var(--space-5);
+  margin: 0;
+  align-self: start;
   z-index: 5;
-  margin: 0 0 var(--space-5);
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
+  grid-column: 2;
+  grid-row: 1;
   min-width: 0;
+  gap: var(--space-3);
+}
+
+/* When a banner sits above, keep list aligned with capacity (row 2) */
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > :first-child:not(.today-header-card):not(.task-list) ~ .task-list {
+  grid-row: 2;
+}
+
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > :first-child:not(.today-header-card):not(.task-list) ~ .today-header-card {
+  grid-row: 2;
+}
+
+/* Task board: roomier, bordered cards — not a phone list */
+html[data-surface='desktop'] .task-list {
+  gap: var(--space-3);
+}
+
+html[data-surface='desktop'] .task-row.task-list-item,
+html[data-surface='desktop'] .task-row {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.04);
+}
+
+html[data-surface='desktop'] .task-row:hover {
+  border-color: var(--line-strong);
+  box-shadow: 0 2px 8px rgba(var(--shadow-rgb), 0.06);
+}
+
+html[data-surface='desktop'] .task-main {
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+html[data-surface='desktop'] .task-body {
+  flex: 1;
+  min-width: 0;
+}
+
+html[data-surface='desktop'] .task-text {
+  font-size: var(--text-base);
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+html[data-surface='desktop'] .task-card-job {
+  margin-top: 2px;
+}
+
+/* Desktop-only meta chips (hidden on handheld) */
+.task-desk-meta {
+  display: none;
+}
+
+html[data-surface='desktop'] .task-desk-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+html[data-surface='desktop'] .task-desk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-surface='desktop'] .task-desk-chip.due {
+  color: var(--steel-dark);
+  background: var(--steel-wash);
+  border-color: transparent;
+}
+
+html[data-surface='desktop'] .task-desk-chip.location {
+  max-width: 240px;
+}
+
+html[data-surface='desktop'] .task-desk-chip.muted {
+  color: var(--ink-faint);
+  border-color: transparent;
+  background: transparent;
+  padding-left: 0;
+}
+
+html[data-surface='desktop'] .task-card-glance {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+html[data-surface='desktop'] .empty-state {
+  padding: var(--space-8) var(--space-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: rgba(var(--glass-rgb), 0.4);
 }
