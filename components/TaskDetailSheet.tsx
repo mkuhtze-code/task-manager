@@ -198,7 +198,7 @@ export function TaskDetailSheet(props: {
         <TaskInfo
           value={task.info || ''}
           onSave={(info) => onSaveInfo(task.id, info)}
-          surface="raised"
+          surface="edit"
         />
 
         <button
