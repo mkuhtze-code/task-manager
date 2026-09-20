@@ -49,10 +49,51 @@ function iconUrls(): { icon: string; badge: string } {
   };
 }
 
+/** Resolve a registration without hanging forever on .ready */
+async function getSwRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return null;
+  }
+  try {
+    const existing = await navigator.serviceWorker.getRegistration('/app/');
+    if (existing?.active) return existing;
+
+    const raced = await Promise.race([
+      navigator.serviceWorker.ready.then((r) => r),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+    ]);
+    if (raced) return raced;
+    return existing || null;
+  } catch {
+    return null;
+  }
+}
+
+function pageLevelNotification(
+  title: string,
+  body: string,
+  icon: string,
+  silent: boolean
+) {
+  try {
+    // eslint-disable-next-line no-new
+    new Notification(title, {
+      body,
+      tag: TIMER_TAG,
+      silent,
+      icon,
+      requireInteraction: true,
+    });
+    return true;
+  } catch (err) {
+    console.error('[dokkit-timer] page Notification failed', err);
+    return false;
+  }
+}
+
 /**
  * Show the ongoing timer notification.
- * Prefer calling this in the same turn as the user tapping Start
- * (mobile browsers often block notifications outside a user gesture).
+ * Prefer calling this in the same turn as the user tapping Start.
  */
 export async function showActiveTimerNotification(
   payload: TimerNotifyPayload
@@ -74,10 +115,8 @@ export async function showActiveTimerNotification(
     }
 
     const { icon, badge } = iconUrls();
-    const title = payload.text || 'Dokkit timer';
+    const title = (payload.text && String(payload.text).trim()) || 'Dokkit timer';
     const body = buildBody(payload);
-    // Audible on the first post-Start show so you can verify it worked.
-    // Later refreshes stay silent.
     const silent = payload.urgent ? false : true;
 
     const options: NotificationOptions & {
@@ -104,19 +143,25 @@ export async function showActiveTimerNotification(
       ],
     };
 
-    if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification(title, options);
-      const worker = reg.active;
-      if (worker) {
-        worker.postMessage({ type: 'TIMER_SHOW', ...payload });
+    const reg = await getSwRegistration();
+    if (reg) {
+      try {
+        await reg.showNotification(title, options);
+        const worker = reg.active;
+        if (worker) {
+          worker.postMessage({ type: 'TIMER_SHOW', ...payload });
+        }
+        console.info('[dokkit-timer] SW notification shown', title);
+        return true;
+      } catch (err) {
+        console.warn('[dokkit-timer] SW show failed, falling back', err);
       }
-    } else {
-      new Notification(title, { body, tag: TIMER_TAG, silent, icon });
     }
 
-    console.info('[dokkit-timer] notification shown', title);
-    return true;
+    // Fallback: page-level notification (works while app is open / just backgrounded)
+    const ok = pageLevelNotification(title, body, icon, silent);
+    if (ok) console.info('[dokkit-timer] page notification shown', title);
+    return ok;
   } catch (err) {
     console.error('[dokkit-timer] show failed', err);
     return false;
@@ -126,8 +171,8 @@ export async function showActiveTimerNotification(
 export async function clearActiveTimerNotification(): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
-    if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.ready;
+    const reg = await getSwRegistration();
+    if (reg) {
       const list = await reg.getNotifications({ tag: TIMER_TAG });
       list.forEach((n) => n.close());
       const worker = reg.active;
