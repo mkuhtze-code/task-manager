@@ -1,4 +1,4 @@
-// Dokkit PWA Service Worker v7.
+// Dokkit PWA Service Worker v8.
 // Shell caching + web-push + FCM + ongoing active-task timer notification.
 
 try {
@@ -19,12 +19,14 @@ function safeText(v, fallback) {
   return s;
 }
 
-function fmtMins(mins) {
-  var m = Math.max(0, Math.round(Number(mins) || 0));
-  if (m < 60) return m + 'm';
-  var h = Math.floor(m / 60);
-  var r = m % 60;
-  return r === 0 ? h + 'h' : h + 'h ' + r + 'm';
+function fmtElapsed(mins) {
+  var totalSec = Math.max(0, Math.floor((Number(mins) || 0) * 60));
+  var h = Math.floor(totalSec / 3600);
+  var m = Math.floor((totalSec % 3600) / 60);
+  var s = totalSec % 60;
+  if (h > 0) return m > 0 ? h + 'h ' + m + 'm' : h + 'h';
+  if (m > 0) return m + 'm ' + (s < 10 ? '0' : '') + s + 's';
+  return s + 's';
 }
 
 function elapsedFromPayload(p) {
@@ -40,12 +42,12 @@ function buildTimerNotification(p) {
   var body;
   if (estimate > 0) {
     if (elapsed > estimate) {
-      body = fmtMins(elapsed) + ' elapsed · over by ' + fmtMins(elapsed - estimate);
+      body = fmtElapsed(elapsed) + ' elapsed · over by ' + fmtElapsed(elapsed - estimate);
     } else {
-      body = fmtMins(elapsed) + ' elapsed · ' + fmtMins(estimate - elapsed) + ' left';
+      body = fmtElapsed(elapsed) + ' elapsed · ' + fmtElapsed(estimate - elapsed) + ' left';
     }
   } else {
-    body = fmtMins(elapsed) + ' elapsed';
+    body = fmtElapsed(elapsed) + ' elapsed';
   }
   return {
     title: safeText(p.text, 'Dokkit timer'),
@@ -144,7 +146,7 @@ function ensureFcm() {
   }
 }
 
-const CACHE_VERSION = 'dokkit-v7';
+const CACHE_VERSION = 'dokkit-v8';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
