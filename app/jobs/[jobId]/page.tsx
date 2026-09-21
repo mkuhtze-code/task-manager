@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSurfaceMode } from '@/hooks/useSurfaceMode';
+import { useDesktopWorkspaceKeys } from '@/hooks/useDesktopWorkspaceKeys';
+import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import type { Job } from '@/lib/jobTypes';
@@ -44,6 +47,7 @@ export default function JobDetailPage() {
   const router = useRouter();
   const params = useParams<{ jobId: string }>();
   const jobId = params.jobId;
+  const { isDesktop } = useSurfaceMode();
 
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -719,8 +723,22 @@ export default function JobDetailPage() {
   const captureLocationFieldVisible =
     suggestsLocation(captureText) || captureLocation.length > 0 || manualLocationToggle;
 
+  const orderedTaskIds = tasks.filter((x) => x.status !== 'done').map((x) => x.id);
+  useDesktopWorkspaceKeys({
+    enabled: isDesktop,
+    openId: openTaskId,
+    setOpenId: setOpenTaskId,
+    orderedIds: orderedTaskIds,
+  });
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    return registerDesktopPrimaryAction('Add task', () => openCapture());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDesktop, jobId]);
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell${isDesktop && openTask ? ' has-desk-detail' : ''}${isDesktop ? ' desk-job-detail' : ''}`}>
       <div className="app-header">
         <div className="app-header-left">
           <Link href="/jobs" className="back-link" aria-label="Back to jobs">
@@ -809,8 +827,15 @@ export default function JobDetailPage() {
                       subs={subtasksByTask[t.id] || []}
                       learnedHint={null}
                       jobLabel={null}
-                      expanded={expandedId === t.id}
-                      onToggleExpand={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
+                      expanded={isDesktop ? openTaskId === t.id : expandedId === t.id}
+                      onToggleExpand={() => {
+                      if (isDesktop) {
+                        setExpandedId(null);
+                        setOpenTaskId((cur) => (cur === t.id ? null : t.id));
+                      } else {
+                        setExpandedId((cur) => (cur === t.id ? null : t.id));
+                      }
+                    }}
                       onOpenDetails={() => { setExpandedId(null); setOpenTaskId(t.id); }}
                       onComplete={completeTask}
                       onStart={startTask}
@@ -845,6 +870,7 @@ export default function JobDetailPage() {
 
           {openTask && (
             <TaskDetailSheet
+              presentation={isDesktop ? 'pane' : 'sheet'}
               task={openTask}
               subs={subtasksByTask[openTask.id] || []}
               remainingForThis={openTaskRemaining}
