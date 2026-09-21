@@ -8,6 +8,7 @@
  *
  * Onboarding can seed softFloorMins and same-day rate thresholds until
  * observed behaviour has enough samples to override.
+ * Zero-minute actuals are ignored for duration memory.
  */
 
 import {
@@ -18,6 +19,7 @@ import {
   type EstimateSuggestion,
   type ClusterLocation,
 } from '@/lib/taskIntelligence';
+import { isReliableActualMins } from '@/lib/thinking/durationQuality';
 
 const MATCH_THRESHOLD = 0.4;
 const MIN_BEHAVIOUR_SAMPLES = 2;
@@ -99,7 +101,7 @@ function findBestCluster(
 function personalMedianActual(history: HistoricalTask[]): number | null {
   const vals = history
     .map((h) => h.actual_mins)
-    .filter((m): m is number => typeof m === 'number' && m > 0)
+    .filter((m): m is number => isReliableActualMins(m))
     .sort((a, b) => a - b);
   if (vals.length === 0) return null;
   const mid = Math.floor(vals.length / 2);
@@ -179,7 +181,13 @@ export function lookupTaskSignals(text: string, runtime: RuntimeObservations): T
 
   let explainDuration: string | null = null;
   if (estimate) {
-    explainDuration = `≈ ${estimate.suggestedMins}m — ${estimate.sampleCount} similar`;
+    if (estimate.source === 'lifecycle') {
+      explainDuration = `≈ ${estimate.suggestedMins}m — from how this work usually behaves`;
+    } else if (estimate.source === 'mixed') {
+      explainDuration = `≈ ${estimate.suggestedMins}m — timed samples + how it behaves`;
+    } else {
+      explainDuration = `≈ ${estimate.suggestedMins}m — ${estimate.sampleCount} similar`;
+    }
   } else if (runtime.personalMedian != null) {
     explainDuration = `≈ ${runtime.personalMedian}m typical for you`;
   }
