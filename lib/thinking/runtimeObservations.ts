@@ -5,6 +5,9 @@
  * read the same match: duration, same-day behaviour, place, and label.
  *
  * Pure and deterministic. Never invents jobs or places.
+ *
+ * Onboarding can seed softFloorMins and same-day rate thresholds until
+ * observed behaviour has enough samples to override.
  */
 
 import {
@@ -33,6 +36,10 @@ export type RuntimeObservations = {
   /** Scales lean on learned duration (from calibration). */
   blendScale: number;
   calibrationExplain: string | null;
+  /** Onboarding prior: rate at/above which a task is treated as same-day anchor. */
+  anchorSameDayRate: number;
+  /** Onboarding prior: rate at/below which a task is treated as flexible (may carry). */
+  flexibleSameDayRate: number;
 };
 
 export type TaskSignals = {
@@ -105,6 +112,8 @@ export function buildRuntimeObservations(
     softFloorMins?: number;
     blendScale?: number;
     calibrationExplain?: string | null;
+    anchorSameDayRate?: number;
+    flexibleSameDayRate?: number;
   }
 ): RuntimeObservations {
   const clusters = buildClusters(history);
@@ -136,6 +145,8 @@ export function buildRuntimeObservations(
     softFloorMins: options?.softFloorMins ?? 30,
     blendScale: options?.blendScale ?? 1,
     calibrationExplain: options?.calibrationExplain ?? null,
+    anchorSameDayRate: options?.anchorSameDayRate ?? 0.55,
+    flexibleSameDayRate: options?.flexibleSameDayRate ?? 0.4,
   };
 }
 
@@ -175,9 +186,9 @@ export function lookupTaskSignals(text: string, runtime: RuntimeObservations): T
 
   let explainBehaviour: string | null = null;
   if (sameDayRate != null && sameDaySamples >= MIN_BEHAVIOUR_SAMPLES) {
-    if (sameDayRate >= 0.55) {
+    if (sameDayRate >= runtime.anchorSameDayRate) {
       explainBehaviour = `Usually finished same day (${Math.round(sameDayRate * 100)}%)`;
-    } else if (sameDayRate < 0.4) {
+    } else if (sameDayRate < runtime.flexibleSameDayRate) {
       explainBehaviour = `Often moves forward (${Math.round((1 - sameDayRate) * 100)}% carried)`;
     }
   }
