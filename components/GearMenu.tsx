@@ -4,11 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { useSurfaceMode } from '@/hooks/useSurfaceMode';
-import {
-  cycleSurfacePreference,
-  surfacePreferenceLabel,
-} from '@/lib/surfaceMode';
 
 function GearIcon() {
   return (
@@ -34,8 +29,6 @@ export default function GearMenu({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { preference, setPreference } = useSurfaceMode();
-
   useEffect(() => {
     if (userId) {
       checkAdmin(userId);
@@ -73,10 +66,6 @@ export default function GearMenu({
     router.push('/');
   }
 
-  function handleCycleSurface() {
-    setPreference(cycleSurfacePreference(preference));
-  }
-
   const feedbackHref = `/feedback?from=${encodeURIComponent(pathname || '/')}`;
 
   return (
@@ -112,15 +101,6 @@ export default function GearMenu({
               Admin
             </Link>
           )}
-          <div className="gear-dropdown-divider" />
-          <button
-            type="button"
-            className="gear-dropdown-item"
-            onClick={handleCycleSurface}
-            title="Cycle layout: Auto (viewport), Desktop, Handheld"
-          >
-            Layout · {surfacePreferenceLabel(preference)}
-          </button>
           <div className="gear-dropdown-divider" />
           <button className="gear-dropdown-item destructive" onClick={handleLogOut}>
             Log out
