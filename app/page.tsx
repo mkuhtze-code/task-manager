@@ -18,6 +18,7 @@ import { PlusIcon } from '@/components/icons';
 import { useDragReorder } from '@/hooks/useDragReorder';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { registerCaptureOpen } from '@/lib/captureOpen';
+import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import {
   buildClusters,
   suggestEstimate,
@@ -165,6 +166,7 @@ export default function Home() {
 
   // Desktop sidebar Dock it → open capture sheet
   useEffect(() => registerCaptureOpen(() => setCaptureOpen(true)), []);
+  const { isDesktop } = useSurfaceMode();
   /** Quiet post-dock line: what landed + optional clear. */
   const [dockSummary, setDockSummary] = useState<string | null>(null);
   const [realityCheckOpen, setRealityCheckOpen] = useState(false);
@@ -1807,7 +1809,7 @@ export default function Home() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${isDesktop && openTask ? " has-desk-detail" : ""}`}>
       <TravelAwarenessBanner userId={session.user.id} />
 
       <TodayHeader
@@ -1931,8 +1933,15 @@ export default function Home() {
                   subs={subs}
                   learnedHint={learnedHint}
                   jobLabel={jobs.find((j) => j.id === t.job_id)?.name ?? null}
-                  expanded={expandedId === t.id}
-                  onToggleExpand={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
+                  expanded={isDesktop ? openTaskId === t.id : expandedId === t.id}
+                  onToggleExpand={() => {
+                    if (isDesktop) {
+                      setExpandedId(null);
+                      setOpenTaskId((cur) => (cur === t.id ? null : t.id));
+                    } else {
+                      setExpandedId((cur) => (cur === t.id ? null : t.id));
+                    }
+                  }}
                   onOpenDetails={() => { setExpandedId(null); setOpenTaskId(t.id); }}
                   onComplete={completeTask}
                   onStart={startTask}
@@ -2022,6 +2031,7 @@ export default function Home() {
 
       {openTask && (
         <TaskDetailSheet
+          presentation={isDesktop ? 'pane' : 'sheet'}
           task={openTask}
           subs={subtasksByTask[openTask.id] || []}
           remainingForThis={openTaskRemaining}
