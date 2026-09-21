@@ -1,75 +1,112 @@
-/* ── Header-heart desktop chrome (design slice) ───────────────────── */
+/* ── Header-heart desktop chrome — refined ────────────────────────── */
 
 html[data-surface='desktop'] .desk-sidebar-settings {
-  width: 200px;
+  width: 196px;
+  padding: var(--space-4) var(--space-2);
+  background: rgba(var(--glass-rgb), 0.55);
 }
 
 html[data-surface='desktop'] .desk-sidebar-brand-muted {
-  font-size: var(--text-2xs);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-faint);
+  padding: 4px var(--space-3) var(--space-3);
+}
+
+html[data-surface='desktop'] .desk-sidebar-settings .desk-nav-item {
+  padding: 8px var(--space-3);
+  font-size: 13px;
+  font-weight: 550;
+  border-radius: 8px;
+}
+
+html[data-surface='desktop'] .desk-sidebar-settings .desk-nav-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
 }
 
 .desk-product-nav {
   flex-shrink: 0;
   border-bottom: 1px solid var(--line);
-  background: rgba(var(--glass-rgb), 0.94);
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  z-index: 25;
+  background: rgba(var(--glass-rgb), 0.92);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  z-index: 30;
 }
 
 .desk-product-nav-inner {
   display: flex;
   align-items: center;
-  gap: var(--space-5);
-  padding: 0 var(--space-6);
-  min-height: 52px;
+  gap: var(--space-4);
+  padding: 0 var(--space-5) 0 var(--space-6);
+  min-height: 48px;
 }
 
 .desk-product-brand {
-  font-size: var(--text-sm);
+  font-size: 15px;
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
   color: var(--ink);
   flex-shrink: 0;
+  margin-right: var(--space-2);
 }
 
 .desk-product-tabs {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 2px;
   flex: 1;
   min-width: 0;
-  height: 52px;
+  height: 48px;
 }
 
 .desk-product-tab {
+  position: relative;
   display: inline-flex;
   align-items: center;
+  height: 100%;
   padding: 0 14px;
-  font-size: var(--text-sm);
+  font-size: 13.5px;
   font-weight: 600;
-  color: var(--ink-soft);
+  letter-spacing: -0.01em;
+  color: var(--ink-faint);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+  transition: color 0.15s var(--ease);
 }
 
 .desk-product-tab:hover {
-  color: var(--ink);
+  color: var(--ink-soft);
 }
 
 .desk-product-tab-active {
   color: var(--ink);
-  border-bottom-color: var(--steel);
 }
 
-.desk-product-nav-spacer {
-  width: 120px;
+.desk-product-tab-active::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--steel);
+}
+
+.desk-product-primary {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 650;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.08);
 }
 
 .desk-context-strip {
@@ -78,29 +115,35 @@ html[data-surface='desktop'] .desk-sidebar-brand-muted {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: 10px var(--space-6);
+  padding: 8px var(--space-6);
   border-bottom: 1px solid var(--line);
-  background: rgba(var(--glass-rgb), 0.55);
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--glass-rgb), 0.65),
+    rgba(var(--glass-rgb), 0.4)
+  );
   z-index: 20;
 }
 
 .desk-context-main {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 10px;
   min-width: 0;
 }
 
-.desk-context-title {
-  font-size: var(--text-2xs);
+.desk-context-kicker {
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--ink-faint);
+  flex-shrink: 0;
 }
 
-.desk-context-detail {
-  font-size: var(--text-sm);
+.desk-context-headline {
+  font-size: 13.5px;
+  font-weight: 550;
   color: var(--ink-soft);
   white-space: nowrap;
   overflow: hidden;
@@ -109,26 +152,47 @@ html[data-surface='desktop'] .desk-sidebar-brand-muted {
 
 .desk-context-chips {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
+  padding: 3px;
+  border-radius: 9px;
+  background: rgba(var(--shadow-rgb), 0.04);
+  border: 1px solid var(--line);
 }
 
 .desk-context-chip {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: var(--text-2xs);
+  padding: 4px 11px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--ink-soft);
+  color: var(--ink-faint);
+  background: transparent;
+  border: none;
+  line-height: 1.2;
+}
+
+.desk-context-chip-active {
+  color: var(--ink);
   background: var(--paper-raised);
-  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.06);
+}
+
+.desk-context-chip-good {
+  color: var(--moss-text, var(--steel-dark));
+  background: var(--paper-raised);
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.06);
+}
+
+.desk-context-chip-warn {
+  color: var(--hazard);
+  background: var(--paper-raised);
 }
 
 html[data-surface='desktop'] .desk-primary-bar {
-  top: 10px;
-  right: var(--space-6);
+  display: none;
 }
 
 html[data-surface='desktop'] .app-shell > .app-header {
@@ -149,6 +213,9 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card):not(.has-desk-detail)::after {
   grid-row: 1;
+  content: 'Select a task';
+  font-weight: 550;
+  letter-spacing: -0.01em;
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-pane-detail {
@@ -156,7 +223,14 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-pane-d
 }
 
 html[data-surface='desktop'] .jobs-filter-row {
-  border-bottom: none;
-  background: transparent;
-  padding-top: 8px !important;
+  display: none;
+}
+
+html[data-surface='desktop'] .desk-main-body .empty-state {
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+html[data-surface='desktop'] .job-list {
+  padding-top: var(--space-4);
 }

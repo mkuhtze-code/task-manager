@@ -2,18 +2,13 @@
 
 import ActiveTimerBar from '@/components/ActiveTimerBar';
 import DesktopContextStrip from '@/components/DesktopContextStrip';
-import DesktopPrimaryBar from '@/components/DesktopPrimaryBar';
 import DesktopProductNav from '@/components/DesktopProductNav';
 import DesktopSidebar from '@/components/DesktopSidebar';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 
 /**
- * Desktop chrome (header-heart model):
- *   settings sidebar | main
- *     ├ product tabs (Today · Jobs · Meetings · Travel)
- *     ├ context strip (per-surface; placeholders OK)
- *     ├ floating primary action
- *     └ page body
+ * Desktop chrome — powerful, quiet:
+ *   settings rail | product heart + context | workspace
  */
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const { isDesktop } = useSurfaceMode();
@@ -26,7 +21,6 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
           <ActiveTimerBar />
           <DesktopProductNav />
           <DesktopContextStrip />
-          <DesktopPrimaryBar />
           <div className="desk-main-body">{children}</div>
         </div>
       </div>
