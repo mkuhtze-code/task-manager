@@ -121,7 +121,6 @@
   flex-direction: column;
 }
 
-/* Page-registered status banner */
 .desk-banner {
   flex-shrink: 0;
   border-bottom: 1px solid var(--line);
@@ -132,7 +131,6 @@
   z-index: 15;
 }
 
-/* Floating primary action */
 .desk-primary-bar {
   position: absolute;
   top: var(--space-4);
@@ -152,7 +150,6 @@
   box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.14);
 }
 
-/* ── Master–detail workspace ─────────────────────────────────────── */
 .desk-workspace {
   flex: 1;
   min-height: 0;
@@ -191,111 +188,6 @@
   padding: var(--space-6);
 }
 
-.desk-pane-empty {
-  height: 100%;
-  min-height: 240px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  color: var(--ink-soft);
-  text-align: center;
-  padding: var(--space-8);
-}
-
-.desk-pane-empty-title {
-  font-size: var(--text-md);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.desk-pane-empty-sub {
-  font-size: var(--text-sm);
-  color: var(--ink-faint);
-  max-width: 280px;
-}
-
-/* Detail in main pane — full dashboard form, not a phone sheet */
-.desk-pane-detail {
-  min-height: 0;
-  overflow-y: auto;
-  max-width: none;
-  margin: 0;
-  padding: 0;
-}
-
-.desk-pane-detail-inner {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: var(--space-6) var(--space-8) var(--space-8);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.desk-pane-detail .task-detail-name {
-  font-size: var(--text-display-md);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  border: none;
-  background: transparent;
-  padding: 4px 0;
-  width: 100%;
-}
-
-.desk-pane-detail .task-detail-header {
-  margin-bottom: var(--space-2);
-}
-
-.desk-pane-detail .capture-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  align-items: center;
-}
-
-.desk-pane-detail .task-detail-actions {
-  display: flex;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-}
-
-.desk-pane-detail .subtask-panel {
-  margin-top: var(--space-4);
-  padding: var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--paper-raised);
-}
-
-/* Compact list rows */
-.desk-secondary .task-list {
-  gap: 6px;
-}
-
-.desk-secondary .task-row,
-.desk-secondary .task-row.task-list-item {
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  background: transparent;
-  padding: 10px 12px;
-  box-shadow: none;
-}
-
-.desk-secondary .task-row:hover {
-  background: var(--paper-raised);
-  border-color: var(--line);
-}
-
-.desk-secondary .task-row.expanded,
-.desk-secondary .task-row[data-selected='true'] {
-  background: var(--paper-raised);
-  border-color: var(--steel-wash);
-  box-shadow: inset 3px 0 0 var(--steel);
-}
-
-/* Global desktop shell */
 html[data-surface='desktop'] .app-shell {
   max-width: none;
   margin: 0;
@@ -318,7 +210,6 @@ html[data-surface='desktop'] .gear-menu-wrap {
   display: none;
 }
 
-/* Today master–detail grid */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
@@ -336,7 +227,6 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card) > *:not(.today
   grid-column: 1 / -1;
 }
 
-/* Compact day strip — one dense row of signal, not a tall card */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .today-header-card {
   grid-column: 1 / -1;
   grid-row: 1;
@@ -349,7 +239,7 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .today-heade
   background: rgba(var(--glass-rgb), 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  padding: 10px var(--space-5) 10px var(--space-5);
+  padding: 10px var(--space-5);
   box-shadow: none;
 }
 
@@ -395,11 +285,6 @@ html[data-surface='desktop'] .today-capacity-title {
   font-size: var(--text-sm);
 }
 
-html[data-surface='desktop'] .today-header-card .today-capacity-body {
-  max-width: 480px;
-}
-
-/* Task list = secondary rail */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
   grid-column: 1;
   grid-row: 2;
@@ -412,7 +297,6 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
   gap: 4px;
 }
 
-/* Empty main pane hint when no task selected */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card):not(.has-desk-detail)::after {
   content: 'Select a task to open it here';
   grid-column: 2;
@@ -430,32 +314,12 @@ html[data-surface='desktop'] .app-shell.has-desk-detail::after {
   display: none;
 }
 
-/* Selected task fills the main pane */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-pane-detail {
   grid-column: 2;
   grid-row: 2;
   min-height: 0;
   overflow-y: auto;
   background: var(--paper);
-  border-left: none;
-}
-
-html[data-surface='desktop'] .task-list {
-  gap: 4px;
-}
-
-html[data-surface='desktop'] .task-row.task-list-item,
-html[data-surface='desktop'] .task-row {
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  background: transparent;
-  padding: 10px 12px;
-  box-shadow: none;
-}
-
-html[data-surface='desktop'] .task-row:hover {
-  background: var(--paper-raised);
-  border-color: var(--line);
 }
 
 html[data-surface='desktop'] .task-row.expanded {
@@ -464,47 +328,255 @@ html[data-surface='desktop'] .task-row.expanded {
   box-shadow: inset 3px 0 0 var(--steel);
 }
 
-html[data-surface='desktop'] .task-desk-meta {
+/* ── Desktop task workspace (pane) ──────────────────────────────── */
+.desk-detail {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-8) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.desk-detail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.desk-detail-toolbar-left {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-.task-desk-meta {
-  display: none;
+.desk-detail-kicker {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
 
-html[data-surface='desktop'] .task-desk-chip {
+.desk-detail-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  max-width: 100%;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 999px;
   font-size: var(--text-2xs);
   font-weight: 600;
   color: var(--ink-soft);
-  background: var(--paper);
+  background: var(--paper-raised);
   border: 1px solid var(--line);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-html[data-surface='desktop'] .task-desk-chip.due {
+.desk-detail-badge.due {
   color: var(--steel-dark);
   background: var(--steel-wash);
   border-color: transparent;
 }
 
-html[data-surface='desktop'] .task-desk-chip.location {
-  max-width: 200px;
+.desk-detail-title {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: var(--text-display-md);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  padding: 0;
+  line-height: 1.2;
 }
 
-html[data-surface='desktop'] .task-desk-chip.muted {
+.desk-detail-title:focus {
+  outline: none;
+}
+
+.desk-detail-title:focus-visible {
+  box-shadow: inset 0 -2px 0 var(--steel);
+}
+
+.desk-detail-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 420px;
+}
+
+.desk-detail-progress-meta {
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}
+
+.desk-detail-live {
+  color: var(--moss-text, var(--moss));
+  font-weight: 600;
+}
+
+.desk-detail-error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--hazard);
+}
+
+.desk-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.desk-detail-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.desk-detail-actions .btn.active-due {
+  border-color: var(--steel);
+  color: var(--steel-dark);
+  background: var(--steel-wash);
+}
+
+.desk-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .desk-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.desk-detail-panel {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.desk-detail-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.desk-detail-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.desk-detail-panel-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.desk-detail-count {
+  font-size: var(--text-2xs);
+  font-weight: 600;
   color: var(--ink-faint);
-  border-color: transparent;
+}
+
+.desk-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.desk-detail-label {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.desk-detail-input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.desk-detail-job-btn {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.desk-detail-job-list {
+  margin-top: 4px;
+}
+
+.desk-detail-muted {
+  margin: 0;
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  line-height: 1.4;
+}
+
+.desk-detail-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+
+.desk-detail-footer .destructive {
+  color: var(--danger-text, var(--danger));
+}
+
+/* Secondary list: denser, scannable rows */
+html[data-surface='desktop'] .task-list .task-card .task-reveal {
+  display: none;
+}
+
+html[data-surface='desktop'] .task-list .task-main {
+  align-items: center;
+}
+
+html[data-surface='desktop'] .task-list .task-text {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html[data-surface='desktop'] .task-list .task-card-job {
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+html[data-surface='desktop'] .task-list .task-desk-meta {
+  display: none;
+}
+
+html[data-surface='desktop'] .task-list .task-card-chevron {
+  display: none;
+}
+
+html[data-surface='desktop'] .task-list .task-row,
+html[data-surface='desktop'] .task-list .task-row.task-list-item {
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   background: transparent;
-  padding-left: 0;
+  box-shadow: none;
+}
+
+html[data-surface='desktop'] .task-list .task-row:hover {
+  background: var(--paper-raised);
+  border-color: var(--line);
 }
