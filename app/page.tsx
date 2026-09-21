@@ -28,6 +28,7 @@ import {
   settingsPatchFromProfile,
   type UserProfile,
 } from '@/lib/userProfile';
+import { resolveActualForLearning } from '@/lib/thinking/durationQuality';
 import {
   buildClusters,
   suggestEstimate,
@@ -642,7 +643,7 @@ export default function Home() {
     // Start this at the same time as the other reads.
     const historyPromise = supabase
       .from('tasks')
-      .select('text, actual_mins, location_text, lat, lng, job_id, created_at, completed_at')
+      .select('text, actual_mins, location_text, lat, lng, job_id, created_at, completed_at, estimate_mins, logged_mins, due_today, surface_date, source, intended_time')
       .eq('status', 'done')
       .not('actual_mins', 'is', null)
       .order('completed_at', { ascending: false })
@@ -807,6 +808,12 @@ export default function Home() {
         job_id: r.job_id,
         created_at: r.created_at,
         completed_at: r.completed_at,
+        estimate_mins: r.estimate_mins,
+        logged_mins: r.logged_mins,
+        due_today: r.due_today,
+        surface_date: r.surface_date,
+        source: r.source,
+        intended_time: r.intended_time,
       }))
     );
 
@@ -1535,9 +1542,33 @@ export default function Home() {
     if (task && task.status === 'active' && task.started_at) {
       finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
     }
+    const measured = Math.round(finalLogged);
+    const resolved = resolveActualForLearning({
+      measuredMins: measured,
+      hints: {
+        estimateMins: task?.estimate_mins,
+        loggedMins: measured,
+        jobId: task?.job_id,
+        dueToday: task?.due_today,
+        intendedTime: task?.intended_time,
+        createdAt: task?.created_at,
+        completedAt: new Date().toISOString(),
+        surfaceDate: task?.surface_date,
+        subtaskCount: task ? (subtasksByTask[task.id]?.length ?? 0) : 0,
+      },
+    });
+    // Persist measured time honestly; only train when we have a usable actual
+    // (timed session or lifecycle soft from job / subtasks / carry / estimate).
+    const actualForDb = resolved.actualMins ?? measured;
     const { error } = await supabase
       .from('tasks')
-      .update({ status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: Math.round(finalLogged), completed_at: new Date().toISOString() })
+      .update({
+        status: 'done',
+        started_at: null,
+        logged_mins: finalLogged,
+        actual_mins: actualForDb,
+        completed_at: new Date().toISOString(),
+      })
       .eq('id', id);
     if (error) {
       console.error(error);
@@ -1545,25 +1576,29 @@ export default function Home() {
       return;
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
-    // Keep the learning layer current without waiting for a full reload —
-    // this task's outcome (duration and location alike) should be
-    // eligible to inform the very next suggestion, not just after the
-    // next page load.
-    if (task) {
+    // Keep the learning layer current without waiting for a full reload.
+    // Never push a pure zero into history — that is not a measurement.
+    if (task && resolved.actualMins != null) {
       setHistory((prev) => [
         {
           text: task.text,
-          actual_mins: Math.round(finalLogged),
+          actual_mins: resolved.actualMins!,
           location_text: task.location_text,
           lat: task.lat,
           lng: task.lng,
+          job_id: task.job_id,
+          created_at: task.created_at,
+          completed_at: new Date().toISOString(),
+          estimate_mins: task.estimate_mins,
+          logged_mins: measured,
+          due_today: task.due_today,
+          surface_date: task.surface_date,
+          source: task.source,
+          intended_time: task.intended_time,
+          subtask_count: subtasksByTask[task.id]?.length ?? 0,
         },
         ...prev,
       ]);
-      // Log the prediction outcome for the thinking engine's evidence
-      // loop. This records what the engine predicted vs what actually
-      // happened, so the Patterns surface can show calibration data
-      // and the engine can measure its own accuracy over time.
       const suggestion = suggestEstimate(task.text, history, clusters);
       logCompletionOutcome({
         userId: session.user.id,
@@ -1573,8 +1608,8 @@ export default function Home() {
         estimatedMins: task.estimate_mins,
         suggestedMins: suggestion?.suggestedMins ?? null,
         confidence: suggestion?.confidence ?? 'low',
-        actualMins: Math.round(finalLogged),
-      }).catch(() => {}); // fire-and-forget; evidence logging is best-effort
+        actualMins: resolved.actualMins!,
+      }).catch(() => {});
     }
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
     notifyTaskActivity({ type: 'completed', taskId: id });
