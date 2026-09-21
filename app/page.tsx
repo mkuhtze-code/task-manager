@@ -19,6 +19,7 @@ import { useDragReorder } from '@/hooks/useDragReorder';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { registerCaptureOpen } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
+import { useDesktopWorkspaceKeys } from '@/hooks/useDesktopWorkspaceKeys';
 import {
   buildClusters,
   suggestEstimate,
@@ -1807,6 +1808,16 @@ export default function Home() {
       openTaskLiveLogged += (Date.now() - new Date(openTask.started_at).getTime()) / 60000;
     }
   }
+
+  const desktopOrderedIds = (typeof visibleTasks !== 'undefined' ? visibleTasks : tasks)
+    .filter((x) => x.status !== 'done')
+    .map((x) => x.id);
+  useDesktopWorkspaceKeys({
+    enabled: isDesktop,
+    openId: openTaskId,
+    setOpenId: setOpenTaskId,
+    orderedIds: desktopOrderedIds,
+  });
 
   return (
     <div className={`app-shell${isDesktop && openTask ? " has-desk-detail" : ""}`}>
