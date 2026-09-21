@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSyncExternalStore } from 'react';
+import { PlusIcon } from '@/components/icons';
+import {
+  getDesktopPrimaryAction,
+  subscribeDesktopPrimaryAction,
+} from '@/lib/captureOpen';
 
-/**
- * Heart of desktop chrome: product surfaces live here, not in the sidebar.
- * Design-first slice — real routes, visual hierarchy we can refine later.
- */
 const PRODUCTS = [
   {
     key: 'today',
@@ -34,16 +36,21 @@ const PRODUCTS = [
   },
 ] as const;
 
+/** Product heart + primary action in one refined bar. */
 export default function DesktopProductNav() {
   const pathname = usePathname() || '/';
+  const primary = useSyncExternalStore(
+    subscribeDesktopPrimaryAction,
+    getDesktopPrimaryAction,
+    () => null
+  );
 
   return (
     <header className="desk-product-nav" aria-label="Products">
       <div className="desk-product-nav-inner">
-        <span className="desk-product-brand" aria-hidden>
-          Dokkit
-        </span>
-        <nav className="desk-product-tabs" role="tablist">
+        <span className="desk-product-brand">Dokkit</span>
+
+        <nav className="desk-product-tabs" role="tablist" aria-label="Surfaces">
           {PRODUCTS.map((item) => {
             const active = item.match(pathname);
             return (
@@ -54,12 +61,22 @@ export default function DesktopProductNav() {
                 aria-selected={active}
                 className={`desk-product-tab${active ? ' desk-product-tab-active' : ''}`}
               >
-                {item.label}
+                <span className="desk-product-tab-label">{item.label}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="desk-product-nav-spacer" aria-hidden />
+
+        {primary && (
+          <button
+            type="button"
+            className="btn btn-steel desk-product-primary"
+            onClick={() => primary.run()}
+          >
+            <PlusIcon size={15} />
+            <span>{primary.label}</span>
+          </button>
+        )}
       </div>
     </header>
   );
