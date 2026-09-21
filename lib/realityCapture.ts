@@ -4,11 +4,16 @@
  *
  * Scope: reality teaches the plan
  * - Done / Partial observations feed history (Carry / Skip do not)
+ * - Zero-minute "done" without a timer does not train duration memory
  * - A calm morning line surfaces yesterday’s reshape without homework
  */
 
 import type { Task } from '@/lib/taskTypes';
 import type { HistoricalTask } from '@/lib/taskIntelligence';
+import {
+  isReliableActualMins,
+  resolveActualForLearning,
+} from '@/lib/thinking/durationQuality';
 
 export type RealityOutcome = 'done' | 'partial' | 'carried' | 'skipped';
 
@@ -101,9 +106,15 @@ export function spentMinsNow(task: Task, nowMs: number = Date.now()): number {
   return Math.max(0, spent);
 }
 
+function subtaskCountFromUnknown(task: Task): number | null {
+  // Callers may attach a transient count; Task type does not require it.
+  const any = task as Task & { subtask_count?: number };
+  return typeof any.subtask_count === 'number' ? any.subtask_count : null;
+}
+
 /**
  * Turn one Reality Update into a history observation when reality was measured.
- * - Done → actual duration (chip or spent)
+ * - Done → reliable actual, or lifecycle soft if structure exists; never train 0
  * - Partial → spent + remaining (total work this kind of task took)
  * - Carry / Skip → null (must not poison learning)
  */
@@ -114,17 +125,43 @@ export function historyObservationForUpdate(
 ): HistoricalTask | null {
   if (update.outcome === 'done') {
     const spent = spentMinsNow(task, nowMs);
-    const actual =
+    const chipOrSpent =
       update.actualMins != null && update.actualMins > 0
         ? update.actualMins
-        : Math.round(spent) || task.estimate_mins;
+        : Math.round(spent);
+
+    const resolved = resolveActualForLearning({
+      measuredMins: chipOrSpent,
+      hints: {
+        estimateMins: task.estimate_mins,
+        loggedMins: spent,
+        jobId: task.job_id,
+        dueToday: task.due_today,
+        intendedTime: task.intended_time,
+        createdAt: task.created_at,
+        completedAt: new Date(nowMs).toISOString(),
+        surfaceDate: task.surface_date,
+        subtaskCount: subtaskCountFromUnknown(task),
+      },
+    });
+
+    if (resolved.actualMins == null) return null;
+
     return {
       text: task.text,
-      actual_mins: actual,
+      actual_mins: resolved.actualMins,
       location_text: task.location_text,
       lat: task.lat,
       lng: task.lng,
       job_id: task.job_id,
+      created_at: task.created_at,
+      completed_at: new Date(nowMs).toISOString(),
+      estimate_mins: task.estimate_mins,
+      logged_mins: Math.round(spent),
+      due_today: task.due_today,
+      surface_date: task.surface_date,
+      intended_time: task.intended_time,
+      subtask_count: subtaskCountFromUnknown(task),
     };
   }
 
@@ -135,6 +172,10 @@ export function historyObservationForUpdate(
         ? update.remainingMins
         : Math.max(5, Math.round(task.estimate_mins / 2));
     const total = Math.max(spent + remaining, remaining);
+
+    // Partial always implies real work remained — accept even if spent was 0.
+    if (!isReliableActualMins(total) && total < 5) return null;
+
     return {
       text: task.text,
       actual_mins: total,
@@ -142,6 +183,14 @@ export function historyObservationForUpdate(
       lat: task.lat,
       lng: task.lng,
       job_id: task.job_id,
+      created_at: task.created_at,
+      completed_at: new Date(nowMs).toISOString(),
+      estimate_mins: task.estimate_mins,
+      logged_mins: spent,
+      due_today: task.due_today,
+      surface_date: task.surface_date,
+      intended_time: task.intended_time,
+      subtask_count: subtaskCountFromUnknown(task),
     };
   }
 
