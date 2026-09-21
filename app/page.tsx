@@ -20,6 +20,7 @@ import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { registerCaptureOpen } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useDesktopWorkspaceKeys } from '@/hooks/useDesktopWorkspaceKeys';
+import type { OnboardingAnswers } from '@/lib/onboardingTypes';
 import {
   buildClusters,
   suggestEstimate,
@@ -816,26 +817,37 @@ export default function Home() {
     setWorkCoords({ lat: result.lat, lng: result.lng });
   }
 
-  async function completeOnboarding() {
-    if (!session) return;
-    setOnboardSaving(true);
-    const { error } = await supabase
-      .from('user_settings')
-      .update({
-        work_start: workStart, work_end: workEnd, work_days: workDays,
-        home_location_text: homeLocation || null, home_lat: homeCoords?.lat ?? null, home_lng: homeCoords?.lng ?? null,
-        work_location_text: workLocation || null, work_lat: workCoords?.lat ?? null, work_lng: workCoords?.lng ?? null,
-        onboarded: true,
-      })
-      .eq('user_id', session.user.id);
-    setOnboardSaving(false);
-    if (error) {
-      console.error(error);
-      alert('Could not save your setup: ' + error.message);
-      return;
-    }
-    setShowOnboarding(false);
+  async function completeOnboarding(answers: OnboardingAnswers) {
+  if (!session) return;
+  setOnboardSaving(true);
+  const { error } = await supabase
+    .from('user_settings')
+    .update({
+      work_start: workStart,
+      work_end: workEnd,
+      work_days: workDays,
+      home_location_text: homeLocation || null,
+      home_lat: homeCoords?.lat ?? null,
+      home_lng: homeCoords?.lng ?? null,
+      work_location_text: workLocation || null,
+      work_lat: workCoords?.lat ?? null,
+      work_lng: workCoords?.lng ?? null,
+      onboarded: true,
+      onboarding_answers: answers,
+      role: answers.role,
+      work_type: answers.workType ?? null,
+      carry_style: answers.carryStyle,
+      day_shape: answers.dayShape ?? answers.dayFeel ?? null,
+    })
+    .eq('user_id', session.user.id);
+  setOnboardSaving(false);
+  if (error) {
+    console.error(error);
+    alert('Could not save your setup: ' + error.message);
+    return;
   }
+  setShowOnboarding(false);
+}
 
 
   // Merges the per-task legs the route API persisted straight into local
