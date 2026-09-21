@@ -1,0 +1,118 @@
+/* Phase 2 desktop enhancements */
+
+/* ── Desktop capture = centered modal (not bottom sheet) ─────────── */
+html[data-surface='desktop'] .sheet-backdrop {
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+html[data-surface='desktop'] .sheet-backdrop .capture-sheet:not(.task-detail-sheet) {
+  width: min(480px, 100%);
+  max-height: min(86vh, 720px);
+  border-radius: var(--radius-lg);
+  margin: 0;
+  box-shadow: 0 24px 64px rgba(var(--shadow-rgb), 0.22);
+  animation: none;
+}
+
+/* ── Jobs overview: denser desktop list ──────────────────────────── */
+html[data-surface='desktop'] .app-shell:has(.jobs-filter-row),
+html[data-surface='desktop'] .app-shell:has(.job-row) {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-6) var(--space-8);
+}
+
+html[data-surface='desktop'] .job-row {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+html[data-surface='desktop'] .job-row:hover {
+  border-color: var(--line-strong, var(--line));
+  box-shadow: 0 2px 10px rgba(var(--shadow-rgb), 0.06);
+}
+
+/* ── Job detail: list | pane workspace (needs desk-job-detail class) ─ */
+html[data-surface='desktop'] .app-shell.desk-job-detail {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail > .app-header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin: 0;
+  padding: 12px var(--space-5);
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: rgba(var(--glass-rgb), 0.92);
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail > .job-head,
+html[data-surface='desktop'] .app-shell.desk-job-detail > button.job-head {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 10px var(--space-5);
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail > .task-list {
+  grid-column: 1;
+  grid-row: 3;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+  border-right: 1px solid var(--line);
+  background: rgba(var(--glass-rgb), 0.35);
+  gap: 4px;
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail > .empty-state {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail:not(.has-desk-detail)::after {
+  content: 'Select a task to open it here';
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-faint);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: var(--space-8);
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail.has-desk-detail::after {
+  display: none;
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail > .desk-pane-detail {
+  grid-column: 2;
+  grid-row: 3;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--paper);
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail > .surface-nav {
+  display: none;
+}
