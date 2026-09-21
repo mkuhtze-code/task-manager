@@ -6,7 +6,8 @@
  *
  * Runtime observations (optional): pass buildRuntimeObservations(history)
  * so duration + behaviour match the same cluster as capture chips.
- * softFloorMins on the runtime bundle may be calibrated from prediction outcomes.
+ * softFloorMins and same-day rate thresholds may be seeded from onboarding
+ * and later calibrated from prediction outcomes.
  */
 
 import {
@@ -29,8 +30,8 @@ export { buildRuntimeObservations, lookupTaskSignals } from '@/lib/thinking/runt
 export const SOFT_DEFAULT_MINS = 30;
 
 const MIN_BEHAVIOUR_SAMPLES = 2;
-const ANCHOR_SAME_DAY_RATE = 0.55;
-const FLEXIBLE_SAME_DAY_RATE = 0.4;
+const DEFAULT_ANCHOR_SAME_DAY_RATE = 0.55;
+const DEFAULT_FLEXIBLE_SAME_DAY_RATE = 0.4;
 
 export type UrgencyClass = 'anchor' | 'flexible' | 'neutral';
 
@@ -177,20 +178,23 @@ export function urgencyForTask(
     return { urgency: 'anchor', behaviourHint: null, protectFromCarry: true };
   }
 
+  const anchorRate = runtime?.anchorSameDayRate ?? DEFAULT_ANCHOR_SAME_DAY_RATE;
+  const flexibleRate = runtime?.flexibleSameDayRate ?? DEFAULT_FLEXIBLE_SAME_DAY_RATE;
+
   const signals = runtime ? lookupTaskSignals(task.text, runtime) : null;
   const behaviour =
     signals && signals.sameDayRate != null
       ? { rate: signals.sameDayRate, samples: signals.sameDaySamples }
       : similarSameDayRate(task.text, history);
 
-  if (behaviour && behaviour.rate >= ANCHOR_SAME_DAY_RATE) {
+  if (behaviour && behaviour.rate >= anchorRate) {
     return {
       urgency: 'anchor',
       behaviourHint: signals?.explainBehaviour ?? 'Usually finished same day',
       protectFromCarry: true,
     };
   }
-  if (behaviour && behaviour.rate <= FLEXIBLE_SAME_DAY_RATE) {
+  if (behaviour && behaviour.rate <= flexibleRate) {
     return {
       urgency: 'flexible',
       behaviourHint: signals?.explainBehaviour ?? 'Often moves forward',
