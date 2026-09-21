@@ -72,8 +72,6 @@ export function TaskDetailSheet(props: {
       return;
     }
     const mins = parseMins(timeStr);
-    // 0 is valid — that's what makes this a list item / reminder rather
-    // than a timed task. Only reject unparseable or negative input.
     if (mins === null || mins < 0) {
       setError('Could not read that time, try 15m, 1.5h, or 0m');
       return;
@@ -97,22 +95,279 @@ export function TaskDetailSheet(props: {
 
   const startDisabled = anyActive && task.status !== 'active';
   const isPane = presentation === 'pane';
+  const jobName = task.job_id ? jobs.find((j) => j.id === task.job_id)?.name : null;
+  const progressPct =
+    task.estimate_mins > 0
+      ? Math.min((1 - remainingForThis / Math.max(task.estimate_mins, 1)) * 100, 100)
+      : 0;
+
+  const subtasksBlock = (
+    <div className={isPane ? 'desk-detail-panel' : 'subtask-panel'}>
+      <div className={isPane ? 'desk-detail-panel-head' : 'subtask-header'}>
+        <div className={isPane ? 'desk-detail-panel-title' : 'settings-panel-title'}>
+          Sub-tasks
+          {subs.length > 0 && (
+            <span className="mono desk-detail-count">
+              {subs.filter((s) => s.done).length}/{subs.length}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          className="subtask-add-btn"
+          onClick={() => setShowAddForm(!showAddForm)}
+        >
+          +
+        </button>
+      </div>
+      {showAddForm && (
+        <div className="subtask-add-row">
+          <input
+            type="text"
+            placeholder="Sub-task"
+            value={subDraftText}
+            onChange={(e) => setSubDraftText(e.target.value)}
+          />
+          <MicButton
+            size="small"
+            onResult={(spoken) =>
+              setSubDraftText(subDraftText.trim().length > 0 ? `${subDraftText.trim()} ${spoken}` : spoken)
+            }
+          />
+          <input
+            type="text"
+            placeholder="15m"
+            style={{ width: 60 }}
+            value={subDraftTime}
+            onChange={(e) => setSubDraftTime(e.target.value)}
+          />
+          <button
+            className="btn btn-ghost"
+            style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }}
+            onClick={() => {
+              onAddSubtask(task.id);
+              setShowAddForm(false);
+            }}
+          >
+            add
+          </button>
+        </div>
+      )}
+      {subs.map((s) => (
+        <div key={s.id} className="subtask-row">
+          <button
+            className={s.done ? 'subtask-check done' : 'subtask-check'}
+            onClick={() => onToggleSubtaskDone(s.id, task.id, s.done)}
+            aria-label="Complete sub-task"
+          />
+          <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
+          <span className="tag mono">{fmtMins(s.mins)}</span>
+          <button
+            className="icon-btn"
+            onClick={() => onDeleteSubtask(s.id, task.id)}
+            aria-label="Delete sub-task"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+      {subs.length === 0 && !showAddForm && isPane && (
+        <p className="desk-detail-muted">Break this into steps if it helps.</p>
+      )}
+    </div>
+  );
+
+  if (isPane) {
+    return (
+      <div className="desk-pane-detail">
+        <div className="desk-detail">
+          <header className="desk-detail-toolbar">
+            <div className="desk-detail-toolbar-left">
+              <span className="desk-detail-kicker">Task</span>
+              {task.due_today && <span className="desk-detail-badge due">Due today</span>}
+              {jobName && <span className="desk-detail-badge">{jobName}</span>}
+            </div>
+            <button type="button" className="gear-btn" onClick={handleClose} aria-label="Close">
+              <CloseIcon />
+            </button>
+          </header>
+
+          <input
+            type="text"
+            className="desk-detail-title"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commit}
+            placeholder="Task name"
+          />
+
+          {task.estimate_mins > 0 && (
+            <div className="desk-detail-progress">
+              <div className="task-progress-track">
+                <div className="task-progress-fill" style={{ width: `${progressPct}%` }} />
+              </div>
+              <div className="desk-detail-progress-meta mono">
+                <span>{fmtMins(remainingForThis)} left</span>
+                {task.status === 'active' && (
+                  <span className="desk-detail-live">· {fmtMins(liveLogged)} logged</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {error && <p className="desk-detail-error">{error}</p>}
+
+          <div className="desk-detail-actions">
+            {task.estimate_mins > 0 &&
+              (task.status === 'active' ? (
+                <button type="button" className="btn btn-ghost" onClick={() => onStop(task.id)}>
+                  <StopIcon /> Stop
+                  <span className="mono" style={{ fontWeight: 600 }}>{fmtMins(liveLogged)}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-steel"
+                  disabled={startDisabled}
+                  onClick={() => onStart(task.id)}
+                >
+                  <PlayIcon /> Start
+                </button>
+              ))}
+            <button
+              type="button"
+              className="btn btn-steel"
+              onClick={() => {
+                onComplete(task.id);
+                onClose();
+              }}
+            >
+              <CheckIcon done /> Done
+            </button>
+            <button
+              type="button"
+              className={task.due_today ? 'btn btn-ghost active-due' : 'btn btn-ghost'}
+              onClick={() => onToggleDue(task.id, !!task.due_today)}
+            >
+              {task.due_today ? 'Due today' : 'Mark due today'}
+            </button>
+          </div>
+
+          <div className="desk-detail-grid">
+            <section className="desk-detail-panel">
+              <h3 className="desk-detail-panel-title">Schedule</h3>
+              <label className="desk-detail-field">
+                <span className="desk-detail-label">Estimate</span>
+                <input
+                  type="text"
+                  className="time-input desk-detail-input"
+                  value={timeStr}
+                  onChange={(e) => setTimeStr(e.target.value)}
+                  onBlur={commit}
+                  placeholder="15m"
+                />
+              </label>
+              <label className="desk-detail-field">
+                <span className="desk-detail-label">{context === 'job' ? 'When' : 'Reminder'}</span>
+                <div className="reminder-date-row">
+                  <input
+                    type="date"
+                    className="desk-detail-input"
+                    value={surfaceDate}
+                    onChange={(e) => setSurfaceDate(e.target.value)}
+                    onBlur={commit}
+                  />
+                  {surfaceDate.length > 0 && (
+                    <button type="button" className="btn-text" onClick={() => { setSurfaceDate(''); commit(); }}>
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {surfaceDate.length > 0 && (
+                  <p className="desk-detail-muted">Hidden until {fmtSurfaceDate(surfaceDate)}.</p>
+                )}
+              </label>
+            </section>
+
+            <section className="desk-detail-panel">
+              <h3 className="desk-detail-panel-title">Context</h3>
+              <label className="desk-detail-field">
+                <span className="desk-detail-label">Location</span>
+                <LocationAutocomplete
+                  value={locationText}
+                  placeholder="Where does this happen?"
+                  onChange={setLocationText}
+                  onPlaceSelected={(result) => {
+                    setLocationText(result.formattedAddress);
+                    setLocationCoords({ lat: result.lat, lng: result.lng });
+                  }}
+                />
+                {locationText.length > 0 && !locationCoords && (
+                  <p className="desk-detail-muted">Pick a suggestion for route-aware capacity.</p>
+                )}
+              </label>
+              <div className="desk-detail-field">
+                <span className="desk-detail-label">Job</span>
+                <button
+                  type="button"
+                  className={jobMoveOpen ? 'detail-reveal active desk-detail-job-btn' : 'detail-reveal desk-detail-job-btn'}
+                  onClick={() => setJobMoveOpen((o) => !o)}
+                >
+                  <span>{jobName || 'No job'}</span>
+                  <ChevronIcon size={14} />
+                </button>
+                {jobMoveOpen && (
+                  <div className="move-day-list desk-detail-job-list">
+                    <button type="button" className="move-day-option" onClick={() => { onMoveToJob(task.id, null); setJobMoveOpen(false); }}>
+                      No job
+                    </button>
+                    {jobs.map((j) => (
+                      <button
+                        key={j.id}
+                        type="button"
+                        className="move-day-option"
+                        onClick={() => { onMoveToJob(task.id, j.id); setJobMoveOpen(false); }}
+                      >
+                        {j.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+
+          <section className="desk-detail-panel desk-detail-panel-wide">
+            <h3 className="desk-detail-panel-title">Notes</h3>
+            <TaskInfo value={task.info || ''} onSave={(info) => onSaveInfo(task.id, info)} surface="edit" />
+          </section>
+
+          {subtasksBlock}
+
+          <footer className="desk-detail-footer">
+            <button
+              type="button"
+              className="btn-text destructive"
+              onClick={() => {
+                if (confirm(`Delete "${task.text}"?`)) {
+                  onDelete(task.id);
+                  onClose();
+                }
+              }}
+            >
+              Delete task
+            </button>
+          </footer>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={isPane ? 'desk-pane-detail' : 'sheet-backdrop'}
-      onClick={isPane ? undefined : handleClose}
-    >
-      <div
-        className={isPane ? 'task-detail-sheet desk-pane-detail-inner' : 'capture-sheet task-detail-sheet'}
-        onClick={isPane ? undefined : (e) => e.stopPropagation()}
-      >
+    <div className="sheet-backdrop" onClick={handleClose}>
+      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
-          <button
-            className="gear-btn"
-            onClick={handleClose}
-            aria-label="Close"
-          >
+          <button className="gear-btn" onClick={handleClose} aria-label="Close">
             <CloseIcon />
           </button>
         </div>
@@ -128,10 +383,7 @@ export function TaskDetailSheet(props: {
         {task.estimate_mins > 0 && (
           <div className="task-progress-row" style={{ marginTop: 0 }}>
             <div className="task-progress-track">
-              <div
-                className="task-progress-fill"
-                style={{ width: `${Math.min((1 - remainingForThis / Math.max(task.estimate_mins, 1)) * 100, 100)}%` }}
-              />
+              <div className="task-progress-fill" style={{ width: `${progressPct}%` }} />
             </div>
             <span className="task-progress-label mono">{fmtMins(remainingForThis)} left</span>
           </div>
@@ -195,11 +447,7 @@ export function TaskDetailSheet(props: {
         )}
 
         <span className="settings-label">Information</span>
-        <TaskInfo
-          value={task.info || ''}
-          onSave={(info) => onSaveInfo(task.id, info)}
-          surface="edit"
-        />
+        <TaskInfo value={task.info || ''} onSave={(info) => onSaveInfo(task.id, info)} surface="edit" />
 
         <button
           type="button"
@@ -211,20 +459,11 @@ export function TaskDetailSheet(props: {
         </button>
         {jobMoveOpen && (
           <div className="move-day-list">
-            <button
-              type="button"
-              className="move-day-option"
-              onClick={() => onMoveToJob(task.id, null)}
-            >
+            <button type="button" className="move-day-option" onClick={() => onMoveToJob(task.id, null)}>
               No job
             </button>
             {jobs.map((j) => (
-              <button
-                key={j.id}
-                type="button"
-                className="move-day-option"
-                onClick={() => onMoveToJob(task.id, j.id)}
-              >
+              <button key={j.id} type="button" className="move-day-option" onClick={() => onMoveToJob(task.id, j.id)}>
                 {j.name}
               </button>
             ))}
@@ -232,8 +471,8 @@ export function TaskDetailSheet(props: {
         )}
 
         <div className="task-detail-actions">
-          {task.estimate_mins > 0 && (
-            task.status === 'active' ? (
+          {task.estimate_mins > 0 &&
+            (task.status === 'active' ? (
               <button className="btn btn-ghost start-stop-btn" style={{ flex: 1 }} onClick={() => onStop(task.id)}>
                 <StopIcon /> Stop <span className="mono" style={{ fontWeight: 600 }}>{fmtMins(liveLogged)}</span>
               </button>
@@ -241,59 +480,13 @@ export function TaskDetailSheet(props: {
               <button className="btn btn-steel start-stop-btn" style={{ flex: 1 }} disabled={startDisabled} onClick={() => onStart(task.id)}>
                 <PlayIcon /> Start
               </button>
-            )
-          )}
+            ))}
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { onComplete(task.id); onClose(); }}>
             <CheckIcon done /> Done
           </button>
         </div>
 
-        <div className="subtask-panel">
-          <div className="subtask-header">
-            <div className="settings-panel-title">Sub-tasks</div>
-            <button
-              type="button"
-              className="subtask-add-btn"
-              onClick={() => setShowAddForm(!showAddForm)}
-            >+</button>
-          </div>
-          {showAddForm && (
-            <div className="subtask-add-row">
-              <input
-                type="text"
-                placeholder="Sub-task"
-                value={subDraftText}
-                onChange={(e) => setSubDraftText(e.target.value)}
-              />
-              <MicButton
-                size="small"
-                onResult={(text) =>
-                  setSubDraftText(subDraftText.trim().length > 0 ? `${subDraftText.trim()} ${text}` : text)
-                }
-              />
-              <input
-                type="text"
-                placeholder="15m"
-                style={{ width: 60 }}
-                value={subDraftTime}
-                onChange={(e) => setSubDraftTime(e.target.value)}
-              />
-              <button className="btn btn-ghost" style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }} onClick={() => { onAddSubtask(task.id); setShowAddForm(false); }}>add</button>
-            </div>
-          )}
-          {subs.map((s) => (
-            <div key={s.id} className="subtask-row">
-              <button
-                className={s.done ? 'subtask-check done' : 'subtask-check'}
-                onClick={() => onToggleSubtaskDone(s.id, task.id, s.done)}
-                aria-label="Complete sub-task"
-              />
-              <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
-              <span className="tag mono">{fmtMins(s.mins)}</span>
-              <button className="icon-btn" onClick={() => onDeleteSubtask(s.id, task.id)} aria-label="Delete sub-task">×</button>
-            </div>
-          ))}
-        </div>
+        {subtasksBlock}
 
         <button
           className="btn btn-ghost danger-btn task-detail-delete"
