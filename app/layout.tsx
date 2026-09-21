@@ -1,6 +1,7 @@
 import './globals.css';
 import './desktop-surface.css';
 import './desktop-phase-2.css';
+import './desktop-heart.css';
 import './dokkit-splash.css';
 import './observation-layout-fix.css';
 import './dokkit-player.css';
@@ -33,11 +34,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        {/* Runs before first paint. Reads the stored theme choice —
-            'light' | 'dark' | 'system' | null — and resolves it to an
-            actual attribute. 'system' and null both defer to the OS
-            preference; only 'dark' sets data-theme, since light mode
-            is the unmarked default already in :root. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
