@@ -6,6 +6,11 @@
 //
 // Estimation logic (effectiveEstimate, hasMeaningfulDivergence) delegates
 // to lib/thinking/decisions/effectiveEstimate.ts.
+//
+// Duration quality: actual_mins of 0 (tap-Done without a timer) must not
+// drag cluster averages toward zero. When reliable timed samples are
+// scarce, lifecycle structure (job, carry, subtasks, anchors) seeds a
+// soft duration instead.
 
 import {
   computeEffectiveEstimate as _computeEffectiveEstimate,
@@ -25,6 +30,10 @@ import {
   decideLocationMemory,
 } from '@/lib/thinking/decisions/locationMemory';
 import type { CompletedTaskFacts, DecisionAuthority } from '@/lib/thinking/types';
+import {
+  isReliableActualMins,
+  lifecycleSoftMins,
+} from '@/lib/thinking/durationQuality';
 
 export type HistoricalTask = {
   text: string;
@@ -35,6 +44,14 @@ export type HistoricalTask = {
   job_id?: string | null;
   created_at?: string | null;
   completed_at?: string | null;
+  /** Lifecycle / structure signals — used when timed actuals are unreliable. */
+  estimate_mins?: number | null;
+  logged_mins?: number | null;
+  due_today?: boolean | null;
+  surface_date?: string | null;
+  source?: string | null;
+  intended_time?: string | null;
+  subtask_count?: number | null;
 };
 
 export type ClusterLocation = {
@@ -46,10 +63,24 @@ export type ClusterLocation = {
 export type TaskCluster = {
   label: string;
   tokens: Set<string>;
+  /** Completions matched into this cluster (including zero-duration). */
   count: number;
+  /** Sum of *reliable* actual minutes only. */
   totalMins: number;
+  /** Average of *reliable* actual minutes; 0 if none yet. */
   avgMins: number;
+  /** How many completions contributed a reliable duration. */
+  reliableCount: number;
   location: ClusterLocation | null;
+  /** Share of cluster completions attached to a job (0–1). */
+  jobRate: number;
+  jobAttachedCount: number;
+  /** Share finished same calendar day when timestamps exist (0–1). */
+  sameDayRate: number;
+  sameDaySamples: number;
+  /** Average subtask count across completions that reported it. */
+  avgSubtaskCount: number;
+  subtaskSamples: number;
 };
 
 export type { Confidence } from '@/lib/thinking/decisions/effectiveEstimate';
@@ -59,6 +90,8 @@ export type EstimateSuggestion = {
   confidence: Confidence;
   sampleCount: number;
   matchedLabel: string;
+  /** measured = timed history; lifecycle = structure fallback; mixed = both. */
+  source: 'measured' | 'lifecycle' | 'mixed';
 };
 
 export type LocationSuggestion = {
@@ -116,6 +149,76 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   return unionSize === 0 ? 0 : intersection / unionSize;
 }
 
+function sameCalendarDay(a: string, b: string): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+}
+
+function emptyCluster(label: string, tokens: Set<string>, location: ClusterLocation | null): TaskCluster {
+  return {
+    label,
+    tokens,
+    count: 0,
+    totalMins: 0,
+    avgMins: 0,
+    reliableCount: 0,
+    location,
+    jobRate: 0,
+    jobAttachedCount: 0,
+    sameDayRate: 0,
+    sameDaySamples: 0,
+    avgSubtaskCount: 0,
+    subtaskSamples: 0,
+  };
+}
+
+function absorbTask(cluster: TaskCluster, task: HistoricalTask, taskTokens: Set<string>) {
+  cluster.tokens = new Set([...cluster.tokens, ...taskTokens]);
+  cluster.count += 1;
+
+  if (isReliableActualMins(task.actual_mins)) {
+    cluster.reliableCount += 1;
+    cluster.totalMins += task.actual_mins;
+    cluster.avgMins = cluster.totalMins / cluster.reliableCount;
+  }
+
+  if (task.job_id) {
+    cluster.jobAttachedCount += 1;
+  }
+  cluster.jobRate = cluster.jobAttachedCount / cluster.count;
+
+  if (task.created_at && task.completed_at) {
+    cluster.sameDaySamples += 1;
+    if (sameCalendarDay(task.created_at, task.completed_at)) {
+      cluster.sameDayRate =
+        (cluster.sameDayRate * (cluster.sameDaySamples - 1) + 1) / cluster.sameDaySamples;
+    } else {
+      cluster.sameDayRate =
+        (cluster.sameDayRate * (cluster.sameDaySamples - 1)) / cluster.sameDaySamples;
+    }
+  }
+
+  if (typeof task.subtask_count === 'number' && task.subtask_count >= 0) {
+    cluster.subtaskSamples += 1;
+    cluster.avgSubtaskCount =
+      (cluster.avgSubtaskCount * (cluster.subtaskSamples - 1) + task.subtask_count) /
+      cluster.subtaskSamples;
+  }
+
+  if (task.location_text && task.lat != null && task.lng != null) {
+    cluster.location = {
+      text: task.location_text,
+      lat: task.lat,
+      lng: task.lng,
+    };
+  }
+}
+
 export function buildClusters(history: HistoricalTask[]): TaskCluster[] {
   const clusters: TaskCluster[] = [];
 
@@ -140,20 +243,11 @@ export function buildClusters(history: HistoricalTask[]): TaskCluster[] {
         : null;
 
     if (bestCluster && bestScore >= GROUP_SIMILARITY_THRESHOLD) {
-      bestCluster.tokens = new Set([...bestCluster.tokens, ...taskTokens]);
-      bestCluster.count += 1;
-      bestCluster.totalMins += task.actual_mins;
-      bestCluster.avgMins = bestCluster.totalMins / bestCluster.count;
-      if (taskLocation) bestCluster.location = taskLocation;
+      absorbTask(bestCluster, task, taskTokens);
     } else {
-      clusters.push({
-        label: task.text.trim(),
-        tokens: taskTokens,
-        count: 1,
-        totalMins: task.actual_mins,
-        avgMins: task.actual_mins,
-        location: taskLocation,
-      });
+      const created = emptyCluster(task.text.trim(), taskTokens, taskLocation);
+      absorbTask(created, task, taskTokens);
+      clusters.push(created);
     }
   }
 
@@ -179,6 +273,12 @@ function findBestCluster(
   return { cluster: bestCluster, score: bestScore };
 }
 
+/**
+ * Suggest a duration for similar work.
+ * Prefers reliable timed samples. If those are scarce but the cluster has
+ * structure (jobs, carry, subtasks), uses lifecycle soft mins instead of
+ * averaging zeros.
+ */
 export function suggestEstimate(
   inputText: string,
   history: HistoricalTask[],
@@ -192,15 +292,54 @@ export function suggestEstimate(
   if (!match) return null;
   if (match.cluster.count < MIN_SAMPLES_FOR_SUGGESTION) return null;
 
+  const c = match.cluster;
+  const hasMeasured = c.reliableCount >= MIN_SAMPLES_FOR_SUGGESTION;
+
+  // Lifecycle soft from cluster-level rates + any matching history rows' structure.
+  const soft = lifecycleSoftMins({
+    jobRate: c.jobRate,
+    sameDayRate: c.sameDaySamples >= 2 ? c.sameDayRate : null,
+    subtaskCount: c.subtaskSamples >= 1 ? Math.round(c.avgSubtaskCount) : null,
+  });
+
+  let suggestedMins: number;
+  let source: EstimateSuggestion['source'];
+  let sampleCount: number;
+
+  if (hasMeasured && soft != null && c.reliableCount < c.count) {
+    // Mixed: some real times, many zeros — blend toward measured, don't ignore structure.
+    suggestedMins = Math.round(c.avgMins * 0.75 + soft * 0.25);
+    source = 'mixed';
+    sampleCount = c.reliableCount;
+  } else if (hasMeasured) {
+    suggestedMins = Math.round(c.avgMins);
+    source = 'measured';
+    sampleCount = c.reliableCount;
+  } else if (soft != null) {
+    suggestedMins = soft;
+    source = 'lifecycle';
+    sampleCount = c.count;
+  } else {
+    return null;
+  }
+
   let confidence: Confidence = 'low';
-  if (match.cluster.count >= 7) confidence = 'high';
-  else if (match.cluster.count >= 4) confidence = 'medium';
+  if (source === 'measured') {
+    if (sampleCount >= 7) confidence = 'high';
+    else if (sampleCount >= 4) confidence = 'medium';
+  } else if (source === 'mixed') {
+    confidence = sampleCount >= 4 ? 'medium' : 'low';
+  } else {
+    // lifecycle-only — never high; structure is a prior, not a measurement.
+    confidence = c.count >= 6 ? 'medium' : 'low';
+  }
 
   return {
-    suggestedMins: Math.round(match.cluster.avgMins),
+    suggestedMins,
     confidence,
-    sampleCount: match.cluster.count,
-    matchedLabel: match.cluster.label,
+    sampleCount,
+    matchedLabel: c.label,
+    source,
   };
 }
 
@@ -257,23 +396,24 @@ export function groupTasksByCluster<T extends { text: string }>(
 }
 
 function historicalToFacts(h: HistoricalTask): CompletedTaskFacts {
+  const reliable = isReliableActualMins(h.actual_mins);
   return {
     text: h.text,
     status: 'done',
-    source: 'planned',
-    estimate_mins: h.actual_mins,
-    actual_mins: h.actual_mins,
-    logged_mins: h.actual_mins,
+    source: (h.source as 'planned' | 'came_up') || 'planned',
+    estimate_mins: h.estimate_mins ?? (reliable ? h.actual_mins : 0),
+    actual_mins: reliable ? h.actual_mins : null,
+    logged_mins: h.logged_mins ?? (reliable ? h.actual_mins : 0),
     created_at: h.created_at || '',
     completed_at: h.completed_at ?? null,
     started_at: null,
-    surface_date: null,
+    surface_date: h.surface_date ?? null,
     location_text: h.location_text ?? null,
     lat: h.lat ?? null,
     lng: h.lng ?? null,
     job_id: h.job_id ?? null,
     info: null,
-    subtaskCount: 0,
+    subtaskCount: h.subtask_count ?? 0,
     subtaskDoneCount: 0,
     subtaskTotalMins: 0,
   };
@@ -419,3 +559,5 @@ export function effectiveEstimate(
   });
   return decision.blendedMins;
 }
+
+export { isReliableActualMins, lifecycleSoftMins, resolveActualForLearning } from '@/lib/thinking/durationQuality';
