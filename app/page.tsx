@@ -14,6 +14,7 @@ import { TodayHeader } from '@/components/TodayHeader';
 import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
 import { AuthScreen, OnboardingScreen } from '@/components/AuthScreen';
+import { PostStopPrompt, type PostStopPromptState } from '@/components/PostStopPrompt';
 import { PlusIcon } from '@/components/icons';
 import { useDragReorder } from '@/hooks/useDragReorder';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
@@ -28,7 +29,7 @@ import {
   settingsPatchFromProfile,
   type UserProfile,
 } from '@/lib/userProfile';
-import { resolveActualForLearning } from '@/lib/thinking/durationQuality';
+import { isReliableActualMins, resolveActualForLearning } from '@/lib/thinking/durationQuality';
 import {
   buildClusters,
   suggestEstimate,
@@ -123,24 +124,42 @@ export default function Home() {
   const now = useNow();
 
   // Keep Today in sync when the global player stops a task.
+  // If real minutes were banked, offer one-tap Done (frictionless learning).
   useEffect(() => {
     function onActivity(e: Event) {
       const detail = (e as CustomEvent).detail || {};
       if (detail.type === 'stopped' && detail.taskId) {
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === detail.taskId
+        const taskId = String(detail.taskId);
+        const logged =
+          typeof detail.logged_mins === 'number' ? detail.logged_mins : null;
+        const detailText =
+          typeof detail.text === 'string' ? detail.text : null;
+
+        setTasks((prev) => {
+          const row = prev.find((t) => t.id === taskId);
+          const mins = logged != null ? logged : row?.logged_mins ?? 0;
+          const text = detailText ?? row?.text ?? '';
+          // Queue prompt outside updater — schedule after this tick.
+          if (isReliableActualMins(mins) && text) {
+            queueMicrotask(() => {
+              setPostStopPrompt({ taskId, text, loggedMins: mins });
+            });
+          }
+          return prev.map((t) =>
+            t.id === taskId
               ? {
                   ...t,
                   status: 'pending' as const,
                   started_at: null,
-                  logged_mins:
-                    typeof detail.logged_mins === 'number'
-                      ? detail.logged_mins
-                      : t.logged_mins,
+                  logged_mins: logged != null ? logged : t.logged_mins,
                 }
               : t
-          )
+          );
+        });
+      }
+      if (detail.type === 'completed' && detail.taskId) {
+        setPostStopPrompt((prev) =>
+          prev && prev.taskId === detail.taskId ? null : prev
         );
       }
     }
@@ -187,6 +206,8 @@ export default function Home() {
   });
   /** Quiet post-dock line: what landed + optional clear. */
   const [dockSummary, setDockSummary] = useState<string | null>(null);
+  const [postStopPrompt, setPostStopPrompt] = useState<PostStopPromptState | null>(null);
+  const [postStopBusy, setPostStopBusy] = useState(false);
   const [realityCheckOpen, setRealityCheckOpen] = useState(false);
   const [realityCheckBusy, setRealityCheckBusy] = useState(false);
   const [realityCheckMessage, setRealityCheckMessage] = useState<string | null>(null);
@@ -1386,7 +1407,12 @@ export default function Home() {
       return;
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'pending', started_at: null, logged_mins: newLogged } : t)));
-    notifyTaskActivity({ type: 'stopped', taskId: id, logged_mins: newLogged });
+    notifyTaskActivity({
+      type: 'stopped',
+      taskId: id,
+      logged_mins: newLogged,
+      text: task.text,
+    });
   }
 
 
@@ -1613,6 +1639,22 @@ export default function Home() {
     }
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
     notifyTaskActivity({ type: 'completed', taskId: id });
+  }
+
+
+  async function confirmPostStopDone() {
+    if (!postStopPrompt) return;
+    setPostStopBusy(true);
+    try {
+      await completeTask(postStopPrompt.taskId);
+      setPostStopPrompt(null);
+    } finally {
+      setPostStopBusy(false);
+    }
+  }
+
+  function dismissPostStopPrompt() {
+    setPostStopPrompt(null);
   }
 
   async function deleteTask(id: string) {
@@ -1936,6 +1978,15 @@ export default function Home() {
             OK
           </button>
         </div>
+      )}
+
+      {postStopPrompt && (
+        <PostStopPrompt
+          prompt={postStopPrompt}
+          busy={postStopBusy}
+          onDone={confirmPostStopDone}
+          onStillGoing={dismissPostStopPrompt}
+        />
       )}
 
         {taskLoadError ? (
