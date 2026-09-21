@@ -21,6 +21,8 @@ import { NewJobSheet } from '@/components/JobSheets';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, CheckIcon, MapPinIcon } from '@/components/icons';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
+import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
+import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { localDateStr } from '@/lib/timeFormat';
 
 export default function JobsHome() {
@@ -36,6 +38,12 @@ export default function JobsHome() {
   /** 'open' = active jobs only; 'done' = completed; 'all' = everything */
   const [listFilter, setListFilter] = useState<'open' | 'done' | 'all'>('open');
   const recordEvent = useRecordSurfaceEvent();
+  const { isDesktop } = useSurfaceMode();
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    return registerDesktopPrimaryAction('New job', () => setNewJobOpen(true));
+  }, [isDesktop]);
 
   const clusters = useMemo(() => buildClusters(history), [history]);
   const todayStr = localDateStr(new Date());
