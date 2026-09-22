@@ -6,6 +6,12 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { apiUrl } from '@/lib/authedFetch';
 import AppHeader from '@/components/AppHeader';
+import {
+  buildStorageQuota,
+  formatStorageBytes,
+  formatStoragePercent,
+  type StorageQuota,
+} from '@/lib/storageQuota';
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -32,6 +38,8 @@ export default function Account() {
   const [deleteError, setDeleteError] = useState('');
 
   const [accountTier, setAccountTier] = useState<AccountTier | null>(null);
+  const [storageQuota, setStorageQuota] = useState<StorageQuota | null>(null);
+  const [storageError, setStorageError] = useState('');
 
   // PWA install state. `deferredPrompt` holds the browser's native install
   // event (Chrome/Android/most desktop Chromium) so we can trigger it from
@@ -54,10 +62,19 @@ export default function Account() {
   async function loadAccountTier() {
     const { data } = await supabase
       .from('user_settings')
-      .select('account_tier')
+      .select('account_tier, storage_used_bytes, storage_limit_bytes')
       .eq('user_id', session.user.id)
       .maybeSingle();
     setAccountTier((data?.account_tier as AccountTier) || 'free');
+    if (data) {
+      setStorageQuota(
+        buildStorageQuota(
+          Number(data.storage_used_bytes ?? 0),
+          Number(data.storage_limit_bytes ?? 0) || 30 * 1024 * 1024 * 1024
+        )
+      );
+      setStorageError('');
+    }
   }
 
   useEffect(() => {
@@ -266,7 +283,82 @@ export default function Account() {
         </button>
       </div>
 
-      <div className="settings-panel danger-zone">
+      
+      <div className="settings-panel">
+        <div className="settings-panel-title">Storage</div>
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+          Dokkit-hosted files (meeting photos, audio, and documents). When this is full,
+          free space by deleting media or export your data first.
+        </p>
+        {storageError && (
+          <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{storageError}</p>
+        )}
+        {storageQuota && (
+          <div style={{ marginTop: 8 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: 13,
+                fontWeight: 600,
+                marginBottom: 6,
+              }}
+            >
+              <span>
+                {formatStorageBytes(storageQuota.usedBytes)} of{' '}
+                {formatStorageBytes(storageQuota.limitBytes)}
+              </span>
+              <span style={{ color: 'var(--ink-soft)' }}>
+                {formatStoragePercent(storageQuota.ratio)}
+              </span>
+            </div>
+            <div
+              style={{
+                height: 8,
+                borderRadius: 999,
+                background: 'var(--line)',
+                overflow: 'hidden',
+              }}
+              role="progressbar"
+              aria-valuenow={Math.round(storageQuota.ratio * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${Math.min(100, storageQuota.ratio * 100)}%`,
+                  background:
+                    storageQuota.state === 'exceeded' || storageQuota.state === 'critical'
+                      ? 'var(--hazard)'
+                      : storageQuota.state === 'warning'
+                        ? 'var(--warn, #c98600)'
+                        : 'var(--steel)',
+                  transition: 'width 0.2s ease',
+                }}
+              />
+            </div>
+            {storageQuota.state === 'exceeded' && (
+              <p style={{ fontSize: 12, color: 'var(--hazard)', margin: '8px 0 0' }}>
+                Storage is full. Delete meeting media or export data to free space before
+                adding more files.
+              </p>
+            )}
+            {storageQuota.state === 'critical' && (
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0 0' }}>
+                You are close to your storage limit. Consider removing old media.
+              </p>
+            )}
+            {storageQuota.state === 'warning' && (
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0 0' }}>
+                You have used over 80% of your included storage.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+<div className="settings-panel danger-zone">
         <div className="settings-panel-title" style={{ color: 'var(--hazard)' }}>Danger Zone</div>
 
         {!deleteOpen ? (
