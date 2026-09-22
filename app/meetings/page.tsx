@@ -11,6 +11,8 @@ import { NewMeetingSheet, type NewMeetingPayload } from '@/components/MeetingShe
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon } from '@/components/icons';
+import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
+import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 
 export default function MeetingsHome() {
   const router = useRouter();
@@ -21,6 +23,12 @@ export default function MeetingsHome() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [newMeetingOpen, setNewMeetingOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { isDesktop } = useSurfaceMode();
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    return registerDesktopPrimaryAction('Record a meeting', () => setNewMeetingOpen(true));
+  }, [isDesktop]);
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -124,7 +132,9 @@ export default function MeetingsHome() {
                 <div className="meeting-row-sub">
                   <span className="meeting-window">{fmtMeetingWindow(m.start_time, m.duration_mins)}</span>
                   {job && <span className="meeting-meta">{job}</span>}
-                  {m.location_text && job === null && <span className="meeting-meta">{m.location_text}</span>}
+                  {m.location_text && job === null && (
+                    <span className="meeting-meta">{m.location_text}</span>
+                  )}
                 </div>
               </Link>
             );
@@ -160,9 +170,12 @@ export default function MeetingsHome() {
         <div className="empty-state">
           <div className="empty-state-title">No meetings recorded.</div>
           <div className="empty-state-sub">
-            A meeting is a block of time where people came together around a job — capture the moment now, structure it later.
+            A meeting is a block of time where people came together around a job — capture the
+            moment now, structure it later.
           </div>
-          <button className="btn btn-steel" onClick={() => setNewMeetingOpen(true)}>Record a meeting</button>
+          <button className="btn btn-steel" onClick={() => setNewMeetingOpen(true)}>
+            Record a meeting
+          </button>
         </div>
       ) : (
         <>
