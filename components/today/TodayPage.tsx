@@ -2127,6 +2127,15 @@ export function TodayPage() {
           anyActive={visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0)}
           context="today"
           jobs={jobs}
+          meetings={meetings}
+          siblingTasks={
+            openTask.job_id
+              ? tasks
+                  .filter((t) => t.job_id === openTask.job_id && t.status !== 'done')
+                  .map((t) => ({ id: t.id, text: t.text, status: t.status }))
+              : []
+          }
+          onOpenSibling={(id) => setOpenTaskId(id)}
           onClose={() => setOpenTaskId(null)}
           onSave={updateTask}
           onComplete={completeTask}
