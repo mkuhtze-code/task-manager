@@ -20,6 +20,7 @@ import {
   type CapturedMedia,
 } from '@/lib/meetingCapture';
 import { saveMediaBlob, deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
+import { syncMeetingMediaToCloud, deleteCloudMedia } from '@/lib/mediaCloud';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
 import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
 import { useObservationDrafting } from '@/hooks/useObservationDrafting';
@@ -387,19 +388,33 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           continue;
         }
       }
-      const { error } = await supabase.from('meeting_media').insert({
-        user_id: session.user.id,
-        meeting_id: meetingId,
-        observation_id: observationId,
-        media_type: m.mediaType,
-        local_uri: ref,
-        mime_type: m.mime,
-        size_bytes: m.size,
-        captured_at: m.capturedAt,
-      });
-      if (error) {
+      const { data: mediaRow, error } = await supabase
+        .from('meeting_media')
+        .insert({
+          user_id: session.user.id,
+          meeting_id: meetingId,
+          observation_id: observationId,
+          media_type: m.mediaType,
+          local_uri: ref,
+          mime_type: m.mime,
+          size_bytes: m.size,
+          captured_at: m.capturedAt,
+          sync_status: 'local_only',
+        })
+        .select('id')
+        .single();
+      if (error || !mediaRow) {
         console.error(error);
         ok = false;
+      } else {
+        // Share with other devices (desktop ↔ mobile). Best-effort; local row stays.
+        void syncMeetingMediaToCloud({
+          userId: session.user.id,
+          meetingId,
+          mediaId: mediaRow.id,
+          localUri: ref,
+          mimeType: m.mime,
+        });
       }
     }
     return ok;
@@ -451,6 +466,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     for (const id of ids) {
       const row = media.find((m) => m.id === id);
       if (row?.local_uri) void deleteMediaBlob(row.local_uri);
+      if (row?.storage_path) void deleteCloudMedia(row.storage_path);
     }
     const { error } = await supabase
       .from('meeting_media')
@@ -469,6 +485,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     if (table === 'meeting_observations') {
       for (const m of media) {
         if (m.observation_id === id && m.local_uri) void deleteMediaBlob(m.local_uri);
+        if (m.observation_id === id && m.storage_path) void deleteCloudMedia(m.storage_path);
       }
     }
     await supabase.from(table).delete().eq('id', id).eq('user_id', session.user.id);
@@ -481,6 +498,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     if (!window.confirm('Delete this meeting and everything recorded under it?')) return;
     for (const m of media) {
       if (m.local_uri) void deleteMediaBlob(m.local_uri);
+      if (m.storage_path) void deleteCloudMedia(m.storage_path);
     }
     const { error: e } = await supabase
       .from('meetings')
