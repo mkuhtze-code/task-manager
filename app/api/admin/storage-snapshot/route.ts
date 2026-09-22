@@ -47,14 +47,6 @@ export async function GET(req: NextRequest) {
 
     if (mediaErr) throw mediaErr;
 
-    const { data: sumRow, error: sumErr } = await supabaseAdmin.rpc(
-      'admin_storage_bytes_sum'
-    ).maybeSingle?.() ?? { data: null, error: null };
-
-    // Fallback if RPC not installed: use settings total (already summed).
-    void sumRow;
-    void sumErr;
-
     await writeAdminAudit({
       actorId: access.userId,
       action: 'storage_snapshot.view',
@@ -62,7 +54,6 @@ export async function GET(req: NextRequest) {
       metadata: {
         totalUsedBytes: totalUsed,
         accountCount: rows.length,
-        // No user identifiers in audit metadata.
       },
     });
 
