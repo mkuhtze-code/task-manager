@@ -1,19 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { isMediaRef, loadMediaBlob } from '@/lib/mediaStore';
+import { isMediaRef } from '@/lib/mediaStore';
+import { resolveMediaBlob } from '@/lib/mediaCloud';
 
-// Turn a stored `local_uri` into something renderable for as long as this
-// element needs it:
-//   * idb://…  → resolve the bytes from IndexedDB, hand back a fresh
-//                object URL, and revoke it when this element unmounts.
-//   * blob:…   → legacy V1/V2.1 rows; the URL only lives as long as its
-//                session, so use it directly while it still might exist.
-//   * anything else → resolvable to nothing, reported as `missing`.
-// The caller decides the graceful fallback (quiet placeholder, keep the
-// row). Nothing here deletes or rewrites a legacy reference.
+/**
+ * Turn stored media into a renderable object URL.
+ * Tries device cache (idb://) first, then cloud storage_path so mobile and
+ * desktop share the same evidence.
+ */
 export function useMediaObjectUrl(
-  ref: string | null | undefined
+  ref: string | null | undefined,
+  storagePath?: string | null
 ): { url: string | null; missing: boolean } {
   const [state, setState] = useState<{ url: string | null; missing: boolean }>({
     url: null,
@@ -21,21 +19,23 @@ export function useMediaObjectUrl(
   });
 
   useEffect(() => {
-    if (!ref) {
+    if (!ref && !storagePath) {
       setState({ url: null, missing: true });
       return;
     }
-    if (ref.startsWith('blob:')) {
+    if (ref && ref.startsWith('blob:')) {
       setState({ url: ref, missing: false });
       return;
     }
-    if (!isMediaRef(ref)) {
+    if (ref && !isMediaRef(ref) && !storagePath) {
       setState({ url: null, missing: true });
       return;
     }
+
     let live = true;
     let objectUrl: string | null = null;
-    loadMediaBlob(ref)
+
+    resolveMediaBlob(ref, storagePath)
       .then((blob) => {
         if (!blob) {
           if (live) setState({ url: null, missing: true });
@@ -47,11 +47,12 @@ export function useMediaObjectUrl(
       .catch(() => {
         if (live) setState({ url: null, missing: true });
       });
+
     return () => {
       live = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [ref]);
+  }, [ref, storagePath]);
 
   return state;
 }
