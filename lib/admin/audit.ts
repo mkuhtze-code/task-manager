@@ -13,7 +13,8 @@ export type AdminAuditAction =
   | 'audit.list'
   | 'admin_access.list'
   | 'product_snapshot.view'
-  | 'system_snapshot.view';
+  | 'system_snapshot.view'
+  | 'storage_snapshot.view';
 
 /**
  * Best-effort write to admin_audit_events. Never throws to the caller —
