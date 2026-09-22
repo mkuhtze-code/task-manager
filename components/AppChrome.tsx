@@ -1,6 +1,7 @@
 'use client';
 
 import ActiveTimerBar from '@/components/ActiveTimerBar';
+import DesktopBannerHost from '@/components/DesktopBannerHost';
 import DesktopContextStrip from '@/components/DesktopContextStrip';
 import DesktopProductNav from '@/components/DesktopProductNav';
 import DesktopSidebar from '@/components/DesktopSidebar';
@@ -21,6 +22,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
           <ActiveTimerBar />
           <DesktopProductNav />
           <DesktopContextStrip />
+          <DesktopBannerHost />
           <div className="desk-main-body">{children}</div>
         </div>
       </div>
