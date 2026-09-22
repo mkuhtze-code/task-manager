@@ -5,9 +5,8 @@ import { useMediaObjectUrl } from '@/hooks/useMediaObjectUrl';
 
 // Graceful, quiet fallback when a media reference cannot render — either
 // IndexedDB lost the bytes (idb:// ref to nothing) or a legacy V1/V2.1
-// blob: URL belongs to a finished session. Very old references are always
-// handled this way; the record is kept, the bytes are gone. Same visual
-// language as the rest of Dokkit: no raw broken-image icon, just a whisper.
+// blob: URL belongs to a finished session. Cloud storage_path fills the
+// gap across devices. Same visual language: no raw broken-image icon.
 export function MediaUnavailable({
   label,
   className,
@@ -22,29 +21,27 @@ export function MediaUnavailable({
   );
 }
 
-function useResolvedMedia(ref: string) {
-  const { url, missing } = useMediaObjectUrl(ref);
+function useResolvedMedia(ref: string, storagePath?: string | null) {
+  const { url, missing } = useMediaObjectUrl(ref, storagePath);
   const [broken, setBroken] = useState(false);
   return { url, unavailable: missing || broken, onError: () => setBroken(true) };
 }
 
-// A photo that knows how to come back from IndexedDB and how to fail
-// quietly. Exported for the evidence carousel and the edit state. The
-// media reference is a data prop (`uri`), not React's `ref` — passing the
-// reference through the special `ref` slot would make React treat it as a
-// component ref (which crashes on function components).
 export function PhotoImage({
   uri: mediaRef,
+  storagePath = null,
   alt,
   className,
   eager = false,
 }: {
   uri: string;
+  /** Supabase Storage path — used when this device has no idb cache. */
+  storagePath?: string | null;
   alt: string;
   className?: string;
   eager?: boolean;
 }) {
-  const { url, unavailable, onError } = useResolvedMedia(mediaRef);
+  const { url, unavailable, onError } = useResolvedMedia(mediaRef, storagePath);
   if (unavailable || !url) {
     return <MediaUnavailable label="Photo unavailable" className={className} />;
   }
@@ -59,17 +56,16 @@ export function PhotoImage({
   );
 }
 
-// The same resolver for voice notes. A live audio row renders the native
-// <audio controls> element; an unresolvable one keeps its slot as a quiet
-// note instead of a dead control.
 export function AudioNote({
   uri: mediaRef,
+  storagePath = null,
   className,
 }: {
   uri: string;
+  storagePath?: string | null;
   className?: string;
 }) {
-  const { url, unavailable, onError } = useResolvedMedia(mediaRef);
+  const { url, unavailable, onError } = useResolvedMedia(mediaRef, storagePath);
   if (unavailable || !url) {
     return <MediaUnavailable label="Audio unavailable" className={className} />;
   }
