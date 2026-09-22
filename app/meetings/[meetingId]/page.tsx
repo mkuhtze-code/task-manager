@@ -28,6 +28,8 @@ import MeetingExport from '@/components/MeetingExport';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
+import { MeetingConnections } from '@/components/MeetingConnections';
+import type { Job } from '@/lib/jobTypes';
 
 export default function MeetingDetail({ params }: { params: { meetingId: string } }) {
   const meetingId = params.meetingId;
@@ -40,6 +42,11 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [jobName, setJobName] = useState<string | null>(null);
+  const [linkedJob, setLinkedJob] = useState<Job | null>(null);
+  const [jobTasks, setJobTasks] = useState<{ id: string; text: string; status: string }[]>([]);
+  const [siblingMeetings, setSiblingMeetings] = useState<Meeting[]>([]);
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [linkingJob, setLinkingJob] = useState(false);
   const [participants, setParticipants] = useState<MeetingParticipant[]>([]);
   const [observations, setObservations] = useState<MeetingObservation[]>([]);
   const [decisions, setDecisions] = useState<MeetingDecision[]>([]);
@@ -169,15 +176,65 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     setMedia(med);
     setLoading(false);
 
+    // Jobs list always loaded so an unlinked meeting can be filed under one.
+    const { data: jobRows } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    const jobsList = (jobRows as Job[]) || [];
+    setAllJobs(jobsList);
+
     if (m.job_id) {
-      const { data: job } = await supabase
-        .from('jobs')
-        .select('name')
-        .eq('id', m.job_id)
-        .maybeSingle();
+      const job = jobsList.find((j) => j.id === m.job_id) ?? null;
+      setLinkedJob(job);
       setJobName(job?.name ?? null);
+
+      const [{ data: taskRows }, { data: sibRows }] = await Promise.all([
+        supabase
+          .from('tasks')
+          .select('id, text, status')
+          .eq('job_id', m.job_id)
+          .neq('status', 'done')
+          .order('order_index', { ascending: true })
+          .limit(20),
+        supabase
+          .from('meetings')
+          .select('*')
+          .eq('job_id', m.job_id)
+          .neq('id', meetingId)
+          .order('start_time', { ascending: false })
+          .limit(10),
+      ]);
+      setJobTasks((taskRows as { id: string; text: string; status: string }[]) || []);
+      setSiblingMeetings((sibRows as Meeting[]) || []);
+    } else {
+      setLinkedJob(null);
+      setJobName(null);
+      setJobTasks([]);
+      setSiblingMeetings([]);
     }
   }, [session, meetingId]);
+
+
+  async function linkJob(jobId: string | null) {
+    if (!meeting || !session) return;
+    setLinkingJob(true);
+    setError(null);
+    const { error: updErr } = await supabase
+      .from('meetings')
+      .update({ job_id: jobId })
+      .eq('id', meeting.id);
+    setLinkingJob(false);
+    if (updErr) {
+      console.error(updErr);
+      setError("Couldn't update job link");
+      return;
+    }
+    setMeeting({ ...meeting, job_id: jobId });
+    await load();
+  }
+
 
   useEffect(() => {
     if (session) load();
@@ -475,17 +532,22 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         <div className="meeting-context-line">
           {fmtMeetingWindow(meeting.start_time, meeting.duration_mins)}
         </div>
-        {(jobName || meeting.location_text) && (
+        {meeting.location_text && (
           <div className="meeting-context-meta">
-            {jobName && (
-              <Link href={`/jobs/${meeting.job_id}`} className="meeting-job-link">
-                {jobName}
-              </Link>
-            )}
-            {meeting.location_text && <span className="meeting-location">{meeting.location_text}</span>}
+            <span className="meeting-location">{meeting.location_text}</span>
           </div>
         )}
       </div>
+
+      <MeetingConnections
+        meeting={meeting}
+        job={linkedJob}
+        jobTasks={jobTasks}
+        siblingMeetings={siblingMeetings}
+        allJobs={allJobs}
+        onLinkJob={linkJob}
+        linking={linkingJob}
+      />
 
       <MeetingExport
         userId={session.user.id}
