@@ -13,7 +13,6 @@ COMMENT ON COLUMN public.user_settings.storage_used_bytes IS
 COMMENT ON COLUMN public.user_settings.storage_limit_bytes IS
   'Hard ceiling for Dokkit-hosted file storage (default 30 GiB). Changed only via service role / admin.';
 
--- Ensure meeting_media has an index for per-user aggregation.
 CREATE INDEX IF NOT EXISTS meeting_media_user_id_idx
   ON public.meeting_media (user_id);
 
@@ -31,17 +30,21 @@ BEGIN
   IF p_user_id IS NULL OR p_delta = 0 THEN
     RETURN;
   END IF;
+  -- Signal protect trigger that this update is authorized.
+  PERFORM set_config('dokkit.storage_adjust', '1', true);
   INSERT INTO public.user_settings (user_id, storage_used_bytes)
   VALUES (p_user_id, GREATEST(0, p_delta))
   ON CONFLICT (user_id) DO UPDATE
   SET storage_used_bytes = GREATEST(0, public.user_settings.storage_used_bytes + p_delta);
+  PERFORM set_config('dokkit.storage_adjust', '', true);
 END;
 $$;
 
 REVOKE ALL ON FUNCTION public.adjust_user_storage(uuid, bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.adjust_user_storage(uuid, bigint) TO service_role;
+-- Triggers run as definer / table owner; grant execute to authenticated is not required
+-- for trigger path when function is SECURITY DEFINER owned by postgres/supabase_admin.
 
--- Trigger on meeting_media: keep running total in sync.
 CREATE OR REPLACE FUNCTION public.meeting_media_storage_trg()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -92,11 +95,10 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   IF TG_OP = 'UPDATE' THEN
-    -- Always preserve usage counter from prior row for non-service callers.
-    -- Service role updates (e.g. admin limit change) set request role differently;
-    -- we still lock storage_used_bytes unless explicitly adjusted via adjust_user_storage.
+    IF current_setting('dokkit.storage_adjust', true) = '1' THEN
+      RETURN NEW;
+    END IF;
     NEW.storage_used_bytes := OLD.storage_used_bytes;
-    -- storage_limit_bytes: only service_role may change.
     IF COALESCE(auth.role(), '') <> 'service_role' THEN
       NEW.storage_limit_bytes := OLD.storage_limit_bytes;
     END IF;
@@ -120,3 +122,19 @@ FROM (
   GROUP BY user_id
 ) agg
 WHERE us.user_id = agg.user_id;
+-- Allow backfill: set flag per row is hard in bulk UPDATE; temporarily disable protect.
+-- Re-run backfill via:
+--   SELECT set_config('dokkit.storage_adjust', '1', true);
+--   UPDATE ...
+-- For migration, disable trigger briefly:
+
+ALTER TABLE public.user_settings DISABLE TRIGGER user_settings_protect_storage_bu;
+UPDATE public.user_settings us
+SET storage_used_bytes = COALESCE(agg.total_bytes, 0)
+FROM (
+  SELECT user_id, SUM(COALESCE(size_bytes, 0))::bigint AS total_bytes
+  FROM public.meeting_media
+  GROUP BY user_id
+) agg
+WHERE us.user_id = agg.user_id;
+ALTER TABLE public.user_settings ENABLE TRIGGER user_settings_protect_storage_bu;
