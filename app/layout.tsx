@@ -7,6 +7,7 @@ import './observation-layout-fix.css';
 import './dokkit-player.css';
 import DokkitSplash from '@/components/DokkitSplash';
 import AppChrome from '@/components/AppChrome';
+import AppProviders from '@/components/providers/AppProviders';
 
 export const metadata = {
   title: 'Dokkit',
@@ -78,7 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <DokkitSplash />
-        <AppChrome>{children}</AppChrome>
+        <AppProviders><AppChrome>{children}</AppChrome></AppProviders>
       </body>
     </html>
   );
