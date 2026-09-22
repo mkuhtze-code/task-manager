@@ -20,6 +20,7 @@ import { CaptureSheet } from '@/components/CaptureSheet';
 import { JobEditSheet } from '@/components/JobSheets';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, CheckIcon, ChevronIcon, MapPinIcon } from '@/components/icons';
+import JobFilesPanel from '@/components/JobFilesPanel';
 import {
   buildClusters,
   suggestEstimate,
@@ -810,6 +811,10 @@ export default function JobDetailPage() {
                 </button>
               )}
             </div>
+          )}
+
+          {session?.user?.id && (
+            <JobFilesPanel jobId={jobId} userId={session.user.id} variant="job" />
           )}
 
           {jobMeetings.length > 0 && (
