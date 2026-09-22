@@ -21,6 +21,7 @@ import { JobEditSheet } from '@/components/JobSheets';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, CheckIcon, ChevronIcon, MapPinIcon } from '@/components/icons';
 import JobFilesPanel from '@/components/JobFilesPanel';
+import JobObservationsPanel from '@/components/JobObservationsPanel';
 import {
   buildClusters,
   suggestEstimate,
@@ -814,7 +815,10 @@ export default function JobDetailPage() {
           )}
 
           {session?.user?.id && (
-            <JobFilesPanel jobId={jobId} userId={session.user.id} variant="job" />
+            <>
+              <JobObservationsPanel jobId={jobId} userId={session.user.id} />
+              <JobFilesPanel jobId={jobId} userId={session.user.id} variant="job" />
+            </>
           )}
 
           {jobMeetings.length > 0 && (
