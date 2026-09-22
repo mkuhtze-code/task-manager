@@ -7,6 +7,8 @@ import { useDesktopWorkspaceKeys } from '@/hooks/useDesktopWorkspaceKeys';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import type { Meeting } from '@/lib/meetingTypes';
+import { fmtMeetingWindow } from '@/lib/meetingUtils';
 import type { Job } from '@/lib/jobTypes';
 import type { Subtask, Task } from '@/lib/taskTypes';
 import { fmtMins, localDateStr, parseMins, isScheduledForLater } from '@/lib/timeFormat';
@@ -54,6 +56,7 @@ export default function JobDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [jobMeetings, setJobMeetings] = useState<Meeting[]>([]);
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
   const [jobs, setJobs] = useState<Job[]>([]);
   const [editOpen, setEditOpen] = useState(false);
@@ -230,6 +233,14 @@ export default function JobDetailPage() {
     }
     const taskList = (taskRows as Task[]) || [];
     setTasks(taskList);
+
+    const { data: meetingRows } = await supabase
+      .from('meetings')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('start_time', { ascending: false })
+      .limit(30);
+    setJobMeetings((meetingRows as Meeting[]) || []);
 
     if (taskList.length > 0) {
       const ids = taskList.map((t) => t.id);
@@ -799,6 +810,32 @@ export default function JobDetailPage() {
                 </button>
               )}
             </div>
+          )}
+
+          {jobMeetings.length > 0 && (
+            <section className="job-meetings-section" style={{ marginBottom: 16 }}>
+              <div className="job-group-label">Meetings on this job · {jobMeetings.length}</div>
+              <div className="task-list" style={{ gap: 6 }}>
+                {jobMeetings.map((m) => {
+                  const past =
+                    m.start_time != null && new Date(m.start_time).getTime() < Date.now();
+                  return (
+                    <Link
+                      key={m.id}
+                      href={`/meetings/${m.id}`}
+                      className="task-conn-node task-conn-node-meeting"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <span className="task-conn-kind">{past ? 'Past meeting' : 'Meeting'}</span>
+                      <span className="task-conn-title">{m.text}</span>
+                      <span className="task-conn-meta mono">
+                        {fmtMeetingWindow(m.start_time, m.duration_mins)}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
           )}
 
           {tasks.length === 0 ? (
