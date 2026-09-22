@@ -59,6 +59,8 @@ export type Meeting = {
   duration_mins: number;
   start_time: string | null;
   source: string;
+  /** Present when loaded for cross-surface context (desktop connections). */
+  job_id?: string | null;
 };
 
 export type SortMode = 'capacity_first' | 'due_today_first' | 'manual' | 'oldest_first' | 'newest_first' | 'geo_aware';
