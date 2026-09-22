@@ -190,11 +190,11 @@ export default function JobsHome() {
 
       {!loading && sorted.length > 0 && (
         <div
-          className="jobs-filter-row"
+          className="jobs-filter-row job-list-filter-sticky"
           style={{
             display: 'flex',
             gap: 8,
-            padding: '0 var(--space-page, 16px) var(--space-3)',
+            padding: '8px var(--space-page, 16px) 10px',
             flexWrap: 'wrap',
           }}
         >
