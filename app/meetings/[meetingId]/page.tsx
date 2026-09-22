@@ -28,6 +28,7 @@ import MeetingExport from '@/components/MeetingExport';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
+import { buildStorageQuota, wouldExceedQuota } from '@/lib/storageQuota';
 import { MeetingConnections } from '@/components/MeetingConnections';
 import type { Job } from '@/lib/jobTypes';
 
@@ -347,6 +348,24 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   // silently discarded) and simply reports the missing row.
   async function insertMediaRows(observationId: string | null, list: CapturedMedia[]): Promise<boolean> {
     if (!session) return false;
+    const addBytes = list.reduce((sum, m) => sum + (m.size || 0), 0);
+    if (addBytes > 0) {
+      const { data: settings } = await supabase
+        .from('user_settings')
+        .select('storage_used_bytes, storage_limit_bytes')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      const quota = buildStorageQuota(
+        Number(settings?.storage_used_bytes ?? 0),
+        Number(settings?.storage_limit_bytes ?? 0)
+      );
+      if (wouldExceedQuota(quota, addBytes)) {
+        setError(
+          'Storage is full. Free space in Account by deleting media, or export your data first.'
+        );
+        return false;
+      }
+    }
     let ok = true;
     for (const m of list) {
       let ref = m.uri;
