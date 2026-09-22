@@ -127,7 +127,6 @@ export default function JobFilesPanel(props: {
     }
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank', 'noopener,noreferrer');
-    // Revoke after a delay so the tab can load.
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
@@ -139,7 +138,10 @@ export default function JobFilesPanel(props: {
       style={{ marginBottom: variant === 'job' ? 16 : 12 }}
       {...dropProps}
     >
-      <div className="job-group-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+      <div
+        className="job-group-label"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+      >
         <span>
           {variant === 'meeting' ? 'Job files' : 'Files'} · {files.length}
         </span>
@@ -249,12 +251,24 @@ export default function JobFilesPanel(props: {
               </span>
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {jobMediaDisplayName(m)}
               </div>
               <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>
                 {m.size_bytes != null ? formatStorageBytes(m.size_bytes) : '—'}
-                {m.sync_status === 'synced' ? ' · synced' : m.sync_status === 'failed' ? ' · sync failed' : ' · syncing…'}
+                {m.sync_status === 'synced'
+                  ? ' · synced'
+                  : m.sync_status === 'failed'
+                    ? ' · sync failed'
+                    : ' · syncing…'}
               </div>
             </div>
             <button type="button" className="meeting-pill meeting-pill--quiet" onClick={() => void openFile(m)}>
@@ -267,7 +281,21 @@ export default function JobFilesPanel(props: {
         ))}
       </ul>
 
-      {capture.hiddenInputs}
+      <input
+        ref={capture.photoRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={capture.onPhotoChange}
+      />
+      <input
+        ref={capture.fileRef}
+        type="file"
+        accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,application/pdf"
+        style={{ display: 'none' }}
+        onChange={capture.onFileChange}
+      />
     </section>
   );
 }
