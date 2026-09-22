@@ -5,6 +5,7 @@ import './desktop-heart.css';
 import './dokkit-splash.css';
 import './observation-layout-fix.css';
 import './dokkit-player.css';
+import './job-mobile.css';
 import DokkitSplash from '@/components/DokkitSplash';
 import AppChrome from '@/components/AppChrome';
 import AppProviders from '@/components/providers/AppProviders';
