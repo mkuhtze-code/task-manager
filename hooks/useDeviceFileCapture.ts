@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type DragEvent, type RefObject } from 'react';
 import { saveMediaBlob } from '@/lib/mediaStore';
 import type { CapturedMedia } from '@/lib/meetingCapture';
 
@@ -18,6 +18,7 @@ function mediaTypeFromFile(file: File): CapturedMedia['mediaType'] {
 /**
  * Device-aware capture for Jobs (and Meetings → job files).
  * Mobile: camera + file picker. Desktop: file picker + drag-and-drop.
+ * No JSX here — callers render the hidden inputs using photoRef/fileRef.
  */
 export function useDeviceFileCapture() {
   const photoRef = useRef<HTMLInputElement | null>(null);
@@ -112,26 +113,6 @@ export function useDeviceFileCapture() {
     };
   }
 
-  const hiddenInputs = (
-    <>
-      <input
-        ref={photoRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style={{ display: 'none' }}
-        onChange={onPhotoChange}
-      />
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,application/pdf"
-        style={{ display: 'none' }}
-        onChange={onFileChange}
-      />
-    </>
-  );
-
   return {
     pickPhoto,
     pickFile,
@@ -140,6 +121,9 @@ export function useDeviceFileCapture() {
     error,
     dragOver,
     setError,
-    hiddenInputs,
+    photoRef: photoRef as RefObject<HTMLInputElement>,
+    fileRef: fileRef as RefObject<HTMLInputElement>,
+    onPhotoChange,
+    onFileChange,
   };
 }
