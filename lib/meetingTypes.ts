@@ -76,9 +76,10 @@ export type MeetingAction = {
 
 export type MeetingMediaType = 'photo' | 'audio' | 'document';
 
-// A media reference attached to a meeting (and optionally to one
-// observation). V1 is local-first: local_uri points at the file/object on
-// the device (blob URL, device path) — nothing is uploaded to Supabase.
+export type MediaSyncStatus = 'local_only' | 'uploading' | 'synced' | 'failed';
+
+// Media attached to a meeting. local_uri is the device cache key (idb://);
+// storage_path is the shared cloud object so every device can resolve bytes.
 export type MeetingMedia = {
   id: string;
   user_id: string;
@@ -86,6 +87,8 @@ export type MeetingMedia = {
   observation_id: string | null;
   media_type: MeetingMediaType;
   local_uri: string;
+  storage_path: string | null;
+  sync_status: MediaSyncStatus;
   mime_type: string | null;
   size_bytes: number | null;
   captured_at: string;
