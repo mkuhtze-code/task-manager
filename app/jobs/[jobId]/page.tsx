@@ -22,6 +22,7 @@ import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, CheckIcon, ChevronIcon, MapPinIcon } from '@/components/icons';
 import JobFilesPanel from '@/components/JobFilesPanel';
 import JobObservationsPanel from '@/components/JobObservationsPanel';
+import JobSwitcher from '@/components/JobSwitcher';
 import {
   buildClusters,
   suggestEstimate,
@@ -64,6 +65,8 @@ export default function JobDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [doneOpen, setDoneOpen] = useState(false);
+  /** Mobile-only section focus: tasks | evidence | more */
+  const [mobileTab, setMobileTab] = useState<'tasks' | 'evidence' | 'more'>('tasks');
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [subDraftText, setSubDraftText] = useState<Record<string, string>>({});
@@ -753,11 +756,15 @@ export default function JobDetailPage() {
   return (
     <div className={`app-shell${isDesktop && openTask ? ' has-desk-detail' : ''}${isDesktop ? ' desk-job-detail' : ''}`}>
       <div className="app-header">
-        <div className="app-header-left">
+        <div className="app-header-left" style={{ minWidth: 0, flex: 1 }}>
           <Link href="/jobs" className="back-link" aria-label="Back to jobs">
             <BackIcon />
           </Link>
-          <h1 className="app-title">{job ? job.name : 'Job'}</h1>
+          {job && !isDesktop ? (
+            <JobSwitcher current={job} jobs={jobs.length ? jobs : [job]} />
+          ) : (
+            <h1 className="app-title">{job ? job.name : 'Job'}</h1>
+          )}
         </div>
         <div className="app-header-right">
           <GearMenu context="jobs" userId={session?.user.id ?? null} />
@@ -814,7 +821,46 @@ export default function JobDetailPage() {
             </div>
           )}
 
-          {tasks.length === 0 ? (
+          
+          {!isDesktop && (
+            <div className="job-mobile-tabs" role="tablist" aria-label="Job sections">
+              <button
+                type="button"
+                role="tab"
+                className={mobileTab === 'tasks' ? 'job-mobile-tab is-active' : 'job-mobile-tab'}
+                aria-selected={mobileTab === 'tasks'}
+                onClick={() => setMobileTab('tasks')}
+              >
+                Tasks
+                {tasks.filter((x) => x.status !== 'done').length > 0 && (
+                  <span className="tab-count">{tasks.filter((x) => x.status !== 'done').length}</span>
+                )}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className={mobileTab === 'evidence' ? 'job-mobile-tab is-active' : 'job-mobile-tab'}
+                aria-selected={mobileTab === 'evidence'}
+                onClick={() => setMobileTab('evidence')}
+              >
+                Evidence
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className={mobileTab === 'more' ? 'job-mobile-tab is-active' : 'job-mobile-tab'}
+                aria-selected={mobileTab === 'more'}
+                onClick={() => setMobileTab('more')}
+              >
+                More
+                {jobMeetings.length > 0 && (
+                  <span className="tab-count">{jobMeetings.length}</span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {(isDesktop || mobileTab === 'tasks') && (tasks.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-title">Nothing here yet.</div>
               <div className="empty-state-sub">Add a task to start the job — it will show up on Today when it is due.</div>
@@ -881,48 +927,81 @@ export default function JobDetailPage() {
             <JobEditSheet job={job} saving={saving} onClose={() => setEditOpen(false)} onSave={saveJob} onDelete={deleteJob} />
           )}
 
-          
-          {/* Library: after tasks so mobile stays focused on work */}
-          <div className="job-library" style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line)' }}>
-            {session?.user?.id && (
-              <>
-                <JobObservationsPanel
-                  jobId={jobId}
-                  userId={session.user.id}
-                  defaultCollapsed={!isDesktop}
-                />
-                <JobFilesPanel jobId={jobId} userId={session.user.id} variant="job" defaultCollapsed={!isDesktop} />
-              </>
-            )}
 
-            {jobMeetings.length > 0 && (
-              <section className="job-meetings-section" style={{ marginBottom: 12 }}>
-                <div className="job-group-label">Meetings · {jobMeetings.length}</div>
-                <div className="task-list" style={{ gap: 6 }}>
-                  {jobMeetings.map((m) => {
-                    const past =
-                      m.start_time != null && new Date(m.start_time).getTime() < Date.now();
-                    return (
-                      <Link
-                        key={m.id}
-                        href={`/meetings/${m.id}`}
-                        className="task-conn-node task-conn-node-meeting"
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <span className="task-conn-kind">{past ? 'Past' : 'Meeting'}</span>
-                        <span className="task-conn-title">{m.text}</span>
-                        <span className="task-conn-meta mono">
-                          {fmtMeetingWindow(m.start_time, m.duration_mins)}
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-          </div>
+          {(isDesktop || mobileTab === 'evidence') && (
+            <div
+              className="job-library"
+              style={{
+                marginTop: isDesktop ? 8 : 4,
+                paddingTop: isDesktop ? 8 : 4,
+                borderTop: isDesktop ? '1px solid var(--line)' : 'none',
+              }}
+            >
+              {session?.user?.id && (
+                <>
+                  <JobObservationsPanel
+                    jobId={jobId}
+                    userId={session.user.id}
+                    defaultCollapsed={false}
+                  />
+                  <JobFilesPanel
+                    jobId={jobId}
+                    userId={session.user.id}
+                    variant="job"
+                    defaultCollapsed={false}
+                  />
+                </>
+              )}
+            </div>
+          )}
 
-{openTask && (
+          {(isDesktop || mobileTab === 'more') && (
+            <div className="job-more" style={{ marginTop: 4 }}>
+              {jobMeetings.length > 0 ? (
+                <section className="job-meetings-section" style={{ marginBottom: 12 }}>
+                  <div className="job-group-label">Meetings · {jobMeetings.length}</div>
+                  <div className="task-list" style={{ gap: 6 }}>
+                    {jobMeetings.map((m) => {
+                      const past =
+                        m.start_time != null && new Date(m.start_time).getTime() < Date.now();
+                      return (
+                        <Link
+                          key={m.id}
+                          href={`/meetings/${m.id}`}
+                          className="task-conn-node task-conn-node-meeting"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          <span className="task-conn-kind">{past ? 'Past' : 'Meeting'}</span>
+                          <span className="task-conn-title">{m.text}</span>
+                          <span className="task-conn-meta mono">
+                            {fmtMeetingWindow(m.start_time, m.duration_mins)}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
+              ) : (
+                !isDesktop && (
+                  <p style={{ fontSize: 13, color: 'var(--ink-faint)', padding: '8px 0' }}>
+                    No meetings linked to this job yet.
+                  </p>
+                )
+              )}
+              {!isDesktop && (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ width: '100%', marginBottom: 12 }}
+                  onClick={() => setEditOpen(true)}
+                >
+                  Edit job details
+                </button>
+              )}
+            </div>
+          )}
+
+          {openTask && (
             <TaskDetailSheet
               presentation={isDesktop ? 'pane' : 'sheet'}
               task={openTask}
