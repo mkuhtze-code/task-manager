@@ -99,7 +99,7 @@ import { showActiveTimerNotification } from '@/lib/activeTimerNotify';
 /** Authenticated Today surface — mounted only after authReady && session. */
 export function TodayPage() {
   const router = useRouter();
-  const { session } = useTodayAuth();
+  const { session, setSignInError } = useTodayAuth();
   const now = useNow();
 
   // Keep Today in sync when the global player stops a task.
@@ -2171,4 +2171,3 @@ export function TodayPage() {
     </div>
   );
 }
-
