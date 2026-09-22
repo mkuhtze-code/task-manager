@@ -8,8 +8,7 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { CheckIcon, ChevronIcon, CloseIcon, PlayIcon, StopIcon } from '@/components/icons';
 import { TaskInfo } from '@/components/TaskInfo';
-import { TaskConnections, type SiblingTask } from '@/components/TaskConnections';
-import type { Meeting } from '@/lib/meetingTypes';
+import { TaskConnections, type SiblingTask, type ConnectedMeeting } from '@/components/TaskConnections';
 
 export function TaskDetailSheet(props: {
   task: Task;
@@ -35,11 +34,8 @@ export function TaskDetailSheet(props: {
   subDraftTime: string;
   setSubDraftText: (v: string) => void;
   setSubDraftTime: (v: string) => void;
-  /** Desktop dashboard: main-pane detail instead of bottom sheet. */
   presentation?: 'sheet' | 'pane';
-  /** Meetings (Today already loads these) — used to show job-linked meetings. */
-  meetings?: Meeting[];
-  /** Other open tasks on the same job. */
+  meetings?: ConnectedMeeting[];
   siblingTasks?: SiblingTask[];
   onOpenSibling?: (taskId: string) => void;
 }) {
@@ -123,35 +119,20 @@ export function TaskDetailSheet(props: {
             </span>
           )}
         </div>
-        <button
-          type="button"
-          className="subtask-add-btn"
-          onClick={() => setShowAddForm(!showAddForm)}
-        >
+        <button type="button" className="subtask-add-btn" onClick={() => setShowAddForm(!showAddForm)}>
           +
         </button>
       </div>
       {showAddForm && (
         <div className="subtask-add-row">
-          <input
-            type="text"
-            placeholder="Sub-task"
-            value={subDraftText}
-            onChange={(e) => setSubDraftText(e.target.value)}
-          />
+          <input type="text" placeholder="Sub-task" value={subDraftText} onChange={(e) => setSubDraftText(e.target.value)} />
           <MicButton
             size="small"
             onResult={(spoken) =>
               setSubDraftText(subDraftText.trim().length > 0 ? `${subDraftText.trim()} ${spoken}` : spoken)
             }
           />
-          <input
-            type="text"
-            placeholder="15m"
-            style={{ width: 60 }}
-            value={subDraftTime}
-            onChange={(e) => setSubDraftTime(e.target.value)}
-          />
+          <input type="text" placeholder="15m" style={{ width: 60 }} value={subDraftTime} onChange={(e) => setSubDraftTime(e.target.value)} />
           <button
             className="btn btn-ghost"
             style={{ padding: '4px 10px', minHeight: 32, fontSize: 12 }}
@@ -173,11 +154,7 @@ export function TaskDetailSheet(props: {
           />
           <span className={s.done ? 'subtask-text done' : 'subtask-text'}>{s.text}</span>
           <span className="tag mono">{fmtMins(s.mins)}</span>
-          <button
-            className="icon-btn"
-            onClick={() => onDeleteSubtask(s.id, task.id)}
-            aria-label="Delete sub-task"
-          >
+          <button className="icon-btn" onClick={() => onDeleteSubtask(s.id, task.id)} aria-label="Delete sub-task">
             ×
           </button>
         </div>
@@ -244,12 +221,7 @@ export function TaskDetailSheet(props: {
                   <span className="mono" style={{ fontWeight: 600 }}>{fmtMins(liveLogged)}</span>
                 </button>
               ) : (
-                <button
-                  type="button"
-                  className="btn btn-steel"
-                  disabled={startDisabled}
-                  onClick={() => onStart(task.id)}
-                >
+                <button type="button" className="btn btn-steel" disabled={startDisabled} onClick={() => onStart(task.id)}>
                   <PlayIcon /> Start
                 </button>
               ))}
@@ -391,13 +363,7 @@ export function TaskDetailSheet(props: {
           </button>
         </div>
 
-        <input
-          type="text"
-          className="task-detail-name"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={commit}
-        />
+        <input type="text" className="task-detail-name" value={text} onChange={(e) => setText(e.target.value)} onBlur={commit} />
 
         {task.estimate_mins > 0 && (
           <div className="task-progress-row" style={{ marginTop: 0 }}>
@@ -439,31 +405,16 @@ export function TaskDetailSheet(props: {
             setLocationCoords({ lat: result.lat, lng: result.lng });
           }}
         />
-        {locationText.length > 0 && !locationCoords && (
-          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
-            Pick a suggestion from the list so this can factor into route-aware capacity.
-          </p>
-        )}
 
         <span className="settings-label">{context === 'job' ? 'When' : 'Reminder'}</span>
         <div className="reminder-date-row">
-          <input
-            type="date"
-            value={surfaceDate}
-            onChange={(e) => setSurfaceDate(e.target.value)}
-            onBlur={commit}
-          />
+          <input type="date" value={surfaceDate} onChange={(e) => setSurfaceDate(e.target.value)} onBlur={commit} />
           {surfaceDate.length > 0 && (
             <button className="btn-text" onClick={() => { setSurfaceDate(''); commit(); }}>
               Clear
             </button>
           )}
         </div>
-        {surfaceDate.length > 0 && (
-          <p style={{ color: 'var(--ink-soft)', fontSize: 12, margin: 0 }}>
-            Hidden from your list until {fmtSurfaceDate(surfaceDate)}.
-          </p>
-        )}
 
         <span className="settings-label">Information</span>
         <TaskInfo value={task.info || ''} onSave={(info) => onSaveInfo(task.id, info)} surface="edit" />
