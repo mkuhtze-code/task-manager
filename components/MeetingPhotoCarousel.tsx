@@ -6,13 +6,6 @@ import { photoAlt } from '@/lib/meetingCapture';
 import { PhotoImage } from '@/components/MediaRender';
 import { CloseIcon } from '@/components/icons';
 
-// The evidence viewer. It is deliberately part of one observation — it is
-// where THAT observation's photos live, never a meeting-wide strip. Native
-// scroll-snapping gives touch swiping for free; a quiet "1 / N" label and
-// a row of small dots show position; Prev/Next and the dots are omitted
-// when there is only one photo; tapping a photo opens the calm full-view
-// state. Unavailable legacy photos collapse to a quiet placeholder instead
-// of a dead control. Nothing here is decorated beyond that.
 export default function MeetingPhotoCarousel(props: {
   photos: MeetingMedia[];
   labelBase?: string;
@@ -49,12 +42,10 @@ export default function MeetingPhotoCarousel(props: {
     setIndex(Math.round(el.scrollLeft / el.clientWidth));
   }
 
-  // Keep the strip underneath synced when the full view moves.
   useEffect(() => {
     if (open !== null) scrollTo(open);
   }, [open, scrollTo]);
 
-  // Keyboard control + body scroll lock while the full view is open.
   useEffect(() => {
     if (open === null) return;
     const previous = document.body.style.overflow;
@@ -94,7 +85,12 @@ export default function MeetingPhotoCarousel(props: {
               onClick={() => setOpen(i)}
               aria-label={photoAlt(p, i, photos.length)}
             >
-              <PhotoImage uri={p.local_uri} alt="" eager={i === safeIndex} />
+              <PhotoImage
+                uri={p.local_uri}
+                storagePath={p.storage_path}
+                alt=""
+                eager={i === safeIndex}
+              />
             </button>
           </div>
         ))}
@@ -186,7 +182,12 @@ export default function MeetingPhotoCarousel(props: {
           )}
 
           <figure onClick={(e) => e.stopPropagation()}>
-            <PhotoImage uri={photos[open].local_uri} alt={photoAlt(photos[open], open, photos.length)} eager />
+            <PhotoImage
+              uri={photos[open].local_uri}
+              storagePath={photos[open].storage_path}
+              alt={photoAlt(photos[open], open, photos.length)}
+              eager
+            />
             <figcaption>
               {open + 1} / {photos.length}
             </figcaption>
