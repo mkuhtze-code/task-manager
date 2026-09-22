@@ -2,11 +2,20 @@ import type { MediaSyncStatus } from '@/lib/meetingTypes';
 
 export type JobMediaType = 'photo' | 'audio' | 'document';
 
+export type JobFolder = {
+  id: string;
+  user_id: string;
+  job_id: string;
+  name: string;
+  created_at: string;
+};
+
 /** Files and evidence stored against a Job — the system of record for shared documents. */
 export type JobMedia = {
   id: string;
   user_id: string;
   job_id: string;
+  folder_id: string | null;
   media_type: JobMediaType;
   local_uri: string | null;
   storage_path: string | null;
