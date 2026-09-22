@@ -7,6 +7,8 @@ import GearMenu from '@/components/GearMenu';
 import { BackIcon, ChevronIcon, CloseIcon, TrashIcon } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
+import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
+import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 
 type Trip = {
   id: string;
@@ -23,7 +25,11 @@ function fmtDateRange(start: string, end: string): string {
   const eDate = new Date(ey, em - 1, ed);
   const sameYear = sy === ey;
   const startLabel = sDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  const endLabel = eDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' });
+  const endLabel = eDate.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: sameYear ? undefined : 'numeric',
+  });
   return `${startLabel} – ${endLabel}`;
 }
 
@@ -33,9 +39,6 @@ function tripStatus(start: string, end: string, todayStr: string): 'upcoming' | 
   return 'active';
 }
 
-// Whole-day difference between two YYYY-MM-DD strings, computed from local
-// midnight on both sides so DST/timezone edge cases don't shift the count
-// by a day.
 function dateDiffDays(fromStr: string, toStr: string): number {
   const [fy, fm, fd] = fromStr.split('-').map((n) => parseInt(n, 10));
   const [ty, tm, td] = toStr.split('-').map((n) => parseInt(n, 10));
@@ -44,10 +47,6 @@ function dateDiffDays(fromStr: string, toStr: string): number {
   return Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
 }
 
-// Local (not UTC) YYYY-MM-DD — same implementation as the one in
-// app/page.tsx, duplicated here rather than shared for now since Travel
-// mode still lives on its own branch. Worth moving to a shared
-// lib/dateHelpers.ts once Travel merges into main.
 function localDateStr(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -78,6 +77,7 @@ export default function TravelHome() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const recordEvent = useRecordSurfaceEvent();
+  const { isDesktop } = useSurfaceMode();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
@@ -86,6 +86,11 @@ export default function TravelHome() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    return registerDesktopPrimaryAction('Plan a trip', () => setCreateOpen(true));
+  }, [isDesktop]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -144,8 +149,6 @@ export default function TravelHome() {
       return;
     }
 
-    // One trip_days row per calendar day in the range, default 08:00–20:00 —
-    // matches Dokkit's default work_start/work_end pattern, just travel-scale.
     const dayDates = daysBetween(startDate, endDate);
     const dayRows = dayDates.map((date) => ({
       trip_id: tripRow.id,
@@ -203,7 +206,9 @@ export default function TravelHome() {
     <div className="app-shell">
       <div className="app-header">
         <div className="app-header-left">
-          <button className="back-link" onClick={() => router.push('/')} aria-label="Back"><BackIcon /></button>
+          <button className="back-link" onClick={() => router.push('/')} aria-label="Back">
+            <BackIcon />
+          </button>
           <h1 className="app-title">Trips</h1>
         </div>
         <div className="app-header-right">
@@ -219,7 +224,9 @@ export default function TravelHome() {
           <div className="empty-state-sub">
             Add a trip, block out the days, and Dokkit works out what actually fits.
           </div>
-          <button className="btn btn-steel" onClick={() => setCreateOpen(true)}>Plan a trip</button>
+          <button className="btn btn-steel" onClick={() => setCreateOpen(true)}>
+            Plan a trip
+          </button>
         </div>
       ) : (
         <>
@@ -229,12 +236,20 @@ export default function TravelHome() {
                 <span className="trip-lead-name">{heroTrip.name}</span>
                 <span className="trip-lead-right">
                   <span className="trip-lead-pill">{leadPill}</span>
-                  <span className="trip-lead-chev" aria-hidden="true"><ChevronIcon size={14} /></span>
+                  <span className="trip-lead-chev" aria-hidden="true">
+                    <ChevronIcon size={14} />
+                  </span>
                 </span>
               </div>
               <div className="trip-lead-bottom">
-                <span className="trip-lead-dates">{fmtDateRange(heroTrip.start_date, heroTrip.end_date)}</span>
-                <button className="trip-card-delete" onClick={(e) => deleteTrip(heroTrip.id, e)} aria-label="Delete trip">
+                <span className="trip-lead-dates">
+                  {fmtDateRange(heroTrip.start_date, heroTrip.end_date)}
+                </span>
+                <button
+                  className="trip-card-delete"
+                  onClick={(e) => deleteTrip(heroTrip.id, e)}
+                  aria-label="Delete trip"
+                >
                   <TrashIcon />
                 </button>
               </div>
@@ -247,7 +262,11 @@ export default function TravelHome() {
                 <div key={t.id} className="trip-row" onClick={() => router.push(`/travel/${t.id}`)}>
                   <span className="trip-row-name">{t.name}</span>
                   <span className="trip-row-dates">{fmtDateRange(t.start_date, t.end_date)}</span>
-                  <button className="trip-card-delete" onClick={(e) => deleteTrip(t.id, e)} aria-label="Delete trip">
+                  <button
+                    className="trip-card-delete"
+                    onClick={(e) => deleteTrip(t.id, e)}
+                    aria-label="Delete trip"
+                  >
                     <TrashIcon />
                   </button>
                 </div>
@@ -268,10 +287,18 @@ export default function TravelHome() {
               {pastOpen && (
                 <div className="trip-list">
                   {past.map((t) => (
-                    <div key={t.id} className="trip-row past" onClick={() => router.push(`/travel/${t.id}`)}>
+                    <div
+                      key={t.id}
+                      className="trip-row past"
+                      onClick={() => router.push(`/travel/${t.id}`)}
+                    >
                       <span className="trip-row-name">{t.name}</span>
                       <span className="trip-row-dates">{fmtDateRange(t.start_date, t.end_date)}</span>
-                      <button className="trip-card-delete" onClick={(e) => deleteTrip(t.id, e)} aria-label="Delete trip">
+                      <button
+                        className="trip-card-delete"
+                        onClick={(e) => deleteTrip(t.id, e)}
+                        aria-label="Delete trip"
+                      >
                         <TrashIcon />
                       </button>
                     </div>
@@ -300,11 +327,21 @@ export default function TravelHome() {
           <div className="capture-row">
             <div style={{ flex: 1 }}>
               <span className="settings-label">Start</span>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ width: '100%' }} />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                style={{ width: '100%' }}
+              />
             </div>
             <div style={{ flex: 1 }}>
               <span className="settings-label">End</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ width: '100%' }} />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                style={{ width: '100%' }}
+              />
             </div>
           </div>
           {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
