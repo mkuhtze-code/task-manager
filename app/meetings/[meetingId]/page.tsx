@@ -31,6 +31,7 @@ import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
 import { buildStorageQuota, wouldExceedQuota } from '@/lib/storageQuota';
 import { MeetingConnections } from '@/components/MeetingConnections';
+import JobFilesPanel from '@/components/JobFilesPanel';
 import type { Job } from '@/lib/jobTypes';
 
 export default function MeetingDetail({ params }: { params: { meetingId: string } }) {
@@ -585,6 +586,11 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         onLinkJob={linkJob}
         linking={linkingJob}
       />
+
+      {meeting?.job_id && session?.user?.id && (
+        <JobFilesPanel jobId={meeting.job_id} userId={session.user.id} variant="meeting" />
+      )}
+
 
       <MeetingExport
         userId={session.user.id}
