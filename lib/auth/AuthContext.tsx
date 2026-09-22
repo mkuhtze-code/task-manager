@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSessionState] = useState<any>(null);
   const [authReady, setAuthReady] = useState(false);
 
-  const setSession = useCallback((s: Session | null) => {
+  const setSession = useCallback((s: any) => {
     setSessionState(s);
   }, []);
 
@@ -79,4 +79,3 @@ export function useAuth(): AuthContextValue {
   }
   return ctx;
 }
-
