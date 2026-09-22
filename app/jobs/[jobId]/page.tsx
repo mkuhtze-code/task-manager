@@ -814,39 +814,6 @@ export default function JobDetailPage() {
             </div>
           )}
 
-          {session?.user?.id && (
-            <>
-              <JobObservationsPanel jobId={jobId} userId={session.user.id} />
-              <JobFilesPanel jobId={jobId} userId={session.user.id} variant="job" />
-            </>
-          )}
-
-          {jobMeetings.length > 0 && (
-            <section className="job-meetings-section" style={{ marginBottom: 16 }}>
-              <div className="job-group-label">Meetings on this job · {jobMeetings.length}</div>
-              <div className="task-list" style={{ gap: 6 }}>
-                {jobMeetings.map((m) => {
-                  const past =
-                    m.start_time != null && new Date(m.start_time).getTime() < Date.now();
-                  return (
-                    <Link
-                      key={m.id}
-                      href={`/meetings/${m.id}`}
-                      className="task-conn-node task-conn-node-meeting"
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <span className="task-conn-kind">{past ? 'Past meeting' : 'Meeting'}</span>
-                      <span className="task-conn-title">{m.text}</span>
-                      <span className="task-conn-meta mono">
-                        {fmtMeetingWindow(m.start_time, m.duration_mins)}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
           {tasks.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-title">Nothing here yet.</div>
@@ -914,7 +881,48 @@ export default function JobDetailPage() {
             <JobEditSheet job={job} saving={saving} onClose={() => setEditOpen(false)} onSave={saveJob} onDelete={deleteJob} />
           )}
 
-          {openTask && (
+          
+          {/* Library: after tasks so mobile stays focused on work */}
+          <div className="job-library" style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line)' }}>
+            {session?.user?.id && (
+              <>
+                <JobObservationsPanel
+                  jobId={jobId}
+                  userId={session.user.id}
+                  defaultCollapsed={!isDesktop}
+                />
+                <JobFilesPanel jobId={jobId} userId={session.user.id} variant="job" defaultCollapsed={!isDesktop} />
+              </>
+            )}
+
+            {jobMeetings.length > 0 && (
+              <section className="job-meetings-section" style={{ marginBottom: 12 }}>
+                <div className="job-group-label">Meetings · {jobMeetings.length}</div>
+                <div className="task-list" style={{ gap: 6 }}>
+                  {jobMeetings.map((m) => {
+                    const past =
+                      m.start_time != null && new Date(m.start_time).getTime() < Date.now();
+                    return (
+                      <Link
+                        key={m.id}
+                        href={`/meetings/${m.id}`}
+                        className="task-conn-node task-conn-node-meeting"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <span className="task-conn-kind">{past ? 'Past' : 'Meeting'}</span>
+                        <span className="task-conn-title">{m.text}</span>
+                        <span className="task-conn-meta mono">
+                          {fmtMeetingWindow(m.start_time, m.duration_mins)}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </div>
+
+{openTask && (
             <TaskDetailSheet
               presentation={isDesktop ? 'pane' : 'sheet'}
               task={openTask}
