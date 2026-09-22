@@ -3,13 +3,14 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { HAS_SIGNED_IN_KEY } from '@/lib/taskTypes';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 /**
- * Auth session + AuthScreen form state/handlers for the Today surface.
- * Keeps sign-in UX out of the main Home component body.
+ * Today auth UX: session comes from AuthProvider (layout boundary).
+ * Form state for AuthScreen stays here so non-Today surfaces stay lean.
  */
 export function useTodayAuth() {
-  const [session, setSession] = useState<any>(null);
+  const { session, setSession, authReady } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
@@ -25,18 +26,6 @@ export function useTodayAuth() {
       setHasSignedInBefore(window.localStorage.getItem(HAS_SIGNED_IN_KEY) === 'true');
     }
   }, []);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (session && typeof window !== 'undefined') {
-      window.localStorage.setItem(HAS_SIGNED_IN_KEY, 'true');
-    }
-  }, [session]);
 
   async function signInWithPassword(e: FormEvent) {
     e.preventDefault();
@@ -90,6 +79,7 @@ export function useTodayAuth() {
   return {
     session,
     setSession,
+    authReady,
     email,
     setEmail,
     password,
