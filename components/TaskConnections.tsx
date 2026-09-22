@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import type { Task } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
-import type { Meeting } from '@/lib/meetingTypes';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
 
 export type SiblingTask = {
@@ -12,15 +11,27 @@ export type SiblingTask = {
   status: string;
 };
 
+/** Minimal meeting shape for cross-surface links (Today may load a subset). */
+export type ConnectedMeeting = {
+  id: string;
+  text: string;
+  duration_mins: number;
+  start_time: string | null;
+  job_id?: string | null;
+  source?: string;
+};
+
 /** Meetings filed under the same job as this task. */
-export function relatedMeetingsForTask(task: Task, meetings: Meeting[]): Meeting[] {
+export function relatedMeetingsForTask(
+  task: Task,
+  meetings: ConnectedMeeting[]
+): ConnectedMeeting[] {
   if (!task.job_id) return [];
   const list = meetings.filter((m) => m.job_id === task.job_id);
   const now = Date.now();
   return list.sort((a, b) => {
     const at = a.start_time ? new Date(a.start_time).getTime() : Number.MAX_SAFE_INTEGER;
     const bt = b.start_time ? new Date(b.start_time).getTime() : Number.MAX_SAFE_INTEGER;
-    // Upcoming first, then past
     const aPast = at < now;
     const bPast = bt < now;
     if (aPast !== bPast) return aPast ? 1 : -1;
@@ -28,7 +39,7 @@ export function relatedMeetingsForTask(task: Task, meetings: Meeting[]): Meeting
   });
 }
 
-function meetingWhen(m: Meeting): string {
+function meetingWhen(m: ConnectedMeeting): string {
   return fmtMeetingWindow(m.start_time, m.duration_mins);
 }
 
@@ -40,9 +51,8 @@ function meetingWhen(m: Meeting): string {
 export function TaskConnections(props: {
   task: Task;
   job: Job | null;
-  meetings: Meeting[];
+  meetings: ConnectedMeeting[];
   siblingTasks?: SiblingTask[];
-  /** Hide empty state when the sheet is mobile-sized — pane only. */
   showEmptyHint?: boolean;
   onOpenSibling?: (taskId: string) => void;
 }) {
@@ -80,7 +90,6 @@ export function TaskConnections(props: {
       </div>
 
       <div className="task-connections-graph">
-        {/* This task — centre of the story */}
         <div className="task-conn-node task-conn-node-task" aria-current="true">
           <span className="task-conn-kind">This task</span>
           <span className="task-conn-title">{task.text}</span>
@@ -99,7 +108,9 @@ export function TaskConnections(props: {
         {hasMeetings && (
           <div className="task-conn-group">
             <span className="task-conn-group-label">
-              {related.length === 1 ? 'Meeting on this job' : `Meetings on this job · ${related.length}`}
+              {related.length === 1
+                ? 'Meeting on this job'
+                : `Meetings on this job · ${related.length}`}
             </span>
             <ul className="task-conn-list">
               {related.slice(0, 5).map((m) => {
