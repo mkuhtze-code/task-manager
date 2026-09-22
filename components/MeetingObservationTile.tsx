@@ -9,12 +9,6 @@ import { AudioNote, PhotoImage } from '@/components/MediaRender';
 import { deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
 import { TrashIcon } from '@/components/icons';
 
-// ONE observation rendered as ONE evidence tile. The tile shows exactly the
-// evidence that exists — photos, then text, then voice — and nothing else:
-// a photo-only observation never shows an empty text slot, a text-only one
-// never shows a fake photo container. In the observation carousel it is the
-// full "detail" tile; in the grid it is a compact preview whose whole
-// surface opens the same observation in the carousel.
 export default function MeetingObservationTile(props: {
   observation: MeetingObservation;
   media: MeetingMedia[];
@@ -63,13 +57,20 @@ export default function MeetingObservationTile(props: {
       >
         {ev.photoCount > 0 && (
           <div className="observation-tile-photo">
-            <PhotoImage uri={photos[0].local_uri} alt="" className="observation-tile-photo-img" />
+            <PhotoImage
+              uri={photos[0].local_uri}
+              storagePath={photos[0].storage_path}
+              alt=""
+              className="observation-tile-photo-img"
+            />
             {ev.photoCount > 1 && (
               <span className="observation-tile-photo-count">1/{ev.photoCount}</span>
             )}
           </div>
         )}
-        {ev.text.length > 0 && <div className="observation-tile-text observation-tile-text--clamped">{observation.text}</div>}
+        {ev.text.length > 0 && (
+          <div className="observation-tile-text observation-tile-text--clamped">{observation.text}</div>
+        )}
         {audios.map((m) => (
           <div
             key={m.id}
@@ -77,7 +78,7 @@ export default function MeetingObservationTile(props: {
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <AudioNote uri={m.local_uri} className="media-audio" />
+            <AudioNote uri={m.local_uri} storagePath={m.storage_path} className="media-audio" />
           </div>
         ))}
       </div>
@@ -95,8 +96,6 @@ export default function MeetingObservationTile(props: {
   }
 
   function cancelEdit() {
-    // Staged media had their bytes parked in IndexedDB at capture time;
-    // cancelling the edit discards them so nothing orphaned is left behind.
     for (const m of newMedia) {
       if (isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
     }
@@ -111,8 +110,6 @@ export default function MeetingObservationTile(props: {
   }
 
   function dropNewMedia(i: number) {
-    // Dropping a staged piece also frees its local bytes — it was never
-    // saved to any observation, so nothing else references it.
     const m = newMedia[i];
     if (m && isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
     setNewMedia((prev) => prev.filter((_, j) => j !== i));
@@ -125,9 +122,6 @@ export default function MeetingObservationTile(props: {
     if (ok) cancelEdit();
   }
 
-  // View-mode "add evidence" — the same capture paths new observations use,
-  // writing straight to this observation. Voice is the only async capture;
-  // the pill doubles as the stop control while recording.
   function addPhoto() {
     cap.pickPhoto(async (m) => {
       await onAddMedia?.(observation.id, m);
@@ -145,8 +139,6 @@ export default function MeetingObservationTile(props: {
     setAddingMedia(false);
   }
 
-  // In edit mode, "+ Photo"/"+ Voice" stage into newMedia and persist on
-  // Save together with the text and the removals.
   function editAddPhoto() {
     cap.pickPhoto((m) => setNewMedia((prev) => [...prev, m]));
   }
@@ -170,7 +162,12 @@ export default function MeetingObservationTile(props: {
 
       {!editing &&
         audios.map((m) => (
-          <AudioNote key={m.id} uri={m.local_uri} className="media-audio observation-tile-audio" />
+          <AudioNote
+            key={m.id}
+            uri={m.local_uri}
+            storagePath={m.storage_path}
+            className="media-audio observation-tile-audio"
+          />
         ))}
 
       {editing && (
@@ -193,9 +190,14 @@ export default function MeetingObservationTile(props: {
                     className={removing ? 'meeting-edit-media-item is-removing' : 'meeting-edit-media-item'}
                   >
                     {m.media_type === 'audio' ? (
-                      <AudioNote uri={m.local_uri} className="media-audio" />
+                      <AudioNote uri={m.local_uri} storagePath={m.storage_path} className="media-audio" />
                     ) : (
-                      <PhotoImage uri={m.local_uri} alt="" className="meeting-edit-media-thumb" />
+                      <PhotoImage
+                        uri={m.local_uri}
+                        storagePath={m.storage_path}
+                        alt=""
+                        className="meeting-edit-media-thumb"
+                      />
                     )}
                     <button
                       type="button"
