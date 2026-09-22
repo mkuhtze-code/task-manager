@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import type { JobMedia } from '@/lib/jobMediaTypes';
+import type { JobFolder, JobMedia } from '@/lib/jobMediaTypes';
 import { jobMediaDisplayName } from '@/lib/jobMediaTypes';
 import { useDeviceFileCapture, type CapturedFile } from '@/hooks/useDeviceFileCapture';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
@@ -11,43 +11,112 @@ import { deleteMediaBlob } from '@/lib/mediaStore';
 import { buildStorageQuota, formatStorageBytes, wouldExceedQuota } from '@/lib/storageQuota';
 import { PhotoImage } from '@/components/MediaRender';
 
+const UNFILED = '__unfiled__';
+
 /**
- * Job-centric files. Meetings and Jobs both add here when a job is known.
- * Observations stay on the meeting; documents live on the job.
+ * Job-centric files with optional folders (Plans, Orders, …).
+ * Meetings and Jobs both add here when a job is known.
  */
 export default function JobFilesPanel(props: {
   jobId: string;
   userId: string;
-  /** Compact strip for meeting context vs full section on job page */
   variant?: 'job' | 'meeting';
 }) {
   const { jobId, userId, variant = 'job' } = props;
   const { isDesktop } = useSurfaceMode();
   const capture = useDeviceFileCapture();
+  const [folders, setFolders] = useState<JobFolder[]>([]);
   const [files, setFiles] = useState<JobMedia[]>([]);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null); // null = all, UNFILED = unfiled
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  /** Folder used for the next upload (defaults to active folder if a real folder). */
+  const [uploadFolderId, setUploadFolderId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { data, error: err } = await supabase
-      .from('job_media')
-      .select('*')
-      .eq('job_id', jobId)
-      .eq('user_id', userId)
-      .order('captured_at', { ascending: false });
-    if (err) {
-      setError(err.message);
-      setLoading(false);
-      return;
-    }
-    setFiles((data as JobMedia[]) || []);
+    const [foldersRes, filesRes] = await Promise.all([
+      supabase
+        .from('job_folders')
+        .select('*')
+        .eq('job_id', jobId)
+        .eq('user_id', userId)
+        .order('name', { ascending: true }),
+      supabase
+        .from('job_media')
+        .select('*')
+        .eq('job_id', jobId)
+        .eq('user_id', userId)
+        .order('captured_at', { ascending: false }),
+    ]);
+
+    if (foldersRes.error) setError(foldersRes.error.message);
+    else setFolders((foldersRes.data as JobFolder[]) || []);
+
+    if (filesRes.error) setError(filesRes.error.message);
+    else setFiles((filesRes.data as JobMedia[]) || []);
+
     setLoading(false);
   }, [jobId, userId]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const visibleFiles = useMemo(() => {
+    if (activeFolderId === null) return files;
+    if (activeFolderId === UNFILED) return files.filter((f) => !f.folder_id);
+    return files.filter((f) => f.folder_id === activeFolderId);
+  }, [files, activeFolderId]);
+
+  function countInFolder(folderId: string | null) {
+    if (folderId === null) return files.length;
+    if (folderId === UNFILED) return files.filter((f) => !f.folder_id).length;
+    return files.filter((f) => f.folder_id === folderId).length;
+  }
+
+  async function createFolder() {
+    const name = newFolderName.replace(/\s+/g, ' ').trim();
+    if (!name) return;
+    setSaving(true);
+    setError(null);
+    const { data, error: err } = await supabase
+      .from('job_folders')
+      .insert({ user_id: userId, job_id: jobId, name })
+      .select('*')
+      .single();
+    setSaving(false);
+    if (err || !data) {
+      setError(err?.message || 'Could not create folder');
+      return;
+    }
+    setFolders((prev) => [...prev, data as JobFolder].sort((a, b) => a.name.localeCompare(b.name)));
+    setNewFolderName('');
+    setNewFolderOpen(false);
+    setActiveFolderId(data.id);
+    setUploadFolderId(data.id);
+  }
+
+  async function deleteFolder(folder: JobFolder) {
+    if (!window.confirm(`Delete folder “${folder.name}”? Files move to Unfiled.`)) return;
+    const { error: err } = await supabase
+      .from('job_folders')
+      .delete()
+      .eq('id', folder.id)
+      .eq('user_id', userId);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setFolders((prev) => prev.filter((f) => f.id !== folder.id));
+    setFiles((prev) =>
+      prev.map((f) => (f.folder_id === folder.id ? { ...f, folder_id: null } : f))
+    );
+    if (activeFolderId === folder.id) setActiveFolderId(null);
+    if (uploadFolderId === folder.id) setUploadFolderId(null);
+  }
 
   async function addCaptured(m: CapturedFile) {
     setSaving(true);
@@ -68,11 +137,17 @@ export default function JobFilesPanel(props: {
       return;
     }
 
+    let folderId: string | null = uploadFolderId;
+    if (activeFolderId && activeFolderId !== UNFILED && !uploadFolderId) {
+      folderId = activeFolderId;
+    }
+
     const { data: row, error: insErr } = await supabase
       .from('job_media')
       .insert({
         user_id: userId,
         job_id: jobId,
+        folder_id: folderId,
         media_type: m.mediaType,
         local_uri: m.uri,
         mime_type: m.mime,
@@ -146,6 +221,14 @@ export default function JobFilesPanel(props: {
           {variant === 'meeting' ? 'Job files' : 'Files'} · {files.length}
         </span>
         <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="meeting-pill"
+            disabled={saving}
+            onClick={() => setNewFolderOpen((v) => !v)}
+          >
+            New folder
+          </button>
           {!isDesktop && (
             <button
               type="button"
@@ -169,9 +252,117 @@ export default function JobFilesPanel(props: {
 
       {variant === 'meeting' && (
         <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 8px', lineHeight: 1.4 }}>
-          Files belong to this job — visible from the job and any meeting linked to it. Meeting
-          observations stay separate.
+          Files belong to this job — use folders (Plans, Orders, …) to organise. Meeting observations
+          stay on the meeting.
         </p>
+      )}
+
+      {newFolderOpen && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="e.g. Plans, Orders"
+            style={{
+              flex: 1,
+              minWidth: 140,
+              border: '1px solid var(--line-strong)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '8px 10px',
+              fontSize: 14,
+              background: 'var(--paper)',
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void createFolder();
+            }}
+          />
+          <button
+            type="button"
+            className="meeting-pill meeting-pill--primary"
+            disabled={saving || !newFolderName.trim()}
+            onClick={() => void createFolder()}
+          >
+            Create
+          </button>
+          <button type="button" className="meeting-pill" onClick={() => setNewFolderOpen(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Folder chips */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        <button
+          type="button"
+          className={activeFolderId === null ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+          onClick={() => {
+            setActiveFolderId(null);
+            setUploadFolderId(null);
+          }}
+        >
+          All ({countInFolder(null)})
+        </button>
+        <button
+          type="button"
+          className={activeFolderId === UNFILED ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+          onClick={() => {
+            setActiveFolderId(UNFILED);
+            setUploadFolderId(null);
+          }}
+        >
+          Unfiled ({countInFolder(UNFILED)})
+        </button>
+        {folders.map((folder) => (
+          <span key={folder.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+            <button
+              type="button"
+              className={
+                activeFolderId === folder.id ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'
+              }
+              onClick={() => {
+                setActiveFolderId(folder.id);
+                setUploadFolderId(folder.id);
+              }}
+            >
+              {folder.name} ({countInFolder(folder.id)})
+            </button>
+            <button
+              type="button"
+              className="meeting-pill meeting-pill--quiet"
+              aria-label={`Delete folder ${folder.name}`}
+              onClick={() => void deleteFolder(folder)}
+              style={{ padding: '4px 8px' }}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+
+      {folders.length > 0 && (
+        <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 8 }}>
+          New uploads go to:{' '}
+          <strong>
+            {uploadFolderId
+              ? folders.find((f) => f.id === uploadFolderId)?.name || 'Folder'
+              : 'Unfiled'}
+          </strong>
+          {folders.length > 0 && (
+            <select
+              value={uploadFolderId || ''}
+              onChange={(e) => setUploadFolderId(e.target.value || null)}
+              style={{ marginLeft: 8, fontSize: 12 }}
+            >
+              <option value="">Unfiled</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       )}
 
       {isDesktop && (
@@ -188,7 +379,10 @@ export default function JobFilesPanel(props: {
             background: capture.dragOver ? 'var(--paper-2, rgba(0,0,0,0.03))' : 'transparent',
           }}
         >
-          Drag and drop a PDF, photo, or document here
+          Drag and drop into{' '}
+          {uploadFolderId
+            ? folders.find((f) => f.id === uploadFolderId)?.name || 'folder'
+            : 'Unfiled'}
         </div>
       )}
 
@@ -200,16 +394,18 @@ export default function JobFilesPanel(props: {
 
       {loading && <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>Loading files…</p>}
 
-      {!loading && files.length === 0 && (
+      {!loading && visibleFiles.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--ink-faint)', margin: 0 }}>
-          {isDesktop
-            ? 'No files yet — drop a file or use Upload.'
-            : 'No files yet — add a photo or document for this job.'}
+          {activeFolderId && activeFolderId !== UNFILED
+            ? 'This folder is empty — upload a file here.'
+            : isDesktop
+              ? 'No files yet — drop a file or use Upload.'
+              : 'No files yet — add a photo or document for this job.'}
         </p>
       )}
 
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {files.map((m) => (
+        {visibleFiles.map((m) => (
           <li
             key={m.id}
             style={{
@@ -264,6 +460,9 @@ export default function JobFilesPanel(props: {
               </div>
               <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>
                 {m.size_bytes != null ? formatStorageBytes(m.size_bytes) : '—'}
+                {m.folder_id
+                  ? ` · ${folders.find((f) => f.id === m.folder_id)?.name || 'Folder'}`
+                  : ' · Unfiled'}
                 {m.sync_status === 'synced'
                   ? ' · synced'
                   : m.sync_status === 'failed'
