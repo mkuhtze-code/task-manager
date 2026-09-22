@@ -30,12 +30,18 @@ export async function GET(req: NextRequest) {
 
     for (const r of rows) {
       const used = Number(r.storage_used_bytes ?? 0);
-      const limit = Number(r.storage_limit_bytes ?? DEFAULT_STORAGE_LIMIT_BYTES);
+      const limit = Number(
+        r.storage_limit_bytes ?? DEFAULT_STORAGE_LIMIT_BYTES
+      );
+
       totalUsed += used;
       totalLimit += limit;
+
       if (used > 0) usersWithMedia += 1;
       if (limit <= 0) continue;
+
       const ratio = used / limit;
+
       if (used >= limit) usersExceeded += 1;
       else if (ratio >= 0.95) usersCritical += 1;
       else if (ratio >= 0.8) usersWarning += 1;
@@ -72,12 +78,18 @@ export async function GET(req: NextRequest) {
       defaultLimitBytes: DEFAULT_STORAGE_LIMIT_BYTES,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Storage snapshot failed';
-    await logError({
-      source: 'api.admin.storage-snapshot',
-      message,
-      userId: access.userId,
-    });
-    return NextResponse.json({ error: message }, { status: 500 });
+    await logError(
+      'server',
+      'admin:storage-snapshot',
+      err,
+      {},
+      access.userId
+    );
+
+    return NextResponse.json(
+      { error: 'Storage snapshot failed' },
+      { status: 500 }
+    );
   }
 }
+
