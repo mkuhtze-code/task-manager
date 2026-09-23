@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { Subtask, Task, TaskContext } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
 import { fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
+import { explainEstimate, type EstimateSuggestion } from '@/lib/taskIntelligence';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { CheckIcon, ChevronIcon, CloseIcon, PlayIcon, StopIcon } from '@/components/icons';
@@ -38,6 +39,8 @@ export function TaskDetailSheet(props: {
   meetings?: ConnectedMeeting[];
   siblingTasks?: SiblingTask[];
   onOpenSibling?: (taskId: string) => void;
+  /** Learned estimate basis — same path as capture/capacity. */
+  estimateSuggestion?: EstimateSuggestion | null;
 }) {
   const {
     task, subs, remainingForThis, liveLogged, anyActive, context, jobs, onClose, onSave,
@@ -48,6 +51,7 @@ export function TaskDetailSheet(props: {
     meetings = [],
     siblingTasks = [],
     onOpenSibling,
+    estimateSuggestion = null,
   } = props;
 
   const [text, setText] = useState(task.text);
@@ -60,6 +64,11 @@ export function TaskDetailSheet(props: {
   const [jobMoveOpen, setJobMoveOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
+
+  const estimateExplain = explainEstimate(
+    estimateSuggestion,
+    parseMins(timeStr) ?? task.estimate_mins
+  );
 
   useEffect(() => {
     setText(task.text);
@@ -212,6 +221,15 @@ export function TaskDetailSheet(props: {
             siblingTasks={siblingTasks}
             onOpenSibling={onOpenSibling}
           />
+
+          {estimateExplain && (
+            <div className="stop-context-strip" style={{ margin: '8px 0' }}>
+              <div className="stop-context-line">
+                <span className="stop-context-kicker">Estimate</span>
+                <span>{estimateExplain}</span>
+              </div>
+            </div>
+          )}
 
           <div className="desk-detail-actions">
             {task.estimate_mins > 0 &&
@@ -394,6 +412,15 @@ export function TaskDetailSheet(props: {
         </div>
 
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+
+        {estimateExplain && (
+          <div className="stop-context-strip" style={{ margin: '4px 0 8px' }}>
+            <div className="stop-context-line">
+              <span className="stop-context-kicker">Estimate</span>
+              <span>{estimateExplain}</span>
+            </div>
+          </div>
+        )}
 
         <span className="settings-label">Location (optional)</span>
         <LocationAutocomplete
