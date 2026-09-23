@@ -65,6 +65,7 @@ export default function TripOverviewSheet({
   onSelectDay,
   onClose,
 }: Props) {
+  const dialogRef = useDialogA11y(onClose);
   const [summaries, setSummaries] = useState<Record<string, DaySummary>>({});
   const [loading, setLoading] = useState(true);
 
