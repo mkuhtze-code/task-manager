@@ -80,11 +80,11 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
         </div>
 
         <p className="settings-help" style={{ margin: '0 0 var(--space-3)' }}>
-          What happened today? Unfinished work carries forward.
+          What actually happened. Dokkit learns from this — not a score, just reality.
         </p>
 
         {tasks.length === 0 ? (
-          <p className="settings-help">Nothing on the plan for today.</p>
+          <p className="settings-help">Nothing needed a check today.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {tasks.map((task) => {
@@ -193,7 +193,7 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
             disabled={busy || tasks.length === 0}
             onClick={handleReshape}
           >
-            {busy ? 'Updating…' : 'Reshape the plan'}
+            {busy ? 'Updating…' : 'Apply what happened'}
           </button>
           <button type="button" className="btn-text" onClick={onClose}>
             Not now
