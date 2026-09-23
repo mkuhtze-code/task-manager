@@ -41,8 +41,8 @@ function Check({ on, label }: { on: boolean; label: string }) {
 }
 
 export default function MeetingExportReview(props: Props) {
-  const dialogRef = useDialogA11y(onCancel);
   const { state, content, transcriptProviderAvailable, onChange, onCancel, onGenerate, generating } = props;
+  const dialogRef = useDialogA11y(onCancel);
 
   const plan: MeetingExportPlan = useMemo(() => resolvePlanFromReview(content, state), [content, state]);
   const counts = useMemo(() => planCounts(content, plan), [content, plan]);
