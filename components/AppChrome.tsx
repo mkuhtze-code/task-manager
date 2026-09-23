@@ -23,7 +23,9 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
           <DesktopProductNav />
           <DesktopContextStrip />
           <DesktopBannerHost />
-          <div className="desk-main-body">{children}</div>
+          <div className="desk-main-body" id="main-content" role="main">
+            {children}
+          </div>
         </div>
       </div>
     );
@@ -32,7 +34,9 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       <ActiveTimerBar />
-      {children}
+      <div id="main-content" role="main">
+        {children}
+      </div>
     </>
   );
 }
