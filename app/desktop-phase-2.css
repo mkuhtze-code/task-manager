@@ -1,6 +1,6 @@
 /* Phase 2 desktop enhancements */
 
-/* ── Desktop capture = centered modal (not bottom sheet) ─────────── */
+/* ── All desktop popups = centered card (pill-reveal family) ─────── */
 html[data-surface='desktop'] .sheet-backdrop {
   align-items: center;
   justify-content: center;
@@ -8,13 +8,36 @@ html[data-surface='desktop'] .sheet-backdrop {
   background: rgba(0, 0, 0, 0.28);
 }
 
-html[data-surface='desktop'] .sheet-backdrop .capture-sheet:not(.task-detail-sheet) {
+/* Capture, day, library, accommodation, nearby, scheduled, reality, export… */
+html[data-surface='desktop'] .sheet-backdrop > .capture-sheet,
+html[data-surface='desktop'] .sheet-backdrop > .task-detail-sheet,
+html[data-surface='desktop'] .sheet-backdrop > [class*='-sheet'],
+html[data-surface='desktop'] .sheet-backdrop > .nearby-sheet,
+html[data-surface='desktop'] .sheet-backdrop > .trip-overview-sheet {
   width: min(480px, 100%);
+  max-width: min(520px, 94vw);
   max-height: min(86vh, 720px);
-  border-radius: var(--radius-lg);
+  overflow-y: auto;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
   margin: 0;
-  box-shadow: 0 24px 64px rgba(var(--shadow-rgb), 0.22);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.14);
   animation: none;
+  background: var(--paper);
+}
+
+/* Task detail in pane mode stays in the grid — not a floating sheet */
+html[data-surface='desktop'] .sheet-backdrop:has(> .desk-pane-detail),
+html[data-surface='desktop'] .app-shell .desk-pane-detail {
+  /* pane lives in layout; no extra modal chrome */
+}
+
+/* Gear menu already dropdown; align shadow with pill panels */
+html[data-surface='desktop'] .gear-menu-panel,
+html[data-surface='desktop'] .gear-dropdown {
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.14);
 }
 
 /* ── Jobs overview: full-width board (not a narrow phone column) ── */
