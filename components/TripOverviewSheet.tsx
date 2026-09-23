@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { CloseIcon } from '@/components/icons';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
@@ -129,7 +130,11 @@ export default function TripOverviewSheet({
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="capture-sheet task-detail-sheet trip-overview-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Trip overview"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="task-detail-header">
