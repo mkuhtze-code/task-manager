@@ -29,6 +29,8 @@ import {
   TrashIcon,
 } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
+import { useSurfaceMode } from '@/hooks/useSurfaceMode';
+import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 
 type Trip = {
   id: string;
@@ -320,6 +322,7 @@ export default function TripDayView() {
   const router = useRouter();
   const params = useParams();
   const tripId = params.tripId as string;
+  const { isDesktop } = useSurfaceMode();
 
   const [session, setSession] = useState<any>(null);
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -357,6 +360,11 @@ export default function TripDayView() {
 
     const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
   const [daySheetOpen, setDaySheetOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    return registerDesktopPrimaryAction('Add stop', () => setCaptureOpen(true));
+  }, [isDesktop]);
   const dayStripRef = useRef<HTMLDivElement | null>(null);
     const swipeRef = useRef<{ x: number; y: number; active: boolean } | null>(null);
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
@@ -844,7 +852,7 @@ export default function TripDayView() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${isDesktop ? ' desk-trip-detail' : ''}`}>
       <div className="app-header">
         <div className="app-header-left">
           <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back"><BackIcon /></button>
@@ -852,10 +860,24 @@ export default function TripDayView() {
             <h1 className="app-title" style={{ fontSize: 'var(--text-lg)', lineHeight: 1.15 }}>{trip.name}</h1>
           </div>
         </div>
-        <div className="app-header-right">
+        <div className="app-header-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            className="meeting-pill"
+            onClick={() => setAccommodationSheetOpen(true)}
+          >
+            Stay
+          </button>
+          <button
+            type="button"
+            className="meeting-pill"
+            onClick={() => setLibraryOpen(true)}
+          >
+            Library
+          </button>
           <GearMenu context="travel" userId={session?.user.id ?? null} />
         </div>
-            </div>
+      </div>
 
       {tripDays.length > 0 && (
         <div className="trip-day-strip" ref={dayStripRef} role="tablist" aria-label="Trip days">
@@ -886,6 +908,7 @@ export default function TripDayView() {
       )}
 
       {selectedDay && (
+        <div className="trip-day-main">
         <button
           className="day-head"
           onClick={() => setDaySheetOpen(true)}
@@ -1125,6 +1148,7 @@ export default function TripDayView() {
         />
       )}
 
+        </div>
       {accommodationSheetOpen && (
         <AccommodationSheet
           tripId={tripId}
