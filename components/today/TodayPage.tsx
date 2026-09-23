@@ -2021,9 +2021,9 @@ export function TodayPage() {
         ) : (
           ordered.length === 0 && (
             <div className="empty-state">
-              <div className="empty-state-title">Nothing on your plate yet.</div>
+              <div className="empty-state-title">Nothing waiting.</div>
               <div className="empty-state-sub">
-                Add something and Dokkit will work out what realistically fits today.
+                Capture when something lands. You&apos;re good to go.
               </div>
               <button
                 className="btn btn-steel"
