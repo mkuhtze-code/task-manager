@@ -86,6 +86,7 @@ export default function TravelHome() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
+  const [listFilter, setListFilter] = useState<'active' | 'upcoming' | 'past' | 'all'>('all');
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -184,11 +185,13 @@ export default function TravelHome() {
   }
 
   const todayStr = localDateStr(new Date());
-  const upcoming = trips.filter((t) => tripStatus(t.start_date, t.end_date, todayStr) !== 'past');
+  const active = trips.filter((t) => tripStatus(t.start_date, t.end_date, todayStr) === 'active');
+  const upcomingOnly = trips.filter((t) => tripStatus(t.start_date, t.end_date, todayStr) === 'upcoming');
   const past = trips.filter((t) => tripStatus(t.start_date, t.end_date, todayStr) === 'past');
+  const upcoming = [...active, ...upcomingOnly];
 
-  const heroTrip = upcoming.length > 0 ? upcoming[0] : null;
-  const restUpcoming = upcoming.length > 1 ? upcoming.slice(1) : [];
+  const heroTrip = active[0] || upcomingOnly[0] || null;
+  const restUpcoming = upcoming.filter((t) => t.id !== heroTrip?.id);
 
   let leadPill = '';
   if (heroTrip) {
@@ -230,7 +233,39 @@ export default function TravelHome() {
         </div>
       ) : (
         <>
-          {heroTrip && (
+          <div
+            className="travel-filter-row job-list-filter-sticky"
+            style={{
+              display: 'flex',
+              gap: 8,
+              padding: '8px var(--space-page, 16px) 10px',
+              flexWrap: 'wrap',
+            }}
+          >
+            {(
+              [
+                { key: 'all' as const, label: `All · ${trips.length}` },
+                { key: 'active' as const, label: `Active${active.length ? ` · ${active.length}` : ''}` },
+                { key: 'upcoming' as const, label: `Upcoming${upcomingOnly.length ? ` · ${upcomingOnly.length}` : ''}` },
+                { key: 'past' as const, label: `Past${past.length ? ` · ${past.length}` : ''}` },
+              ] as const
+            ).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                className={listFilter === key ? 'segmented-btn active' : 'segmented-btn'}
+                style={{ minHeight: 32, fontSize: 12, padding: '0 12px' }}
+                onClick={() => setListFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {(listFilter === 'all' || listFilter === 'active' || listFilter === 'upcoming') &&
+            heroTrip &&
+            (listFilter === 'all' ||
+              tripStatus(heroTrip.start_date, heroTrip.end_date, todayStr) === listFilter) && (
             <div className="trip-lead" onClick={() => router.push(`/travel/${heroTrip.id}`)}>
               <div className="trip-lead-top">
                 <span className="trip-lead-name">{heroTrip.name}</span>
@@ -256,15 +291,26 @@ export default function TravelHome() {
             </div>
           )}
 
-          {restUpcoming.length > 0 && (
+          {(listFilter === 'all' || listFilter === 'active' || listFilter === 'upcoming') &&
+            restUpcoming.filter(
+              (tr) =>
+                listFilter === 'all' ||
+                tripStatus(tr.start_date, tr.end_date, todayStr) === listFilter
+            ).length > 0 && (
             <div className="trip-list">
-              {restUpcoming.map((t) => (
-                <div key={t.id} className="trip-row" onClick={() => router.push(`/travel/${t.id}`)}>
-                  <span className="trip-row-name">{t.name}</span>
-                  <span className="trip-row-dates">{fmtDateRange(t.start_date, t.end_date)}</span>
+              {restUpcoming
+                .filter(
+                  (tr) =>
+                    listFilter === 'all' ||
+                    tripStatus(tr.start_date, tr.end_date, todayStr) === listFilter
+                )
+                .map((tr) => (
+                <div key={tr.id} className="trip-row" onClick={() => router.push(`/travel/${tr.id}`)}>
+                  <span className="trip-row-name">{tr.name}</span>
+                  <span className="trip-row-dates">{fmtDateRange(tr.start_date, tr.end_date)}</span>
                   <button
                     className="trip-card-delete"
-                    onClick={(e) => deleteTrip(t.id, e)}
+                    onClick={(e) => deleteTrip(tr.id, e)}
                     aria-label="Delete trip"
                   >
                     <TrashIcon />
@@ -274,29 +320,31 @@ export default function TravelHome() {
             </div>
           )}
 
-          {past.length > 0 && (
+          {(listFilter === 'all' || listFilter === 'past') && past.length > 0 && (
             <>
-              <button
-                className="trip-past-toggle"
-                onClick={() => setPastOpen((v) => !v)}
-                aria-expanded={pastOpen}
-              >
-                <span>Past trips · {past.length}</span>
-                <ChevronIcon size={14} />
-              </button>
-              {pastOpen && (
+              {listFilter === 'all' ? (
+                <button
+                  className="trip-past-toggle"
+                  onClick={() => setPastOpen((v) => !v)}
+                  aria-expanded={pastOpen}
+                >
+                  <span>Past trips · {past.length}</span>
+                  <ChevronIcon size={14} />
+                </button>
+              ) : null}
+              {(listFilter === 'past' || pastOpen) && (
                 <div className="trip-list">
-                  {past.map((t) => (
+                  {past.map((tr) => (
                     <div
-                      key={t.id}
+                      key={tr.id}
                       className="trip-row past"
-                      onClick={() => router.push(`/travel/${t.id}`)}
+                      onClick={() => router.push(`/travel/${tr.id}`)}
                     >
-                      <span className="trip-row-name">{t.name}</span>
-                      <span className="trip-row-dates">{fmtDateRange(t.start_date, t.end_date)}</span>
+                      <span className="trip-row-name">{tr.name}</span>
+                      <span className="trip-row-dates">{fmtDateRange(tr.start_date, tr.end_date)}</span>
                       <button
                         className="trip-card-delete"
-                        onClick={(e) => deleteTrip(t.id, e)}
+                        onClick={(e) => deleteTrip(tr.id, e)}
                         aria-label="Delete trip"
                       >
                         <TrashIcon />
