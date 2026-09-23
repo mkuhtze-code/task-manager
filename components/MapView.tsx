@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { CloseIcon } from '@/components/icons';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 type MapActivity = {
   id: string;
@@ -55,6 +56,7 @@ function MapView(props: {
   onClose: () => void;
 }) {
   const { base, activities, onClose } = props;
+  const dialogRef = useDialogA11y(onClose);
 
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any | null>(null);
@@ -393,8 +395,12 @@ function MapView(props: {
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="capture-sheet"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Map"
         style={{ height: '80vh', display: 'flex', flexDirection: 'column', padding: 'var(--space-4)' }}
       >
         <div className="task-detail-header" style={{ marginBottom: 'var(--space-2)' }}>
