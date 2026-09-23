@@ -31,6 +31,7 @@ import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
 import { buildStorageQuota, wouldExceedQuota } from '@/lib/storageQuota';
 import { MeetingConnections } from '@/components/MeetingConnections';
+import PillReveal from '@/components/PillReveal';
 import JobFilesPanel from '@/components/JobFilesPanel';
 import type { Job } from '@/lib/jobTypes';
 
@@ -577,15 +578,19 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         )}
       </div>
 
-      <MeetingConnections
-        meeting={meeting}
-        job={linkedJob}
-        jobTasks={jobTasks}
-        siblingMeetings={siblingMeetings}
-        allJobs={allJobs}
-        onLinkJob={linkJob}
-        linking={linkingJob}
-      />
+      <div className="meeting-connections-bar" style={{ padding: '0 var(--space-page, 16px)', marginBottom: 8 }}>
+        <PillReveal label="Connections" align="start">
+          <MeetingConnections
+            meeting={meeting}
+            job={linkedJob}
+            jobTasks={jobTasks}
+            siblingMeetings={siblingMeetings}
+            allJobs={allJobs}
+            onLinkJob={linkJob}
+            linking={linkingJob}
+          />
+        </PillReveal>
+      </div>
 
       {meeting?.job_id && session?.user?.id && (
         <JobFilesPanel jobId={meeting.job_id} userId={session.user.id} variant="meeting" />
