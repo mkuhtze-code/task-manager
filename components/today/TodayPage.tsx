@@ -4,6 +4,10 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
+import {
+  computeTravelPresenceImpact,
+} from '@/lib/travelPresence';
+import { localDateStr as travelLocalDateStr } from '@/lib/travelContext';
 import { TaskCard } from '@/components/TaskCard';
 import { TravelLeg } from '@/components/TravelLeg';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
@@ -156,6 +160,9 @@ export function TodayPage() {
   const [scheduledSheetOpen, setScheduledSheetOpen] = useState(false);
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [travelStopsToday, setTravelStopsToday] = useState<
+    Parameters<typeof computeTravelPresenceImpact>[0]
+  >([]);
   const [calendarEvents, setCalendarEvents] = useState<
     Array<{
       id: string;
@@ -1698,6 +1705,55 @@ export function TodayPage() {
   }
 
   // Parent (app/page.tsx) only mounts Today when session is established.
+
+  // Travel presence for capacity (authenticated user only; RLS + user_id filter).
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setTravelStopsToday([]);
+      return;
+    }
+    const uid = session.user.id;
+    let cancelled = false;
+    void (async () => {
+      const todayStr = travelLocalDateStr();
+      const { data: trip } = await supabase
+        .from('trips')
+        .select('id')
+        .eq('user_id', uid)
+        .lte('start_date', todayStr)
+        .gte('end_date', todayStr)
+        .order('start_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!trip) {
+        setTravelStopsToday([]);
+        return;
+      }
+      const { data: dayRow } = await supabase
+        .from('trip_days')
+        .select('id')
+        .eq('trip_id', trip.id)
+        .eq('date', todayStr)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!dayRow) {
+        setTravelStopsToday([]);
+        return;
+      }
+      const { data: acts } = await supabase
+        .from('activities')
+        .select('id, text, status, stop_kind, presence, estimate_mins, job_id')
+        .eq('trip_day_id', dayRow.id)
+        .eq('user_id', uid);
+      if (cancelled) return;
+      setTravelStopsToday(acts || []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
+
   if (!session) return null;
 
 
@@ -1853,8 +1909,19 @@ export function TodayPage() {
   const hasRoute = geoAware && locatedInOrder.length > 0 && basePolyline != null;
 
   const remainingTaskMins = ordered.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
+  const workWindowMins = Math.max(workEndMinutes - workStartMinutes, 1);
+  const travelImpact = computeTravelPresenceImpact(
+    travelStopsToday,
+    minutesLeftToday,
+    workWindowMins
+  );
+  const travelBlockedMins = travelImpact.blockedMins;
   const remainingWorkMins =
-    availability.blockedMinutes + manualMeetingMins + remainingTaskMins + routeDriveMins;
+    availability.blockedMinutes +
+    manualMeetingMins +
+    remainingTaskMins +
+    routeDriveMins +
+    travelBlockedMins;
 
   const activeCommitments = calendarEvents
     .filter((e) => new Date(e.end_at).getTime() > now.getTime())
