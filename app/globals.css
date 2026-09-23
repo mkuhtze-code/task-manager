@@ -3,7 +3,7 @@
 :root {
   --ink: #1a2933;
   --ink-soft: #4f606a;
-  --ink-faint: #93a3ab;
+  --ink-faint: #5c6d76; /* WCAG AA secondary on paper */
   --paper: #f1efe6;
   --paper-raised: #ffffff;
   --line: #ddd7c6;
