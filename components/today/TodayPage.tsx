@@ -2195,6 +2195,7 @@ export function TodayPage() {
           context="today"
           jobs={jobs}
           meetings={meetings}
+          estimateSuggestion={suggestEstimate(openTask.text, history, clusters)}
           siblingTasks={
             openTask.job_id
               ? tasks
