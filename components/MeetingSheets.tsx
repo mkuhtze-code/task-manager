@@ -10,6 +10,7 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { AudioNote, PhotoImage } from '@/components/MediaRender';
 import { CloseIcon, MapPinIcon, TrashIcon } from '@/components/icons';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 export type NewMeetingPayload = {
   text: string;
@@ -34,6 +35,7 @@ export function NewMeetingSheet(props: {
   onCreate: (payload: NewMeetingPayload) => void;
 }) {
   const { saving, jobs, onClose, onCreate } = props;
+  const dialogRef = useDialogA11y(onClose);
   const today = localDateStr(new Date());
 
   const [text, setText] = useState('');
@@ -108,7 +110,7 @@ export function NewMeetingSheet(props: {
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="capture-sheet new-meeting-sheet" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} className="capture-sheet new-meeting-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Record a meeting">
         <div className="task-detail-header" style={{ marginBottom: 0 }}>
           <div className="settings-panel-title">Record a meeting</div>
           <button className="gear-btn" onClick={onClose} aria-label="Close">
