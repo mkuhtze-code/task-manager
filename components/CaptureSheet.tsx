@@ -180,17 +180,17 @@ export function CaptureSheet(props: {
           </div>
         )}
 
-        {captureSuggestion && (
+        {/* Quiet authority: one optional duration chip — only when signal is strong enough. */}
+        {captureSuggestion &&
+          (captureSuggestion.confidence !== 'low' || captureSuggestion.source === 'measured') && (
           <button
             type="button"
             className="estimate-suggestion-chip"
             onClick={() => setTaskTime(minsToInput(captureSuggestion.suggestedMins))}
+            title="Use usual duration"
           >
-            ≈ {fmtMins(captureSuggestion.suggestedMins)} usual ({captureSuggestion.sampleCount}×)
+            ≈ {fmtMins(captureSuggestion.suggestedMins)}
           </button>
-        )}
-        {durationExplain && !captureSuggestion && (
-          <div className="settings-help" style={{ marginTop: 2 }}>{durationExplain}</div>
         )}
 
         <div className="capture-row">
