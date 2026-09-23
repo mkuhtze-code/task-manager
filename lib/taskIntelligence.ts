@@ -343,6 +343,50 @@ export function suggestEstimate(
   };
 }
 
+/**
+ * Human-readable basis for an estimate suggestion.
+ * Client-only; does not log or persist free text beyond what the UI already shows.
+ * Single path for capture, capacity, and task detail.
+ */
+export function explainEstimate(
+  suggestion: EstimateSuggestion | null,
+  typedMins?: number | null
+): string | null {
+  if (!suggestion) return null;
+
+  const conf =
+    suggestion.confidence === 'high'
+      ? 'high confidence'
+      : suggestion.confidence === 'medium'
+        ? 'medium confidence'
+        : 'low confidence';
+
+  const n = suggestion.sampleCount;
+  const finishes = `${n} timed finish${n === 1 ? '' : 'es'}`;
+
+  let basis: string;
+  if (suggestion.source === 'measured') {
+    basis = `Based on ${finishes}`;
+  } else if (suggestion.source === 'mixed') {
+    basis = `Based on ${finishes} plus how similar work is structured`;
+  } else {
+    basis = 'Based on patterns in similar work (not enough timer data yet)';
+  }
+
+  let line = `${basis} · usually about ${suggestion.suggestedMins}m · ${conf}`;
+  if (suggestion.matchedLabel) {
+    line += ` · like “${suggestion.matchedLabel}”`;
+  }
+  if (
+    typedMins != null &&
+    typedMins > 0 &&
+    _hasMeaningfulDivergence(typedMins, suggestion.suggestedMins)
+  ) {
+    line += ` · your ${typedMins}m differs`;
+  }
+  return line;
+}
+
 export function suggestLocation(
   inputText: string,
   history: HistoricalTask[],
