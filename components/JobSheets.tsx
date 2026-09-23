@@ -87,13 +87,18 @@ export function NewJobSheet(props: {
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="capture-sheet new-job-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="task-detail-header" style={{ marginBottom: 0 }}>
           <div className="settings-panel-title">New job</div>
           <button className="gear-btn" onClick={onClose} aria-label="Close">
             <CloseIcon />
           </button>
         </div>
+
+        <p className="job-detail-kicker">Job</p>
+        <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px', lineHeight: 1.4 }}>
+          A container for the work — tasks and evidence come next.
+        </p>
 
         <input
           type="text"
@@ -102,24 +107,25 @@ export function NewJobSheet(props: {
           onKeyDown={(e) => {
             if (e.key === 'Enter') submit();
           }}
-          placeholder="Job name (e.g. Replace warehouse roof)"
+          placeholder="e.g. Angela Street remodel"
+          autoFocus
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="settings-label">Client (optional)</span>
+          <span className="settings-label">Client</span>
           <input
             type="text"
             value={form.client}
             onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
-            placeholder="e.g. Acme Roofing"
+            placeholder="Optional"
           />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="settings-label">Location (optional)</span>
+          <span className="settings-label">Site / location</span>
           <LocationAutocomplete
             value={form.locationText}
-            placeholder="Where is the work?"
+            placeholder="Where is the work? (optional)"
             onChange={(text) => setForm((f) => ({ ...f, locationText: text }))}
             onPlaceSelected={(result) => {
               setForm((f) => ({
@@ -129,6 +135,13 @@ export function NewJobSheet(props: {
               }));
             }}
           />
+        </div>
+
+        <div className="stop-context-strip" style={{ marginTop: 4 }}>
+          <div className="stop-context-line">
+            <span className="stop-context-kicker">Next</span>
+            <span>Add tasks on the job — or link it as a work stop on a trip</span>
+          </div>
         </div>
 
         {error && (
@@ -293,7 +306,6 @@ export function JobEditSheet(props: {
           </p>
         </div>
 
-        {/* Derived context — Dokkit knows what's going on */}
         <div className="stop-context-strip job-context-strip">
           <div className="stop-context-line">
             <span className="stop-context-kicker">Work</span>
