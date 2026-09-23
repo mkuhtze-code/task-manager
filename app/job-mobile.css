@@ -225,3 +225,54 @@ html[data-surface='desktop'] .job-switcher {
   text-transform: uppercase;
   color: var(--ink-faint);
 }
+
+/* Job ↔ Travel site days */
+.job-site-days-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.job-site-day-row {
+  margin: 0;
+}
+
+.job-site-day-link {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  text-decoration: none;
+  color: inherit;
+}
+
+.job-site-day-date {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  min-width: 4.5rem;
+}
+
+.job-site-day-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.job-site-day-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.job-site-day-meta {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
