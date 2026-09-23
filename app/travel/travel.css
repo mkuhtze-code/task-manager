@@ -370,3 +370,19 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .surface-nav {
   z-index: 15;
   background: var(--paper);
 }
+
+
+/* Stop kind chip on itinerary rows */
+.stop-kind-chip {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--steel, #1e6be6);
+  background: rgba(var(--steel-rgb, 30, 107, 230), 0.1);
+  vertical-align: middle;
+}
