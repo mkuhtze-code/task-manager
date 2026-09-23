@@ -11,6 +11,7 @@ import LibrarySheet from '@/components/LibrarySheet';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
 import DaySheet from '@/components/DaySheet';
+import TripDayMeetings from '@/components/TripDayMeetings';
 import MapView from '@/components/MapView';
 import { TravelLeg } from '@/components/TravelLeg';
 import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
@@ -1280,6 +1281,11 @@ export default function TripDayView() {
         onTouchMove={onDaySwipeMove}
         onTouchEnd={onDaySwipeEnd}
       >
+
+        {session?.user?.id && selectedDay && (
+          <TripDayMeetings userId={session.user.id} dateStr={selectedDay.date} />
+        )}
+
         {activities.length === 0 && (
           <div className="empty-state">
             <div className="empty-state-title">
