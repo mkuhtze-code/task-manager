@@ -955,7 +955,35 @@ export default function JobDetailPage() {
           ))}
 
           {editOpen && (
-            <JobEditSheet job={job} saving={saving} onClose={() => setEditOpen(false)} onSave={saveJob} onDelete={deleteJob} />
+            <JobEditSheet
+              job={job}
+              saving={saving}
+              context={{
+                openTasks: tasks.filter((x) => x.status !== 'done').length,
+                doneTasks: tasks.filter((x) => x.status === 'done').length,
+                meetings: jobMeetings.length,
+                nextMeetingLabel: (() => {
+                  const upcoming = jobMeetings
+                    .filter((m) => m.start_time && new Date(m.start_time).getTime() >= Date.now())
+                    .sort(
+                      (a, b) =>
+                        new Date(a.start_time!).getTime() - new Date(b.start_time!).getTime()
+                    );
+                  const m = upcoming[0];
+                  if (!m?.start_time) return null;
+                  const d = new Date(m.start_time);
+                  return d.toLocaleDateString(undefined, {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                  });
+                })(),
+                userId: session?.user?.id ?? null,
+              }}
+              onClose={() => setEditOpen(false)}
+              onSave={saveJob}
+              onDelete={deleteJob}
+            />
           )}
 
 
