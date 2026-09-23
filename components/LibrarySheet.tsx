@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { CloseIcon, TrashIcon } from '@/components/icons';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 type LibraryItem = {
   id: string;
@@ -38,6 +39,7 @@ function fmtDayLabel(dateStr: string): { weekday: string; date: string } {
 // scheduled into an activity (which copies name/location/coords and keeps
 // library_item_id as pure provenance).
 export default function LibrarySheet({ tripId, tripName, tripDays, onClose, onScheduled }: Props) {
+  const dialogRef = useDialogA11y(onClose);
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [mode, setMode] = useState<'list' | 'add' | 'edit' | 'schedule' | 'places'>('list');
   const [editing, setEditing] = useState<LibraryItem | null>(null);
@@ -248,7 +250,7 @@ export default function LibrarySheet({ tripId, tripName, tripDays, onClose, onSc
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Library">
         {mode === 'list' && (
           <>
             <div className="task-detail-header">
