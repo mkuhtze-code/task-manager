@@ -108,13 +108,18 @@ export function NewMeetingSheet(props: {
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="capture-sheet new-meeting-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="task-detail-header" style={{ marginBottom: 0 }}>
           <div className="settings-panel-title">Record a meeting</div>
           <button className="gear-btn" onClick={onClose} aria-label="Close">
             <CloseIcon />
           </button>
         </div>
+
+        <p className="job-detail-kicker">Meeting</p>
+        <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px', lineHeight: 1.4 }}>
+          One thought in — Dokkit splits time, place, and job when it can. Evidence stays on the meeting.
+        </p>
 
         <div className="capture-text-row">
           <input
@@ -123,6 +128,7 @@ export function NewMeetingSheet(props: {
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
             placeholder="e.g. Meeting with Tim at Belgium Rd tomorrow at 2pm"
+            autoFocus
           />
           <MicButton
             onResult={(t) =>
@@ -272,6 +278,21 @@ export function NewMeetingSheet(props: {
             style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }}
           />
         </div>
+
+        {(dateInput || job || text.trim()) && (
+          <div className="stop-context-strip" style={{ marginTop: 4 }}>
+            <div className="stop-context-line">
+              <span className="stop-context-kicker">Ready</span>
+              <span>
+                {dateInput ? dateInput : 'Pick a date'}
+                {timeInput ? ` · ${timeInput}` : ''}
+                {` · ${parseMins(durationInput) ?? 30}m`}
+                {job ? ` · ${job.name}` : ''}
+                {' · notes & photos after save'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
 
