@@ -1,4 +1,4 @@
-/* Pill → overlay panel (Jobs meetings, Meeting connections) */
+/* Pill → overlay panel (Jobs meetings, Meeting connections / files) */
 
 .pill-reveal {
   position: relative;
@@ -33,8 +33,16 @@
   right: 0;
 }
 
+/* Room for JobFilesPanel (folders + list) */
+.pill-reveal-panel--wide {
+  min-width: min(360px, 94vw);
+  max-width: min(480px, 96vw);
+  max-height: min(70vh, 560px);
+}
+
 .pill-reveal-panel .task-connections,
-.pill-reveal-panel .job-meetings-popover {
+.pill-reveal-panel .job-meetings-popover,
+.pill-reveal-panel .job-files-panel {
   margin: 0;
   border: none;
   padding: 0;
@@ -79,18 +87,15 @@ html[data-surface='desktop'] .app-shell.desk-job-detail.has-desk-detail > .job-l
   display: none;
 }
 
-/* Permanent meetings strip not needed on desktop — use header pill */
 html[data-surface='desktop'] .app-shell.desk-job-detail > .job-more {
   display: none;
 }
 
-/* Prefer library over empty-state placeholder text */
 html[data-surface='desktop']
   .app-shell.desk-job-detail:not(.has-desk-detail):has(> .job-library)::after {
   display: none;
 }
 
-/* Observations: quieter, more editorial */
 html[data-surface='desktop'] .job-observations-panel {
   margin-bottom: 20px;
 }
