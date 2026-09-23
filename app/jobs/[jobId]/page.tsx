@@ -1076,6 +1076,7 @@ export default function JobDetailPage() {
               anyActive={anyActive}
               context="job"
               jobs={jobs}
+              estimateSuggestion={suggestEstimate(openTask.text, history, clusters)}
               onClose={() => setOpenTaskId(null)}
               onSave={updateTask}
               onComplete={completeTask}
