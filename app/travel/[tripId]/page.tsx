@@ -30,6 +30,16 @@ import {
 } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
+import type { Job } from '@/lib/jobTypes';
+import {
+  STOP_KIND_OPTIONS,
+  PRESENCE_OPTIONS,
+  presenceToSchedule,
+  formatStopGlance,
+  stopKindLabel,
+  type StopKind,
+  type StopPresence,
+} from '@/lib/travelStopTypes';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 
 type Trip = {
@@ -70,6 +80,9 @@ type Activity = {
   time_type: 'flexible' | 'fixed';
   fixed_time: string | null;
   route_polyline: string | null;
+  stop_kind?: StopKind | null;
+  presence?: StopPresence | null;
+  job_id?: string | null;
 };
 
 type DragState = {
@@ -364,6 +377,10 @@ export default function TripDayView() {
     const swipeRef = useRef<{ x: number; y: number; active: boolean } | null>(null);
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
   const [captureFixedTime, setCaptureFixedTime] = useState('');
+  const [captureStopKind, setCaptureStopKind] = useState<StopKind>('leisure');
+  const [capturePresence, setCapturePresence] = useState<StopPresence>('duration');
+  const [captureJobId, setCaptureJobId] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -377,6 +394,16 @@ export default function TripDayView() {
   useEffect(() => {
     if (session) loadTrip();
   }, [session, tripId]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    void supabase
+      .from('jobs')
+      .select('id, name, client, location_text, lat, lng, created_at')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setJobs((data as Job[]) || []));
+  }, [session?.user?.id]);
 
   async function loadTrip() {
     const { data: tripRow } = await supabase.from('trips').select('*').eq('id', tripId).maybeSingle();
@@ -462,31 +489,81 @@ export default function TripDayView() {
   async function addActivity() {
     const text = captureText.trim();
     if (text.length === 0 || !selectedDayId || !session) return;
-    const est = parseMins(captureEstimate);
-    if (est === null) {
-      setError('Could not read a time — try 15m or 1.5h');
+
+    if (captureStopKind === 'work' && !captureJobId && !captureLocation.trim()) {
+      setError('Link a job or set a location for this work site');
       return;
     }
-    if (captureTimeType === 'fixed' && !captureFixedTime) {
-      setError('Set a time for this fixed commitment');
+    if (capturePresence === 'fixed' && !captureFixedTime) {
+      setError('Set a time for this stop');
       return;
     }
+    let durationMins: number | null = null;
+    if (capturePresence === 'duration' || capturePresence === 'fixed') {
+      durationMins = parseMins(captureEstimate);
+      if (durationMins === null) {
+        setError('Could not read a time — try 15m or 1.5h');
+        return;
+      }
+    }
+
+    const dayStart = selectedDay
+      ? timeStringToMinutes(selectedDay.arrival_time || selectedDay.day_start || '08:00')
+      : 8 * 60;
+    const dayEnd = selectedDay
+      ? timeStringToMinutes(selectedDay.departure_time || selectedDay.day_end || '20:00')
+      : 20 * 60;
+
+    const schedule = presenceToSchedule({
+      presence: capturePresence,
+      durationMins,
+      fixedTime: captureFixedTime || null,
+      dayStartMins: dayStart,
+      dayEndMins: dayEnd,
+    });
+
+    // Prefer job name when work-linked and title empty of place
+    let stopText = text;
+    if (captureStopKind === 'work' && captureJobId) {
+      const job = jobs.find((j) => j.id === captureJobId);
+      if (job && (text === job.name || text.length === 0)) stopText = job.name;
+    }
+
     setError('');
     const maxOrder = activities.reduce((m, a) => Math.max(m, a.order_index), 0);
+
+    let loc = captureLocation.trim() || null;
+    let lat = captureCoords?.lat ?? null;
+    let lng = captureCoords?.lng ?? null;
+    if (captureStopKind === 'work' && captureJobId) {
+      const job = jobs.find((j) => j.id === captureJobId);
+      if (job) {
+        if (!loc && job.location_text) loc = job.location_text;
+        if (lat == null && job.lat != null) {
+          lat = job.lat;
+          lng = job.lng;
+        }
+      }
+    }
+
     const { data, error: insertError } = await supabase
       .from('activities')
       .insert({
         user_id: session.user.id,
         trip_day_id: selectedDayId,
-        text,
-        estimate_mins: est,
+        text: stopText,
+        activity_type: 'stop',
+        estimate_mins: schedule.estimate_mins,
         drive_mins_to_next: 0,
-        location_text: captureLocation.trim() || null,
-        lat: captureCoords?.lat ?? null,
-        lng: captureCoords?.lng ?? null,
+        location_text: loc,
+        lat,
+        lng,
         order_index: maxOrder + 1,
-        time_type: captureTimeType,
-        fixed_time: captureTimeType === 'fixed' ? captureFixedTime : null,
+        time_type: schedule.time_type,
+        fixed_time: schedule.fixed_time,
+        stop_kind: captureStopKind,
+        presence: capturePresence,
+        job_id: captureStopKind === 'work' ? captureJobId : null,
       })
       .select()
       .single();
@@ -494,20 +571,26 @@ export default function TripDayView() {
       alert(insertError.message);
       return;
     }
-    setActivities((prev) => [...prev, data]);
+    setActivities((prev) => [...prev, data as Activity]);
     setCaptureText('');
     setCaptureLocation('');
     setCaptureCoords(null);
     setCaptureEstimate('30m');
     setCaptureTimeType('flexible');
     setCaptureFixedTime('');
+    setCaptureStopKind('leisure');
+    setCapturePresence('duration');
+    setCaptureJobId(null);
     setCaptureOpen(false);
-    if (data.lat != null) recalculateDay();
+    if ((data as Activity).lat != null) recalculateDay();
   }
 
   function closeCapture() {
     setCaptureOpen(false);
     setError('');
+    setCaptureStopKind('leisure');
+    setCapturePresence('duration');
+    setCaptureJobId(null);
   }
 
   async function updateActivity(id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null, timeType: 'flexible' | 'fixed', fixedTime: string | null) {
@@ -1019,7 +1102,12 @@ export default function TripDayView() {
                     <CheckIcon done={false} />
                   </button>
                   <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
-                    <div className="task-text">{a.text}</div>
+                    <div className="task-text">
+                      {a.stop_kind && a.stop_kind !== 'leisure' && (
+                        <span className="stop-kind-chip">{stopKindLabel(a.stop_kind)}</span>
+                      )}
+                      {a.text}
+                    </div>
                     {((a.location_text && a.lat == null) || conflict) && (
                       <div className="activity-meta">
                         {a.location_text && a.lat == null && (
@@ -1034,7 +1122,14 @@ export default function TripDayView() {
                     )}
                   </div>
                   <span className={conflict ? 'activity-glance conflict mono' : 'activity-glance mono'}>
-                    {a.time_type === 'fixed' && a.fixed_time ? fmtClock(a.fixed_time) : fmtMins(a.estimate_mins)}
+                    {formatStopGlance({
+                      presence: a.presence,
+                      time_type: a.time_type,
+                      fixed_time: a.fixed_time,
+                      estimate_mins: a.estimate_mins,
+                      fmtMins,
+                      fmtClock,
+                    })}
                   </span>
                   {a.time_type === 'flexible' && travelSortMode === 'manual' ? (
                     <button
@@ -1079,46 +1174,130 @@ export default function TripDayView() {
         <div className="sheet-backdrop" onClick={closeCapture}>
           <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="task-detail-header" style={{ marginBottom: 0 }}>
-              <div className="settings-panel-title">Add stop</div>
+              <div className="settings-panel-title">Where next?</div>
               <button className="gear-btn" onClick={closeCapture} aria-label="Close">
                 <CloseIcon />
               </button>
             </div>
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 8px' }}>
+              A stop is a place you&apos;ll be — not a task to finish.
+            </p>
+
+            <span className="settings-label">What kind of stop?</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {STOP_KIND_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={captureStopKind === opt.value ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+                  onClick={() => {
+                    setCaptureStopKind(opt.value);
+                    if (opt.value === 'work') setCapturePresence('all_day');
+                    if (opt.value !== 'work') setCaptureJobId(null);
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {captureStopKind === 'work' && (
+              <div style={{ marginBottom: 10 }}>
+                <span className="settings-label">Job (optional but recommended)</span>
+                <select
+                  value={captureJobId || ''}
+                  onChange={(e) => {
+                    const id = e.target.value || null;
+                    setCaptureJobId(id);
+                    const job = jobs.find((j) => j.id === id);
+                    if (job) {
+                      if (!captureText.trim()) setCaptureText(job.name);
+                      if (job.location_text) {
+                        setCaptureLocation(job.location_text);
+                        if (job.lat != null && job.lng != null) {
+                          setCaptureCoords({ lat: job.lat, lng: job.lng });
+                        }
+                      }
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    marginTop: 4,
+                    padding: '8px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--line-strong)',
+                    background: 'var(--paper)',
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">No job linked</option>
+                  {jobs.map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.name}
+                      {j.client ? ` · ${j.client}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <input
               type="text"
               value={captureText}
               onChange={(e) => setCaptureText(e.target.value)}
-              placeholder="What's the stop?"
+              placeholder={captureStopKind === 'work' ? 'Site or job name' : 'Where / what is this stop?'}
               autoFocus
             />
             <LocationAutocomplete
               value={captureLocation}
-              placeholder="Search for a place (optional)"
+              placeholder="Search for a place"
               onChange={setCaptureLocation}
               onPlaceSelected={(result) => {
                 setCaptureLocation(result.formattedAddress);
                 setCaptureCoords({ lat: result.lat, lng: result.lng });
               }}
             />
-            <div className="capture-row">
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span className="settings-label">About</span>
-                <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} />
-              </div>
-              <button
-                className={captureTimeType === 'fixed' ? 'capture-fixed-toggle active' : 'capture-fixed-toggle'}
-                onClick={() => setCaptureTimeType(captureTimeType === 'fixed' ? 'flexible' : 'fixed')}
-                aria-pressed={captureTimeType === 'fixed'}
-              >
-                {captureTimeType === 'fixed' ? 'Fixed time' : 'Flexible'}
-              </button>
+
+            <span className="settings-label" style={{ marginTop: 4 }}>When are you there?</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {PRESENCE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={capturePresence === opt.value ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+                  onClick={() => setCapturePresence(opt.value)}
+                  title={opt.hint}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-            {captureTimeType === 'fixed' && (
+
+            {(capturePresence === 'duration' || capturePresence === 'fixed') && (
+              <div className="capture-row">
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span className="settings-label">About</span>
+                  <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} placeholder="30m or 1.5h" />
+                </div>
+              </div>
+            )}
+            {capturePresence === 'fixed' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span className="settings-label">At</span>
                 <input type="time" value={captureFixedTime} onChange={(e) => setCaptureFixedTime(e.target.value)} />
               </div>
             )}
+            {capturePresence === 'all_day' && (
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
+                Counts as the full day window for capacity on this trip day.
+              </p>
+            )}
+            {capturePresence === 'work_hours' && (
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
+                Uses most of the day window — evening stops can still fit.
+              </p>
+            )}
+
             {captureLocation.length > 0 && !captureCoords && (
               <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
                 Pick a suggestion so drive times can be calculated.
