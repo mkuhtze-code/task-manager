@@ -4,8 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 /**
  * Quiet control: a pill that opens an overlay panel (dropdown style).
- * Used for Meetings on Jobs and Connections on Meetings — keep the
- * surface calm; detail on demand.
+ * Used for Connections, Job files, Meetings — calm surface, detail on demand.
  */
 export default function PillReveal(props: {
   label: string;
@@ -14,8 +13,17 @@ export default function PillReveal(props: {
   /** Prefer 'end' when the trigger sits on the right of the bar. */
   align?: 'start' | 'end';
   className?: string;
+  /** Extra classes on the overlay panel (e.g. pill-reveal-panel--wide). */
+  panelClassName?: string;
 }) {
-  const { label, count, children, align = 'start', className = '' } = props;
+  const {
+    label,
+    count,
+    children,
+    align = 'start',
+    className = '',
+    panelClassName = '',
+  } = props;
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -37,6 +45,14 @@ export default function PillReveal(props: {
     };
   }, [open]);
 
+  const panelClasses = [
+    'pill-reveal-panel',
+    align === 'end' ? 'align-end' : '',
+    panelClassName,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div
       className={`pill-reveal${open ? ' is-open' : ''} ${className}`.trim()}
@@ -55,12 +71,7 @@ export default function PillReveal(props: {
         ) : null}
       </button>
       {open && (
-        <div
-          className={
-            align === 'end' ? 'pill-reveal-panel align-end' : 'pill-reveal-panel'
-          }
-          role="dialog"
-        >
+        <div className={panelClasses} role="dialog">
           {children}
         </div>
       )}
