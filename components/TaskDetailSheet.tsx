@@ -223,12 +223,9 @@ export function TaskDetailSheet(props: {
           />
 
           {estimateExplain && (
-            <div className="stop-context-strip" style={{ margin: '8px 0' }}>
-              <div className="stop-context-line">
-                <span className="stop-context-kicker">Estimate</span>
-                <span>{estimateExplain}</span>
-              </div>
-            </div>
+            <p className="desk-detail-muted" style={{ margin: '4px 0 8px' }}>
+              {estimateExplain}
+            </p>
           )}
 
           <div className="desk-detail-actions">
@@ -414,12 +411,9 @@ export function TaskDetailSheet(props: {
         {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
 
         {estimateExplain && (
-          <div className="stop-context-strip" style={{ margin: '4px 0 8px' }}>
-            <div className="stop-context-line">
-              <span className="stop-context-kicker">Estimate</span>
-              <span>{estimateExplain}</span>
-            </div>
-          </div>
+          <p className="settings-help" style={{ margin: '2px 0 6px' }}>
+            {estimateExplain}
+          </p>
         )}
 
         <span className="settings-label">Location (optional)</span>
