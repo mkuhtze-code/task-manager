@@ -10,6 +10,7 @@ import MicButton from '@/components/MicButton';
 import { CheckIcon, ChevronIcon, CloseIcon, PlayIcon, StopIcon } from '@/components/icons';
 import { TaskInfo } from '@/components/TaskInfo';
 import { TaskConnections, type SiblingTask, type ConnectedMeeting } from '@/components/TaskConnections';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 export function TaskDetailSheet(props: {
   task: Task;
@@ -108,6 +109,8 @@ export function TaskDetailSheet(props: {
     onClose();
   }
 
+  const dialogRef = useDialogA11y(handleClose);
+
   const startDisabled = anyActive && task.status !== 'active';
   const isPane = presentation === 'pane';
   const linkedJob = task.job_id ? jobs.find((j) => j.id === task.job_id) ?? null : null;
@@ -176,7 +179,7 @@ export function TaskDetailSheet(props: {
 
   if (isPane) {
     return (
-      <div className="desk-pane-detail">
+      <div className="desk-pane-detail" ref={dialogRef} role="region" aria-label="Task detail">
         <div className="desk-detail">
           <header className="desk-detail-toolbar">
             <div className="desk-detail-toolbar-left">
@@ -371,7 +374,14 @@ export function TaskDetailSheet(props: {
 
   return (
     <div className="sheet-backdrop" onClick={handleClose}>
-      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className="capture-sheet task-detail-sheet"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Task"
+      >
         <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
           <button className="gear-btn" onClick={handleClose} aria-label="Close">
             <CloseIcon />
