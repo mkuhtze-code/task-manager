@@ -8,6 +8,7 @@ import type {
   MeetingExportReviewObservation,
 } from '@/lib/meetingExport';
 import { planCounts, resolvePlanFromReview } from '@/lib/meetingExport';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 // ── Export review ────────────────────────────────────────────────────
 // The per-export surface: what goes in, adjusted once, for THIS export
@@ -40,6 +41,7 @@ function Check({ on, label }: { on: boolean; label: string }) {
 }
 
 export default function MeetingExportReview(props: Props) {
+  const dialogRef = useDialogA11y(onCancel);
   const { state, content, transcriptProviderAvailable, onChange, onCancel, onGenerate, generating } = props;
 
   const plan: MeetingExportPlan = useMemo(() => resolvePlanFromReview(content, state), [content, state]);
@@ -104,7 +106,7 @@ export default function MeetingExportReview(props: Props) {
 
   return (
     <div className="sheet-backdrop" onClick={onCancel}>
-      <div className="meeting-export-sheet" role="dialog" aria-label="Review export" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} className="meeting-export-sheet" role="dialog" aria-modal="true" aria-label="Review export" onClick={(e) => e.stopPropagation()}>
         <div className="capture-sheet-header">
           <div>
             <div className="capture-sheet-title">Review export</div>
