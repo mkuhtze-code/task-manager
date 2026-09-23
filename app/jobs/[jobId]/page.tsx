@@ -23,6 +23,7 @@ import { BackIcon, CheckIcon, ChevronIcon, MapPinIcon } from '@/components/icons
 import JobFilesPanel from '@/components/JobFilesPanel';
 import JobObservationsPanel from '@/components/JobObservationsPanel';
 import JobSwitcher from '@/components/JobSwitcher';
+import PillReveal from '@/components/PillReveal';
 import {
   buildClusters,
   suggestEstimate,
@@ -766,7 +767,35 @@ export default function JobDetailPage() {
             <h1 className="app-title">{job ? job.name : 'Job'}</h1>
           )}
         </div>
-        <div className="app-header-right">
+        <div className="app-header-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isDesktop && job && (
+            <PillReveal label="Meetings" count={jobMeetings.length} align="end">
+              <div className="job-meetings-popover">
+                {jobMeetings.length === 0 ? (
+                  <p className="job-meetings-popover-empty">No meetings linked to this job yet.</p>
+                ) : (
+                  jobMeetings.map((m) => {
+                    const past =
+                      m.start_time != null && new Date(m.start_time).getTime() < Date.now();
+                    return (
+                      <Link
+                        key={m.id}
+                        href={`/meetings/${m.id}`}
+                        className="task-conn-node task-conn-node-meeting"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <span className="task-conn-kind">{past ? 'Past' : 'Meeting'}</span>
+                        <span className="task-conn-title">{m.text}</span>
+                        <span className="task-conn-meta mono">
+                          {fmtMeetingWindow(m.start_time, m.duration_mins)}
+                        </span>
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+            </PillReveal>
+          )}
           <GearMenu context="jobs" userId={session?.user.id ?? null} />
         </div>
       </div>
@@ -820,9 +849,7 @@ export default function JobDetailPage() {
               )}
             </div>
           )}
-
-          
-          {!isDesktop && (
+{!isDesktop && (
             <div className="job-mobile-tabs" role="tablist" aria-label="Job sections">
               <button
                 type="button"
