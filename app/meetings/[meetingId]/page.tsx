@@ -32,6 +32,7 @@ import { BackIcon, TrashIcon } from '@/components/icons';
 import { buildStorageQuota, wouldExceedQuota } from '@/lib/storageQuota';
 import { MeetingConnections } from '@/components/MeetingConnections';
 import PillReveal from '@/components/PillReveal';
+import MeetingTripPill from '@/components/MeetingTripPill';
 import JobFilesPanel from '@/components/JobFilesPanel';
 import type { Job } from '@/lib/jobTypes';
 
@@ -588,6 +589,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           marginBottom: 10,
         }}
       >
+        {session?.user?.id && (
+          <MeetingTripPill userId={session.user.id} meetingStartIso={meeting.start_time} />
+        )}
         <PillReveal label="Connections" align="start">
           <MeetingConnections
             meeting={meeting}
