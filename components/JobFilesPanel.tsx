@@ -13,6 +13,9 @@ import { PhotoImage } from '@/components/MediaRender';
 
 const UNFILED = '__unfiled__';
 
+const FILE_ACCEPT =
+  '.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.heic,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/*,audio/*';
+
 /**
  * Job-centric files with optional folders (Plans, Orders, …).
  * Meetings and Jobs both add here when a job is known.
@@ -212,7 +215,7 @@ export default function JobFilesPanel(props: {
   return (
     <section
       className={variant === 'meeting' ? 'job-files-panel job-files-panel--meeting' : 'job-files-panel'}
-      style={{ marginBottom: variant === 'job' ? 12 : 12 }}
+      style={{ marginBottom: 12 }}
       {...dropProps}
     >
       <div
@@ -263,7 +266,7 @@ export default function JobFilesPanel(props: {
               disabled={saving || capture.busy}
               onClick={() => capture.pickFile((m) => void addCaptured(m))}
             >
-              {isDesktop ? 'Upload file' : 'File'}
+              {isDesktop ? 'Upload file' : 'Files / PDF'}
             </button>
           </span>
         )}
@@ -398,7 +401,7 @@ export default function JobFilesPanel(props: {
                 color: 'var(--ink-soft)',
                 marginBottom: 10,
                 background: capture.dragOver
-                  ? 'var(--paper-2, rgba(0,0,0,0.03))'
+                  ? 'var(--paper-2, rgba(0, 0, 0, 0.03))'
                   : 'transparent',
               }}
             >
@@ -543,7 +546,7 @@ export default function JobFilesPanel(props: {
           <input
             ref={capture.fileRef}
             type="file"
-            accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,application/pdf"
+            accept={FILE_ACCEPT}
             style={{ display: 'none' }}
             onChange={capture.onFileChange}
           />
