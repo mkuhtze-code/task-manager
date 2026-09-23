@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { ChevronIcon, CloseIcon, TrashIcon } from '@/components/icons';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 type Accommodation = {
   id: string;
@@ -82,6 +83,7 @@ export default function AccommodationSheet(props: {
   onSynced: () => void;
 }) {
   const { tripId, tripStartDate, tripEndDate, onClose, onSynced } = props;
+  const dialogRef = useDialogA11y(onClose);
   const [stays, setStays] = useState<Accommodation[]>([]);
   const [adding, setAdding] = useState(false);
   const [location, setLocation] = useState('');
@@ -170,7 +172,7 @@ export default function AccommodationSheet(props: {
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Stay">
         <div className="task-detail-header">
           <div className="settings-panel-title">Where you're staying</div>
           <button className="gear-btn" onClick={onClose} aria-label="Close">
