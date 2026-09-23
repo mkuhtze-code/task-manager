@@ -1016,6 +1016,11 @@ export default function JobDetailPage() {
 
           {(isDesktop || mobileTab === 'more') && (
             <div className="job-more" style={{ marginTop: 4 }}>
+              {session?.user?.id && (
+                <section className="job-site-days-section" style={{ marginBottom: 16 }}>
+                  <JobSiteDays jobId={jobId} userId={session.user.id} />
+                </section>
+              )}
               {jobMeetings.length > 0 ? (
                 <section className="job-meetings-section" style={{ marginBottom: 12 }}>
                   <div className="job-group-label">Meetings · {jobMeetings.length}</div>
