@@ -6,8 +6,8 @@ import type { Job } from '@/lib/jobTypes';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { CloseIcon, TrashIcon } from '@/components/icons';
 import { supabase } from '@/lib/supabaseClient';
-import {
 import { useDialogA11y } from '@/hooks/useDialogA11y';
+import {
   dayIndexOnTrip,
   daysBetweenInclusive,
   localDateStr,
