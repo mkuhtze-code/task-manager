@@ -344,45 +344,61 @@ export function suggestEstimate(
 }
 
 /**
- * Human-readable basis for an estimate suggestion.
- * Client-only; does not log or persist free text beyond what the UI already shows.
- * Single path for capture, capacity, and task detail.
+ * Quiet estimate language — philosophy: speak only when it earns space.
+ *
+ * Dokkit absorbs complexity. The surface should not lecture.
+ * Default is silent; a short observation only when authority is real
+ * or the person's number meaningfully differs from learned reality.
+ *
+ * Client-only. No logging of free text.
+ * detail: 'quiet' (default) | 'full' (rare progressive disclosure)
  */
 export function explainEstimate(
   suggestion: EstimateSuggestion | null,
-  typedMins?: number | null
+  typedMins?: number | null,
+  opts?: { detail?: 'quiet' | 'full' }
 ): string | null {
   if (!suggestion) return null;
+  const detail = opts?.detail ?? 'quiet';
 
-  const conf =
-    suggestion.confidence === 'high'
-      ? 'high confidence'
-      : suggestion.confidence === 'medium'
-        ? 'medium confidence'
-        : 'low confidence';
-
-  const n = suggestion.sampleCount;
-  const finishes = `${n} timed finish${n === 1 ? '' : 'es'}`;
-
-  let basis: string;
-  if (suggestion.source === 'measured') {
-    basis = `Based on ${finishes}`;
-  } else if (suggestion.source === 'mixed') {
-    basis = `Based on ${finishes} plus how similar work is structured`;
-  } else {
-    basis = 'Based on patterns in similar work (not enough timer data yet)';
-  }
-
-  let line = `${basis} · usually about ${suggestion.suggestedMins}m · ${conf}`;
-  if (suggestion.matchedLabel) {
-    line += ` · like “${suggestion.matchedLabel}”`;
-  }
-  if (
+  const diverges =
     typedMins != null &&
     typedMins > 0 &&
-    _hasMeaningfulDivergence(typedMins, suggestion.suggestedMins)
-  ) {
-    line += ` · your ${typedMins}m differs`;
+    _hasMeaningfulDivergence(typedMins, suggestion.suggestedMins);
+
+  if (detail === 'quiet') {
+    // Weak signal — stay silent; user remains authority.
+    if (suggestion.source === 'lifecycle' && suggestion.confidence === 'low') {
+      return null;
+    }
+    // Aligned — no need to echo back.
+    if (typedMins != null && typedMins > 0 && !diverges) {
+      return null;
+    }
+    if (diverges) {
+      return `Usually ${suggestion.suggestedMins}m from similar work`;
+    }
+    // No typed mins: only high confidence whispers.
+    if (suggestion.confidence === 'high') {
+      return `Usually ${suggestion.suggestedMins}m`;
+    }
+    return null;
+  }
+
+  // Full — opt-in only. Still restrained; not a lecture.
+  const n = suggestion.sampleCount;
+  const finishes = `${n} timed finish${n === 1 ? '' : 'es'}`;
+  let basis: string;
+  if (suggestion.source === 'measured') {
+    basis = `From ${finishes}`;
+  } else if (suggestion.source === 'mixed') {
+    basis = `From ${finishes} and how similar work is structured`;
+  } else {
+    basis = 'From patterns in similar work';
+  }
+  let line = `${basis} · about ${suggestion.suggestedMins}m`;
+  if (diverges && typedMins != null) {
+    line += ` · yours is ${typedMins}m`;
   }
   return line;
 }
