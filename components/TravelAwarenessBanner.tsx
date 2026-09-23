@@ -3,76 +3,128 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-
-type ActiveTrip = { id: string; name: string; end_date: string };
+import {
+  dayIndexOnTrip,
+  daysBetweenInclusive,
+  localDateStr,
+  type ActiveTripSummary,
+} from '@/lib/travelContext';
 
 function fmtEndDate(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map((n) => parseInt(n, 10));
   const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString(undefined, { weekday: 'short' });
+  return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-// Local (not UTC) YYYY-MM-DD — matters a lot here. new Date().toISOString()
-// converts to UTC first, and in a timezone ahead of UTC (like NZ), any
-// time before local afternoon can still read as "yesterday" in UTC. That
-// was making a trip starting today register as starting tomorrow. This
-// mirrors the same helper app/page.tsx already uses for exactly this
-// reason — this file just hadn't reused it.
-function localDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+type BannerState = {
+  trip: ActiveTripSummary;
+  dayIndex: number;
+  totalDays: number;
+  stopCount: number;
+  stopLabels: string[];
+};
 
-// Deliberately its own self-contained fetch, not wired into Today's
-// existing loadEverything() — keeps this addition isolated from the
-// production data-loading path rather than tangling a new query into
-// an already-working function. userId: passed by Today so the banner can
-// skip its own getSession() round-trip; optional, so other callers (or
-// future ones) still resolve the session themselves.
+/**
+ * Surfaces the active trip on Today without leaving the day.
+ * Standalone Travel still owns the itinerary; this is awareness + a fast path in.
+ */
 export default function TravelAwarenessBanner({ userId }: { userId?: string | null }) {
   const router = useRouter();
-  const [trip, setTrip] = useState<ActiveTrip | null>(null);
+  const [state, setState] = useState<BannerState | null>(null);
 
   useEffect(() => {
     if (userId) {
-      load(userId);
+      void load(userId);
       return;
     }
     supabase.auth.getSession().then(({ data }) => {
-      const session = data.session;
-      if (session) load(session.user.id);
+      if (data.session) void load(data.session.user.id);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   async function load(uid: string) {
     const todayStr = localDateStr(new Date());
-    const { data } = await supabase
+    const { data: trip } = await supabase
       .from('trips')
-      .select('id, name, end_date')
+      .select('id, name, start_date, end_date')
       .eq('user_id', uid)
       .lte('start_date', todayStr)
       .gte('end_date', todayStr)
+      .order('start_date', { ascending: true })
       .limit(1)
       .maybeSingle();
 
-    setTrip(data);
+    if (!trip) {
+      setState(null);
+      return;
+    }
+
+    const { data: dayRow } = await supabase
+      .from('trip_days')
+      .select('id, date')
+      .eq('trip_id', trip.id)
+      .eq('date', todayStr)
+      .maybeSingle();
+
+    let stopCount = 0;
+    let stopLabels: string[] = [];
+    if (dayRow?.id) {
+      const { data: acts } = await supabase
+        .from('activities')
+        .select('text, status')
+        .eq('trip_day_id', dayRow.id)
+        .neq('status', 'done')
+        .order('order_index', { ascending: true })
+        .limit(6);
+      const list = acts || [];
+      stopCount = list.length;
+      stopLabels = list.map((a) => a.text).filter(Boolean);
+    }
+
+    setState({
+      trip: trip as ActiveTripSummary,
+      dayIndex: dayIndexOnTrip(trip.start_date, todayStr),
+      totalDays: daysBetweenInclusive(trip.start_date, trip.end_date),
+      stopCount,
+      stopLabels,
+    });
   }
 
-  if (!trip) return null;
+  if (!state) return null;
+
+  const { trip, dayIndex, totalDays, stopCount, stopLabels } = state;
+  const stopsLine =
+    stopCount === 0
+      ? 'Nothing planned for today yet'
+      : stopCount === 1
+        ? stopLabels[0]
+        : `${stopLabels[0]}${stopLabels[1] ? ` · ${stopLabels[1]}` : ''}${stopCount > 2 ? ` +${stopCount - 2}` : ''}`;
 
   return (
-    <div
-      className="header-active-strip"
-      style={{ marginBottom: 'var(--space-3)' }}
+    <button
+      type="button"
+      className="travel-aware-banner"
       onClick={() => router.push(`/travel/${trip.id}`)}
     >
-      <span className="header-active-dot" />
-      <span className="header-active-text">
-        Away in {trip.name} — back {fmtEndDate(trip.end_date)} →
+      <span className="travel-aware-banner-top">
+        <span className="header-active-dot" />
+        <span className="travel-aware-banner-title">
+          {trip.name}
+          <span className="travel-aware-banner-meta">
+            {' '}
+            · Day {dayIndex} of {totalDays}
+            {stopCount > 0 ? ` · ${stopCount} stop${stopCount === 1 ? '' : 's'}` : ''}
+          </span>
+        </span>
+        <span className="travel-aware-banner-chev" aria-hidden="true">
+          →
+        </span>
       </span>
-    </div>
+      <span className="travel-aware-banner-sub">
+        {stopsLine}
+        <span className="travel-aware-banner-until"> · back {fmtEndDate(trip.end_date)}</span>
+      </span>
+    </button>
   );
 }
