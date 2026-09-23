@@ -80,6 +80,7 @@ export default function TravelHome() {
   const { isDesktop } = useSurfaceMode();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [tripIntent, setTripIntent] = useState<'personal' | 'work'>('personal');
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -90,7 +91,7 @@ export default function TravelHome() {
 
   useEffect(() => {
     if (!isDesktop) return;
-    return registerDesktopPrimaryAction('Plan a trip', () => setCreateOpen(true));
+    return registerDesktopPrimaryAction('Plan a trip', () => openCreate());
   }, [isDesktop]);
 
   useEffect(() => {
@@ -111,9 +112,49 @@ export default function TravelHome() {
     setLoading(false);
   }
 
+  function openCreate() {
+    const today = localDateStr(new Date());
+    if (!startDate) setStartDate(today);
+    if (!endDate) {
+      const d = new Date();
+      d.setDate(d.getDate() + 2);
+      setEndDate(localDateStr(d));
+    }
+    setTripIntent('personal');
+    setError('');
+    setCreateOpen(true);
+  }
+
   function closeCreate() {
     setCreateOpen(false);
     setError('');
+  }
+
+  function applyDatePreset(preset: 'today' | 'weekend' | 'week') {
+    const now = new Date();
+    const today = localDateStr(now);
+    if (preset === 'today') {
+      setStartDate(today);
+      setEndDate(today);
+      return;
+    }
+    if (preset === 'weekend') {
+      // Next Sat–Sun (or this weekend if still before Sunday)
+      const day = now.getDay(); // 0 Sun
+      const toSat = day === 0 ? -1 : 6 - day;
+      const sat = new Date(now);
+      sat.setDate(now.getDate() + toSat);
+      const sun = new Date(sat);
+      sun.setDate(sat.getDate() + 1);
+      setStartDate(localDateStr(sat));
+      setEndDate(localDateStr(sun));
+      return;
+    }
+    // Next 7 days from today
+    const end = new Date(now);
+    end.setDate(now.getDate() + 6);
+    setStartDate(today);
+    setEndDate(localDateStr(end));
   }
 
   async function createTrip() {
@@ -151,11 +192,13 @@ export default function TravelHome() {
     }
 
     const dayDates = daysBetween(startDate, endDate);
+    const dayStart = tripIntent === 'work' ? '07:30' : '08:00';
+    const dayEnd = tripIntent === 'work' ? '17:00' : '20:00';
     const dayRows = dayDates.map((date) => ({
       trip_id: tripRow.id,
       date,
-      day_start: '08:00',
-      day_end: '20:00',
+      day_start: dayStart,
+      day_end: dayEnd,
     }));
     const { error: daysError } = await supabase.from('trip_days').insert(dayRows);
 
@@ -169,6 +212,7 @@ export default function TravelHome() {
     setName('');
     setStartDate('');
     setEndDate('');
+    setTripIntent('personal');
     setCreateOpen(false);
     router.push(`/travel/${tripRow.id}`);
   }
@@ -227,7 +271,7 @@ export default function TravelHome() {
           <div className="empty-state-sub">
             Add a trip, block out the days, and Dokkit works out what actually fits.
           </div>
-          <button className="btn btn-steel" onClick={() => setCreateOpen(true)}>
+          <button className="btn btn-steel" onClick={() => openCreate()}>
             Plan a trip
           </button>
         </div>
@@ -359,50 +403,113 @@ export default function TravelHome() {
       )}
 
       {createOpen && (
-        <div className="capture-sheet">
-          <div className="task-detail-header" style={{ marginBottom: 0 }}>
-            <div className="settings-panel-title">New trip</div>
-            <button className="gear-btn" onClick={closeCreate} aria-label="Close">
-              <CloseIcon />
+        <div className="sheet-backdrop" onClick={closeCreate}>
+          <div className="capture-sheet new-trip-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="task-detail-header" style={{ marginBottom: 0 }}>
+              <div className="settings-panel-title">New trip</div>
+              <button className="gear-btn" onClick={closeCreate} aria-label="Close">
+                <CloseIcon />
+              </button>
+            </div>
+
+            <p className="job-detail-kicker" style={{ marginBottom: 4 }}>
+              {tripIntent === 'work' ? 'Work trip' : 'Personal trip'}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px', lineHeight: 1.4 }}>
+              {tripIntent === 'work'
+                ? 'Site days and job stops — add work sites after you create.'
+                : 'Places and days — add stops when you are ready.'}
+            </p>
+
+            <span className="settings-label">What kind?</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              <button
+                type="button"
+                className={tripIntent === 'personal' ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+                onClick={() => setTripIntent('personal')}
+              >
+                Personal
+              </button>
+              <button
+                type="button"
+                className={tripIntent === 'work' ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+                onClick={() => setTripIntent('work')}
+              >
+                Work
+              </button>
+            </div>
+
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={
+                tripIntent === 'work' ? 'e.g. Kinloch site week' : 'e.g. Gold Coast'
+              }
+              autoFocus
+            />
+
+            <span className="settings-label">Dates</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              <button type="button" className="meeting-pill" onClick={() => applyDatePreset('today')}>
+                Today
+              </button>
+              <button type="button" className="meeting-pill" onClick={() => applyDatePreset('weekend')}>
+                Weekend
+              </button>
+              <button type="button" className="meeting-pill" onClick={() => applyDatePreset('week')}>
+                7 days
+              </button>
+            </div>
+            <div className="capture-row">
+              <div style={{ flex: 1 }}>
+                <span className="settings-label">Start</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <span className="settings-label">End</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+
+            {startDate && endDate && endDate >= startDate && (
+              <div className="stop-context-strip" style={{ marginTop: 4 }}>
+                <div className="stop-context-line">
+                  <span className="stop-context-kicker">Ready</span>
+                  <span>
+                    {daysBetween(startDate, endDate).length} day
+                    {daysBetween(startDate, endDate).length === 1 ? '' : 's'}
+                    {tripIntent === 'work'
+                      ? ' · work-day hours (07:30–17:00)'
+                      : ' · open hours (08:00–20:00)'}
+                    {' · add stops next'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+            <button className="btn btn-steel" onClick={createTrip} disabled={saving}>
+              {saving ? 'Creating…' : 'Create trip'}
             </button>
           </div>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Trip name (e.g. Gold Coast)"
-          />
-          <div className="capture-row">
-            <div style={{ flex: 1 }}>
-              <span className="settings-label">Start</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={{ width: '100%' }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <span className="settings-label">End</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                style={{ width: '100%' }}
-              />
-            </div>
-          </div>
-          {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-          <button className="btn btn-steel" onClick={createTrip} disabled={saving}>
-            {saving ? 'Creating…' : 'Create trip'}
-          </button>
         </div>
       )}
 
       <SurfaceNav
         active="travel"
         onNavigate={(s) => recordEvent(s, true)}
-        onAdd={!createOpen && trips.length > 0 ? () => setCreateOpen(true) : undefined}
+        onAdd={!createOpen && trips.length > 0 ? () => openCreate() : undefined}
         addLabel="New trip"
       />
     </div>
