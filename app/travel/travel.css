@@ -386,3 +386,40 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .surface-nav {
   background: rgba(var(--steel-rgb, 30, 107, 230), 0.1);
   vertical-align: middle;
 }
+
+
+/* Stop detail card — mobile-first context */
+.stop-detail-sheet {
+  gap: 8px;
+}
+.stop-context-strip {
+  margin: 4px 0 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(var(--glass-rgb, 250, 250, 248), 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stop-context-line {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.35;
+}
+.stop-context-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.stop-context-warn {
+  color: var(--hazard-text, var(--hazard));
+}
+.stop-context-warn .stop-context-kicker {
+  color: var(--hazard-text, var(--hazard));
+}
