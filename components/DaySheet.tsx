@@ -1,6 +1,7 @@
 'use client';
 
 import { CloseIcon, ChevronIcon, BedIcon, MapPinIcon, CompassIcon } from '@/components/icons';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
@@ -82,13 +83,18 @@ export default function DaySheet(props: DaySheetProps) {
   } = props;
 
   const selected = tripDays.find((d) => d.id === selectedDayId);
+  const dialogRef = useDialogA11y(onClose);
   const label = selected ? fmtDayLabel(selected.date) : null;
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="capture-sheet task-detail-sheet day-sheet"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Day shape"
       >
         <div className="task-detail-header">
           <div className="settings-panel-title">
