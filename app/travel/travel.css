@@ -423,3 +423,36 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .surface-nav {
 .stop-context-warn .stop-context-kicker {
   color: var(--hazard-text, var(--hazard));
 }
+
+
+/* Meetings falling on this trip day */
+.trip-day-meetings {
+  margin: 8px 0 12px;
+}
+.trip-day-meetings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.trip-day-meeting-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  text-decoration: none;
+  color: inherit;
+}
+.trip-day-meeting-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.trip-day-meeting-meta {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
