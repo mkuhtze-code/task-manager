@@ -578,7 +578,16 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         )}
       </div>
 
-      <div className="meeting-connections-bar" style={{ padding: '0 var(--space-page, 16px)', marginBottom: 8 }}>
+      <div
+        className="meeting-pill-bar"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 8,
+          padding: '0 var(--space-page, 16px)',
+          marginBottom: 10,
+        }}
+      >
         <PillReveal label="Connections" align="start">
           <MeetingConnections
             meeting={meeting}
@@ -590,11 +599,17 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             linking={linkingJob}
           />
         </PillReveal>
+        {meeting?.job_id && session?.user?.id && (
+          <PillReveal label="Job files" align="start" panelClassName="pill-reveal-panel--wide">
+            <JobFilesPanel
+              jobId={meeting.job_id}
+              userId={session.user.id}
+              variant="meeting"
+              defaultCollapsed={false}
+            />
+          </PillReveal>
+        )}
       </div>
-
-      {meeting?.job_id && session?.user?.id && (
-        <JobFilesPanel jobId={meeting.job_id} userId={session.user.id} variant="meeting" />
-      )}
 
 
       <MeetingExport
