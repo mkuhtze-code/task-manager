@@ -3,6 +3,7 @@
 import '../travel.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { authedFetch } from '@/lib/authedFetch';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
@@ -163,65 +164,165 @@ function parseMins(raw: string): number | null {
 function ActivityDetailSheet(props: {
   activity: Activity;
   tripDays: TripDay[];
+  jobs: Job[];
+  dayLabel: string;
+  dayIndex: number;
+  dayCount: number;
+  driveFromPrevMins: number | null;
+  driveFromPrevLabel: string | null;
+  conflict: boolean;
+  dayFitLabel: string | null;
   onClose: () => void;
-  onSave: (id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null, timeType: 'flexible' | 'fixed', fixedTime: string | null) => void;
+  onSave: (payload: {
+    id: string;
+    text: string;
+    estimateMins: number;
+    location: string;
+    lat: number | null;
+    lng: number | null;
+    timeType: 'flexible' | 'fixed';
+    fixedTime: string | null;
+    stopKind: StopKind;
+    presence: StopPresence;
+    jobId: string | null;
+  }) => void;
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onMoveToDay: (id: string, newTripDayId: string) => void;
 }) {
-  const { activity: a, tripDays, onClose, onSave, onComplete, onDelete, onMoveToDay } = props;
+  const {
+    activity: a,
+    tripDays,
+    jobs,
+    dayLabel,
+    dayIndex,
+    dayCount,
+    driveFromPrevMins,
+    driveFromPrevLabel,
+    conflict,
+    dayFitLabel,
+    onClose,
+    onSave,
+    onComplete,
+    onDelete,
+    onMoveToDay,
+  } = props;
+
   const [text, setText] = useState(a.text);
   const [estimateStr, setEstimateStr] = useState(fmtMins(a.estimate_mins));
   const [location, setLocation] = useState(a.location_text || '');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     a.lat != null && a.lng != null ? { lat: a.lat, lng: a.lng } : null
   );
-  const [timeType, setTimeType] = useState<'flexible' | 'fixed'>(a.time_type || 'flexible');
+  const [stopKind, setStopKind] = useState<StopKind>((a.stop_kind as StopKind) || 'leisure');
+  const [presence, setPresence] = useState<StopPresence>((a.presence as StopPresence) || 'duration');
+  const [jobId, setJobId] = useState<string | null>(a.job_id ?? null);
   const [fixedTime, setFixedTime] = useState(a.fixed_time || '');
   const [moveOpen, setMoveOpen] = useState(false);
   const [error, setError] = useState('');
 
+  const linkedJob = jobId ? jobs.find((j) => j.id === jobId) : null;
+
   function commit() {
-    const est = parseMins(estimateStr);
-    if (est === null || est < 0) {
-      setError('Could not read a time — try 15m or 1.5h');
+    let durationMins: number | null = null;
+    if (presence === 'duration' || presence === 'fixed') {
+      durationMins = parseMins(estimateStr);
+      if (durationMins === null || durationMins < 0) {
+        setError('Could not read a time — try 15m or 1.5h');
+        return;
+      }
+    }
+    if (presence === 'fixed' && !fixedTime) {
+      setError('Set a time for this stop');
       return;
     }
-    if (timeType === 'fixed' && !fixedTime) {
-      setError('Set a time for this fixed commitment');
-      return;
+
+    // Day window defaults when editing without selected day times on hand
+    const dayStart = 8 * 60;
+    const dayEnd = 20 * 60;
+    const schedule = presenceToSchedule({
+      presence,
+      durationMins,
+      fixedTime: fixedTime || null,
+      dayStartMins: dayStart,
+      dayEndMins: dayEnd,
+    });
+
+    let loc = location.trim();
+    let lat = coords?.lat ?? null;
+    let lng = coords?.lng ?? null;
+    if (stopKind === 'work' && jobId) {
+      const job = jobs.find((j) => j.id === jobId);
+      if (job) {
+        if (!loc && job.location_text) loc = job.location_text;
+        if (lat == null && job.lat != null) {
+          lat = job.lat;
+          lng = job.lng;
+        }
+      }
     }
+
     setError('');
-    onSave(
-      a.id,
-      text.trim() || a.text,
-      est,
-      location.trim(),
-      coords?.lat ?? null,
-      coords?.lng ?? null,
-      timeType,
-      timeType === 'fixed' ? fixedTime : null
-    );
+    onSave({
+      id: a.id,
+      text: text.trim() || a.text,
+      estimateMins: schedule.estimate_mins,
+      location: loc,
+      lat,
+      lng,
+      timeType: schedule.time_type,
+      fixedTime: schedule.fixed_time,
+      stopKind,
+      presence,
+      jobId: stopKind === 'work' ? jobId : null,
+    });
   }
 
   function handleDeleteClick() {
-    if (window.confirm(`Delete "${a.text}"? This can't be undone.`)) {
+    if (window.confirm(`Remove “${a.text}” from this day?`)) {
       onDelete(a.id);
       onClose();
     }
   }
 
   return (
-    <div className="sheet-backdrop" onClick={() => { commit(); onClose(); }}>
-      <div className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="sheet-backdrop"
+      onClick={() => {
+        commit();
+        onClose();
+      }}
+    >
+      <div className="capture-sheet task-detail-sheet stop-detail-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
           <button
             className="gear-btn"
-            onClick={() => { commit(); onClose(); }}
+            onClick={() => {
+              commit();
+              onClose();
+            }}
             aria-label="Close"
           >
             <CloseIcon />
           </button>
+        </div>
+
+        <span className="settings-label">Kind of stop</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+          {STOP_KIND_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={stopKind === opt.value ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+              onClick={() => {
+                setStopKind(opt.value);
+                if (opt.value === 'work' && presence === 'duration') setPresence('all_day');
+                if (opt.value !== 'work') setJobId(null);
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         <input
@@ -230,6 +331,7 @@ function ActivityDetailSheet(props: {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onBlur={commit}
+          placeholder="Stop name"
         />
 
         <LocationAutocomplete
@@ -241,51 +343,159 @@ function ActivityDetailSheet(props: {
             setCoords({ lat: result.lat, lng: result.lng });
           }}
         />
-        {location.length > 0 && !coords && (
-          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
-            Pick a suggestion from the list so drive time can be calculated for this stop.
-          </p>
+        <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '0 0 8px' }}>
+          {coords ? 'Mapped — drives can be calculated' : 'Not mapped yet — pick a place suggestion'}
+        </p>
+
+        {stopKind === 'work' && (
+          <div style={{ marginBottom: 12 }}>
+            <span className="settings-label">Job</span>
+            <select
+              value={jobId || ''}
+              onChange={(e) => {
+                const id = e.target.value || null;
+                setJobId(id);
+                const job = jobs.find((j) => j.id === id);
+                if (job) {
+                  if (!text.trim() || text === a.text) setText(job.name);
+                  if (job.location_text) {
+                    setLocation(job.location_text);
+                    if (job.lat != null && job.lng != null) {
+                      setCoords({ lat: job.lat, lng: job.lng });
+                    }
+                  }
+                }
+              }}
+              style={{
+                width: '100%',
+                marginTop: 4,
+                marginBottom: 8,
+                padding: '8px 10px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--line-strong)',
+                background: 'var(--paper)',
+                fontSize: 14,
+              }}
+            >
+              <option value="">No job linked</option>
+              {jobs.map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.name}
+                  {j.client ? ` · ${j.client}` : ''}
+                </option>
+              ))}
+            </select>
+            {linkedJob && (
+              <Link
+                href={`/jobs/${linkedJob.id}`}
+                className="meeting-pill meeting-pill--primary"
+                style={{ display: 'inline-flex', textDecoration: 'none' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Open job →
+              </Link>
+            )}
+            <p style={{ fontSize: 11, color: 'var(--ink-soft)', margin: '8px 0 0' }}>
+              Evidence and files live on the job — this stop is where you are.
+            </p>
+          </div>
         )}
 
-        <div className="capture-row">
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span className="settings-label">About</span>
-            <input type="text" value={estimateStr} onChange={(e) => setEstimateStr(e.target.value)} onBlur={commit} />
-          </div>
-          <button
-            className={timeType === 'fixed' ? 'capture-fixed-toggle active' : 'capture-fixed-toggle'}
-            onClick={() => setTimeType(timeType === 'fixed' ? 'flexible' : 'fixed')}
-            aria-pressed={timeType === 'fixed'}
-          >
-            {timeType === 'fixed' ? 'Fixed time' : 'Flexible'}
-          </button>
+        <span className="settings-label">When are you there?</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+          {PRESENCE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={presence === opt.value ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+              onClick={() => setPresence(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
 
-        {timeType === 'fixed' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {(presence === 'duration' || presence === 'fixed') && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+            <span className="settings-label">About</span>
+            <input
+              type="text"
+              value={estimateStr}
+              onChange={(e) => setEstimateStr(e.target.value)}
+              onBlur={commit}
+              placeholder="30m or 1.5h"
+            />
+          </div>
+        )}
+        {presence === 'fixed' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
             <span className="settings-label">At</span>
-            <input type="time" value={fixedTime} onChange={(e) => setFixedTime(e.target.value)} onBlur={commit} />
+            <input
+              type="time"
+              value={fixedTime}
+              onChange={(e) => setFixedTime(e.target.value)}
+              onBlur={commit}
+            />
           </div>
         )}
 
-        {a.drive_mins_to_next > 0 && (
-          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
-            Drive to next stop: <span className="mono" style={{ fontWeight: 700 }}>{fmtMins(a.drive_mins_to_next)}</span> (calculated)
-          </p>
+        {/* Day context / intelligence */}
+        <div className="stop-context-strip">
+          <div className="stop-context-line">
+            <span className="stop-context-kicker">This day</span>
+            <span>
+              {dayLabel}
+              {dayCount > 1 ? ` · Day ${dayIndex} of ${dayCount}` : ''}
+            </span>
+          </div>
+          {(driveFromPrevMins != null && driveFromPrevMins > 0) || a.drive_mins_to_next > 0 ? (
+            <div className="stop-context-line">
+              <span className="stop-context-kicker">Route</span>
+              <span>
+                {driveFromPrevMins != null && driveFromPrevMins > 0
+                  ? `${fmtMins(driveFromPrevMins)} from ${driveFromPrevLabel || 'previous'}`
+                  : null}
+                {driveFromPrevMins != null && driveFromPrevMins > 0 && a.drive_mins_to_next > 0
+                  ? ' · '
+                  : null}
+                {a.drive_mins_to_next > 0 ? `${fmtMins(a.drive_mins_to_next)} to next` : null}
+              </span>
+            </div>
+          ) : null}
+          {dayFitLabel && (
+            <div className="stop-context-line">
+              <span className="stop-context-kicker">Fit</span>
+              <span>{dayFitLabel}</span>
+            </div>
+          )}
+          {conflict && (
+            <div className="stop-context-line stop-context-warn">
+              <span className="stop-context-kicker">Conflict</span>
+              <span>Won&apos;t make this time with the current order</span>
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>
         )}
-        {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
 
         <button
-          className="btn btn-ghost"
+          className="btn btn-steel"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
-            alignSelf: 'flex-start',
+            alignSelf: 'stretch',
+            justifyContent: 'center',
+            marginTop: 4,
           }}
-          onClick={() => { onComplete(a.id); onClose(); }}
+          onClick={() => {
+            onComplete(a.id);
+            onClose();
+          }}
         >
-          <FitCheckIcon /> Mark complete
+          <FitCheckIcon /> Done here
         </button>
 
         {tripDays.length > 1 && (
@@ -300,18 +510,23 @@ function ActivityDetailSheet(props: {
             </button>
             {moveOpen && (
               <div className="move-day-list">
-                {tripDays.filter((d) => d.id !== a.trip_day_id).map((d) => {
-                  const label = fmtDayLabel(d.date);
-                  return (
-                    <button
-                      key={d.id}
-                      className="move-day-option"
-                      onClick={() => { onMoveToDay(a.id, d.id); onClose(); }}
-                    >
-                      {label.weekday}, {label.date}
-                    </button>
-                  );
-                })}
+                {tripDays
+                  .filter((d) => d.id !== a.trip_day_id)
+                  .map((d) => {
+                    const label = fmtDayLabel(d.date);
+                    return (
+                      <button
+                        key={d.id}
+                        className="move-day-option"
+                        onClick={() => {
+                          onMoveToDay(a.id, d.id);
+                          onClose();
+                        }}
+                      >
+                        {label.weekday}, {label.date}
+                      </button>
+                    );
+                  })}
               </div>
             )}
           </>
@@ -320,10 +535,16 @@ function ActivityDetailSheet(props: {
         <div className="detail-delete">
           <button
             className="btn-text"
-            style={{ color: 'var(--danger-text, var(--danger))', display: 'inline-flex', alignItems: 'center', gap: 6, padding: 0 }}
+            style={{
+              color: 'var(--danger-text, var(--danger))',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: 0,
+            }}
             onClick={handleDeleteClick}
           >
-            <TrashIcon /> Delete stop
+            <TrashIcon /> Remove stop
           </button>
         </div>
       </div>
@@ -593,17 +814,58 @@ export default function TripDayView() {
     setCaptureJobId(null);
   }
 
-  async function updateActivity(id: string, text: string, estimateMins: number, location: string, lat: number | null, lng: number | null, timeType: 'flexible' | 'fixed', fixedTime: string | null) {
+  async function updateActivity(payload: {
+    id: string;
+    text: string;
+    estimateMins: number;
+    location: string;
+    lat: number | null;
+    lng: number | null;
+    timeType: 'flexible' | 'fixed';
+    fixedTime: string | null;
+    stopKind: StopKind;
+    presence: StopPresence;
+    jobId: string | null;
+  }) {
+    const { id, text, estimateMins, location, lat, lng, timeType, fixedTime, stopKind, presence, jobId } =
+      payload;
     const { error } = await supabase
       .from('activities')
-      .update({ text, estimate_mins: estimateMins, location_text: location || null, lat, lng, time_type: timeType, fixed_time: fixedTime })
+      .update({
+        text,
+        estimate_mins: estimateMins,
+        location_text: location || null,
+        lat,
+        lng,
+        time_type: timeType,
+        fixed_time: fixedTime,
+        stop_kind: stopKind,
+        presence,
+        job_id: jobId,
+      })
       .eq('id', id);
     if (error) {
       alert('Could not save the stop: ' + error.message);
       return;
     }
     setActivities((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, text, estimate_mins: estimateMins, location_text: location || null, lat, lng, time_type: timeType, fixed_time: fixedTime } : a))
+      prev.map((row) =>
+        row.id === id
+          ? {
+              ...row,
+              text,
+              estimate_mins: estimateMins,
+              location_text: location || null,
+              lat,
+              lng,
+              time_type: timeType,
+              fixed_time: fixedTime,
+              stop_kind: stopKind,
+              presence,
+              job_id: jobId,
+            }
+          : row
+      )
     );
     recalculateDay();
   }
@@ -1313,6 +1575,33 @@ export default function TripDayView() {
         <ActivityDetailSheet
           activity={openActivity}
           tripDays={tripDays}
+          jobs={jobs}
+          dayLabel={
+            selectedDay
+              ? `${fmtDayLabel(selectedDay.date).weekday} ${fmtDayLabel(selectedDay.date).date}`
+              : 'This day'
+          }
+          dayIndex={selectedDayIndex >= 0 ? selectedDayIndex + 1 : 1}
+          dayCount={tripDays.length}
+          driveFromPrevMins={(() => {
+            const legIn = legs.find((l) => l.toId === openActivity.id);
+            return legIn && legIn.directMins > 0 ? legIn.directMins : null;
+          })()}
+          driveFromPrevLabel={(() => {
+            const legIn = legs.find((l) => l.toId === openActivity.id);
+            if (!legIn) return null;
+            if (legIn.fromId == null) return selectedDay?.base_location_text || 'stay';
+            const prev = activities.find((x) => x.id === legIn.fromId);
+            return prev?.location_text || prev?.text || 'previous';
+          })()}
+          conflict={!!fixedTimeConflicts[openActivity.id]}
+          dayFitLabel={
+            activities.length > 0 && minutesLeftToday > 0
+              ? overloaded
+                ? `Over by ${fmtMins(-spareMins)}`
+                : `Fits · ${fmtMins(spareMins)} spare`
+              : null
+          }
           onClose={() => setOpenActivityId(null)}
           onSave={updateActivity}
           onComplete={completeActivity}
