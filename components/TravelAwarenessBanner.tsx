@@ -27,6 +27,7 @@ type BannerState = {
 /**
  * Surfaces the active trip on Today without leaving the day.
  * Standalone Travel still owns the itinerary; this is awareness + a fast path in.
+ * Queries are always scoped to the authenticated user_id (RLS + explicit filter).
  */
 export default function TravelAwarenessBanner({ userId }: { userId?: string | null }) {
   const router = useRouter();
@@ -72,14 +73,19 @@ export default function TravelAwarenessBanner({ userId }: { userId?: string | nu
     if (dayRow?.id) {
       const { data: acts } = await supabase
         .from('activities')
-        .select('text, status')
+        .select('text, status, presence, stop_kind')
         .eq('trip_day_id', dayRow.id)
+        .eq('user_id', uid)
         .neq('status', 'done')
         .order('order_index', { ascending: true })
         .limit(6);
       const list = acts || [];
       stopCount = list.length;
       stopLabels = list.map((a) => a.text).filter(Boolean);
+      const allDay = list.some((a) => a.presence === 'all_day');
+      const workHours = list.some((a) => a.presence === 'work_hours');
+      if (allDay) stopLabels = ['On site all day', ...stopLabels.slice(0, 4)];
+      else if (workHours) stopLabels = ['Work hours on site', ...stopLabels.slice(0, 4)];
     }
 
     setState({
