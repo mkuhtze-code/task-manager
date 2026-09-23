@@ -436,7 +436,7 @@ export default function MeetingExport(props: Props) {
 
       {flow.kind === 'missing' && (
         <div className="sheet-backdrop">
-          <div className="meeting-export-sheet" role="dialog" aria-label="Missing media">
+          <div className="meeting-export-sheet" role="dialog" aria-modal="true" aria-label="Missing media">
             <div className="capture-sheet-header">
               <div>
                 <div className="capture-sheet-title">Some evidence is missing</div>
@@ -473,7 +473,7 @@ export default function MeetingExport(props: Props) {
 
       {flow.kind === 'ready' && (
         <div className="sheet-backdrop">
-          <div className="meeting-export-sheet" role="dialog" aria-label="Export ready">
+          <div className="meeting-export-sheet" role="dialog" aria-modal="true" aria-label="Export ready">
             <div className="capture-sheet-header">
               <div>
                 <div className="capture-sheet-title">Export ready</div>
