@@ -1,0 +1,107 @@
+/* Pill → overlay panel (Jobs meetings, Meeting connections) */
+
+.pill-reveal {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pill-reveal-count {
+  margin-left: 6px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.pill-reveal-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 90;
+  min-width: min(320px, 92vw);
+  max-width: min(420px, 94vw);
+  max-height: min(56vh, 440px);
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.14);
+}
+
+.pill-reveal-panel.align-end {
+  left: auto;
+  right: 0;
+}
+
+.pill-reveal-panel .task-connections,
+.pill-reveal-panel .job-meetings-popover {
+  margin: 0;
+  border: none;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.job-meetings-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.job-meetings-popover-empty {
+  font-size: 13px;
+  color: var(--ink-faint);
+  margin: 0;
+  padding: 8px 4px;
+}
+
+.job-meetings-popover a.task-conn-node {
+  text-decoration: none;
+}
+
+/* Desktop job: library owns the right column; meetings only via pill */
+html[data-surface='desktop'] .app-shell.desk-job-detail > .job-library {
+  grid-column: 2;
+  grid-row: 3;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5);
+  border-top: none;
+  margin: 0;
+  background: var(--paper);
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail.has-desk-detail > .job-library {
+  display: none;
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail > .job-more {
+  display: none;
+}
+
+html[data-surface='desktop'] .app-shell.desk-job-detail > .job-desktop-toolbar {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 var(--space-5) 8px;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  background: rgba(var(--glass-rgb), 0.5);
+}
+
+/* Observations: calmer list on desktop */
+html[data-surface='desktop'] .job-observations-panel .job-obs-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+html[data-surface='desktop'] .job-observations-panel > button.job-group-label {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
