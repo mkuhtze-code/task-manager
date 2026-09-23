@@ -42,6 +42,7 @@ import {
   type StopKind,
   type StopPresence,
 } from '@/lib/travelStopTypes';
+import { computeTravelPresenceImpact } from '@/lib/travelPresence';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 
 type Trip = {
@@ -595,6 +596,7 @@ export default function TripDayView() {
 
     const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
   const [daySheetOpen, setDaySheetOpen] = useState(false);
+  const [dayMeetingCount, setDayMeetingCount] = useState(0);
   const dayStripRef = useRef<HTMLDivElement | null>(null);
     const swipeRef = useRef<{ x: number; y: number; active: boolean } | null>(null);
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
@@ -1185,6 +1187,32 @@ export default function TripDayView() {
     [sortedActivities, dayStartMinutes]
   );
 
+
+  // Meetings on selected trip day (user-scoped).
+  useEffect(() => {
+    if (!session?.user?.id || !selectedDay?.date) {
+      setDayMeetingCount(0);
+      return;
+    }
+    const uid = session.user.id;
+    const dateStr = selectedDay.date;
+    let cancelled = false;
+    void (async () => {
+      const dayStart = `${dateStr}T00:00:00`;
+      const dayEnd = `${dateStr}T23:59:59.999`;
+      const { count } = await supabase
+        .from('meetings')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', uid)
+        .gte('start_time', dayStart)
+        .lte('start_time', dayEnd);
+      if (!cancelled) setDayMeetingCount(count ?? 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id, selectedDay?.date]);
+
   const openActivity = openActivityId ? activities.find((a) => a.id === openActivityId) || null : null;
   const orderedIds = activities.map((a) => a.id);
 
@@ -1680,6 +1708,24 @@ export default function TripDayView() {
           isToday={isToday}
           nowPercent={nowPercent}
           planWidthPercent={planWidthPercent}
+          presence={(() => {
+            const impact = computeTravelPresenceImpact(
+              activities,
+              minutesLeftToday > 0 ? minutesLeftToday : 480,
+              480
+            );
+            return {
+              mode: impact.mode,
+              workStopCount: impact.workStopCount,
+              totalStops: activities.filter((a) => (a.status || 'pending') !== 'done').length,
+              summaryLabel: impact.summaryLabel,
+            };
+          })()}
+          stayLabel={
+            selectedDay.base_location_text ||
+            (selectedDay.base_lat != null ? 'Stay mapped' : null)
+          }
+          meetingCount={dayMeetingCount}
           hasRoute={activities.some((a) => a.lat != null) || (selectedDay.base_lat != null)}
           sortMode={travelSortMode}
           onChangeSortMode={changeSortMode}
