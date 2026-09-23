@@ -24,6 +24,7 @@ import JobFilesPanel from '@/components/JobFilesPanel';
 import JobObservationsPanel from '@/components/JobObservationsPanel';
 import JobSwitcher from '@/components/JobSwitcher';
 import PillReveal from '@/components/PillReveal';
+import JobTripPill from '@/components/JobTripPill';
 import {
   buildClusters,
   suggestEstimate,
@@ -768,6 +769,9 @@ export default function JobDetailPage() {
           )}
         </div>
         <div className="app-header-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {session?.user?.id && (
+            <JobTripPill userId={session.user.id} />
+          )}
           {isDesktop && job && (
             <PillReveal label="Meetings" count={jobMeetings.length} align="end">
               <div className="job-meetings-popover">
