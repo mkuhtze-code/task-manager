@@ -59,13 +59,17 @@
   text-decoration: none;
 }
 
-/* Desktop job: library owns the right column; meetings only via pill */
+/* Desktop job: observations + files own the right column */
+html[data-surface='desktop'] .app-shell.desk-job-detail {
+  grid-template-columns: minmax(300px, 38%) minmax(0, 1fr);
+}
+
 html[data-surface='desktop'] .app-shell.desk-job-detail > .job-library {
   grid-column: 2;
   grid-row: 3;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-5) var(--space-6);
   border-top: none;
   margin: 0;
   background: var(--paper);
@@ -75,33 +79,36 @@ html[data-surface='desktop'] .app-shell.desk-job-detail.has-desk-detail > .job-l
   display: none;
 }
 
+/* Permanent meetings strip not needed on desktop — use header pill */
 html[data-surface='desktop'] .app-shell.desk-job-detail > .job-more {
   display: none;
 }
 
-html[data-surface='desktop'] .app-shell.desk-job-detail > .job-desktop-toolbar {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 0 var(--space-5) 8px;
-  margin: 0;
-  border-bottom: 1px solid var(--line);
-  background: rgba(var(--glass-rgb), 0.5);
+/* Prefer library over empty-state placeholder text */
+html[data-surface='desktop']
+  .app-shell.desk-job-detail:not(.has-desk-detail):has(> .job-library)::after {
+  display: none;
 }
 
-/* Observations: calmer list on desktop */
+/* Observations: quieter, more editorial */
+html[data-surface='desktop'] .job-observations-panel {
+  margin-bottom: 20px;
+}
+
+html[data-surface='desktop'] .job-observations-panel > button.job-group-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
 html[data-surface='desktop'] .job-observations-panel .job-obs-photo {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-html[data-surface='desktop'] .job-observations-panel > button.job-group-label {
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
+html[data-surface='desktop'] .job-files-panel {
+  margin-top: 8px;
 }
