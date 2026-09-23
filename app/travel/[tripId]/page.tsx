@@ -360,11 +360,6 @@ export default function TripDayView() {
 
     const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
   const [daySheetOpen, setDaySheetOpen] = useState(false);
-
-  useEffect(() => {
-    if (!isDesktop) return;
-    return registerDesktopPrimaryAction('Add stop', () => setCaptureOpen(true));
-  }, [isDesktop]);
   const dayStripRef = useRef<HTMLDivElement | null>(null);
     const swipeRef = useRef<{ x: number; y: number; active: boolean } | null>(null);
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
@@ -877,7 +872,7 @@ export default function TripDayView() {
           </button>
           <GearMenu context="travel" userId={session?.user.id ?? null} />
         </div>
-      </div>
+            </div>
 
       {tripDays.length > 0 && (
         <div className="trip-day-strip" ref={dayStripRef} role="tablist" aria-label="Trip days">
@@ -908,7 +903,6 @@ export default function TripDayView() {
       )}
 
       {selectedDay && (
-        <div className="trip-day-main">
         <button
           className="day-head"
           onClick={() => setDaySheetOpen(true)}
@@ -1148,7 +1142,6 @@ export default function TripDayView() {
         />
       )}
 
-        </div>
       {accommodationSheetOpen && (
         <AccommodationSheet
           tripId={tripId}
