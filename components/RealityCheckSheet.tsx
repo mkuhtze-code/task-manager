@@ -8,6 +8,7 @@ import {
   type RealityUpdate,
 } from '@/lib/realityCapture';
 import { CloseIcon } from '@/components/icons';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 type Props = {
   tasks: Task[];
@@ -28,6 +29,7 @@ const OUTCOMES: { key: RealityOutcome; label: string }[] = [
  * Default outcome for every task is Carry. Language is non-judgemental.
  */
 export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
+  const dialogRef = useDialogA11y(onClose);
   const initial = useMemo(() => {
     const map: Record<string, RealityOutcome> = {};
     for (const t of tasks) map[t.id] = 'carried';
@@ -67,13 +69,15 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="capture-sheet task-detail-sheet"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="Reality check"
+        aria-modal="true"
+        aria-labelledby="reality-check-title"
       >
         <div className="task-detail-header">
-          <div className="settings-panel-title">Reality check</div>
+          <div className="settings-panel-title" id="reality-check-title">Reality check</div>
           <button className="gear-btn" onClick={onClose} aria-label="Close" type="button">
             <CloseIcon />
           </button>
