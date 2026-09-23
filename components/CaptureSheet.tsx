@@ -11,6 +11,7 @@ import { oneShotGate } from '@/lib/unifiedInput/oneShot';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { MapPinIcon } from '@/components/icons';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 export function CaptureSheet(props: {
   taskText: string;
@@ -58,6 +59,7 @@ export function CaptureSheet(props: {
     thought, intendedTime, locationResolution, declinedResolution, onConfirmResolution, onDeclineResolution,
     confirmedJobId = null, durationExplain = null, error, onClose,
   } = props;
+  const dialogRef = useDialogA11y(onClose);
 
   const gate = oneShotGate({
     rawText: taskText,
@@ -103,9 +105,10 @@ export function CaptureSheet(props: {
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} className="capture-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Capture">
         <div className="capture-text-row">
           <input
+            data-autofocus
             type="text"
             value={taskText}
             onChange={(e) => setTaskText(e.target.value)}
