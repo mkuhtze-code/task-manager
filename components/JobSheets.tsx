@@ -7,6 +7,7 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { CloseIcon, TrashIcon } from '@/components/icons';
 import { supabase } from '@/lib/supabaseClient';
 import {
+import { useDialogA11y } from '@/hooks/useDialogA11y';
   dayIndexOnTrip,
   daysBetweenInclusive,
   localDateStr,
@@ -66,6 +67,7 @@ export function NewJobSheet(props: {
   ) => void;
 }) {
   const { saving, onClose, onCreate } = props;
+  const dialogRef = useDialogA11y(onClose);
   const { form, setForm } = useJobForm(null);
   const [error, setError] = useState('');
 
@@ -87,7 +89,7 @@ export function NewJobSheet(props: {
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="capture-sheet new-job-sheet" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} className="capture-sheet new-job-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="New job">
         <div className="task-detail-header" style={{ marginBottom: 0 }}>
           <div className="settings-panel-title">New job</div>
           <button className="gear-btn" onClick={onClose} aria-label="Close">
@@ -174,6 +176,7 @@ export function JobEditSheet(props: {
   onDelete: () => void;
 }) {
   const { job, saving, context, onClose, onSave, onDelete } = props;
+  const dialogRef = useDialogA11y(onClose);
   const { form, setForm } = useJobForm(job);
   const [error, setError] = useState('');
   const [trip, setTrip] = useState<ActiveTripSummary | null>(null);
@@ -240,8 +243,12 @@ export function JobEditSheet(props: {
       }}
     >
       <div
+        ref={dialogRef}
         className="capture-sheet task-detail-sheet job-detail-sheet"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Job"
       >
         <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
           <button
