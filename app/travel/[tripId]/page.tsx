@@ -44,6 +44,7 @@ import {
 } from '@/lib/travelStopTypes';
 import { computeTravelPresenceImpact } from '@/lib/travelPresence';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
+import { closeCompletionLoop } from '@/lib/thinking/evidence/closeCompletionLoop';
 
 type Trip = {
   id: string;
@@ -874,12 +875,35 @@ export default function TripDayView() {
   }
 
   async function completeActivity(id: string) {
+    const activity = activities.find((a) => a.id === id);
     const { error } = await supabase.from('activities').update({ status: 'done' }).eq('id', id);
     if (error) {
       alert('Could not complete the stop: ' + error.message);
       return;
     }
     setActivities((prev) => prev.filter((a) => a.id !== id));
+    // Ambient reality: duration-style stops contribute when estimate is real.
+    // Presence blocks (all_day / work_hours) are capacity signals, not timer actuals.
+    if (activity && session?.user?.id) {
+      const presence = (activity.presence as string) || 'duration';
+      const measured =
+        presence === 'duration' || presence === 'fixed'
+          ? Math.round(activity.estimate_mins || 0)
+          : 0;
+      closeCompletionLoop({
+        userId: session.user.id,
+        taskText: activity.text,
+        estimateMins: activity.estimate_mins || 0,
+        measuredMins: measured,
+        history: [],
+        clusters: [],
+        hints: {
+          estimateMins: activity.estimate_mins,
+          loggedMins: measured,
+          jobId: activity.job_id,
+        },
+      });
+    }
     recalculateDay();
   }
 
