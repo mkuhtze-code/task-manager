@@ -202,8 +202,12 @@ export {
 
 export {
   closeCompletionLoop,
+  historyRowFromCompletion,
 } from './evidence/closeCompletionLoop';
-export type { CloseCompletionLoopParams } from './evidence/closeCompletionLoop';
+export type {
+  CloseCompletionLoopParams,
+  CloseCompletionLoopResult,
+} from './evidence/closeCompletionLoop';
 
 // Decision-value ranking for quiet product surfaces (Patterns)
 export {
