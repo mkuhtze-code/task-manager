@@ -64,6 +64,7 @@ export async function fetchDurationHistory(
       )
       .eq('user_id', userId)
       .eq('status', 'done')
+      .neq('source', 'starter')
       .not('actual_mins', 'is', null)
       .order('completed_at', { ascending: false })
       .limit(limit);
