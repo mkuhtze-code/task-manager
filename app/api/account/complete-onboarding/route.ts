@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 /**
- * Persist onboarding answers + priors with the service role.
- * Client RLS updates were matching 0 rows (or not returning the row),
- * which left onboarded=false and re-opened the questionnaire in a loop.
+ * Persist onboarding with service role.
+ * Strategy: ensure row → set onboarded=true (minimal) → verify → patch profile fields.
+ * Profile field failures must not leave the user stuck in the questionnaire.
  */
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -19,23 +19,74 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = authData.user.id;
-  let body: Record<string, unknown>;
+  let body: Record<string, unknown> = {};
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    body = {};
   }
 
-  // Only allow known columns — never accept arbitrary client keys.
-  const patch: Record<string, unknown> = {
-    user_id: userId,
-    onboarded: true,
-  };
+  // 1) Ensure a settings row exists (initialize may have been skipped).
+  const { error: ensureError } = await supabaseAdmin
+    .from('user_settings')
+    .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true });
+  if (ensureError) {
+    console.error('[complete-onboarding] ensure row', ensureError);
+    return NextResponse.json(
+      { error: `Could not create user_settings: ${ensureError.message}` },
+      { status: 500 }
+    );
+  }
 
+  // 2) Set onboarded alone — smallest possible write.
+  const { error: flagError } = await supabaseAdmin
+    .from('user_settings')
+    .update({ onboarded: true })
+    .eq('user_id', userId);
+  if (flagError) {
+    console.error('[complete-onboarding] set onboarded', flagError);
+    return NextResponse.json(
+      {
+        error: `Could not set onboarded: ${flagError.message}. If the column is missing, run the onboarding migrations.`,
+      },
+      { status: 500 }
+    );
+  }
+
+  // 3) Verify with a separate read (do not rely on RETURNING alone).
+  const { data: row, error: readError } = await supabaseAdmin
+    .from('user_settings')
+    .select('onboarded')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (readError) {
+    console.error('[complete-onboarding] read back', readError);
+    return NextResponse.json({ error: `Could not verify onboarded: ${readError.message}` }, { status: 500 });
+  }
+
+  if (!row) {
+    return NextResponse.json(
+      { error: 'user_settings row missing after upsert. Check Supabase project and service role key.' },
+      { status: 500 }
+    );
+  }
+
+  if (row.onboarded !== true) {
+    return NextResponse.json(
+      {
+        error:
+          'onboarded is still false after update. A database trigger may be resetting it (e.g. force_onboarding_for_test_user). Run the SQL in complete-onboarding-fix.sql.',
+      },
+      { status: 500 }
+    );
+  }
+
+  // 4) Best-effort profile / hours / priors — failure here must not reopen onboarding.
+  const profilePatch: Record<string, unknown> = {};
   const copy = (key: string) => {
-    if (body[key] !== undefined) patch[key] = body[key];
+    if (body[key] !== undefined) profilePatch[key] = body[key];
   };
-
   copy('work_start');
   copy('work_end');
   copy('work_days');
@@ -57,22 +108,15 @@ export async function POST(req: NextRequest) {
   copy('meetings_emphasis');
   copy('sort_mode');
 
-  const { data, error } = await supabaseAdmin
-    .from('user_settings')
-    .upsert(patch, { onConflict: 'user_id' })
-    .select('onboarded')
-    .maybeSingle();
-
-  if (error) {
-    console.error('[complete-onboarding]', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  if (!data || data.onboarded !== true) {
-    return NextResponse.json(
-      { error: 'Could not set onboarded flag. Ensure user_settings exists and migrations are applied.' },
-      { status: 500 }
-    );
+  if (Object.keys(profilePatch).length > 0) {
+    const { error: profileError } = await supabaseAdmin
+      .from('user_settings')
+      .update(profilePatch)
+      .eq('user_id', userId);
+    if (profileError) {
+      // Log but succeed — user is onboarded.
+      console.error('[complete-onboarding] profile patch (non-fatal)', profileError);
+    }
   }
 
   return NextResponse.json({ ok: true, onboarded: true });
