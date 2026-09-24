@@ -2160,14 +2160,14 @@ export function TodayPage() {
       </div>
 
       {pendingRealityInvite && !realityCheckOpen && (
-        <div className="reality-invite-card" role="region" aria-label="Optional reality check">
+        <div className="reality-invite-card" role="region" aria-label="Reality check">
           <p className="reality-invite-kicker">Yesterday</p>
           <p className="reality-invite-body">
             {pendingRealityInvite.taskCount === 1
               ? 'One thing may still be open from yesterday.'
               : `${pendingRealityInvite.taskCount} things may still be open from yesterday.`}
             {' '}
-            A quick reality check helps Dokkit learn — only if you want.
+            A quick reality check helps Dokkit learn.
           </p>
           <div className="reality-invite-actions">
             <button
