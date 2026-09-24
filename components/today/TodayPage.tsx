@@ -81,7 +81,11 @@ import {
   historyObservationForUpdate,
   saveDayClose,
   consumeMorningPlanMessage,
+  noteOpenRealityWindow,
+  readPendingRealityInvite,
+  dismissPendingRealityInvite,
   type RealityUpdate,
+  type PendingRealityInvite,
 } from '@/lib/realityCapture';
 import {
   planOverflowCarry,
@@ -198,6 +202,8 @@ export function TodayPage() {
   const [realityCheckOpen, setRealityCheckOpen] = useState(false);
   const [realityCheckBusy, setRealityCheckBusy] = useState(false);
   const [realityCheckMessage, setRealityCheckMessage] = useState<string | null>(null);
+  /** Next-morning optional card — never auto-opens the sheet. */
+  const [pendingRealityInvite, setPendingRealityInvite] = useState<PendingRealityInvite | null>(null);
 
   // ── Home & Work base pins, and the route state geo_aware sort mode
   // depends on. driveFromBaseMins/basePolyline are never persisted —
@@ -457,12 +463,14 @@ export function TodayPage() {
   // the optional location field without forcing it on every task.
   const locationFieldVisible = suggestsLocation(taskText) || captureLocation.length > 0 || manualLocationToggle;
 
-    // Calm morning line from yesterday’s reshape (once per day, non-blocking).
+    // Calm morning signals — never auto-open Reality Check.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const today = localDateStr(new Date());
     const msg = consumeMorningPlanMessage(today);
     if (msg) setRealityCheckMessage(msg);
+    const invite = readPendingRealityInvite(today);
+    if (invite) setPendingRealityInvite(invite);
   }, []);
 
 
@@ -1747,7 +1755,28 @@ export function TodayPage() {
     };
   }, [session?.user?.id]);
 
+
+  // Soft Reality Check eligibility note — must run before any early return (hooks rules).
+  // Never opens the sheet; only records that tomorrow may offer a calm card.
+  useEffect(() => {
+    if (!session) return;
+    if (tasks.length === 0) return;
+    const now = new Date();
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    const endMins = timeStringToMinutes(workEnd);
+    const startMins = timeStringToMinutes(workStart);
+    const day = now.getDay();
+    const onWorkDay = workDays.includes(day);
+    const minsLeft = onWorkDay ? Math.max(endMins - nowMins, 0) : 0;
+    const inWindow =
+      tasksForRealityCheck(tasks).length > 0 &&
+      (onWorkDay ? minsLeft <= 30 : true);
+    if (!inWindow) return;
+    noteOpenRealityWindow(localDateStr(now), tasksForRealityCheck(tasks).length);
+  }, [session, tasks, workEnd, workStart, workDays]);
+
   if (!session) return null;
+
 
 
   if (showOnboarding) {
@@ -1814,6 +1843,7 @@ export function TodayPage() {
     (isWorkDay
       ? minutesLeftToday <= REALITY_CHECK_WINDOW_MINS
       : true);
+
 
   // External commitments only consume capacity while they overlap the time
   // remaining in the workday: an ended commitment stops blocking, one that
@@ -2128,6 +2158,38 @@ export function TodayPage() {
           </div>
         )}
       </div>
+
+      {pendingRealityInvite && !realityCheckOpen && (
+        <div className="reality-invite-card" role="region" aria-label="Optional reality check">
+          <p className="reality-invite-kicker">Yesterday</p>
+          <p className="reality-invite-body">
+            {pendingRealityInvite.taskCount === 1
+              ? 'One thing may still be open from yesterday.'
+              : `${pendingRealityInvite.taskCount} things may still be open from yesterday.`}
+            {' '}
+            A quick reality check helps Dokkit learn — only if you want.
+          </p>
+          <div className="reality-invite-actions">
+            <button
+              type="button"
+              className="btn btn-steel"
+              onClick={() => setRealityCheckOpen(true)}
+            >
+              Review
+            </button>
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => {
+                dismissPendingRealityInvite(pendingRealityInvite.forDate);
+                setPendingRealityInvite(null);
+              }}
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
 
       {realityCheckOpen && (
         <RealityCheckSheet
