@@ -6,6 +6,7 @@ import { fmtMins } from '@/lib/timeFormat';
 import {
   type RealityOutcome,
   type RealityUpdate,
+  buildRealityPrefillMaps,
 } from '@/lib/realityCapture';
 import { CloseIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
@@ -25,19 +26,26 @@ const OUTCOMES: { key: RealityOutcome; label: string }[] = [
 ];
 
 /**
- * Reality Check — low-friction capture of what actually happened, then reshape.
- * Default outcome for every task is Carry. Language is non-judgemental.
+ * Reality Check — confirmation over data entry.
+ * Prefills Done + minutes only when Dokkit already has recorded time.
+ * Everything else stays Carry. Quiet language; user can change any row.
  */
 export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
   const dialogRef = useDialogA11y(onClose);
-  const initial = useMemo(() => {
-    const map: Record<string, RealityOutcome> = {};
-    for (const t of tasks) map[t.id] = 'carried';
-    return map;
-  }, [tasks]);
 
-  const [outcomes, setOutcomes] = useState<Record<string, RealityOutcome>>(initial);
-  const [actualMins, setActualMins] = useState<Record<string, number | undefined>>({});
+  const prefill = useMemo(() => buildRealityPrefillMaps(tasks), [tasks]);
+
+  const [outcomes, setOutcomes] = useState<Record<string, RealityOutcome>>(
+    () => prefill.outcomes
+  );
+  const [actualMins, setActualMins] = useState<Record<string, number | undefined>>(
+    () => prefill.actualMins
+  );
+
+  const suggestedCount = useMemo(
+    () => tasks.filter((t) => prefill.outcomes[t.id] === 'done').length,
+    [tasks, prefill.outcomes]
+  );
 
   function setOutcome(taskId: string, outcome: RealityOutcome) {
     setOutcomes((prev) => ({ ...prev, [taskId]: outcome }));
@@ -52,11 +60,9 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
         taskId: t.id,
         outcome,
         actualMins:
-          outcome === 'done'
+          outcome === 'done' || outcome === 'partial'
             ? userActual ?? logged ?? null
-            : outcome === 'partial'
-              ? userActual ?? logged ?? null
-              : null,
+            : null,
         remainingMins:
           outcome === 'partial'
             ? Math.max(5, Math.round(t.estimate_mins / 2))
@@ -77,14 +83,18 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
         aria-labelledby="reality-check-title"
       >
         <div className="task-detail-header">
-          <div className="settings-panel-title" id="reality-check-title">Reality check</div>
+          <div className="settings-panel-title" id="reality-check-title">
+            Reality check
+          </div>
           <button className="gear-btn" onClick={onClose} aria-label="Close" type="button">
             <CloseIcon />
           </button>
         </div>
 
         <p className="settings-help" style={{ margin: '0 0 var(--space-3)' }}>
-          What actually happened. Dokkit learns from this — not a score, just reality.
+          {suggestedCount > 0
+            ? 'A few rows reflect time already recorded. Change anything that isn’t right.'
+            : 'Mark what happened when you know. Carry is fine when you’re not sure.'}
         </p>
 
         {tasks.length === 0 ? (
@@ -93,6 +103,7 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {tasks.map((task) => {
               const outcome = outcomes[task.id] ?? 'carried';
+              const sourceLabel = prefill.sourceLabels[task.id];
               return (
                 <div
                   key={task.id}
@@ -104,8 +115,14 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
                   }}
                 >
                   <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{task.text}</div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 2 }}>
+                  <div
+                    className="mono"
+                    style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 2 }}
+                  >
                     {fmtMins(task.estimate_mins)}
+                    {sourceLabel && outcome === 'done' && actualMins[task.id] != null
+                      ? ` · ${sourceLabel.toLowerCase()} (${fmtMins(actualMins[task.id]!)})`
+                      : ''}
                   </div>
 
                   <div
@@ -124,6 +141,7 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
                           type="button"
                           className={selected ? 'segmented-btn active' : 'segmented-btn'}
                           style={{ minHeight: 36, fontSize: 12 }}
+                          aria-pressed={selected}
                           onClick={() => setOutcome(task.id, key)}
                         >
                           {label}
@@ -135,43 +153,54 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
                   {(outcome === 'done' || outcome === 'partial') && (
                     <div style={{ marginTop: 10 }}>
                       <div className="settings-help" style={{ marginBottom: 6 }}>
-                        {outcome === 'done' ? 'How long did it take?' : 'Time spent so far'}
+                        {outcome === 'done' ? 'Time taken' : 'Time spent so far'}
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {(
-                          outcome === 'done'
-                            ? [
-                                {
-                                  label: 'Less',
-                                  mins: Math.max(5, Math.round(task.estimate_mins * 0.7)),
-                                },
-                                { label: 'About right', mins: task.estimate_mins },
-                                {
-                                  label: 'Longer',
-                                  mins: Math.round(task.estimate_mins * 1.4),
-                                },
-                              ]
-                            : [
-                                {
-                                  label: 'Less',
-                                  mins: Math.max(5, Math.round(task.estimate_mins * 0.3)),
-                                },
-                                {
-                                  label: 'Half',
-                                  mins: Math.max(5, Math.round(task.estimate_mins * 0.5)),
-                                },
-                                {
-                                  label: 'More',
-                                  mins: Math.max(5, Math.round(task.estimate_mins * 0.7)),
-                                },
-                              ]
+                        {(outcome === 'done'
+                          ? [
+                              {
+                                label: 'Less',
+                                mins: Math.max(5, Math.round(task.estimate_mins * 0.7)),
+                              },
+                              {
+                                label:
+                                  actualMins[task.id] != null
+                                    ? fmtMins(actualMins[task.id]!)
+                                    : 'About right',
+                                mins:
+                                  actualMins[task.id] ??
+                                  (task.logged_mins > 0
+                                    ? Math.round(task.logged_mins)
+                                    : task.estimate_mins),
+                              },
+                              {
+                                label: 'Longer',
+                                mins: Math.round(task.estimate_mins * 1.4),
+                              },
+                            ]
+                          : [
+                              {
+                                label: 'Less',
+                                mins: Math.max(5, Math.round(task.estimate_mins * 0.3)),
+                              },
+                              {
+                                label: 'Half',
+                                mins: Math.max(5, Math.round(task.estimate_mins * 0.5)),
+                              },
+                              {
+                                label: 'More',
+                                mins: Math.max(5, Math.round(task.estimate_mins * 0.7)),
+                              },
+                            ]
                         ).map(({ label, mins }) => {
                           const selected = actualMins[task.id] === mins;
                           return (
                             <button
-                              key={label}
+                              key={label + String(mins)}
                               type="button"
-                              className={selected ? 'estimate-suggestion-chip' : 'move-day-option'}
+                              className={
+                                selected ? 'estimate-suggestion-chip' : 'move-day-option'
+                              }
                               onClick={() =>
                                 setActualMins((prev) => ({ ...prev, [task.id]: mins }))
                               }
@@ -189,7 +218,14 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
           </div>
         )}
 
-        <div style={{ marginTop: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div
+          style={{
+            marginTop: 'var(--space-4)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
           <button
             type="button"
             className="btn btn-steel"
