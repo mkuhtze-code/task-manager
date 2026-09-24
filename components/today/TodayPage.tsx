@@ -756,9 +756,10 @@ export function TodayPage() {
 
       // onboarded defaults false on the column; only explicit false shows
       // the welcome screen — anything truthy skips it.
-      if (settings.onboarded === false) {
-        setShowOnboarding(true);
-      }
+      // Always sync both ways so a successful completeOnboarding is not
+      // undone by a stale in-memory flag, and a failed write cannot leave
+      // the UI stuck on Today while the DB still says not onboarded.
+      setShowOnboarding(settings.onboarded === false);
     }
 
     setMeetings(meetingRows || []);
@@ -872,32 +873,57 @@ export function TodayPage() {
 
     const profile = profileFromAnswers(answers);
     const priorPatch = settingsPatchFromProfile(profile);
+    const patch = {
+      work_start: workStart,
+      work_end: workEnd,
+      work_days: workDays,
+      home_location_text: homeLocation || null,
+      home_lat: homeCoords?.lat ?? null,
+      home_lng: homeCoords?.lng ?? null,
+      work_location_text: workLocation || null,
+      work_lat: workCoords?.lat ?? null,
+      work_lng: workCoords?.lng ?? null,
+      onboarded: true,
+      onboarding_answers: answers,
+      role: answers.role,
+      work_type: answers.workType ?? null,
+      carry_style: answers.carryStyle,
+      day_shape: answers.dayShape ?? answers.dayFeel ?? null,
+      ...priorPatch,
+    };
 
-    const { error } = await supabase
+    // Prefer update; Supabase returns no error when 0 rows match (RLS / missing
+    // row), which previously left onboarded=false and loadEverything re-opened
+    // the questionnaire in a loop. Verify with select; upsert if needed.
+    let writeError: { message: string } | null = null;
+    const { data: updated, error: updateError } = await supabase
       .from('user_settings')
-      .update({
-        work_start: workStart,
-        work_end: workEnd,
-        work_days: workDays,
-        home_location_text: homeLocation || null,
-        home_lat: homeCoords?.lat ?? null,
-        home_lng: homeCoords?.lng ?? null,
-        work_location_text: workLocation || null,
-        work_lat: workCoords?.lat ?? null,
-        work_lng: workCoords?.lng ?? null,
-        onboarded: true,
-        onboarding_answers: answers,
-        role: answers.role,
-        work_type: answers.workType ?? null,
-        carry_style: answers.carryStyle,
-        day_shape: answers.dayShape ?? answers.dayFeel ?? null,
-        ...priorPatch,
-      })
-      .eq('user_id', session.user.id);
+      .update(patch)
+      .eq('user_id', session.user.id)
+      .select('onboarded')
+      .maybeSingle();
+
+    if (updateError) {
+      writeError = updateError;
+    } else if (!updated || updated.onboarded !== true) {
+      const { data: upserted, error: upsertError } = await supabase
+        .from('user_settings')
+        .upsert({ user_id: session.user.id, ...patch }, { onConflict: 'user_id' })
+        .select('onboarded')
+        .maybeSingle();
+      if (upsertError) writeError = upsertError;
+      else if (!upserted || upserted.onboarded !== true) {
+        writeError = {
+          message:
+            'Setup did not save (onboarded flag not set). Check user_settings RLS policies.',
+        };
+      }
+    }
+
     setOnboardSaving(false);
-    if (error) {
-      console.error(error);
-      alert('Could not save your setup: ' + error.message);
+    if (writeError) {
+      console.error(writeError);
+      alert('Could not save your setup: ' + writeError.message);
       return;
     }
 
@@ -907,11 +933,17 @@ export function TodayPage() {
     const navOrder = orderedNavSurfaces(profile);
     persistNavOrder(navOrder);
 
-    // Disposable examples — never train the learning engine.
-    await seedStarterPack(supabase, session.user.id, answers, profile);
-
+    // Leave the questionnaire before any reload — never flash it again.
     setShowOnboarding(false);
-    // Reload tasks so starter pack appears without a hard refresh.
+
+    // Disposable examples — never train the learning engine.
+    try {
+      await seedStarterPack(supabase, session.user.id, answers, profile);
+    } catch (e) {
+      console.error('[onboarding] starter pack', e);
+    }
+
+    // Reload tasks/settings. onboarded is true in DB so the gate stays closed.
     try {
       await loadEverything();
     } catch {
