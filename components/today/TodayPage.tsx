@@ -45,7 +45,8 @@ import {
   suggestLocationMemory,
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
-import { logCapturePrediction, logCompletionOutcome } from '@/lib/thinking/evidence/predictionLog';
+import { logCapturePrediction } from '@/lib/thinking/evidence/predictionLog';
+import { closeCompletionLoop, historyRowFromCompletion } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
 import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
 import { oneShotGate, formatDockSummary } from '@/lib/unifiedInput/oneShot';
@@ -1423,15 +1424,34 @@ export function TodayPage() {
           if (task.status === 'active' && task.started_at) {
             finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
           }
-          const actual =
-            u.actualMins != null ? u.actualMins : Math.round(finalLogged) || task.estimate_mins;
+          const measured =
+            u.actualMins != null ? u.actualMins : Math.round(finalLogged);
+          const loop = closeCompletionLoop({
+            userId: session?.user?.id,
+            taskText: task.text,
+            estimateMins: task.estimate_mins,
+            measuredMins: measured,
+            history,
+            clusters,
+            hints: {
+              estimateMins: task.estimate_mins,
+              loggedMins: measured,
+              jobId: task.job_id,
+              dueToday: task.due_today,
+              intendedTime: task.intended_time,
+              createdAt: task.created_at,
+              surfaceDate: task.surface_date,
+              subtaskCount: subtasksByTask[task.id]?.length ?? 0,
+            },
+          });
+          const actualForDb = loop.actualForDb > 0 ? loop.actualForDb : measured;
           const { error } = await supabase
             .from('tasks')
             .update({
               status: 'done',
               started_at: null,
-              logged_mins: actual,
-              actual_mins: actual,
+              logged_mins: actualForDb,
+              actual_mins: loop.trainMins ?? (actualForDb > 0 ? actualForDb : null),
               completed_at: new Date().toISOString(),
             })
             .eq('id', u.taskId);
@@ -1481,28 +1501,26 @@ export function TodayPage() {
                 : t
             )
           );
-          if (spent > 0 || totalObserved > 0) {
-            setHistory((prev) => [
-              {
-                text: task.text,
-                actual_mins: totalObserved,
-                location_text: task.location_text,
-                lat: task.lat,
-                lng: task.lng,
-              },
-              ...prev,
-            ]);
-            const suggestion = suggestEstimate(task.text, history, clusters);
-            logCompletionOutcome({
-              userId: session.user.id,
+          if (spent > 0) {
+            // Train on time actually spent — not spent+remaining (remaining is still plan).
+            closeCompletionLoop({
+              userId: session?.user?.id,
               taskText: task.text,
-              clusterLabel: suggestion?.matchedLabel ?? null,
-              clusterCount: suggestion?.sampleCount ?? 0,
-              estimatedMins: task.estimate_mins,
-              suggestedMins: suggestion?.suggestedMins ?? null,
-              confidence: suggestion?.confidence ?? 'low',
-              actualMins: totalObserved,
-            }).catch(() => {});
+              estimateMins: task.estimate_mins,
+              measuredMins: spent,
+              history,
+              clusters,
+              hints: {
+                estimateMins: task.estimate_mins,
+                loggedMins: spent,
+                jobId: task.job_id,
+                dueToday: task.due_today,
+                intendedTime: task.intended_time,
+                createdAt: task.created_at,
+                surfaceDate: task.surface_date,
+                subtaskCount: subtasksByTask[task.id]?.length ?? 0,
+              },
+            });
           }
         } else if (u.outcome === 'carried' || u.outcome === 'skipped') {
           const { error } = await supabase
@@ -1555,8 +1573,13 @@ export function TodayPage() {
       finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
     }
     const measured = Math.round(finalLogged);
-    const resolved = resolveActualForLearning({
+    const loop = closeCompletionLoop({
+      userId: session?.user?.id,
+      taskText: task?.text || '',
+      estimateMins: task?.estimate_mins || 0,
       measuredMins: measured,
+      history,
+      clusters,
       hints: {
         estimateMins: task?.estimate_mins,
         loggedMins: measured,
@@ -1564,21 +1587,18 @@ export function TodayPage() {
         dueToday: task?.due_today,
         intendedTime: task?.intended_time,
         createdAt: task?.created_at,
-        completedAt: new Date().toISOString(),
         surfaceDate: task?.surface_date,
         subtaskCount: task ? (subtasksByTask[task.id]?.length ?? 0) : 0,
       },
     });
-    // Persist measured time honestly; only train when we have a usable actual
-    // (timed session or lifecycle soft from job / subtasks / carry / estimate).
-    const actualForDb = resolved.actualMins ?? measured;
+    const actualForDb = loop.actualForDb;
     const { error } = await supabase
       .from('tasks')
       .update({
         status: 'done',
         started_at: null,
         logged_mins: finalLogged,
-        actual_mins: actualForDb,
+        actual_mins: actualForDb > 0 ? actualForDb : null,
         completed_at: new Date().toISOString(),
       })
       .eq('id', id);
@@ -1588,40 +1608,13 @@ export function TodayPage() {
       return;
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
-    // Keep the learning layer current without waiting for a full reload.
-    // Never push a pure zero into history — that is not a measurement.
-    if (task && resolved.actualMins != null) {
+    if (task && loop.trainMins != null) {
       setHistory((prev) => [
-        {
-          text: task.text,
-          actual_mins: resolved.actualMins!,
-          location_text: task.location_text,
-          lat: task.lat,
-          lng: task.lng,
-          job_id: task.job_id,
-          created_at: task.created_at,
-          completed_at: new Date().toISOString(),
-          estimate_mins: task.estimate_mins,
-          logged_mins: measured,
-          due_today: task.due_today,
-          surface_date: task.surface_date,
-          source: task.source,
-          intended_time: task.intended_time,
+        historyRowFromCompletion(task, loop.trainMins!, measured, {
           subtask_count: subtasksByTask[task.id]?.length ?? 0,
-        },
+        }),
         ...prev,
       ]);
-      const suggestion = suggestEstimate(task.text, history, clusters);
-      logCompletionOutcome({
-        userId: session.user.id,
-        taskText: task.text,
-        clusterLabel: suggestion?.matchedLabel ?? null,
-        clusterCount: suggestion?.sampleCount ?? 0,
-        estimatedMins: task.estimate_mins,
-        suggestedMins: suggestion?.suggestedMins ?? null,
-        confidence: suggestion?.confidence ?? 'low',
-        actualMins: resolved.actualMins!,
-      }).catch(() => {});
     }
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
     notifyTaskActivity({ type: 'completed', taskId: id });
