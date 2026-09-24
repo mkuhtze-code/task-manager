@@ -36,6 +36,7 @@ import {
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
 import { closeCompletionLoop, historyRowFromCompletion } from '@/lib/thinking/evidence/closeCompletionLoop';
+import { isStarterTask } from '@/lib/starterPack';
 import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
 import { decidePersonalGravity } from '@/lib/thinking/decisions/personalGravity';
 import type { SurfaceEvent } from '@/lib/thinking/types';
@@ -446,7 +447,9 @@ export default function JobDetailPage() {
       finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
     }
     const measured = Math.round(finalLogged);
-    const loop = closeCompletionLoop({
+    const loop = task && isStarterTask(task)
+      ? { actualForDb: 0, trainMins: null as number | null, source: 'none' as const }
+      : closeCompletionLoop({
       userId: session?.user?.id,
       taskText: task?.text || '',
       estimateMins: task?.estimate_mins || 0,
