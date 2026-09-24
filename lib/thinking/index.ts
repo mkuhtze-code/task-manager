@@ -204,6 +204,12 @@ export {
   closeCompletionLoop,
   historyRowFromCompletion,
 } from './evidence/closeCompletionLoop';
+
+export {
+  fetchDurationHistory,
+  fetchDurationMemory,
+  mapHistoryRow,
+} from './loadDurationHistory';
 export type {
   CloseCompletionLoopParams,
   CloseCompletionLoopResult,
