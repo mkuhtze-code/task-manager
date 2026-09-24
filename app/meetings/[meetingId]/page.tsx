@@ -35,6 +35,7 @@ import PillReveal from '@/components/PillReveal';
 import MeetingTripPill from '@/components/MeetingTripPill';
 import JobFilesPanel from '@/components/JobFilesPanel';
 import type { Job } from '@/lib/jobTypes';
+import { closeCompletionLoop } from '@/lib/thinking/evidence/closeCompletionLoop';
 
 export default function MeetingDetail({ params }: { params: { meetingId: string } }) {
   const meetingId = params.meetingId;
@@ -244,6 +245,37 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   useEffect(() => {
     if (session) load();
   }, [session, load]);
+
+  // Quiet outcome: once a meeting window has ended, record duration for learning.
+  // Once per meeting. No UI — confirmation lives on Today’s Reality Check.
+  useEffect(() => {
+    if (!meeting || !session?.user?.id) return;
+    const start = meeting.start_time ? new Date(meeting.start_time).getTime() : NaN;
+    const dur = typeof meeting.duration_mins === 'number' ? meeting.duration_mins : 0;
+    if (!Number.isFinite(start) || dur < 1) return;
+    if (Date.now() < start + dur * 60_000) return;
+    const key = `dokkit-meeting-outcome:${meeting.id}`;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage.getItem(key) === '1') return;
+      window.localStorage.setItem(key, '1');
+    } catch {
+      return;
+    }
+    const title = (meeting.title || 'Meeting').trim() || 'Meeting';
+    closeCompletionLoop({
+      userId: session.user.id,
+      taskText: title,
+      estimateMins: dur,
+      measuredMins: dur,
+      history: [],
+      clusters: [],
+      hints: {
+        estimateMins: dur,
+        loggedMins: dur,
+        jobId: meeting.job_id ?? null,
+      },
+    });
+  }, [meeting, session?.user?.id]);
 
   async function saveNotes() {
     if (!meeting) return;
