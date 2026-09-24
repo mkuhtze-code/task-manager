@@ -107,7 +107,11 @@ export function CaptureSheet(props: {
     <div className="sheet-backdrop" onClick={onClose}>
       <div ref={dialogRef} className="capture-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Capture">
         <div className="capture-text-row">
+          <label htmlFor="capture-task-text" className="sr-only">
+            What needs doing
+          </label>
           <input
+            id="capture-task-text"
             data-autofocus
             type="text"
             value={taskText}
@@ -120,6 +124,8 @@ export function CaptureSheet(props: {
             }}
             placeholder="What needs doing?"
             autoFocus
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? 'capture-error' : undefined}
           />
           <MicButton
             onResult={(text) =>
@@ -202,6 +208,8 @@ export function CaptureSheet(props: {
             value={taskTime}
             onChange={(e) => setTaskTime(e.target.value)}
             placeholder="0m"
+            id="capture-estimate"
+            aria-label="Estimate minutes"
             style={{ width: 80 }}
           />
           <button
@@ -278,7 +286,7 @@ export function CaptureSheet(props: {
           </button>
         ) : (
           <div className="capture-row">
-            <input type="date" value={captureSurfaceDate} onChange={(e) => setCaptureSurfaceDate(e.target.value)} />
+            <input id="capture-surface-date" type="date" value={captureSurfaceDate} onChange={(e) => setCaptureSurfaceDate(e.target.value)} aria-label="Surface on day" />
             <button type="button" className="btn-text" onClick={() => { setShowReminderField(false); setCaptureSurfaceDate(''); }}>Clear</button>
           </div>
         )}
@@ -303,7 +311,11 @@ export function CaptureSheet(props: {
           </div>
         )}
 
-        {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+        {error && (
+          <p id="capture-error" role="alert" style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>
+            {error}
+          </p>
+        )}
         <button className="btn-text" onClick={onClose}>Cancel</button>
       </div>
     </div>
