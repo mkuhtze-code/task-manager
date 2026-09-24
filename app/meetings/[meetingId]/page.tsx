@@ -36,12 +36,16 @@ import MeetingTripPill from '@/components/MeetingTripPill';
 import JobFilesPanel from '@/components/JobFilesPanel';
 import type { Job } from '@/lib/jobTypes';
 import { closeCompletionLoop } from '@/lib/thinking/evidence/closeCompletionLoop';
+import { fetchDurationHistory } from '@/lib/thinking/loadDurationHistory';
+import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
 
 export default function MeetingDetail({ params }: { params: { meetingId: string } }) {
   const meetingId = params.meetingId;
   const router = useRouter();
 
   const [session, setSession] = useState<any>(null);
+  const [history, setHistory] = useState<HistoricalTask[]>([]);
+  const clusters = useMemo(() => buildClusters(history), [history]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -246,6 +250,17 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     if (session) load();
   }, [session, load]);
 
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    let cancelled = false;
+    fetchDurationHistory(supabase, session.user.id).then((rows) => {
+      if (!cancelled) setHistory(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
+
   // Quiet outcome: once a meeting window has ended, record duration for learning.
   // Once per meeting. No UI — confirmation lives on Today’s Reality Check.
   useEffect(() => {
@@ -267,15 +282,15 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       taskText: title,
       estimateMins: dur,
       measuredMins: dur,
-      history: [],
-      clusters: [],
+      history,
+      clusters,
       hints: {
         estimateMins: dur,
         loggedMins: dur,
         jobId: meeting.job_id ?? null,
       },
     });
-  }, [meeting, session?.user?.id]);
+  }, [meeting, session?.user?.id, history, clusters]);
 
   async function saveNotes() {
     if (!meeting) return;
