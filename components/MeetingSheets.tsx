@@ -120,7 +120,7 @@ export function NewMeetingSheet(props: {
 
         <p className="job-detail-kicker">Meeting</p>
         <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px', lineHeight: 1.4 }}>
-          One thought in — Dokkit splits time, place, and job when it can. Evidence stays on the meeting.
+          Give this meeting a starting point.
         </p>
 
         <div className="capture-text-row">
