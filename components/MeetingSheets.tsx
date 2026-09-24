@@ -129,6 +129,8 @@ export function NewMeetingSheet(props: {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+            id="new-meeting-text"
+            aria-label="Meeting description"
             placeholder="e.g. Meeting with Tim at Belgium Rd tomorrow at 2pm"
             autoFocus
           />
@@ -296,7 +298,11 @@ export function NewMeetingSheet(props: {
           </div>
         )}
 
-        {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+        {error && (
+          <p id="new-meeting-error" role="alert" style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>
+            {error}
+          </p>
+        )}
 
         <div className="capture-row">
           <button className="btn btn-steel" style={{ flex: 1 }} onClick={submit} disabled={saving}>
@@ -372,7 +378,7 @@ export function ObservationCapture(props: {
         </button>
       </div>
 
-      {captureError && <p className="meeting-capture-error">{captureError}</p>}
+      {captureError && <p className="meeting-capture-error" role="alert" id="meeting-capture-error">{captureError}</p>}
 
       {media.length > 0 && (
         <div className="meeting-observation-actions">
