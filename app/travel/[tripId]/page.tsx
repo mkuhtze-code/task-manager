@@ -45,6 +45,8 @@ import {
 import { computeTravelPresenceImpact } from '@/lib/travelPresence';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { closeCompletionLoop } from '@/lib/thinking/evidence/closeCompletionLoop';
+import { fetchDurationHistory } from '@/lib/thinking/loadDurationHistory';
+import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
 
 type Trip = {
   id: string;
@@ -566,6 +568,8 @@ export default function TripDayView() {
   const [tripDays, setTripDays] = useState<TripDay[]>([]);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [history, setHistory] = useState<HistoricalTask[]>([]);
+  const clusters = useMemo(() => buildClusters(history), [history]);
   const [now, setNow] = useState(new Date());
   const [recalculating, setRecalculating] = useState(false);
 
@@ -628,6 +632,17 @@ export default function TripDayView() {
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => setJobs((data as Job[]) || []));
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    let cancelled = false;
+    fetchDurationHistory(supabase, session.user.id).then((rows) => {
+      if (!cancelled) setHistory(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [session?.user?.id]);
 
   async function loadTrip() {
@@ -895,8 +910,8 @@ export default function TripDayView() {
         taskText: activity.text,
         estimateMins: activity.estimate_mins || 0,
         measuredMins: measured,
-        history: [],
-        clusters: [],
+        history,
+        clusters,
         hints: {
           estimateMins: activity.estimate_mins,
           loggedMins: measured,
