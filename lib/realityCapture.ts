@@ -346,3 +346,63 @@ export function dismissPendingRealityInvite(forDate: string): void {
     // ignore
   }
 }
+
+
+// ── Confirmation-first Reality Check prefill ───────────────────────
+// Propose from signals Dokkit already holds. Never invent duration.
+// User remains authority — defaults are suggestions, not demands.
+
+export type RealityPrefill = {
+  outcome: RealityOutcome;
+  /** Minutes when known from timer / logged session. */
+  actualMins?: number;
+  /** Quiet one-line context for the row (optional). */
+  sourceLabel?: string;
+};
+
+/**
+ * Best-effort starting point for one task in Reality Check.
+ * - Measured time (logged or live session) → Done + minutes
+ * - Otherwise → Carry (no guess)
+ */
+export function prefillRealityForTask(
+  task: Task,
+  nowMs: number = Date.now()
+): RealityPrefill {
+  let spent = typeof task.logged_mins === 'number' ? task.logged_mins : 0;
+  if (task.status === 'active' && task.started_at) {
+    const started = new Date(task.started_at).getTime();
+    if (Number.isFinite(started)) {
+      spent += (nowMs - started) / 60000;
+    }
+  }
+  const measured = Math.round(spent);
+
+  if (measured >= 1) {
+    return {
+      outcome: 'done',
+      actualMins: measured,
+      sourceLabel: 'From time recorded',
+    };
+  }
+
+  return { outcome: 'carried' };
+}
+
+/** Build initial outcome + minutes maps for the sheet. */
+export function buildRealityPrefillMaps(tasks: Task[], nowMs?: number): {
+  outcomes: Record<string, RealityOutcome>;
+  actualMins: Record<string, number | undefined>;
+  sourceLabels: Record<string, string | undefined>;
+} {
+  const outcomes: Record<string, RealityOutcome> = {};
+  const actualMins: Record<string, number | undefined> = {};
+  const sourceLabels: Record<string, string | undefined> = {};
+  for (const t of tasks) {
+    const pre = prefillRealityForTask(t, nowMs);
+    outcomes[t.id] = pre.outcome;
+    if (pre.actualMins != null) actualMins[t.id] = pre.actualMins;
+    if (pre.sourceLabel) sourceLabels[t.id] = pre.sourceLabel;
+  }
+  return { outcomes, actualMins, sourceLabels };
+}
