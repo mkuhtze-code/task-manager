@@ -202,6 +202,8 @@ export function saveDayClose(record: DayCloseRecord): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(DAY_CLOSE_KEY, JSON.stringify(record));
+    // Closing the day retires any soft invite for that date.
+    clearPendingRealityInvite(record.date);
   } catch {
     // ignore quota / private mode
   }
@@ -255,4 +257,92 @@ export function consumeMorningPlanMessage(todayStr: string): string | null {
     parts.push('Capacity uses what this work usually takes.');
   }
   return parts.join(' ');
+}
+
+
+// ── Soft Reality Check invite (never enforced) ─────────────────────
+// If the day ends with work still on the plate and the person never
+// ran Reality Check, the *next* morning can show a dismissible card.
+// Opening the sheet is always optional. Nothing is demanded.
+
+const PENDING_REALITY_KEY = 'dokkit-pending-reality-invite';
+const PENDING_DISMISSED_PREFIX = 'dokkit-pending-reality-dismissed:';
+
+export type PendingRealityInvite = {
+  /** Local calendar day that still had open work without a day-close. */
+  forDate: string;
+  taskCount: number;
+};
+
+/**
+ * Note that this day still has open work during the soft Reality Check window.
+ * Does not open UI. Overwrites only for the same forDate.
+ */
+export function noteOpenRealityWindow(forDate: string, taskCount: number): void {
+  if (typeof window === 'undefined') return;
+  if (taskCount <= 0) return;
+  const close = readDayClose();
+  if (close && close.date === forDate) return;
+  try {
+    if (window.localStorage.getItem(PENDING_DISMISSED_PREFIX + forDate) === '1') {
+      return;
+    }
+    const payload: PendingRealityInvite = { forDate, taskCount };
+    window.localStorage.setItem(PENDING_REALITY_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore
+  }
+}
+
+export function clearPendingRealityInvite(forDate?: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = window.localStorage.getItem(PENDING_REALITY_KEY);
+    if (!raw) return;
+    if (forDate) {
+      const parsed = JSON.parse(raw) as PendingRealityInvite;
+      if (parsed?.forDate !== forDate) return;
+    }
+    window.localStorage.removeItem(PENDING_REALITY_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Next-morning invite: prior day had open work and no day-close.
+ * Does not mark as shown — caller dismisses or completes reshape.
+ * Returns null if already dismissed or not applicable.
+ */
+export function readPendingRealityInvite(todayStr: string): PendingRealityInvite | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(PENDING_REALITY_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PendingRealityInvite;
+    if (!parsed?.forDate || parsed.forDate >= todayStr) return null;
+    if (window.localStorage.getItem(PENDING_DISMISSED_PREFIX + parsed.forDate) === '1') {
+      return null;
+    }
+    // If they did close that day after the note was written, retire it.
+    const close = readDayClose();
+    if (close && close.date === parsed.forDate) {
+      window.localStorage.removeItem(PENDING_REALITY_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/** User chose "Not now" — never force this invite again for that day. */
+export function dismissPendingRealityInvite(forDate: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(PENDING_DISMISSED_PREFIX + forDate, '1');
+    clearPendingRealityInvite(forDate);
+  } catch {
+    // ignore
+  }
 }
