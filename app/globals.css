@@ -3256,7 +3256,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
      color is a deliberate symmetry, not a coincidence. */
   --ink: #f1efe6;
   --ink-soft: #a7b3ba;
-  --ink-faint: #8a939c;
+  --ink-faint: #a3adb6; /* WCAG AA secondary on dark paper */
 
   --line: #2a313b;
   --line-strong: #3a4450;
