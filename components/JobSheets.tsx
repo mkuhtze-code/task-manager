@@ -102,7 +102,11 @@ export function NewJobSheet(props: {
           A container for the work — tasks and evidence come next.
         </p>
 
+        <label htmlFor="new-job-name" className="sr-only">
+          Job name
+        </label>
         <input
+          id="new-job-name"
           type="text"
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -111,11 +115,14 @@ export function NewJobSheet(props: {
           }}
           placeholder="e.g. Angela Street remodel"
           autoFocus
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? 'new-job-error' : undefined}
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="settings-label">Client</span>
+          <label htmlFor="new-job-client" className="settings-label">Client</label>
           <input
+            id="new-job-client"
             type="text"
             value={form.client}
             onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
@@ -124,7 +131,7 @@ export function NewJobSheet(props: {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="settings-label">Site / location</span>
+          <label className="settings-label" id="new-job-location-label">Site / location</label>
           <LocationAutocomplete
             value={form.locationText}
             placeholder="Where is the work? (optional)"
@@ -147,7 +154,9 @@ export function NewJobSheet(props: {
         </div>
 
         {error && (
-          <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>
+          <p id="new-job-error" role="alert" style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>
+            {error}
+          </p>
         )}
         <button className="btn btn-steel" onClick={submit} disabled={saving}>
           {saving ? 'Creating…' : 'Create job'}
@@ -265,18 +274,25 @@ export function JobEditSheet(props: {
 
         <p className="job-detail-kicker">Job</p>
 
+        <label htmlFor="edit-job-name" className="sr-only">
+          Job name
+        </label>
         <input
+          id="edit-job-name"
           type="text"
           className="task-detail-name"
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           onBlur={commit}
           placeholder="Job name"
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? 'edit-job-error' : undefined}
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="settings-label">Client</span>
+          <label htmlFor="edit-job-client" className="settings-label">Client</label>
           <input
+            id="edit-job-client"
             type="text"
             value={form.client}
             onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
@@ -286,7 +302,7 @@ export function JobEditSheet(props: {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="settings-label">Site / location</span>
+          <label className="settings-label" id="edit-job-location-label">Site / location</label>
           <LocationAutocomplete
             value={form.locationText}
             placeholder="Where is the work?"
@@ -372,7 +388,9 @@ export function JobEditSheet(props: {
         </div>
 
         {error && (
-          <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>
+          <p id="edit-job-error" role="alert" style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>
+            {error}
+          </p>
         )}
 
         <button className="btn btn-steel" onClick={commit} disabled={saving}>
