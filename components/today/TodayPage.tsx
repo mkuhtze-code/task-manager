@@ -26,6 +26,10 @@ import { registerCaptureOpen } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useDesktopWorkspaceKeys } from '@/hooks/useDesktopWorkspaceKeys';
 import type { OnboardingAnswers } from '@/lib/onboardingTypes';
+import { seedStarterPack, clearStarterPack, isStarterTask } from '@/lib/starterPack';
+import { todayEmptyCopy, orderedNavSurfaces, firstSessionLine } from '@/lib/surfaceCopy';
+import { persistNavOrder } from '@/components/DesktopProductNav';
+
 import {
   defaultUserProfile,
   profileFromAnswers,
@@ -204,6 +208,8 @@ export function TodayPage() {
   const [realityCheckMessage, setRealityCheckMessage] = useState<string | null>(null);
   /** Next-morning optional card — never auto-opens the sheet. */
   const [pendingRealityInvite, setPendingRealityInvite] = useState<PendingRealityInvite | null>(null);
+  const [clearingStarter, setClearingStarter] = useState(false);
+  const [setupLineDismissed, setSetupLineDismissed] = useState(false);
 
   // ── Home & Work base pins, and the route state geo_aware sort mode
   // depends on. driveFromBaseMins/basePolyline are never persisted —
@@ -661,6 +667,7 @@ export function TodayPage() {
       .from('tasks')
       .select('text, actual_mins, location_text, lat, lng, job_id, created_at, completed_at, estimate_mins, logged_mins, due_today, surface_date, source, intended_time')
       .eq('status', 'done')
+      .neq('source', 'starter')
       .not('actual_mins', 'is', null)
       .order('completed_at', { ascending: false })
       .limit(500);
@@ -742,6 +749,10 @@ export function TodayPage() {
 
       // Seed the thinking engine from onboarding priors (or column overrides).
       setUserProfile(profileFromSettings(settings));
+      {
+        const p = profileFromSettings(settings);
+        persistNavOrder(orderedNavSurfaces(p));
+      }
 
       // onboarded defaults false on the column; only explicit false shows
       // the welcome screen — anything truthy skips it.
@@ -893,7 +904,19 @@ export function TodayPage() {
     // Apply immediately so the first Today session is already adapted.
     setUserProfile(profile);
     setSortMode(profile.suggestedSortMode);
+    const navOrder = orderedNavSurfaces(profile);
+    persistNavOrder(navOrder);
+
+    // Disposable examples — never train the learning engine.
+    await seedStarterPack(supabase, session.user.id, answers, profile);
+
     setShowOnboarding(false);
+    // Reload tasks so starter pack appears without a hard refresh.
+    try {
+      await loadEverything();
+    } catch {
+      // load may depend on session; ignore
+    }
   }
 
 
@@ -1581,7 +1604,10 @@ export function TodayPage() {
       finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
     }
     const measured = Math.round(finalLogged);
-    const loop = closeCompletionLoop({
+    const skipLearn = task ? isStarterTask(task) : false;
+    const loop = skipLearn
+      ? { actualForDb: 0, trainMins: null as number | null, source: 'none' as const }
+      : closeCompletionLoop({
       userId: session?.user?.id,
       taskText: task?.text || '',
       estimateMins: task?.estimate_mins || 0,
@@ -2044,9 +2070,9 @@ export function TodayPage() {
         ) : (
           ordered.length === 0 && (
             <div className="empty-state">
-              <div className="empty-state-title">Nothing waiting.</div>
+              <div className="empty-state-title">{todayEmptyCopy(userProfile).title}</div>
               <div className="empty-state-sub">
-                Capture when something lands. You&apos;re good to go.
+                {todayEmptyCopy(userProfile).sub}
               </div>
               <button
                 className="btn btn-steel"
@@ -2158,6 +2184,45 @@ export function TodayPage() {
           </div>
         )}
       </div>
+
+      {tasks.some((t) => isStarterTask(t)) && (
+        <div className="reality-invite-card starter-pack-banner" role="region" aria-label="Example tasks">
+          <p className="reality-invite-kicker">Examples</p>
+          <p className="reality-invite-body">
+            A few sample items so Today isn&apos;t empty. They never train Dokkit&apos;s learning.
+          </p>
+          <div className="reality-invite-actions">
+            <button
+              type="button"
+              className="btn-text"
+              disabled={clearingStarter}
+              onClick={async () => {
+                if (!session?.user?.id) return;
+                setClearingStarter(true);
+                try {
+                  await clearStarterPack(supabase, session.user.id);
+                  setTasks((prev) => prev.filter((x) => !isStarterTask(x)));
+                } finally {
+                  setClearingStarter(false);
+                }
+              }}
+            >
+              {clearingStarter ? 'Removing…' : 'Clear examples'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!setupLineDismissed && firstSessionLine(userProfile) && !tasks.some((t) => isStarterTask(t)) && (
+        <div className="reality-invite-card" role="status">
+          <p className="reality-invite-body" style={{ marginBottom: 8 }}>
+            {firstSessionLine(userProfile)}
+          </p>
+          <button type="button" className="btn-text" onClick={() => setSetupLineDismissed(true)}>
+            Got it
+          </button>
+        </div>
+      )}
 
       {pendingRealityInvite && !realityCheckOpen && (
         <div className="reality-invite-card" role="region" aria-label="Reality check">
@@ -2299,6 +2364,7 @@ export function TodayPage() {
         onNavigate={(s: Surface) => recordEvent(s, true)}
         onAdd={captureOpen ? undefined : () => setCaptureOpen(true)}
         addLabel="Dock it"
+        sectionOrder={orderedNavSurfaces(userProfile)}
       />
     </div>
   );
