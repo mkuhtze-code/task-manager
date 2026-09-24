@@ -44,19 +44,29 @@ export default function SurfaceNav({
   onNavigate,
   onAdd,
   addLabel,
+  sectionOrder,
 }: {
   active: NavSurface;
   onNavigate?: (surface: Surface) => void;
   onAdd?: () => void;
   addLabel?: string;
+  /** Optional emphasis order from onboarding profile (all four still available). */
+  sectionOrder?: NavSurface[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const current = SECTIONS.find((s) => s.key === active) ?? SECTIONS[0];
-  const others = SECTIONS.filter((s) => s.key !== active);
+  const ordered = sectionOrder?.length
+    ? sectionOrder
+        .map((key) => SECTIONS.find((s) => s.key === key))
+        .filter((s): s is SectionDef => !!s)
+        .concat(SECTIONS.filter((s) => !sectionOrder.includes(s.key)))
+    : SECTIONS;
+
+  const current = ordered.find((s) => s.key === active) ?? ordered[0];
+  const others = ordered.filter((s) => s.key !== active);
 
   useEffect(() => {
     if (!open) return;
