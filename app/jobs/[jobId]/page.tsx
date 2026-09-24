@@ -35,7 +35,7 @@ import {
   suggestLocationMemory,
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
-import { closeCompletionLoop } from '@/lib/thinking/evidence/closeCompletionLoop';
+import { closeCompletionLoop, historyRowFromCompletion } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
 import { decidePersonalGravity } from '@/lib/thinking/decisions/personalGravity';
 import type { SurfaceEvent } from '@/lib/thinking/types';
@@ -445,18 +445,33 @@ export default function JobDetailPage() {
     if (task && task.status === 'active' && task.started_at) {
       finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
     }
-    // Prefer timer-observed time; fall back to estimate so zero-timer
-    // completes still feed the learning loop when the user had an estimate.
-    const actual = Math.round(finalLogged) > 0
-      ? Math.round(finalLogged)
-      : Math.round(task?.estimate_mins || 0);
+    const measured = Math.round(finalLogged);
+    const loop = closeCompletionLoop({
+      userId: session?.user?.id,
+      taskText: task?.text || '',
+      estimateMins: task?.estimate_mins || 0,
+      measuredMins: measured,
+      history,
+      clusters,
+      hints: {
+        estimateMins: task?.estimate_mins,
+        loggedMins: measured,
+        jobId: task?.job_id ?? jobId,
+        dueToday: task?.due_today,
+        intendedTime: task?.intended_time,
+        createdAt: task?.created_at,
+        surfaceDate: task?.surface_date,
+        subtaskCount: task ? (subtasksByTask[task.id]?.length ?? 0) : 0,
+      },
+    });
+    const actualForDb = loop.actualForDb;
     const { error } = await supabase
       .from('tasks')
       .update({
         status: 'done',
         started_at: null,
         logged_mins: finalLogged,
-        actual_mins: actual > 0 ? actual : Math.round(finalLogged),
+        actual_mins: actualForDb > 0 ? actualForDb : null,
         completed_at: new Date().toISOString(),
       })
       .eq('id', id);
@@ -468,31 +483,26 @@ export default function JobDetailPage() {
     setTasks((prev) =>
       prev.map((t) =>
         t.id === id
-          ? { ...t, status: 'done', started_at: null, logged_mins: finalLogged, actual_mins: actual > 0 ? actual : Math.round(finalLogged) }
+          ? {
+              ...t,
+              status: 'done',
+              started_at: null,
+              logged_mins: finalLogged,
+              actual_mins: actualForDb > 0 ? actualForDb : t.actual_mins,
+            }
           : t
       )
     );
-    if (task) {
-      if (actual > 0) {
-        setHistory((prev) => [
-          {
-            text: task.text,
-            actual_mins: actual,
-            location_text: task.location_text,
-            lat: task.lat,
-            lng: task.lng,
-          },
-          ...prev,
-        ]);
-      }
-      closeCompletionLoop({
-        userId: session?.user?.id,
-        taskText: task.text,
-        estimateMins: task.estimate_mins,
-        actualMins: actual,
-        history,
-        clusters,
-      });
+    if (task && loop.trainMins != null) {
+      setHistory((prev) => [
+        historyRowFromCompletion(
+          task,
+          loop.trainMins!,
+          measured,
+          { subtask_count: subtasksByTask[task.id]?.length ?? 0 }
+        ),
+        ...prev,
+      ]);
     }
   }
 
