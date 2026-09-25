@@ -16,8 +16,13 @@ export function registerDesktopPrimaryAction(
   label: string,
   run: () => void
 ): () => void {
+  const prev = action;
+  // Reuse the same snapshot object when label is unchanged and only the
+  // function identity changed from a re-register — still need new run.
   action = { label, run };
-  notify();
+  if (!prev || prev.label !== label || prev.run !== run) {
+    notify();
+  }
   return () => {
     if (action?.run === run) {
       action = null;
