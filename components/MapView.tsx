@@ -26,6 +26,44 @@ function mapsUrlFor(query: string): string {
   return `https://maps.google.com/?q=${encodeURIComponent(query)}&api=1`;
 }
 
+/** Reduced UI + optional dark basemap so the sheet matches Dokkit theme. */
+function mapOptionsForTheme(): Record<string, unknown> {
+  const dark =
+    typeof document !== 'undefined' &&
+    document.documentElement.getAttribute('data-theme') === 'dark';
+
+  const darkStyles = [
+    { elementType: 'geometry', stylers: [{ color: '#1c222c' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#1c222c' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#8a96a3' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2a313b' }] },
+    { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1c222c' }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#14181f' }] },
+    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  ];
+
+  return {
+    zoom: 11,
+    center: { lat: 0, lng: 0 },
+    disableDefaultUI: true,
+    zoomControl: true,
+    gestureHandling: 'greedy',
+    streetViewControl: false,
+    mapTypeControl: false,
+    fullscreenControl: false,
+    clickableIcons: false,
+    ...(dark ? { styles: darkStyles } : {}),
+  };
+}
+
+function routeLineColor(): string {
+  const dark =
+    typeof document !== 'undefined' &&
+    document.documentElement.getAttribute('data-theme') === 'dark';
+  return dark ? '#83a3f0' : '#4a6fa5';
+}
+
 let scriptLoadPromise: Promise<void> | null = null;
 
 function loadGoogleMapsScript(): Promise<void> {
@@ -50,12 +88,17 @@ function loadGoogleMapsScript(): Promise<void> {
   return scriptLoadPromise;
 }
 
+/** Quiet confirmation map — order + drive, not exploration chrome. */
 function MapView(props: {
   base: MapBase | null;
   activities: MapActivity[]; // must be in order_index order — polylines are per fromId leg
   onClose: () => void;
+  /** Sheet title. Default: "Route". */
+  title?: string;
+  /** One calm line under the title (e.g. stop count + drive). */
+  subtitle?: string;
 }) {
-  const { base, activities, onClose } = props;
+  const { base, activities, onClose, title = 'Route', subtitle } = props;
   const dialogRef = useDialogA11y(onClose);
 
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -234,12 +277,7 @@ function MapView(props: {
       const g = (window as any).google;
       if (!g?.maps) return;
 
-      const map = new g.maps.Map(mapDivRef.current, {
-        zoom: 11,
-        center: { lat: 0, lng: 0 },
-        disableDefaultUI: false,
-        streetViewControl: false,
-      });
+      const map = new g.maps.Map(mapDivRef.current, mapOptionsForTheme());
       mapRef.current = map;
 
       g.maps.event.addListenerOnce(map, 'idle', () => {
@@ -301,7 +339,7 @@ function MapView(props: {
           scale: 12,
           fillColor: '#2451d4',
           fillOpacity: 1,
-          strokeColor: '#ffffff',
+          strokeColor: routeLineColor(),
           strokeWeight: 2,
         },
         label: { text: 'B', color: '#ffffff', fontSize: '11px', fontWeight: '700' },
@@ -323,7 +361,7 @@ function MapView(props: {
           scale: 12,
           fillColor: markerColor,
           fillOpacity: markerState === 'done' ? 0.5 : 0.95,
-          strokeColor: '#ffffff',
+          strokeColor: routeLineColor(),
           strokeWeight: 2,
         },
         label: { text: String(idx + 1), color: '#ffffff', fontSize: '11px', fontWeight: '700' },
@@ -346,9 +384,9 @@ function MapView(props: {
         const path = g.maps.geometry.encoding.decodePath(encoded);
         const poly = new g.maps.Polyline({
           path,
-          strokeColor: '#2451d4',
+          strokeColor: routeLineColor(),
           strokeOpacity: 0.85,
-          strokeWeight: 4,
+          strokeWeight: 3,
         });
         poly.setMap(mapRef.current);
         polylinesRef.current.push(poly);
@@ -400,16 +438,25 @@ function MapView(props: {
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Map"
+        aria-label={title}
         style={{ height: '80vh', display: 'flex', flexDirection: 'column', padding: 'var(--space-4)' }}
       >
-        <div className="task-detail-header" style={{ marginBottom: 'var(--space-2)' }}>
-          <div className="settings-panel-title">Map</div>
-          <button className="gear-btn" onClick={onClose} aria-label="Close"><CloseIcon /></button>
+        <div className="task-detail-header map-sheet-header">
+          <div className="map-sheet-titles">
+            <div className="settings-panel-title">{title}</div>
+            {subtitle ? <p className="map-sheet-subtitle">{subtitle}</p> : null}
+          </div>
+          <button type="button" className="gear-btn" onClick={onClose} aria-label="Close">
+            <CloseIcon />
+          </button>
         </div>
 
         {loading && <p className="settings-help">Loading map…</p>}
-        {error && <p className="settings-help" style={{ color: 'var(--danger-text, var(--danger))' }}>{error}</p>}
+        {error && (
+          <p className="settings-help" style={{ color: 'var(--danger-text, var(--danger))' }}>
+            {error}
+          </p>
+        )}
 
         <div
           style={{
@@ -470,30 +517,30 @@ function MapView(props: {
           ))}
         </div>
 
-        {pendingOpen && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-2)',
-              marginTop: 'var(--space-2)',
-            }}
-          >
-            <span style={{ flex: 1, fontSize: 13, color: 'var(--ink-soft)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              Open "{pendingOpen.label}" in Google Maps?
-            </span>
-            <button className="btn-text" onClick={() => setPendingOpen(null)}>Cancel</button>
-            <button
-              className="btn btn-ghost"
-              style={{ padding: '4px 12px', minHeight: 32, fontSize: 12 }}
-              onClick={() => {
-                window.open(pendingOpen.url, '_blank', 'noopener,noreferrer');
-                setPendingOpen(null);
-              }}
-            >
-              Open
-            </button>
+        {pendingOpen ? (
+          <div className="map-sheet-handoff" role="region" aria-label="Open in Google Maps">
+            <span className="map-sheet-handoff-label">Open “{pendingOpen.label}” in Maps?</span>
+            <div className="map-sheet-handoff-actions">
+              <button type="button" className="spatial-strip-action" onClick={() => setPendingOpen(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="spatial-strip-action"
+                onClick={() => {
+                  window.open(pendingOpen.url, '_blank', 'noopener,noreferrer');
+                  setPendingOpen(null);
+                }}
+              >
+                Open
+              </button>
+            </div>
           </div>
+        ) : (
+          !loading &&
+          !error && (
+            <p className="map-sheet-footnote">Tap a pin to open in Maps</p>
+          )
         )}
       </div>
     </div>
