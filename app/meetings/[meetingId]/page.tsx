@@ -38,12 +38,16 @@ import type { Job } from '@/lib/jobTypes';
 import { closeCompletionLoop } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { fetchDurationHistory } from '@/lib/thinking/loadDurationHistory';
 import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import MeetingsPlanGate from '@/components/MeetingsPlanGate';
 
 export default function MeetingDetail({ params }: { params: { meetingId: string } }) {
   const meetingId = params.meetingId;
   const router = useRouter();
 
   const [session, setSession] = useState<any>(null);
+  const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
+  const canMeetings = entitlements.canUseMeetings;
   const [history, setHistory] = useState<HistoricalTask[]>([]);
   const clusters = useMemo(() => buildClusters(history), [history]);
   const [loading, setLoading] = useState(true);
@@ -574,7 +578,25 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   }
 
   if (!meeting) {
+    
+  if (!entLoading && session && !canMeetings) {
     return (
+      <div className="app-shell">
+        <div className="app-header">
+          <div className="app-header-left">
+            <Link href="/meetings" className="back-link" aria-label="Back to meetings">
+              <BackIcon />
+            </Link>
+            <h1 className="app-title">Meetings</h1>
+          </div>
+        </div>
+        <MeetingsPlanGate />
+        <SurfaceNav active="meetings" />
+      </div>
+    );
+  }
+
+return (
       <div className="app-shell">
         <div className="app-header">
           <div className="app-header-left">
