@@ -40,15 +40,31 @@ const PRODUCTS = [
 
 const NAV_ORDER_KEY = 'dokkit-nav-order';
 
+/** Cached snapshot for useSyncExternalStore — getSnapshot must return a
+ * stable reference when data is unchanged, or React hits max update depth. */
+let navOrderCacheRaw: string | null | undefined = undefined;
+let navOrderCache: SurfaceKey[] | null = null;
+
 function readNavOrder(): SurfaceKey[] | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(NAV_ORDER_KEY);
-    if (!raw) return null;
+    if (raw === navOrderCacheRaw) return navOrderCache;
+    navOrderCacheRaw = raw;
+    if (!raw) {
+      navOrderCache = null;
+      return null;
+    }
     const parsed = JSON.parse(raw) as SurfaceKey[];
-    if (!Array.isArray(parsed)) return null;
-    return parsed;
+    if (!Array.isArray(parsed)) {
+      navOrderCache = null;
+      return null;
+    }
+    navOrderCache = parsed;
+    return navOrderCache;
   } catch {
+    navOrderCacheRaw = undefined;
+    navOrderCache = null;
     return null;
   }
 }
@@ -57,7 +73,12 @@ function readNavOrder(): SurfaceKey[] | null {
 export function persistNavOrder(order: SurfaceKey[]): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(order));
+    const next = JSON.stringify(order);
+    const prev = window.localStorage.getItem(NAV_ORDER_KEY);
+    if (prev === next) return;
+    window.localStorage.setItem(NAV_ORDER_KEY, next);
+    navOrderCacheRaw = next;
+    navOrderCache = order.slice() as SurfaceKey[];
     window.dispatchEvent(new Event('dokkit-nav-order'));
   } catch {
     // ignore
