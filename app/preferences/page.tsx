@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { apiUrl, authedFetch } from '@/lib/authedFetch';
 import { registerWebPushSubscription } from '@/lib/fcm/client';
 import AppHeader from '@/components/AppHeader';
+import Link from 'next/link';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import type { MeetingExportPreferences } from '@/lib/meetingExport';
 import { DEFAULT_MEETING_EXPORT_PREFS, normalizeMeetingExportPrefs } from '@/lib/meetingExport';
@@ -64,6 +66,7 @@ function applyTheme(theme: Theme) {
 
 export default function Preferences() {
   const [session, setSession] = useState<any>(null);
+  const { entitlements } = useEntitlements(session?.user?.id);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
   const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5]);
@@ -515,6 +518,15 @@ export default function Preferences() {
       <AppHeader title="Preferences" backHref="/" />
 
       <div className="prefs-body">
+        <p className="prefs-intro">
+          How Dokkit behaves for you — hours, places, order, and alerts.
+          Plan, security, and data live in{' '}
+          <Link href="/account" className="prefs-account-link">
+            Account
+          </Link>
+          .
+        </p>
+
         <div className="prefs-section">
           <div className="prefs-section-label">Look</div>
       <div className="settings-panel">
@@ -636,6 +648,14 @@ export default function Preferences() {
 
         <div className="prefs-section">
           <div className="prefs-section-label">Meetings</div>
+      {!entitlements.canUseMeetings ? (
+        <div className="settings-panel">
+          <p className="prefs-plan-note">
+            Meeting export defaults are available on the Dokkit plan.{' '}
+            <Link href="/account/billing">View plan</Link>
+          </p>
+        </div>
+      ) : (
       <div className="settings-panel">
         <div className="settings-panel-title">Export defaults</div>
         <p className="settings-help">
@@ -716,6 +736,7 @@ export default function Preferences() {
         {exportPrefsMsg && <span className="settings-saved">{exportPrefsMsg}</span>}
       </div>
         </div>
+      )}
 
       {CALENDAR_CONNECT_ENABLED && (
       <div className="settings-panel">
