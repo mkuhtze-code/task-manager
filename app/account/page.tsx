@@ -182,12 +182,6 @@ export default function Account() {
     return (
       <div className="app-shell">
         <AppHeader title="Account" backHref="/" />
-
-      <section className="settings-panel" style={{ marginTop: 12 }}>
-        <Link href="/account/billing" className="settings-help" style={{ fontWeight: 600 }}>
-          Billing & plan
-        </Link>
-      </section>
         <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>Sign in on the main page first.</p>
       </div>
     );
@@ -233,14 +227,24 @@ export default function Account() {
           <>
             <span className="tag">Free</span>
             <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-              You have full operational access to Dokkit — no caps on tasks or history. Premium adds Patterns,
-              estimate learning, and calendar sync.
+              Today, Jobs, and Travel are included. Meetings is part of the Dokkit plan.
             </p>
-            <button className="btn btn-ghost" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-              Upgrade — coming soon
-            </button>
           </>
         )}
+      </div>
+
+      <div className="settings-panel">
+        <div className="settings-panel-title">Billing</div>
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 12px' }}>
+          View your plan, upgrade, or manage payment and invoices.
+        </p>
+        <Link
+          href="/account/billing"
+          className="btn btn-ghost"
+          style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
+        >
+          Billing &amp; plan
+        </Link>
       </div>
 
       <div className="settings-panel">
