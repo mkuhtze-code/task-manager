@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlusIcon } from '@/components/icons';
 import { useEntitlements } from '@/hooks/useEntitlements';
-import type { Surface } from '@/lib/taskTypes';
+import type { Surface } from '@/lib/thinking/types';
 
 export type NavSurface = Surface | 'meetings';
 
