@@ -489,6 +489,8 @@ export function OnboardingScreen(props: {
               placeholder="Home address"
               onChange={setHomeLocation}
               onPlaceSelected={onHomeSelected}
+              hint="Optional — start/end for the day"
+              aria-label="Home address"
             />
             <span className="settings-label" style={{ display: 'block', marginTop: 'var(--space-3)' }}>Work / base</span>
             <LocationAutocomplete
@@ -496,6 +498,8 @@ export function OnboardingScreen(props: {
               placeholder="Work address"
               onChange={setWorkLocation}
               onPlaceSelected={onWorkSelected}
+              hint="Optional — base when you are not at home"
+              aria-label="Work or base address"
             />
 
             <button
