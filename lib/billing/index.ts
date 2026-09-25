@@ -4,3 +4,5 @@ export { resolveEntitlements, tierFromStripeStatus } from './entitlements';
 export { getStripe, getStripePriceMonthly, appBaseUrl, isStripeConfigured } from './stripe';
 
 export type { BillingSummary, BillingInvoiceRow } from './summaryTypes';
+
+export { loadEntitlementsForUser, assertCanUseMeetings } from './serverEntitlements';
