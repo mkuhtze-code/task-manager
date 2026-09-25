@@ -13,6 +13,8 @@ import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon } from '@/components/icons';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import MeetingsPlanGate from '@/components/MeetingsPlanGate';
 
 export default function MeetingsHome() {
   const router = useRouter();
@@ -24,11 +26,13 @@ export default function MeetingsHome() {
   const [newMeetingOpen, setNewMeetingOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const { isDesktop } = useSurfaceMode();
+  const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
+  const canMeetings = entitlements.canUseMeetings;
 
   useEffect(() => {
-    if (!isDesktop) return;
+    if (!isDesktop || !canMeetings) return;
     return registerDesktopPrimaryAction('Record a meeting', () => setNewMeetingOpen(true));
-  }, [isDesktop]);
+  }, [isDesktop, canMeetings]);
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -73,6 +77,7 @@ export default function MeetingsHome() {
   }
 
   async function createMeeting(payload: NewMeetingPayload) {
+    if (!canMeetings) return;
     setSaving(true);
     setError(null);
     const { data, error: insertErr } = await supabase
@@ -164,8 +169,10 @@ export default function MeetingsHome() {
         </button>
       )}
 
-      {loading ? (
+      {loading || entLoading ? (
         <div className="empty-state">Loading…</div>
+      ) : !canMeetings ? (
+        <MeetingsPlanGate />
       ) : !hasMeetings ? (
         <div className="empty-state">
           <div className="empty-state-title">No meetings recorded.</div>
@@ -184,7 +191,7 @@ export default function MeetingsHome() {
         </>
       )}
 
-      {newMeetingOpen && (
+      {canMeetings && newMeetingOpen && (
         <NewMeetingSheet
           saving={saving}
           jobs={jobs}
@@ -195,7 +202,11 @@ export default function MeetingsHome() {
 
       <SurfaceNav
         active="meetings"
-        onAdd={!newMeetingOpen && hasMeetings ? () => setNewMeetingOpen(true) : undefined}
+        onAdd={
+          canMeetings && !newMeetingOpen && hasMeetings
+            ? () => setNewMeetingOpen(true)
+            : undefined
+        }
         addLabel="Record a meeting"
       />
     </div>
