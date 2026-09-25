@@ -18,7 +18,28 @@ export async function authedFetch(url: string, body: any) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(body ?? {}),
   });
   return res.json();
+}
+
+/** Authenticated GET — returns parsed JSON and ok/status for error handling. */
+export async function authedGet<T = Record<string, unknown>>(
+  url: string
+): Promise<{ ok: boolean; status: number; data: T }> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  const res = await fetch(apiUrl(url), {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  let data = {} as T;
+  try {
+    data = (await res.json()) as T;
+  } catch {
+    // non-JSON
+  }
+  return { ok: res.ok, status: res.status, data };
 }
