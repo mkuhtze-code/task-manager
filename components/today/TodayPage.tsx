@@ -2377,6 +2377,17 @@ export function TodayPage() {
           base={mapBase}
           activities={mapActivities}
           onClose={() => setMapOpen(false)}
+          title="Today's order"
+          subtitle={
+            locatedInOrder.length === 0
+              ? undefined
+              : [
+                  `${locatedInOrder.length} stop${locatedInOrder.length === 1 ? '' : 's'}`,
+                  routeDriveMins > 0 ? `about ${fmtMins(routeDriveMins)} driving` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+          }
         />
       )}
 
