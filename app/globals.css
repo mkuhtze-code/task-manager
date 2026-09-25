@@ -6887,3 +6887,96 @@ select:-webkit-autofill {
 .account-delete-confirm {
   margin-top: 12px;
 }
+
+
+/* ── Product selector Free / Dokkit plan ─────────────────────── */
+.surface-menu-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 6px 10px;
+}
+
+.surface-menu-group-label {
+  margin: 4px 12px 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.surface-menu-item-pro .surface-menu-label {
+  color: var(--ink-soft);
+}
+
+.surface-menu-upgrade {
+  font-weight: 650;
+  color: var(--steel-text, var(--steel));
+}
+
+.desk-product-pro-wrap {
+  position: relative;
+}
+
+.desk-product-tab-plan {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink-soft);
+}
+
+.desk-product-tab-plan:hover {
+  color: var(--ink);
+}
+
+.desk-plan-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  padding: 12px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(var(--shadow-rgb), 0.16);
+  z-index: 80;
+}
+
+.desk-plan-popover-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.desk-plan-popover-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.desk-plan-popover-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.desk-plan-popover-item:hover {
+  background: var(--steel-wash);
+}
+
+.desk-plan-popover-cta {
+  width: 100%;
+}
