@@ -2042,6 +2042,7 @@ export function TodayPage() {
         onRecalcRoute={recalcRoute}
         routeError={routeError}
         hasRoute={hasRoute}
+        routeDriveMins={routeDriveMins}
         onViewMap={() => setMapOpen(true)}
          userId={session.user.id}
         commitments={activeCommitments}
@@ -2183,12 +2184,14 @@ export function TodayPage() {
               </div>
               {geoAware && isLocated && t.drive_mins_to_next > 0 && (
                 <TravelLeg
-                  label={locatedIdx === locatedInOrder.length - 1
-                    ? `${fmtMins(t.drive_mins_to_next)} → ${returnLabel ?? originLabel}`
-                    : fmtMins(t.drive_mins_to_next)}
-                  detail={locatedIdx === locatedInOrder.length - 1
-                    ? `Drive back to ${returnLabel ?? originLabel}`
-                    : 'Drive to the next stop'}
+                  label={fmtMins(t.drive_mins_to_next)}
+                  detail={
+                    locatedIdx === locatedInOrder.length - 1
+                      ? `Back to ${returnLabel ?? originLabel}`
+                      : locatedInOrder[locatedIdx + 1]
+                        ? `To ${locatedInOrder[locatedIdx + 1].text}`
+                        : 'To next stop'
+                  }
                 />
               )}
             </Fragment>
