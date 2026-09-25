@@ -189,7 +189,7 @@ select:-webkit-autofill {
 .app-header {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 50;
   background: rgba(var(--glass-rgb), 0.82);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -242,6 +242,7 @@ select:-webkit-autofill {
   position: relative;
   display: flex;
   align-items: center;
+  z-index: 50;
 }
 
 .gear-btn {
@@ -274,7 +275,7 @@ select:-webkit-autofill {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  z-index: 40;
+  z-index: 60;
   animation: expand-in 0.2s var(--spring);
 }
 
@@ -6300,4 +6301,63 @@ select:-webkit-autofill {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+
+/* ── Onboarding / auth WCAG contrast ─────────────────────────── */
+.onboard-card .settings-row input[type="time"],
+.auth-card input[type="time"] {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: var(--text-base);
+  background: var(--paper);
+  color: var(--ink);
+  color-scheme: inherit;
+}
+
+.onboard-card .settings-row input[type="time"]:focus-visible,
+.auth-card input[type="time"]:focus-visible {
+  outline: 2px solid var(--steel-text, var(--steel));
+  outline-offset: 2px;
+}
+
+.onboard-card .pac-target-input,
+.onboard-card input[type="text"],
+.auth-card input[type="text"] {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+[data-theme="dark"] .onboard-choice.selected {
+  background: var(--steel-wash);
+  color: var(--ink);
+  border-color: var(--steel-text);
+}
+
+[data-theme="dark"] .auth-card {
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+[data-theme="dark"] .auth-title {
+  color: var(--ink);
+}
+
+[data-theme="dark"] .day-toggle-btn {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+[data-theme="dark"] .day-toggle-btn.active {
+  background: var(--steel-wash);
+  color: var(--ink);
+  border-color: var(--steel-text);
+}
+
+/* Gear stays above sticky cards / maps / sheets chrome on mobile */
+.app-header-right {
+  z-index: 50;
 }
