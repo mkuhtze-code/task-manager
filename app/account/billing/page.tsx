@@ -1,58 +1,92 @@
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import { supabase } from '@/lib/supabaseClient';
-import { authedFetch } from '@/lib/authedFetch';
-import { PLAN_COPY, resolveEntitlements, type AccountTier } from '@/lib/billing';
+import { authedFetch, authedGet } from '@/lib/authedFetch';
+import type { BillingInvoiceRow, BillingSummary } from '@/lib/billing';
+import {
+  buildStorageQuota,
+  formatStorageBytes,
+  formatStoragePercent,
+} from '@/lib/storageQuota';
+
+function formatPeriodEnd(iso: string | null): string | null {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch {
+    return null;
+  }
+}
+
+function formatInvoiceDate(unix: number): string {
+  return new Date(unix * 1000).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function formatMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+    }).format(amount / 100);
+  } catch {
+    return `${(amount / 100).toFixed(2)} ${currency}`;
+  }
+}
 
 export default function BillingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [tier, setTier] = useState<AccountTier>('free');
-  const [billingStatus, setBillingStatus] = useState('none');
-  const [periodEnd, setPeriodEnd] = useState<string | null>(null);
+  const [summary, setSummary] = useState<BillingSummary | null>(null);
+  const [invoices, setInvoices] = useState<BillingInvoiceRow[]>([]);
+  const [invoicesError, setInvoicesError] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        router.replace('/');
-        return;
-      }
-      const uid = data.session.user.id;
-      const { data: settings } = await supabase
-        .from('user_settings')
-        .select('account_tier, billing_status')
-        .eq('user_id', uid)
-        .maybeSingle();
-      const { data: sub } = await supabase
-        .from('billing_subscriptions')
-        .select('status, current_period_end')
-        .eq('user_id', uid)
-        .maybeSingle();
-      if (cancelled) return;
-      setTier((settings?.account_tier as AccountTier) || 'free');
-      setBillingStatus(
-        (settings?.billing_status as string) ||
-          (sub?.status as string) ||
-          'none'
-      );
-      setPeriodEnd((sub?.current_period_end as string) || null);
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const load = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      router.replace('/');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const [sumRes, invRes] = await Promise.all([
+      authedGet<BillingSummary & { error?: string }>('/api/billing/summary'),
+      authedGet<{ invoices?: BillingInvoiceRow[]; error?: string }>(
+        '/api/billing/invoices'
+      ),
+    ]);
+    if (!sumRes.ok) {
+      setError(sumRes.data?.error || 'Could not load billing details');
+      setSummary(null);
+    } else {
+      setSummary(sumRes.data as BillingSummary);
+    }
+    if (invRes.ok) {
+      setInvoices(invRes.data.invoices || []);
+      setInvoicesError('');
+    } else {
+      setInvoices([]);
+      setInvoicesError(invRes.data?.error || 'Could not load invoices');
+    }
+    setLoading(false);
   }, [router]);
 
-  const ent = resolveEntitlements({ accountTier: tier, billingStatus });
-  const copy = PLAN_COPY[ent.tier] || PLAN_COPY.free;
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function startCheckout() {
     setBusy(true);
@@ -90,52 +124,80 @@ export default function BillingPage() {
 
   if (loading) {
     return (
-      <div className="app-shell">
+      <div className="app-shell account-portal">
         <AppHeader title="Billing" backHref="/account" />
-        <p className="settings-help">Loading…</p>
+        <p className="account-muted">Loading billing…</p>
       </div>
     );
   }
 
+  const s = summary;
+  const periodLabel = formatPeriodEnd(s?.currentPeriodEnd ?? null);
+  const quota = s
+    ? buildStorageQuota(s.storageUsedBytes, s.storageLimitBytes)
+    : null;
+  const showUpgrade = s && !s.isPro && s.tier !== 'trusted_tester';
+  const showPortal =
+    s && s.hasStripeCustomer && s.tier !== 'trusted_tester';
+
   return (
-    <div className="app-shell">
+    <div className="app-shell account-portal">
       <AppHeader title="Billing" backHref="/account" />
 
-      <section className="settings-panel" style={{ marginTop: 12 }}>
-        <p className="settings-panel-title">{copy.name}</p>
-        <p className="settings-help" style={{ marginTop: 6 }}>
-          {copy.summary}
+      {error && (
+        <p className="account-alert" role="alert">
+          {error}
         </p>
-        {periodEnd && ent.isPro && (
-          <p className="settings-help" style={{ marginTop: 8 }}>
-            Current period through{' '}
-            {new Date(periodEnd).toLocaleDateString(undefined, {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            })}
-            {ent.inBillingGrace ? ' · payment needs attention' : ''}
-          </p>
-        )}
-      </section>
+      )}
 
-      <section className="settings-panel" style={{ marginTop: 16 }}>
-        <p className="settings-help">
-          Meetings requires Dokkit (paid). Today, Jobs, and Travel stay available on Free.
-          Invoices and cards are managed securely by Stripe — Dokkit never stores card numbers.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-          {!ent.isPro && (
+      {/* Plan */}
+      <section className="account-card" aria-labelledby="plan-heading">
+        <p className="account-card-kicker">Current plan</p>
+        <h2 id="plan-heading" className="account-card-title">
+          {s?.planName ?? '—'}
+        </h2>
+        <p className="account-muted">{s?.planSummary}</p>
+
+        <dl className="account-dl">
+          <div>
+            <dt>Status</dt>
+            <dd>
+              {s?.tier === 'trusted_tester'
+                ? 'Trusted tester'
+                : s?.subscriptionStatus || s?.billingStatus || 'none'}
+              {s?.cancelAtPeriodEnd ? ' · ends after this period' : ''}
+              {s?.billingStatus === 'past_due' ? ' · payment needs attention' : ''}
+            </dd>
+          </div>
+          {s?.priceDisplay && (
+            <div>
+              <dt>Price</dt>
+              <dd>
+                {s.priceDisplay}
+                {s.interval ? ` / ${s.interval}` : ''}
+              </dd>
+            </div>
+          )}
+          {periodLabel && s?.isPro && s.tier !== 'trusted_tester' && (
+            <div>
+              <dt>{s.cancelAtPeriodEnd ? 'Access until' : 'Next renewal'}</dt>
+              <dd>{periodLabel}</dd>
+            </div>
+          )}
+        </dl>
+
+        <div className="account-actions">
+          {showUpgrade && (
             <button
               type="button"
               className="btn btn-steel"
-              disabled={busy}
+              disabled={busy || !s?.stripeConfigured}
               onClick={() => void startCheckout()}
             >
               {busy ? 'Working…' : 'Upgrade to Dokkit'}
             </button>
           )}
-          {ent.isPro && ent.tier !== 'trusted_tester' && (
+          {showPortal && (
             <button
               type="button"
               className="btn btn-ghost"
@@ -145,16 +207,125 @@ export default function BillingPage() {
               Manage billing
             </button>
           )}
-          {ent.tier === 'trusted_tester' && (
-            <p className="settings-help">Trusted tester — full access without a card.</p>
+          {s?.tier === 'trusted_tester' && (
+            <p className="account-muted">Full access without a card.</p>
+          )}
+          {showUpgrade && s && !s.stripeConfigured && (
+            <p className="account-muted">Billing is not configured on this environment.</p>
           )}
         </div>
-        {error && (
-          <p className="settings-help" style={{ color: 'var(--danger-text, var(--danger))', marginTop: 12 }}>
-            {error}
+      </section>
+
+      {/* Payment method */}
+      <section className="account-card" aria-labelledby="pm-heading">
+        <h2 id="pm-heading" className="account-card-heading">
+          Payment method
+        </h2>
+        {s?.paymentMethod?.last4 ? (
+          <p className="account-body">
+            {[s.paymentMethod.brand, '····', s.paymentMethod.last4]
+              .filter(Boolean)
+              .join(' ')}
+            {s.paymentMethod.expMonth && s.paymentMethod.expYear
+              ? ` · exp ${s.paymentMethod.expMonth}/${s.paymentMethod.expYear}`
+              : ''}
+          </p>
+        ) : (
+          <p className="account-muted">
+            {s?.hasStripeCustomer
+              ? 'No default card on file. Use Manage billing to add one.'
+              : 'No payment method — only needed if you subscribe.'}
           </p>
         )}
+        {showPortal && (
+          <button
+            type="button"
+            className="btn-text account-inline-action"
+            disabled={busy}
+            onClick={() => void openPortal()}
+          >
+            Update payment method
+          </button>
+        )}
       </section>
+
+      {/* Storage */}
+      {quota && (
+        <section className="account-card" aria-labelledby="storage-heading">
+          <h2 id="storage-heading" className="account-card-heading">
+            Storage
+          </h2>
+          <p className="account-body">
+            {formatStorageBytes(quota.usedBytes)} of{' '}
+            {formatStorageBytes(quota.limitBytes)} used (
+            {formatStoragePercent(quota.ratio)})
+          </p>
+          <div
+            className="account-meter"
+            role="progressbar"
+            aria-valuenow={Math.round(quota.ratio * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="account-meter-fill"
+              style={{ width: `${Math.min(100, quota.ratio * 100)}%` }}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* Invoices */}
+      <section className="account-card" aria-labelledby="inv-heading">
+        <h2 id="inv-heading" className="account-card-heading">
+          Invoices
+        </h2>
+        {invoicesError && (
+          <p className="account-muted" role="status">
+            {invoicesError}
+          </p>
+        )}
+        {!invoicesError && invoices.length === 0 && (
+          <p className="account-muted">No invoices yet.</p>
+        )}
+        {invoices.length > 0 && (
+          <ul className="account-invoice-list">
+            {invoices.map((inv) => (
+              <li key={inv.id} className="account-invoice-row">
+                <div>
+                  <span className="account-invoice-date">
+                    {formatInvoiceDate(inv.created)}
+                  </span>
+                  <span className="account-muted">
+                    {' '}
+                    · {inv.number || inv.status || 'Invoice'}
+                  </span>
+                </div>
+                <div className="account-invoice-right">
+                  <span className="account-invoice-amount">
+                    {formatMoney(inv.amountPaid, inv.currency)}
+                  </span>
+                  {(inv.pdfUrl || inv.hostedUrl) && (
+                    <a
+                      href={inv.pdfUrl || inv.hostedUrl || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-text"
+                    >
+                      View
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <p className="account-footnote">
+        Card details are handled by Stripe. Dokkit does not store full card numbers.{' '}
+        <Link href="/account">Back to account</Link>
+      </p>
     </div>
   );
 }
