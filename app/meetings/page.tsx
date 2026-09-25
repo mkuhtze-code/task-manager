@@ -13,6 +13,7 @@ import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon } from '@/components/icons';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
+import { authedFetch } from '@/lib/authedFetch';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import MeetingsPlanGate from '@/components/MeetingsPlanGate';
 
@@ -80,38 +81,34 @@ export default function MeetingsHome() {
     if (!canMeetings) return;
     setSaving(true);
     setError(null);
-    const { data, error: insertErr } = await supabase
-      .from('meetings')
-      .insert({
-        user_id: session.user.id,
+    try {
+      const json = await authedFetch('/api/meetings', {
         text: payload.text,
-        duration_mins: payload.durationMins,
-        start_time: payload.startTime,
-        source: 'manual',
-        job_id: payload.jobId,
-        location_text: payload.locationText,
+        durationMins: payload.durationMins,
+        startTime: payload.startTime,
+        jobId: payload.jobId,
+        locationText: payload.locationText,
         lat: payload.lat,
         lng: payload.lng,
         notes: payload.notes,
-      })
-      .select('id')
-      .single();
-    setSaving(false);
-    if (insertErr) {
-      console.error('Meeting insert failed', {
-        userId: session.user.id,
-        text: payload.text,
-        startTime: payload.startTime,
-        durationMins: payload.durationMins,
-        jobId: payload.jobId,
-        hasLocation: Boolean(payload.locationText),
-        error: insertErr,
       });
+      if (!json.id) {
+        console.error('Meeting insert failed', json);
+        setError(
+          json.error === 'Meetings requires a Dokkit plan'
+            ? 'Meetings requires a Dokkit plan'
+            : "Couldn't record the meeting"
+        );
+        return;
+      }
+      setNewMeetingOpen(false);
+      router.push(`/meetings/${json.id}`);
+    } catch (e) {
+      console.error('Meeting insert failed', e);
       setError("Couldn't record the meeting");
-      return;
+    } finally {
+      setSaving(false);
     }
-    setNewMeetingOpen(false);
-    router.push(`/meetings/${data.id}`);
   }
 
   const jobName = (id: string | null): string | null =>
