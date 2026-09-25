@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo, useSyncExternalStore } from 'react';
 import { PlusIcon } from '@/components/icons';
+import GearMenu from '@/components/GearMenu';
 import {
   getDesktopPrimaryAction,
   subscribeDesktopPrimaryAction,
@@ -129,6 +130,7 @@ export default function DesktopProductNav() {
             <span>{primary.label}</span>
           </button>
         )}
+        <GearMenu />
       </div>
     </header>
   );
