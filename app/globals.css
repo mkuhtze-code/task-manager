@@ -6550,3 +6550,55 @@ select:-webkit-autofill {
   font-size: 11px;
   color: var(--danger-text, var(--danger));
 }
+
+
+/* ── Map sheet (quiet confirmation) ──────────────────────────── */
+.map-sheet-header {
+  margin-bottom: var(--space-2);
+  align-items: flex-start;
+}
+
+.map-sheet-titles {
+  min-width: 0;
+  flex: 1;
+}
+
+.map-sheet-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
+.map-sheet-footnote {
+  margin: var(--space-2) 0 0;
+  font-size: 11px;
+  font-weight: 450;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+.map-sheet-handoff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: var(--space-2);
+}
+
+.map-sheet-handoff-label {
+  flex: 1 1 140px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-sheet-handoff-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
