@@ -553,25 +553,30 @@ export function OnboardingScreen(props: {
           text-align: left;
           padding: 12px 14px;
           border-radius: 10px;
-          border: 1px solid var(--border, #e5e5e5);
-          background: var(--surface, #fff);
-          color: var(--ink, #1a1a1a);
+          border: 1px solid var(--line-strong);
+          background: var(--paper);
+          color: var(--ink);
           font-size: 14px;
           line-height: 1.35;
           cursor: pointer;
           transition: border-color 0.12s, background 0.12s;
         }
         .onboard-choice:hover {
-          border-color: var(--steel, #5b6b7c);
+          border-color: var(--steel-text, var(--steel));
+        }
+        .onboard-choice:focus-visible {
+          outline: 2px solid var(--steel-text, var(--steel));
+          outline-offset: 2px;
         }
         .onboard-choice.selected {
-          border-color: var(--steel, #5b6b7c);
-          background: color-mix(in srgb, var(--steel, #5b6b7c) 8%, transparent);
+          border-color: var(--steel-text, var(--steel));
+          background: var(--steel-wash);
+          color: var(--ink);
         }
         .onboard-summary {
           margin: 12px 0 0;
           padding-left: 1.1em;
-          color: var(--ink, #1a1a1a);
+          color: var(--ink);
           font-size: 14px;
           line-height: 1.45;
         }
