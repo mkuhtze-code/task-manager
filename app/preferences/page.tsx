@@ -648,16 +648,16 @@ export default function Preferences() {
 
         <div className="prefs-section">
           <div className="prefs-section-label">Meetings</div>
-      {!entitlements.canUseMeetings ? (
-        <div className="settings-panel">
-          <p className="prefs-plan-note">
-            Meeting export defaults are available on the Dokkit plan.{' '}
-            <Link href="/account/billing">View plan</Link>
-          </p>
-        </div>
-      ) : (
-      <div className="settings-panel">
-        <div className="settings-panel-title">Export defaults</div>
+          {!entitlements.canUseMeetings ? (
+            <div className="settings-panel">
+              <p className="prefs-plan-note">
+                Meeting export defaults are available on the Dokkit plan.{' '}
+                <Link href="/account/billing">View plan</Link>
+              </p>
+            </div>
+          ) : (
+            <div className="settings-panel">
+              <div className="settings-panel-title">Export defaults</div>
         <p className="settings-help">
           Starting point for new exports — changeable on Review each time.
         </p>
@@ -734,9 +734,9 @@ export default function Preferences() {
         <p className="settings-hint">Photos in the record are re-encoded for the PDF. The evidence package always keeps your originals untouched.</p>
 
         {exportPrefsMsg && <span className="settings-saved">{exportPrefsMsg}</span>}
-      </div>
+            </div>
+          )}
         </div>
-      )}
 
       {CALENDAR_CONNECT_ENABLED && (
       <div className="settings-panel">
