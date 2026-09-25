@@ -182,6 +182,12 @@ export default function Account() {
     return (
       <div className="app-shell">
         <AppHeader title="Account" backHref="/" />
+
+      <section className="settings-panel" style={{ marginTop: 12 }}>
+        <Link href="/account/billing" className="settings-help" style={{ fontWeight: 600 }}>
+          Billing & plan
+        </Link>
+      </section>
         <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>Sign in on the main page first.</p>
       </div>
     );
