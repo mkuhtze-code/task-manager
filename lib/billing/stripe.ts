@@ -8,10 +8,8 @@ export function getStripe(): Stripe {
     throw new Error('STRIPE_SECRET_KEY is not configured');
   }
   if (!stripe) {
-    // apiVersion: pin when upgrading the stripe package; omit uses account default.
     stripe = new Stripe(key, {
-      // @ts-expect-error allow SDK default when versions drift
-      apiVersion: undefined,
+      apiVersion: '2024-11-20.acacia',
       typescript: true,
     });
   }
