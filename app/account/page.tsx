@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { apiUrl } from '@/lib/authedFetch';
+import { apiUrl, authedGet } from '@/lib/authedFetch';
 import AppHeader from '@/components/AppHeader';
 import {
   buildStorageQuota,
@@ -12,22 +12,22 @@ import {
   formatStoragePercent,
   type StorageQuota,
 } from '@/lib/storageQuota';
+import type { AccountTier, BillingSummary } from '@/lib/billing';
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  border: '1px solid var(--line-strong)',
-  borderRadius: 'var(--radius-sm)',
-  padding: '8px 12px',
-  fontSize: 14,
-  background: 'var(--paper)',
-  boxSizing: 'border-box',
-};
+type Section = 'profile' | 'plan' | 'security' | 'storage' | 'data';
 
-type AccountTier = 'trusted_tester' | 'free' | 'premium';
+const SECTIONS: { id: Section; label: string }[] = [
+  { id: 'profile', label: 'Profile' },
+  { id: 'plan', label: 'Plan & billing' },
+  { id: 'security', label: 'Security' },
+  { id: 'storage', label: 'Storage' },
+  { id: 'data', label: 'Data' },
+];
 
-export default function Account() {
+export default function AccountPage() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
+  const [section, setSection] = useState<Section>('profile');
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
@@ -39,13 +39,9 @@ export default function Account() {
 
   const [accountTier, setAccountTier] = useState<AccountTier | null>(null);
   const [storageQuota, setStorageQuota] = useState<StorageQuota | null>(null);
-  const [storageError, setStorageError] = useState('');
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
 
-  // PWA install state. `deferredPrompt` holds the browser's native install
-  // event (Chrome/Android/most desktop Chromium) so we can trigger it from
-  // our own button instead of waiting for the browser's own mini-infobar.
-  // iOS Safari never fires this event — there's no programmatic install on
-  // iOS — so that path falls back to plain instructions instead.
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -56,38 +52,47 @@ export default function Account() {
   }, []);
 
   useEffect(() => {
-    if (session) loadAccountTier();
+    if (!session) return;
+    (async () => {
+      const { data } = await supabase
+        .from('user_settings')
+        .select('account_tier, storage_used_bytes, storage_limit_bytes')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      setAccountTier((data?.account_tier as AccountTier) || 'free');
+      if (data) {
+        setStorageQuota(
+          buildStorageQuota(
+            Number(data.storage_used_bytes ?? 0),
+            Number(data.storage_limit_bytes ?? 0) || 30 * 1024 * 1024 * 1024
+          )
+        );
+      }
+    })();
   }, [session]);
 
-  async function loadAccountTier() {
-    const { data } = await supabase
-      .from('user_settings')
-      .select('account_tier, storage_used_bytes, storage_limit_bytes')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-    setAccountTier((data?.account_tier as AccountTier) || 'free');
-    if (data) {
-      setStorageQuota(
-        buildStorageQuota(
-          Number(data.storage_used_bytes ?? 0),
-          Number(data.storage_limit_bytes ?? 0) || 30 * 1024 * 1024 * 1024
-        )
-      );
-      setStorageError('');
-    }
-  }
+  useEffect(() => {
+    if (!session || section !== 'plan') return;
+    let cancelled = false;
+    setBillingLoading(true);
+    authedGet<BillingSummary>('/api/billing/summary').then((res) => {
+      if (cancelled) return;
+      if (res.ok) setBillingSummary(res.data);
+      setBillingLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, section]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as any).standalone === true;
     setIsStandalone(standalone);
-
     const ios = /iphone|ipad|ipod/i.test(window.navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(ios);
-
     function handleBeforeInstallPrompt(e: Event) {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -117,14 +122,12 @@ export default function Account() {
     setExportError('');
     try {
       const userId = session.user.id;
-
       const [tasksRes, subtasksRes, meetingsRes, settingsRes] = await Promise.all([
         supabase.from('tasks').select('*').eq('user_id', userId),
         supabase.from('subtasks').select('*').eq('user_id', userId),
         supabase.from('meetings').select('*').eq('user_id', userId),
         supabase.from('user_settings').select('*').eq('user_id', userId).maybeSingle(),
       ]);
-
       const exportBundle = {
         exported_at: new Date().toISOString(),
         account_email: session.user.email,
@@ -133,8 +136,9 @@ export default function Account() {
         meetings: meetingsRes.data || [],
         settings: settingsRes.data || null,
       };
-
-      const blob = new Blob([JSON.stringify(exportBundle, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(exportBundle, null, 2)], {
+        type: 'application/json',
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -143,8 +147,9 @@ export default function Account() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      setExportError('Could not export data: ' + (e?.message || 'unknown error'));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'unknown error';
+      setExportError('Could not export data: ' + msg);
     } finally {
       setExporting(false);
     }
@@ -157,7 +162,6 @@ export default function Account() {
     }
     setDeleting(true);
     setDeleteError('');
-
     const res = await fetch(apiUrl('/api/account/delete-account'), {
       method: 'POST',
       headers: {
@@ -167,263 +171,316 @@ export default function Account() {
       body: JSON.stringify({}),
     });
     const data = await res.json();
-
     if (!res.ok) {
       setDeleteError(data.error || 'Could not delete account.');
       setDeleting(false);
       return;
     }
-
     await supabase.auth.signOut();
     router.push('/');
   }
 
   if (!session) {
     return (
-      <div className="app-shell">
+      <div className="app-shell account-portal">
         <AppHeader title="Account" backHref="/" />
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>Sign in on the main page first.</p>
+        <p className="account-muted">Sign in on the main page first.</p>
       </div>
     );
   }
 
   const providers: string[] =
     (session.user.app_metadata?.providers as string[] | undefined) ||
-    (session.user.identities || []).map((i: any) => i.provider);
+    (session.user.identities || []).map((i: { provider: string }) => i.provider);
   const hasPassword = providers.includes('email');
   const signInMethod = providers.includes('google') ? 'Google' : 'Email & password';
   const memberSince = session.user.created_at
-    ? new Date(session.user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    ? new Date(session.user.created_at).toLocaleDateString(undefined, {
+        month: 'long',
+        year: 'numeric',
+      })
     : null;
 
+  const planLabel =
+    accountTier === 'trusted_tester'
+      ? 'Trusted tester'
+      : accountTier === 'premium'
+        ? 'Dokkit'
+        : 'Free';
+
   return (
-    <div className="app-shell">
+    <div className="app-shell account-portal">
       <AppHeader title="Account" backHref="/" />
 
-      <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
-        <div className="settings-panel-title">Account Information</div>
-        <div className="account-email mono">{session.user.email}</div>
-        <div className="account-detail-row">
-          Signed in with {signInMethod}
-          {memberSince && <span> · Member since {memberSince}</span>}
+      <div className="account-layout">
+        <nav className="account-subnav" aria-label="Account sections">
+          {SECTIONS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={
+                section === s.id ? 'account-subnav-item is-active' : 'account-subnav-item'
+              }
+              onClick={() => setSection(s.id)}
+              aria-current={section === s.id ? 'page' : undefined}
+            >
+              {s.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="account-main">
+          {section === 'profile' && (
+            <>
+              <section className="account-card">
+                <p className="account-card-kicker">Signed in</p>
+                <h2 className="account-card-title mono">{session.user.email}</h2>
+                <dl className="account-dl">
+                  <div>
+                    <dt>Sign-in method</dt>
+                    <dd>{signInMethod}</dd>
+                  </div>
+                  {memberSince && (
+                    <div>
+                      <dt>Member since</dt>
+                      <dd>{memberSince}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt>Plan</dt>
+                    <dd>{planLabel}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section className="account-card">
+                <h2 className="account-card-heading">Install</h2>
+                {isStandalone ? (
+                  <p className="account-muted">You are using the installed app.</p>
+                ) : (
+                  <>
+                    <p className="account-muted">
+                      Add Dokkit to your home screen for a faster, full-screen experience.
+                    </p>
+                    <button type="button" className="btn btn-ghost" onClick={handleInstallClick}>
+                      {deferredPrompt ? 'Install Dokkit' : isIOS ? 'How to install' : 'Install Dokkit'}
+                    </button>
+                    {showIOSInstructions && (
+                      <p className="account-muted" style={{ marginTop: 12 }}>
+                        Tap Share in Safari, then &quot;Add to Home Screen.&quot;
+                      </p>
+                    )}
+                  </>
+                )}
+              </section>
+            </>
+          )}
+
+          {section === 'plan' && (
+            <section className="account-card">
+              <p className="account-card-kicker">Plan &amp; billing</p>
+              {billingLoading && <p className="account-muted">Loading…</p>}
+              {!billingLoading && billingSummary && (
+                <>
+                  <h2 className="account-card-title">{billingSummary.planName}</h2>
+                  <p className="account-muted">{billingSummary.planSummary}</p>
+                  <dl className="account-dl">
+                    <div>
+                      <dt>Status</dt>
+                      <dd>
+                        {billingSummary.subscriptionStatus ||
+                          billingSummary.billingStatus ||
+                          '—'}
+                      </dd>
+                    </div>
+                    {billingSummary.priceDisplay && (
+                      <div>
+                        <dt>Price</dt>
+                        <dd>
+                          {billingSummary.priceDisplay}
+                          {billingSummary.interval
+                            ? ` / ${billingSummary.interval}`
+                            : ''}
+                        </dd>
+                      </div>
+                    )}
+                    {billingSummary.currentPeriodEnd && billingSummary.isPro && (
+                      <div>
+                        <dt>
+                          {billingSummary.cancelAtPeriodEnd
+                            ? 'Access until'
+                            : 'Next renewal'}
+                        </dt>
+                        <dd>
+                          {new Date(
+                            billingSummary.currentPeriodEnd
+                          ).toLocaleDateString(undefined, {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </>
+              )}
+              {!billingLoading && !billingSummary && (
+                <p className="account-muted">Plan: {planLabel}</p>
+              )}
+              <div className="account-actions">
+                <Link href="/account/billing" className="btn btn-steel">
+                  Open billing
+                </Link>
+              </div>
+              <p className="account-footnote">
+                Invoices, payment method, and subscription changes are managed on the
+                billing page (Stripe).
+              </p>
+            </section>
+          )}
+
+          {section === 'security' && (
+            <section className="account-card">
+              <h2 className="account-card-heading">Security</h2>
+              <p className="account-muted">
+                Protect access to your Dokkit account. Sessions are tied to this browser
+                or device.
+              </p>
+              <div className="account-actions">
+                <Link
+                  href="/account/change-password"
+                  className="btn btn-ghost"
+                  style={{ textAlign: 'center', textDecoration: 'none' }}
+                >
+                  {hasPassword ? 'Change password' : 'Set a password'}
+                </Link>
+                <button type="button" className="btn btn-ghost" onClick={() => void handleLogOut()}>
+                  Sign out
+                </button>
+              </div>
+            </section>
+          )}
+
+          {section === 'storage' && (
+            <section className="account-card">
+              <h2 className="account-card-heading">Storage</h2>
+              {storageQuota ? (
+                <>
+                  <p className="account-body">
+                    {formatStorageBytes(storageQuota.usedBytes)} of{' '}
+                    {formatStorageBytes(storageQuota.limitBytes)} used (
+                    {formatStoragePercent(storageQuota.ratio)})
+                  </p>
+                  <div
+                    className="account-meter"
+                    role="progressbar"
+                    aria-valuenow={Math.round(storageQuota.ratio * 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <div
+                      className="account-meter-fill"
+                      style={{
+                        width: `${Math.min(100, storageQuota.ratio * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="account-muted" style={{ marginTop: 12 }}>
+                    Includes files and observations stored in Dokkit. Export or remove
+                    media to free space.
+                  </p>
+                </>
+              ) : (
+                <p className="account-muted">Storage details unavailable.</p>
+              )}
+            </section>
+          )}
+
+          {section === 'data' && (
+            <>
+              <section className="account-card">
+                <h2 className="account-card-heading">Export</h2>
+                <p className="account-muted">
+                  Download a JSON copy of your tasks, meetings, and settings. Media files
+                  are not included in this export.
+                </p>
+                <div className="account-actions">
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => void exportData()}
+                    disabled={exporting}
+                  >
+                    {exporting ? 'Exporting…' : 'Export my data'}
+                  </button>
+                </div>
+                {exportError && (
+                  <p className="account-alert" role="alert">
+                    {exportError}
+                  </p>
+                )}
+              </section>
+
+              <section className="account-card account-card-danger">
+                <h2 className="account-card-heading">Delete account</h2>
+                <p className="account-muted">
+                  Permanently deletes your account and associated data. This cannot be
+                  undone.
+                </p>
+                {!deleteOpen ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost danger-btn"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    Delete account…
+                  </button>
+                ) : (
+                  <div className="account-delete-confirm">
+                    <label className="settings-label" htmlFor="delete-confirm">
+                      Type DELETE to confirm
+                    </label>
+                    <input
+                      id="delete-confirm"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      autoComplete="off"
+                      className="account-input"
+                    />
+                    <div className="account-actions">
+                      <button
+                        type="button"
+                        className="btn danger-btn-solid"
+                        disabled={deleting}
+                        onClick={() => void handleDeleteAccount()}
+                      >
+                        {deleting ? 'Deleting…' : 'Delete permanently'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-text"
+                        onClick={() => {
+                          setDeleteOpen(false);
+                          setDeleteConfirmText('');
+                          setDeleteError('');
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {deleteError && (
+                      <p className="account-alert" role="alert">
+                        {deleteError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
         </div>
       </div>
-
-      <div className="settings-panel">
-        <div className="settings-panel-title">Account Type</div>
-        {accountTier === 'trusted_tester' && (
-          <>
-            <span className="learned-pattern-count">Full Access · Beta Tester</span>
-            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-              You have full access to Dokkit — including future Premium features — for the life
-              of this beta. Thank you for helping build this.
-            </p>
-          </>
-        )}
-        {accountTier === 'premium' && (
-          <span className="learned-pattern-count">Premium</span>
-        )}
-        {accountTier === 'free' && (
-          <>
-            <span className="tag">Free</span>
-            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-              Today, Jobs, and Travel are included. Meetings is part of the Dokkit plan.
-            </p>
-          </>
-        )}
-      </div>
-
-      <div className="settings-panel">
-        <div className="settings-panel-title">Billing</div>
-        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 12px' }}>
-          View your plan, upgrade, or manage payment and invoices.
-        </p>
-        <Link
-          href="/account/billing"
-          className="btn btn-ghost"
-          style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
-        >
-          Billing &amp; plan
-        </Link>
-      </div>
-
-      <div className="settings-panel">
-        <div className="settings-panel-title">Get the App</div>
-        {isStandalone ? (
-          <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-            You're using the installed app.
-          </p>
-        ) : (
-          <>
-            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-              Add Dokkit to your home screen for a faster, full-screen experience.
-            </p>
-            <button className="btn btn-ghost" onClick={handleInstallClick}>
-              {deferredPrompt ? 'Install Dokkit' : isIOS ? 'How to install' : 'Install Dokkit'}
-            </button>
-            {showIOSInstructions && (
-              <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-                Tap the Share icon in Safari, then "Add to Home Screen."
-              </p>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="settings-panel">
-        <div className="settings-panel-title">Security</div>
-        <Link
-          href="/account/change-password"
-          className="btn btn-ghost"
-          style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
-        >
-          {hasPassword ? 'Change password' : 'Set a password'}
-        </Link>
-      </div>
-
-      <div className="settings-panel">
-        <div className="settings-panel-title">Your Data</div>
-        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-          Download everything Dokkit has stored for you — tasks, sub-tasks, meetings, and preferences —
-          as a single file you keep.
-        </p>
-        {exportError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{exportError}</p>}
-        <button className="btn btn-ghost" onClick={exportData} disabled={exporting}>
-          {exporting ? 'Preparing export…' : 'Export my data'}
-        </button>
-      </div>
-
-      
-      <div className="settings-panel">
-        <div className="settings-panel-title">Storage</div>
-        <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-          Dokkit-hosted files (meeting photos, audio, and documents). When this is full,
-          free space by deleting media or export your data first.
-        </p>
-        {storageError && (
-          <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{storageError}</p>
-        )}
-        {storageQuota && (
-          <div style={{ marginTop: 8 }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: 13,
-                fontWeight: 600,
-                marginBottom: 6,
-              }}
-            >
-              <span>
-                {formatStorageBytes(storageQuota.usedBytes)} of{' '}
-                {formatStorageBytes(storageQuota.limitBytes)}
-              </span>
-              <span style={{ color: 'var(--ink-soft)' }}>
-                {formatStoragePercent(storageQuota.ratio)}
-              </span>
-            </div>
-            <div
-              style={{
-                height: 8,
-                borderRadius: 999,
-                background: 'var(--line)',
-                overflow: 'hidden',
-              }}
-              role="progressbar"
-              aria-valuenow={Math.round(storageQuota.ratio * 100)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <div
-                style={{
-                  height: '100%',
-                  width: `${Math.min(100, storageQuota.ratio * 100)}%`,
-                  background:
-                    storageQuota.state === 'exceeded' || storageQuota.state === 'critical'
-                      ? 'var(--hazard)'
-                      : storageQuota.state === 'warning'
-                        ? 'var(--warn, #c98600)'
-                        : 'var(--steel)',
-                  transition: 'width 0.2s ease',
-                }}
-              />
-            </div>
-            {storageQuota.state === 'exceeded' && (
-              <p style={{ fontSize: 12, color: 'var(--hazard)', margin: '8px 0 0' }}>
-                Storage is full. Delete meeting media or export data to free space before
-                adding more files.
-              </p>
-            )}
-            {storageQuota.state === 'critical' && (
-              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0 0' }}>
-                You are close to your storage limit. Consider removing old media.
-              </p>
-            )}
-            {storageQuota.state === 'warning' && (
-              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0 0' }}>
-                You have used over 80% of your included storage.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
-<div className="settings-panel danger-zone">
-        <div className="settings-panel-title" style={{ color: 'var(--hazard)' }}>Danger Zone</div>
-
-        {!deleteOpen ? (
-          <>
-            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-              Permanently delete your account and everything in it. This can't be undone.
-            </p>
-            <button className="btn btn-ghost danger-btn" onClick={() => setDeleteOpen(true)}>
-              Delete account
-            </button>
-          </>
-        ) : (
-          <>
-            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-              This permanently deletes your account, all tasks, sub-tasks, meetings, and preferences.
-              Type <strong>DELETE</strong> to confirm.
-            </p>
-            <input
-              type="text"
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              placeholder="DELETE"
-              style={inputStyle}
-              disabled={deleting}
-            />
-            {deleteError && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{deleteError}</p>}
-            <div className="capture-row">
-              <button
-                className="btn btn-ghost"
-                style={{ flex: 1 }}
-                onClick={() => {
-                  setDeleteOpen(false);
-                  setDeleteConfirmText('');
-                  setDeleteError('');
-                }}
-                disabled={deleting}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn danger-btn-solid"
-                style={{ flex: 1 }}
-                onClick={handleDeleteAccount}
-                disabled={deleting}
-              >
-                {deleting ? 'Deleting…' : 'Permanently delete'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      <button className="btn btn-ghost account-logout-btn" onClick={handleLogOut}>
-        Log out
-      </button>
     </div>
   );
 }
