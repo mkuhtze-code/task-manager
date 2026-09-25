@@ -206,8 +206,14 @@ html[data-surface='desktop'] .surface-nav {
   display: none;
 }
 
-html[data-surface='desktop'] .gear-menu-wrap {
+/* Page headers hide gear on desktop — product nav owns the single persistent menu */
+html[data-surface='desktop'] .app-shell .gear-menu-wrap,
+html[data-surface='desktop'] .app-header .gear-menu-wrap {
   display: none;
+}
+html[data-surface='desktop'] .desk-product-nav .gear-menu-wrap {
+  display: flex;
+  z-index: 80;
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
