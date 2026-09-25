@@ -56,3 +56,31 @@
 .prefs-page .settings-label {
   margin-top: 2px;
 }
+
+
+.prefs-intro {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.prefs-account-link {
+  display: inline-flex;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.prefs-account-link:hover {
+  color: var(--ink);
+}
+
+.prefs-plan-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
