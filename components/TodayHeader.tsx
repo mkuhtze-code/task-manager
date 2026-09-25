@@ -22,6 +22,8 @@ export function TodayHeader(props: {
   onRecalcRoute: () => void;
   routeError: string | null;
   hasRoute: boolean;
+  /** Total drive minutes in the current geo plan; 0 if unknown. */
+  routeDriveMins?: number;
   onViewMap: () => void;
   // Forwarded to GearMenu so it can skip its own getSession() lookup —
   // Today already knows who is signed in.
@@ -42,7 +44,7 @@ export function TodayHeader(props: {
   const {
     overloaded, weekdayLabel, dateOnlyLabel, isWorkDay, minutesLeftToday,
     remainingWorkMins, nowPercent, planWidthPercent, workStart, workEnd, geoAware,
-    recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError, hasRoute, onViewMap, userId,
+    recalculatingRoute, currentBaseLabel, onRecalcRoute, routeError, hasRoute, routeDriveMins = 0, onViewMap, userId,
     commitments,
     onRealityCheck,
     showRealityCheck,
@@ -183,34 +185,44 @@ export function TodayHeader(props: {
               </div>
 
               {geoAware && (
-                <div style={{ marginTop: 'var(--space-2)' }}>
-                  <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button
-                      className="btn-text"
-                      style={{ padding: 0 }}
-                      onClick={(e) => { e.stopPropagation(); onRecalcRoute(); }}
-                      disabled={recalculatingRoute}
-                    >
-                      {recalculatingRoute
-                        ? 'Recalculating route…'
-                        : currentBaseLabel
-                          ? `Recalculate route (from ${currentBaseLabel === 'work' ? 'office' : 'home'})`
-                          : 'Recalculate route'}
-                    </button>
+                <div className="spatial-strip" onClick={(e) => e.stopPropagation()}>
+                  {recalculatingRoute ? (
+                    <p className="spatial-strip-summary">Updating drive times…</p>
+                  ) : hasRoute && routeDriveMins > 0 ? (
+                    <p className="spatial-strip-summary">
+                      About {fmtMins(routeDriveMins)} driving
+                      {currentBaseLabel
+                        ? ` · from ${currentBaseLabel === 'work' ? 'office' : 'home'}`
+                        : ''}
+                    </p>
+                  ) : hasRoute ? (
+                    <p className="spatial-strip-summary">Order set by location</p>
+                  ) : (
+                    <p className="spatial-strip-summary">
+                      Add places on tasks to include driving
+                    </p>
+                  )}
+                  <div className="spatial-strip-actions">
                     {hasRoute && (
                       <button
-                        className="btn-text"
-                        style={{ padding: 0 }}
-                        onClick={(e) => { e.stopPropagation(); onViewMap(); }}
+                        type="button"
+                        className="spatial-strip-action"
+                        onClick={onViewMap}
                       >
-                        View Map
+                        Map
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="spatial-strip-action"
+                      onClick={onRecalcRoute}
+                      disabled={recalculatingRoute}
+                    >
+                      Refresh
+                    </button>
                   </div>
                   {routeError && (
-                    <p style={{ fontSize: 11, color: 'var(--danger-text, var(--danger))', margin: '4px 0 0' }}>
-                      {routeError}
-                    </p>
+                    <p className="spatial-strip-error">{routeError}</p>
                   )}
                 </div>
               )}
