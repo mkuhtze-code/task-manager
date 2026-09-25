@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
     client_reference_id: auth.userId,
     metadata: { supabase_user_id: auth.userId },
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${base}/account/billing?checkout=success`,
-    cancel_url: `${base}/account/billing?checkout=cancel`,
+    success_url: `${base}/app/account/billing?checkout=success`,
+cancel_url: `${base}/app/account/billing?checkout=cancel`,
     allow_promotion_codes: true,
   });
 
