@@ -179,12 +179,22 @@ export default function SurfaceNav({
               <>
                 <div className="surface-menu-divider" role="separator" />
                 <p className="surface-menu-group-label">Dokkit plan</p>
-                {proItems.map(({ key, label, path }) => (
+                {proItems.map(({ key, label }) => (
                   <button
                     key={key}
                     type="button"
                     className="surface-menu-item surface-menu-item-pro"
-                    onClick={() => go(path)}
+                    onClick={() =>
+                      go(
+                        `/account/billing?feature=${
+                          key === 'jobs'
+                            ? 'jobs'
+                            : key === 'meetings'
+                              ? 'meetings'
+                              : 'travel'
+                        }`
+                      )
+                    }
                   >
                     <span className="surface-menu-icon">
                       <SectionGlyph surface={key} />
