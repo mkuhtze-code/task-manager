@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyUser } from '@/lib/verifyUser';
+import { assertCanUseFeature } from '@/lib/billing/serverEntitlements';
 import { checkRateLimit } from '@/lib/ratelimit';
 import { API_BASE_PATH } from '@/lib/authedFetch';
 import { MICROSOFT_OAUTH_SCOPE } from '@/lib/microsoftGraph';
@@ -16,6 +17,12 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
+
+  const gate = await assertCanUseFeature(auth.userId, 'calendar');
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
 
   const { allowed } = await checkRateLimit(`user:${auth.userId}:ms-connect`);
   if (!allowed) {
