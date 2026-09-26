@@ -422,11 +422,30 @@ export default function AccountPage() {
                 )}
               </section>
 
+              <section className="account-card">
+                <h2 className="account-card-heading">Support</h2>
+                <p className="account-muted">
+                  Questions about your account, billing, or data:{' '}
+                  <a href="mailto:support@dokkit.space">support@dokkit.space</a>
+                  . Privacy and terms are on the public site.
+                </p>
+                <p className="account-muted" style={{ marginTop: 8 }}>
+                  <a href="https://dokkit.space/privacy" target="_blank" rel="noopener noreferrer">
+                    Privacy
+                  </a>
+                  {' · '}
+                  <a href="https://dokkit.space/terms" target="_blank" rel="noopener noreferrer">
+                    Terms
+                  </a>
+                </p>
+              </section>
+
               <section className="account-card account-card-danger">
                 <h2 className="account-card-heading">Delete account</h2>
                 <p className="account-muted">
-                  Permanently deletes your account and associated data. This cannot be
-                  undone.
+                  Permanently deletes your account and associated data. Active Dokkit
+                  subscriptions are cancelled so you are not charged after deletion. This
+                  cannot be undone.
                 </p>
                 {!deleteOpen ? (
                   <button
