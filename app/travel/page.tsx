@@ -10,7 +10,7 @@ import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
-import ProPlanGate from '@/components/ProPlanGate';
+import { useProRedirect } from '@/hooks/useProRedirect';
 
 type Trip = {
   id: string;
@@ -82,6 +82,7 @@ export default function TravelHome() {
   const { isDesktop } = useSurfaceMode();
   const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
   const canTravel = entitlements.canUseTravel;
+  useProRedirect(!entLoading && Boolean(session), canTravel, 'travel');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [tripIntent, setTripIntent] = useState<'personal' | 'work'>('personal');
@@ -253,19 +254,14 @@ export default function TravelHome() {
     }
   }
 
-  if (!entLoading && session && !canTravel) {
+  if (session && (entLoading || !canTravel)) {
     return (
       <div className="app-shell">
-        <div className="app-header">
-          <div className="app-header-left">
-            <h1 className="app-title">Travel</h1>
-          </div>
-        </div>
-        <ProPlanGate feature="travel" />
-        <SurfaceNav active="travel" />
+        <div className="empty-state">Loading…</div>
       </div>
     );
   }
+
 
 
   return (
