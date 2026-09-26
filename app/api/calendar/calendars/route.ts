@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyUser } from '@/lib/verifyUser';
+import { assertCanUseFeature } from '@/lib/billing/serverEntitlements';
 import { checkRateLimit } from '@/lib/ratelimit';
 import {
   listCalendarConnections,
@@ -13,6 +14,12 @@ export async function GET(req: NextRequest) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
+
+  const gate = await assertCanUseFeature(auth.userId, 'calendar');
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
 
   // Microsoft connections + their calendars. Ownership is enforced by the
   // user-scoped store query; the response never carries OAuth tokens.
@@ -51,6 +58,12 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
+
+  const gate = await assertCanUseFeature(auth.userId, 'calendar');
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
 
   const { allowed } = await checkRateLimit(`user:${auth.userId}:calendar-select`);
   if (!allowed) {
