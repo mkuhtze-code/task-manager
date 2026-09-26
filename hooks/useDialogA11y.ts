@@ -1,73 +1,80 @@
-
-'use client';
-
 import { useEffect, useRef } from 'react';
 
-const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+type DialogCloseHandler = () => void;
 
-/**
- * WCAG 2 AA helpers for modal sheets:
- * - Escape closes
- * - Initial focus moves into the dialog
- * - Tab cycles within the dialog
- * - Focus returns to the previous element on close
- *
- * Keeps behaviour quiet: no extra UI, only access.
- */
-export function useDialogA11y(onClose: () => void) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const previousFocus = useRef<HTMLElement | null>(null);
+type UseDialogA11yOptions = {
+  onClose: DialogCloseHandler;
+  initialFocus?: boolean;
+};
+
+export function useDialogA11y<T extends HTMLElement = HTMLElement>({
+  onClose,
+  initialFocus = true,
+}: UseDialogA11yOptions) {
+  const dialogRef = useRef<T | null>(null);
+
+  // Keep the latest callback without making the dialog lifecycle effect
+  // depend on the callback's identity.
+  const onCloseRef = useRef(onClose);
 
   useEffect(() => {
-    previousFocus.current = document.activeElement as HTMLElement | null;
-    const node = containerRef.current;
-    if (!node) return;
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
-    const getFocusable = () =>
-      Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true'
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    // Capture the element that opened the dialog once.
+    const previousFocus = document.activeElement as HTMLElement | null;
+
+    // Find the intended initial focus target.
+    if (initialFocus) {
+      const focusTarget = dialog.querySelector<HTMLElement>(
+        '[data-autofocus], input, textarea, select, button'
       );
 
-    const focusable = getFocusable();
-    const initial =
-      node.querySelector<HTMLElement>('[data-autofocus]') || focusable[0] || null;
-    requestAnimationFrame(() => initial?.focus());
-
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      const list = getFocusable();
-      if (list.length === 0) {
-        e.preventDefault();
-        return;
-      }
-      const active = document.activeElement as HTMLElement | null;
-      const i = active ? list.indexOf(active) : -1;
-      if (e.shiftKey) {
-        if (i <= 0) {
-          e.preventDefault();
-          list[list.length - 1]?.focus();
-        }
-      } else if (i === list.length - 1 || i === -1) {
-        e.preventDefault();
-        list[0]?.focus();
+      if (focusTarget) {
+        requestAnimationFrame(() => {
+          // Only focus if the dialog is still mounted and nothing else
+          // has intentionally taken focus.
+          if (
+            document.body.contains(dialog) &&
+            !dialog.contains(document.activeElement)
+          ) {
+            focusTarget.focus();
+          }
+        });
       }
     }
 
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      const prev = previousFocus.current;
-      if (prev && typeof prev.focus === 'function') {
-        requestAnimationFrame(() => prev.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
       }
     };
-  }, [onClose]);
 
-  return containerRef;
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+
+      // Restore focus only when the dialog is actually being removed.
+      // Do NOT do this when onClose changes identity or the parent rerenders.
+      if (
+        previousFocus &&
+        previousFocus !== document.body &&
+        typeof previousFocus.focus === 'function'
+      ) {
+        requestAnimationFrame(() => {
+          if (!document.body.contains(dialog)) {
+            previousFocus.focus();
+          }
+        });
+      }
+    };
+  }, [initialFocus]);
+
+  return dialogRef;
 }
