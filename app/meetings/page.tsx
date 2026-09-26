@@ -15,7 +15,7 @@ import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { authedFetch } from '@/lib/authedFetch';
 import { useEntitlements } from '@/hooks/useEntitlements';
-import MeetingsPlanGate from '@/components/MeetingsPlanGate';
+import { useProRedirect } from '@/hooks/useProRedirect';
 
 export default function MeetingsHome() {
   const router = useRouter();
@@ -29,6 +29,7 @@ export default function MeetingsHome() {
   const { isDesktop } = useSurfaceMode();
   const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
   const canMeetings = entitlements.canUseMeetings;
+  useProRedirect(!entLoading && Boolean(session), canMeetings, 'meetings');
 
   useEffect(() => {
     if (!isDesktop || !canMeetings) return;
@@ -146,6 +147,15 @@ export default function MeetingsHome() {
     );
   }
 
+  if (session && (entLoading || !canMeetings)) {
+    return (
+      <div className="app-shell">
+        <div className="empty-state">Loading…</div>
+      </div>
+    );
+  }
+
+
   return (
     <div className="app-shell">
       <div className="app-header">
@@ -169,7 +179,7 @@ export default function MeetingsHome() {
       {loading || entLoading ? (
         <div className="empty-state">Loading…</div>
       ) : !canMeetings ? (
-        <MeetingsPlanGate />
+        <div className="empty-state">Loading…</div>
       ) : !hasMeetings ? (
         <div className="empty-state">
           <div className="empty-state-title">No meetings recorded.</div>
