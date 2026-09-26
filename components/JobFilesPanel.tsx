@@ -8,7 +8,8 @@ import { useDeviceFileCapture, type CapturedFile } from '@/hooks/useDeviceFileCa
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { syncJobMediaToCloud, deleteCloudMedia, resolveMediaBlob } from '@/lib/mediaCloud';
 import { deleteMediaBlob } from '@/lib/mediaStore';
-import { buildStorageQuota, formatStorageBytes, wouldExceedQuota } from '@/lib/storageQuota';
+import { formatStorageBytes } from '@/lib/storageQuota';
+import { checkStorageQuota, STORAGE_FULL_MESSAGE, isQuotaErrorMessage } from '@/lib/assertStorageQuota';
 import { PhotoImage } from '@/components/MediaRender';
 
 const UNFILED = '__unfiled__';
@@ -126,17 +127,9 @@ export default function JobFilesPanel(props: {
     setSaving(true);
     setError(null);
 
-    const { data: settings } = await supabase
-      .from('user_settings')
-      .select('storage_used_bytes, storage_limit_bytes')
-      .eq('user_id', userId)
-      .maybeSingle();
-    const quota = buildStorageQuota(
-      Number(settings?.storage_used_bytes ?? 0),
-      Number(settings?.storage_limit_bytes ?? 0)
-    );
-    if (wouldExceedQuota(quota, m.size || 0)) {
-      setError('Storage is full. Free space in Account before adding more files.');
+    const quotaErr = await checkStorageQuota(userId, m.size || 0);
+    if (quotaErr) {
+      setError(quotaErr);
       setSaving(false);
       return;
     }
@@ -165,7 +158,8 @@ export default function JobFilesPanel(props: {
       .single();
 
     if (insErr || !row) {
-      setError(insErr?.message || 'Could not save file');
+      const msg = insErr?.message || 'Could not save file';
+      setError(isQuotaErrorMessage(msg) ? STORAGE_FULL_MESSAGE : msg);
       setSaving(false);
       return;
     }
