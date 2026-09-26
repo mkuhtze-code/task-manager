@@ -159,7 +159,7 @@ export default function AdminOverview() {
         <ActivityFeed events={data.activity} />
         <div className="adm-col-stack">
           <SupportSummary feedback={data.feedback} />
-          <BusinessStatus business={data.business} />
+          <BusinessStatus />
         </div>
       </div>
 
