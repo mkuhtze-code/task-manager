@@ -138,6 +138,28 @@ export async function POST(req: NextRequest) {
         await applySubscription(event.data.object as Stripe.Subscription);
         break;
       }
+      case 'invoice.payment_failed': {
+        // Ensure past_due is reflected even if subscription.updated is delayed
+        const inv = event.data.object as Stripe.Invoice;
+        const subRef = inv.subscription;
+        if (subRef) {
+          const subId = typeof subRef === 'string' ? subRef : subRef.id;
+          const sub = await getStripe().subscriptions.retrieve(subId);
+          await applySubscription(sub);
+        }
+        break;
+      }
+      case 'invoice.paid':
+      case 'invoice.payment_succeeded': {
+        const inv = event.data.object as Stripe.Invoice;
+        const subRef = inv.subscription;
+        if (subRef) {
+          const subId = typeof subRef === 'string' ? subRef : subRef.id;
+          const sub = await getStripe().subscriptions.retrieve(subId);
+          await applySubscription(sub);
+        }
+        break;
+      }
       default:
         break;
     }
