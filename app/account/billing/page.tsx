@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import { supabase } from '@/lib/supabaseClient';
 import { authedFetch, authedGet } from '@/lib/authedFetch';
-import type { BillingInvoiceRow, BillingSummary } from '@/lib/billing';
+import type { BillingInvoiceRow, BillingSummary, ProFeature } from '@/lib/billing';
+import { PRO_FEATURE_COPY } from '@/lib/billing';
 import {
   buildStorageQuota,
   formatStorageBytes,
@@ -45,8 +46,14 @@ function formatMoney(amount: number, currency: string): string {
   }
 }
 
-export default function BillingPage() {
+function BillingPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const featureParam = searchParams.get('feature') as ProFeature | null;
+  const highlightFeature =
+    featureParam && featureParam in PRO_FEATURE_COPY
+      ? featureParam
+      : null;
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -148,6 +155,53 @@ export default function BillingPage() {
         <p className="account-alert" role="alert">
           {error}
         </p>
+      )}
+
+      {/* Why upgrade — when arriving from a Pro surface */}
+      {!s?.isPro && (
+        <section className="account-card" aria-labelledby="included-heading">
+          <p className="account-card-kicker">Dokkit plan</p>
+          <h2 id="included-heading" className="account-card-title">
+            {highlightFeature
+              ? PRO_FEATURE_COPY[highlightFeature].title
+              : 'What Dokkit includes'}
+          </h2>
+          {highlightFeature ? (
+            <p className="account-muted">{PRO_FEATURE_COPY[highlightFeature].body}</p>
+          ) : (
+            <p className="account-muted">
+              Expand beyond Today with surfaces that keep work, conversations, and time
+              away in one place.
+            </p>
+          )}
+          <ul className="billing-feature-list">
+            {(Object.keys(PRO_FEATURE_COPY) as ProFeature[]).map((key) => (
+              <li
+                key={key}
+                className={
+                  highlightFeature === key
+                    ? 'billing-feature-item is-highlight'
+                    : 'billing-feature-item'
+                }
+              >
+                <span className="billing-feature-name">{PRO_FEATURE_COPY[key].title}</span>
+                <span className="billing-feature-desc">{PRO_FEATURE_COPY[key].body}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="account-muted" style={{ marginTop: 12 }}>
+            Free keeps Today, tasks, and Reality Check. Pricing is confirmed at checkout.
+            {' '}
+            <a
+              href="https://dokkit.space"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-text"
+            >
+              Learn more on dokkit.space
+            </a>
+          </p>
+        </section>
       )}
 
       {/* Plan */}
@@ -327,5 +381,21 @@ export default function BillingPage() {
         <Link href="/account">Back to account</Link>
       </p>
     </div>
+  );
+}
+
+
+export default function BillingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="app-shell account-portal">
+          <AppHeader title="Billing" backHref="/account" />
+          <p className="account-muted">Loading billing…</p>
+        </div>
+      }
+    >
+      <BillingPageInner />
+    </Suspense>
   );
 }
