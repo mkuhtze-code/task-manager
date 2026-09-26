@@ -5,8 +5,8 @@ import { API_BASE_PATH } from '@/lib/authedFetch';
 import { logError } from '@/lib/logError';
 import { upsertConnection } from '@/lib/calendar/store';
 import { seedConnectionCalendars } from '@/lib/calendar/sync';
-import {
 import { assertCanUseFeature } from '@/lib/billing/serverEntitlements';
+import {
   oauthCookieOptions,
   OAUTH_STATE_COOKIE,
   OAUTH_USER_COOKIE,
