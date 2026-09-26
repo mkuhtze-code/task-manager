@@ -6,6 +6,7 @@ import { logError } from '@/lib/logError';
 import { upsertConnection } from '@/lib/calendar/store';
 import { seedConnectionCalendars } from '@/lib/calendar/sync';
 import {
+import { assertCanUseFeature } from '@/lib/billing/serverEntitlements';
   oauthCookieOptions,
   OAUTH_STATE_COOKIE,
   OAUTH_USER_COOKIE,
@@ -50,6 +51,13 @@ export async function GET(req: NextRequest) {
 
   if (!userCookie) {
     const res = NextResponse.redirect(`${preferencesUrl}?calendar=not_authed`);
+    clearOauthCookies(req, res);
+    return res;
+  }
+
+  const gate = await assertCanUseFeature(userCookie, 'calendar');
+  if (!gate.ok) {
+    const res = NextResponse.redirect(`${preferencesUrl}?calendar=plan_required`);
     clearOauthCookies(req, res);
     return res;
   }
