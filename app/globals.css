@@ -6980,3 +6980,41 @@ select:-webkit-autofill {
 .desk-plan-popover-cta {
   width: 100%;
 }
+
+
+/* Billing — Pro feature list */
+.billing-feature-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.billing-feature-item {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.billing-feature-item.is-highlight {
+  border-color: color-mix(in srgb, var(--steel-text, var(--steel)) 35%, var(--line));
+  background: var(--steel-wash);
+}
+
+.billing-feature-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.billing-feature-desc {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
