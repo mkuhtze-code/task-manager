@@ -192,7 +192,7 @@ export default function DesktopProductNav() {
                           className="desk-plan-popover-item"
                           onClick={() => {
                             setProOpen(false);
-                            router.push(p.path);
+                            router.push(`/account/billing?feature=${p.key}`);
                           }}
                         >
                           {p.label}
