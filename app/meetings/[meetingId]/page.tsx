@@ -39,6 +39,7 @@ import { closeCompletionLoop } from '@/lib/thinking/evidence/closeCompletionLoop
 import { fetchDurationHistory } from '@/lib/thinking/loadDurationHistory';
 import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
 import { useEntitlements } from '@/hooks/useEntitlements';
+import { useProRedirect } from '@/hooks/useProRedirect';
 import MeetingsPlanGate from '@/components/MeetingsPlanGate';
 
 export default function MeetingDetail({ params }: { params: { meetingId: string } }) {
@@ -48,6 +49,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   const [session, setSession] = useState<any>(null);
   const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
   const canMeetings = entitlements.canUseMeetings;
+  useProRedirect(!entLoading && Boolean(session), canMeetings, 'meetings');
   const [history, setHistory] = useState<HistoricalTask[]>([]);
   const clusters = useMemo(() => buildClusters(history), [history]);
   const [loading, setLoading] = useState(true);
