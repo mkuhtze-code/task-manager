@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
+import { useProRedirect } from '@/hooks/useProRedirect';
 import ProPlanGate from '@/components/ProPlanGate';
 import { useDesktopWorkspaceKeys } from '@/hooks/useDesktopWorkspaceKeys';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
@@ -63,6 +64,7 @@ export default function JobDetailPage() {
   const [session, setSession] = useState<any>(null);
   const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
   const canJobs = entitlements.canUseJobs;
+  useProRedirect(!entLoading && Boolean(session), canJobs, 'jobs');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
@@ -772,10 +774,10 @@ export default function JobDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDesktop, jobId]);
 
-  if (!entLoading && session && !canJobs) {
+  if (session && (entLoading || !canJobs)) {
     return (
       <div className="app-shell">
-        <ProPlanGate feature="jobs" />
+        <div className="empty-state">Loading…</div>
       </div>
     );
   }
