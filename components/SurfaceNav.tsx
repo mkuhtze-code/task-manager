@@ -8,11 +8,16 @@ import type { Surface } from '@/lib/thinking/types';
 
 export type NavSurface = Surface | 'meetings';
 
-const ALL_ITEMS: { key: NavSurface; label: string; path: string; pro?: boolean }[] = [
+const ALL_ITEMS: {
+  key: NavSurface;
+  label: string;
+  path: string;
+  pro?: boolean;
+}[] = [
   { key: 'today', label: 'Today', path: '/' },
-  { key: 'jobs', label: 'Jobs', path: '/jobs' },
+  { key: 'jobs', label: 'Jobs', path: '/jobs', pro: true },
   { key: 'meetings', label: 'Meetings', path: '/meetings', pro: true },
-  { key: 'travel', label: 'Travel', path: '/travel' },
+  { key: 'travel', label: 'Travel', path: '/travel', pro: true },
 ];
 
 function SectionGlyph({ surface }: { surface: NavSurface }) {
@@ -81,7 +86,7 @@ export default function SurfaceNav({
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { entitlements } = useEntitlements();
-  const isPro = entitlements.canUseMeetings;
+  const isPro = entitlements.isPro;
 
   const ordered = (() => {
     if (!sectionOrder?.length) return ALL_ITEMS;
