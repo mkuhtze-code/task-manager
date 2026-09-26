@@ -1,9 +1,14 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { resolveEntitlements, type Entitlements } from '@/lib/billing';
+import {
+  canUseFeature,
+  resolveEntitlements,
+  type Entitlements,
+  type ProFeature,
+} from '@/lib/billing';
 
 /**
  * Server-side entitlements from user_settings (service role).
- * Safe default: free / no meetings if settings missing.
+ * Safe default: free if settings missing.
  */
 export async function loadEntitlementsForUser(
   userId: string
@@ -20,17 +25,29 @@ export async function loadEntitlementsForUser(
   });
 }
 
-export async function assertCanUseMeetings(
-  userId: string
+const FEATURE_LABEL: Record<ProFeature, string> = {
+  jobs: 'Jobs',
+  meetings: 'Meetings',
+  travel: 'Travel',
+  calendar: 'Calendar',
+};
+
+export async function assertCanUseFeature(
+  userId: string,
+  feature: ProFeature
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const ent = await loadEntitlementsForUser(userId);
-  if (!ent.canUseMeetings) {
+  if (!canUseFeature(ent, feature)) {
     return {
       ok: false,
       status: 403,
-      error: 'Meetings requires a Dokkit plan',
+      error: `${FEATURE_LABEL[feature]} requires a Dokkit plan`,
     };
   }
   return { ok: true };
 }
 
+/** @deprecated Prefer assertCanUseFeature(userId, 'meetings') */
+export async function assertCanUseMeetings(userId: string) {
+  return assertCanUseFeature(userId, 'meetings');
+}
