@@ -1,12 +1,17 @@
-import type { AccountTier, BillingStatus, Entitlements } from './types';
+import type {
+  AccountTier,
+  BillingStatus,
+  Entitlements,
+  ProFeature,
+} from './types';
 
 const PRO_TIERS: AccountTier[] = ['premium', 'trusted_tester'];
-
 const ACTIVE_BILLING: BillingStatus[] = ['active', 'trialing'];
 
 /**
  * Derive what the user may do. Prefer server-maintained account_tier;
  * billing_status refines grace for past_due.
+ * Single source of truth for Free vs Dokkit (Pro) surfaces.
  */
 export function resolveEntitlements(input: {
   accountTier?: string | null;
@@ -24,11 +29,31 @@ export function resolveEntitlements(input: {
     tier,
     billingStatus,
     isPro,
+    canUseJobs: isPro,
     canUseMeetings: isPro,
-    // Teams create gated until Team SKU ships; owners with pro may preview later.
+    canUseTravel: isPro,
+    canUseCalendar: isPro,
     canCreateTeam: false,
     inBillingGrace,
   };
+}
+
+export function canUseFeature(
+  ent: Entitlements,
+  feature: ProFeature
+): boolean {
+  switch (feature) {
+    case 'jobs':
+      return ent.canUseJobs;
+    case 'meetings':
+      return ent.canUseMeetings;
+    case 'travel':
+      return ent.canUseTravel;
+    case 'calendar':
+      return ent.canUseCalendar;
+    default:
+      return false;
+  }
 }
 
 function normalizeTier(raw?: string | null): AccountTier {
@@ -67,7 +92,10 @@ export function tierFromStripeStatus(status: string): {
     case 'unpaid':
     case 'incomplete':
     case 'incomplete_expired':
-      return { accountTier: 'free', billingStatus: status === 'canceled' ? 'canceled' : 'inactive' };
+      return {
+        accountTier: 'free',
+        billingStatus: status === 'canceled' ? 'canceled' : 'inactive',
+      };
     default:
       return { accountTier: 'free', billingStatus: 'none' };
   }
