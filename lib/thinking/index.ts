@@ -200,6 +200,17 @@ export {
   logCompletionOutcome,
 } from './evidence/predictionLog';
 
+
+export {
+  calibrateFromOutcomes,
+  learningPhaseFromCount,
+  evidenceWeight,
+  BASE_SOFT_FLOOR_MINS,
+  ESTABLISHED_SAMPLES,
+  EARLY_SAMPLES,
+} from './calibration';
+export type { SoftCalibration } from './calibration';
+
 export {
   closeCompletionLoop,
   historyRowFromCompletion,
