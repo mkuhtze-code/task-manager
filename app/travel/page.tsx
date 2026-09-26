@@ -9,6 +9,8 @@ import SurfaceNav from '@/components/SurfaceNav';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import ProPlanGate from '@/components/ProPlanGate';
 
 type Trip = {
   id: string;
@@ -78,6 +80,8 @@ export default function TravelHome() {
   const [loading, setLoading] = useState(true);
   const recordEvent = useRecordSurfaceEvent();
   const { isDesktop } = useSurfaceMode();
+  const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
+  const canTravel = entitlements.canUseTravel;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [tripIntent, setTripIntent] = useState<'personal' | 'work'>('personal');
@@ -90,9 +94,9 @@ export default function TravelHome() {
   const [listFilter, setListFilter] = useState<'active' | 'upcoming' | 'past' | 'all'>('all');
 
   useEffect(() => {
-    if (!isDesktop) return;
+    if (!isDesktop || !canTravel) return;
     return registerDesktopPrimaryAction('Plan a trip', () => openCreate());
-  }, [isDesktop]);
+  }, [isDesktop, canTravel]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -248,6 +252,21 @@ export default function TravelHome() {
       leadPill = days === 1 ? 'In 1 day' : `In ${days} days`;
     }
   }
+
+  if (!entLoading && session && !canTravel) {
+    return (
+      <div className="app-shell">
+        <div className="app-header">
+          <div className="app-header-left">
+            <h1 className="app-title">Travel</h1>
+          </div>
+        </div>
+        <ProPlanGate feature="travel" />
+        <SurfaceNav active="travel" />
+      </div>
+    );
+  }
+
 
   return (
     <div className="app-shell">
