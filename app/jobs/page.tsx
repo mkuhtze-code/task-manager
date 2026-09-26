@@ -23,6 +23,8 @@ import { BackIcon, CheckIcon, MapPinIcon } from '@/components/icons';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import ProPlanGate from '@/components/ProPlanGate';
 import { localDateStr } from '@/lib/timeFormat';
 
 export default function JobsHome() {
@@ -39,11 +41,13 @@ export default function JobsHome() {
   const [listFilter, setListFilter] = useState<'open' | 'done' | 'all'>('open');
   const recordEvent = useRecordSurfaceEvent();
   const { isDesktop } = useSurfaceMode();
+  const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
+  const canJobs = entitlements.canUseJobs;
 
   useEffect(() => {
-    if (!isDesktop) return;
+    if (!isDesktop || !canJobs) return;
     return registerDesktopPrimaryAction('New job', () => setNewJobOpen(true));
-  }, [isDesktop]);
+  }, [isDesktop, canJobs]);
 
   const clusters = useMemo(() => buildClusters(history), [history]);
   const todayStr = localDateStr(new Date());
@@ -218,7 +222,7 @@ export default function JobsHome() {
         </div>
       )}
 
-      {loading ? (
+      {loading || entLoading ? (
         <div className="empty-state">Loading…</div>
       ) : sorted.length === 0 ? (
         <div className="empty-state">
