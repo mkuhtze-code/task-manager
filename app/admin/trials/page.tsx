@@ -3,8 +3,13 @@
 import { useAdminSession } from '../AdminContext';
 import { useAdminFetch } from '@/lib/admin/useAdminFetch';
 import type { BusinessMetrics } from '@/lib/admin/businessMetrics';
+import type { OverviewMetric } from '@/lib/admin/types';
 import AdminPanel from '@/components/admin/AdminPanel';
 import AdminMetric from '@/components/admin/AdminMetric';
+
+function m(key: string, label: string, display: string): OverviewMetric {
+  return { key, label, value: null, display };
+}
 
 export default function AdminTrialsPage() {
   const { session } = useAdminSession();
@@ -18,8 +23,8 @@ export default function AdminTrialsPage() {
   return (
     <div style={{ marginTop: 'var(--space-4)' }}>
       <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginBottom: 16, maxWidth: 520 }}>
-        Trialing subscriptions as reported by Stripe webhooks into Dokkit. No separate trial
-        product is required — Stripe trial periods appear as status <code>trialing</code>.
+        Trialing subscriptions as reported by Stripe webhooks. Stripe trial periods appear as
+        status trialing.
       </p>
       {error && (
         <p style={{ color: 'var(--danger)', fontSize: 13 }} role="alert">
@@ -28,10 +33,12 @@ export default function AdminTrialsPage() {
       )}
       {data && (
         <AdminPanel title="Trials" subtitle="Current">
-          <AdminMetric label="Trialing now" value={String(data.subscriptions.trialing)} />
+          <AdminMetric
+            metric={m('trialing', 'Trialing now', String(data.subscriptions.trialing))}
+          />
           <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 12, marginBottom: 0 }}>
-            Conversion tracking (trial → active) can be added when trial periods are enabled on
-            the Stripe price. Until then, treat trialing as a live subscription status only.
+            Conversion rates (trial → active) can be tracked when trial periods are enabled on the
+            Stripe price.
           </p>
         </AdminPanel>
       )}
