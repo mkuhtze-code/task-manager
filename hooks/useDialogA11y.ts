@@ -1,13 +1,12 @@
 import { useEffect, useRef } from 'react';
 
-export function useDialogA11y<T extends HTMLElement = HTMLElement>(
+export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
   onClose: () => void
 ) {
   const dialogRef = useRef<T | null>(null);
   const onCloseRef = useRef(onClose);
 
-  // Always keep the latest callback available without causing the
-  // dialog lifecycle effect to restart.
+  // Keep the latest callback without restarting the dialog lifecycle effect.
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
@@ -19,14 +18,14 @@ export function useDialogA11y<T extends HTMLElement = HTMLElement>(
     // Capture the element that had focus when the dialog opened.
     const previousFocus = document.activeElement as HTMLElement | null;
 
+    // Only focus an explicitly designated initial-focus element.
+    // This avoids unexpectedly stealing focus from inputs.
     const focusTarget = dialog.querySelector<HTMLElement>(
       '[data-autofocus]'
     );
 
     if (focusTarget) {
       requestAnimationFrame(() => {
-        // Only perform initial focus if the dialog is still mounted and
-        // nothing inside it has already intentionally taken focus.
         if (
           document.body.contains(dialog) &&
           !dialog.contains(document.activeElement)
@@ -48,9 +47,8 @@ export function useDialogA11y<T extends HTMLElement = HTMLElement>(
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
 
-      // Restore focus only when the dialog is actually being removed.
-      // This prevents normal parent rerenders from stealing focus from
-      // an active input and causing the mobile keyboard to disappear.
+      // Restore focus only when the dialog has actually been removed.
+      // Do not steal focus during normal parent rerenders.
       if (
         previousFocus &&
         previousFocus !== document.body &&
