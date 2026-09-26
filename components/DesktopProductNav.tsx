@@ -24,7 +24,7 @@ const PRODUCTS = [
     key: 'jobs' as const,
     label: 'Jobs',
     path: '/jobs',
-    pro: false,
+    pro: true,
     match: (p: string) => p === '/jobs' || p.startsWith('/jobs/'),
   },
   {
@@ -38,7 +38,7 @@ const PRODUCTS = [
     key: 'travel' as const,
     label: 'Travel',
     path: '/travel',
-    pro: false,
+    pro: true,
     match: (p: string) => p === '/travel' || p.startsWith('/travel/'),
   },
 ];
@@ -110,7 +110,7 @@ export default function DesktopProductNav() {
   );
   const order = useSyncExternalStore(subscribeNavOrder, readNavOrder, () => null);
   const { entitlements } = useEntitlements();
-  const isPro = entitlements.canUseMeetings;
+  const isPro = entitlements.isPro;
   const [proOpen, setProOpen] = useState(false);
   const proRef = useRef<HTMLDivElement>(null);
 
