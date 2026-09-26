@@ -32,6 +32,8 @@ import {
 } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import ProPlanGate from '@/components/ProPlanGate';
 import type { Job } from '@/lib/jobTypes';
 import {
   STOP_KIND_OPTIONS,
@@ -564,6 +566,8 @@ export default function TripDayView() {
   const { isDesktop } = useSurfaceMode();
 
   const [session, setSession] = useState<any>(null);
+  const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
+  const canTravel = entitlements.canUseTravel;
   const [trip, setTrip] = useState<Trip | null>(null);
   const [tripDays, setTripDays] = useState<TripDay[]>([]);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
@@ -1257,6 +1261,14 @@ export default function TripDayView() {
 
   if (!session || !trip) {
     return <div className="app-shell" style={{ paddingTop: 40 }}>Loading…</div>;
+  }
+
+  if (!entLoading && session && !canTravel) {
+    return (
+      <div className="app-shell">
+        <ProPlanGate feature="travel" />
+      </div>
+    );
   }
 
   return (
