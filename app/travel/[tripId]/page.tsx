@@ -33,6 +33,7 @@ import {
 import SurfaceNav from '@/components/SurfaceNav';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
+import { useProRedirect } from '@/hooks/useProRedirect';
 import ProPlanGate from '@/components/ProPlanGate';
 import type { Job } from '@/lib/jobTypes';
 import {
@@ -568,6 +569,7 @@ export default function TripDayView() {
   const [session, setSession] = useState<any>(null);
   const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
   const canTravel = entitlements.canUseTravel;
+  useProRedirect(!entLoading && Boolean(session), canTravel, 'travel');
   const [trip, setTrip] = useState<Trip | null>(null);
   const [tripDays, setTripDays] = useState<TripDay[]>([]);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
@@ -1263,10 +1265,10 @@ export default function TripDayView() {
     return <div className="app-shell" style={{ paddingTop: 40 }}>Loading…</div>;
   }
 
-  if (!entLoading && session && !canTravel) {
+  if (session && (entLoading || !canTravel)) {
     return (
       <div className="app-shell">
-        <ProPlanGate feature="travel" />
+        <div className="empty-state">Loading…</div>
       </div>
     );
   }
