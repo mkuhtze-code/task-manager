@@ -24,7 +24,7 @@ import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
-import ProPlanGate from '@/components/ProPlanGate';
+import { useProRedirect } from '@/hooks/useProRedirect';
 import { localDateStr } from '@/lib/timeFormat';
 
 export default function JobsHome() {
@@ -43,6 +43,7 @@ export default function JobsHome() {
   const { isDesktop } = useSurfaceMode();
   const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
   const canJobs = entitlements.canUseJobs;
+  useProRedirect(!entLoading && Boolean(session), canJobs, 'jobs');
 
   useEffect(() => {
     if (!isDesktop || !canJobs) return;
@@ -136,6 +137,7 @@ export default function JobsHome() {
     lat: number | null,
     lng: number | null
   ) {
+    if (!canJobs) return;
     setSaving(true);
     setError(null);
     const userId = session.user.id;
