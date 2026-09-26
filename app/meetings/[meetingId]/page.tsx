@@ -29,7 +29,7 @@ import MeetingExport from '@/components/MeetingExport';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
-import { buildStorageQuota, wouldExceedQuota } from '@/lib/storageQuota';
+import { checkStorageQuota, STORAGE_FULL_MESSAGE, isQuotaErrorMessage } from '@/lib/assertStorageQuota';
 import { MeetingConnections } from '@/components/MeetingConnections';
 import PillReveal from '@/components/PillReveal';
 import MeetingTripPill from '@/components/MeetingTripPill';
@@ -407,19 +407,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     if (!session) return false;
     const addBytes = list.reduce((sum, m) => sum + (m.size || 0), 0);
     if (addBytes > 0) {
-      const { data: settings } = await supabase
-        .from('user_settings')
-        .select('storage_used_bytes, storage_limit_bytes')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-      const quota = buildStorageQuota(
-        Number(settings?.storage_used_bytes ?? 0),
-        Number(settings?.storage_limit_bytes ?? 0)
-      );
-      if (wouldExceedQuota(quota, addBytes)) {
-        setError(
-          'Storage is full. Free space in Account by deleting media, or export your data first.'
-        );
+      const quotaErr = await checkStorageQuota(session.user.id, addBytes);
+      if (quotaErr) {
+        setError(quotaErr);
         return false;
       }
     }
@@ -461,6 +451,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         .single();
       if (error || !mediaRow) {
         console.error(error);
+        if (isQuotaErrorMessage(error?.message)) {
+          setError(STORAGE_FULL_MESSAGE);
+        }
         ok = false;
       } else {
         // Share with other devices (desktop ↔ mobile). Best-effort; local row stays.
