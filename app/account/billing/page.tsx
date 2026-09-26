@@ -104,6 +104,14 @@ function BillingPageInner() {
         window.location.href = json.url as string;
         return;
       }
+      // Already subscribed / entitled — open Customer Portal instead
+      if (json.code === 'already_subscribed' || json.code === 'already_entitled' || json.usePortal) {
+        const portal = await authedFetch('/api/billing/portal', {});
+        if (portal.url) {
+          window.location.href = portal.url as string;
+          return;
+        }
+      }
       setError(json.error || 'Could not start checkout');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not start checkout');
