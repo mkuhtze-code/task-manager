@@ -355,43 +355,46 @@ export function lookupHierarchicalDuration(
 
   const match = matchCluster(text, model.clusters, model.matchThreshold);
 
-  if (match && match.cluster.duration && match.cluster.durationSamples.length > 0) {
+  if (match) {
     const c = match.cluster;
-    const n = c.durationSamples.length;
-    let expected = c.duration.expectedMins;
-    const level: HierarchicalDuration['level'] = 'cluster';
-    let method: DurationDistribution['method'] = c.duration.method;
+    const duration = c.duration;
+    if (duration && c.durationSamples.length > 0) {
+      const n = c.durationSamples.length;
+      let expected = duration.expectedMins;
+      const level: HierarchicalDuration['level'] = 'cluster';
+      let method: DurationDistribution['method'] = duration.method;
 
-    if (n < 4) {
-      const wider = model.personalMedianMins ?? softFloor;
-      expected = Math.round(
-        shrinkTowardPrior(expected, wider, n, priorStrength)
-      );
-      method = 'blended';
-      reasons.push(
-        `cluster n=${n}; shrunk toward ${model.personalMedianMins != null ? 'user median' : 'prior'}`
-      );
-    } else {
-      reasons.push(`cluster "${c.label}" n=${n} match=${match.score.toFixed(2)}`);
+      if (n < 4) {
+        const wider = model.personalMedianMins ?? softFloor;
+        expected = Math.round(
+          shrinkTowardPrior(expected, wider, n, priorStrength)
+        );
+        method = 'blended';
+        reasons.push(
+          `cluster n=${n}; shrunk toward ${model.personalMedianMins != null ? 'user median' : 'prior'}`
+        );
+      } else {
+        reasons.push(`cluster "${c.label}" n=${n} match=${match.score.toFixed(2)}`);
+      }
+
+      const distribution: DurationDistribution = {
+        expectedMins: expected,
+        interval: duration.interval,
+        sampleSize: n,
+        method,
+      };
+
+      return {
+        distribution,
+        level,
+        clusterId: c.clusterId,
+        clusterLabel: c.label,
+        matchScore: match.score,
+        authority: authorityFromSamples(n),
+        confidence: confidenceFromSamples(n, c.consistency),
+        reasons,
+      };
     }
-
-    const distribution: DurationDistribution = {
-      expectedMins: expected,
-      interval: c.duration.interval,
-      sampleSize: n,
-      method,
-    };
-
-    return {
-      distribution,
-      level,
-      clusterId: c.clusterId,
-      clusterLabel: c.label,
-      matchScore: match.score,
-      authority: authorityFromSamples(n),
-      confidence: confidenceFromSamples(n, c.consistency),
-      reasons,
-    };
   }
 
   if (model.userDuration && model.personalMedianMins != null) {
