@@ -120,19 +120,10 @@ export function TodayHeader(props: {
           </button>
 
           {showRealityCheck && onRealityCheck && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                marginTop: 8,
-                flexWrap: 'wrap',
-              }}
-            >
+            <div className="today-reality-row">
               <button
                 type="button"
                 className="btn-text"
-                style={{ padding: 0 }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onRealityCheck();
@@ -141,10 +132,7 @@ export function TodayHeader(props: {
                 Reality check
               </button>
               {realityCheckMessage && (
-                <span
-                  className="settings-help"
-                  style={{ color: 'var(--moss-text, var(--moss))', margin: 0 }}
-                >
+                <span className="today-reality-msg">
                   {realityCheckMessage}
                 </span>
               )}
@@ -237,7 +225,6 @@ export function TodayHeader(props: {
             <button
               type="button"
               className="btn-text"
-              style={{ padding: 0, marginLeft: 8 }}
               onClick={onRealityCheck}
             >
               Reality check
