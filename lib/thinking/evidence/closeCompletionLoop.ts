@@ -2,14 +2,7 @@
 //
 // Ambient reality — single entry for "something finished in life → train Dokkit".
 //
-// Surfaces call this after a successful DB write (or with the minutes they
-// will persist). Fire-and-forget for prediction_log; never blocks the UI.
-//
-// Rules (philosophy-aligned):
-// - Reliable timer time trains duration memory.
-// - Zero-tap Done without structure does NOT train (no poison zeros).
-// - Lifecycle soft mins may train when structure implies substance.
-// - Carry / skip outcomes are not passed here (they are not duration evidence).
+// Phase 2: pass taskId so prediction closure is identity-based, not text-matched.
 
 import {
   suggestEstimate,
@@ -21,36 +14,29 @@ import {
   type LifecycleHints,
 } from '@/lib/thinking/durationQuality';
 import { logCompletionOutcome } from './predictionLog';
+import type { PredictionLogEntry } from '../types';
 
 export type CloseCompletionLoopParams = {
   userId: string | null | undefined;
+  /** Stable task identity — preferred over taskText for prediction linkage. */
+  taskId?: string | null;
   taskText: string;
   estimateMins: number;
-  /**
-   * Observed minutes when known (timer bank, explicit reshape actual).
-   * Prefer this over estimate fallbacks.
-   */
   actualMins?: number;
-  /** Alias for actualMins — timer/logged total at completion. */
   measuredMins?: number;
   history: HistoricalTask[];
   clusters: TaskCluster[];
-  /** Lifecycle signals when the timer is empty or weak. */
   hints?: LifecycleHints;
+  /** Defaults to done. Partial/carry/skip inform different dimensions. */
+  outcomeKind?: PredictionLogEntry['outcome_kind'];
 };
 
 export type CloseCompletionLoopResult = {
-  /** Safe to persist on tasks.actual_mins (0 if nothing trustworthy). */
   actualForDb: number;
-  /** Minutes written to prediction_log / history; null = do not train. */
   trainMins: number | null;
   source: 'measured' | 'lifecycle' | 'none';
 };
 
-/**
- * Resolve what happened and, when trustworthy, close the prediction loop.
- * Safe from Today, Jobs, Reality Check, Travel stops, and post-stop prompt.
- */
 export function closeCompletionLoop(
   params: CloseCompletionLoopParams
 ): CloseCompletionLoopResult {
@@ -87,8 +73,16 @@ export function closeCompletionLoop(
 
   const userId = params.userId;
   const text = (params.taskText || '').trim();
+  const outcomeKind = params.outcomeKind ?? 'done';
 
-  if (userId && text && trainMins != null && trainMins > 0) {
+  // Duration training only for outcomes that legitimately inform duration.
+  const mayTrainDuration =
+    outcomeKind === 'done' ||
+    outcomeKind === 'partial' ||
+    outcomeKind === null ||
+    outcomeKind === undefined;
+
+  if (userId && text && trainMins != null && trainMins > 0 && mayTrainDuration) {
     const suggestion = suggestEstimate(
       text,
       params.history,
@@ -97,6 +91,7 @@ export function closeCompletionLoop(
 
     logCompletionOutcome({
       userId,
+      taskId: params.taskId ?? null,
       taskText: text,
       clusterLabel: suggestion?.matchedLabel ?? null,
       clusterCount: suggestion?.sampleCount ?? 0,
@@ -104,21 +99,17 @@ export function closeCompletionLoop(
       suggestedMins: suggestion?.suggestedMins ?? null,
       confidence: suggestion?.confidence ?? 'low',
       actualMins: trainMins,
-    }).catch(() => {
-      // Evidence is best-effort; never surface failures to the user.
-    });
+      outcomeKind,
+    }).catch(() => {});
   }
 
   return {
     actualForDb,
-    trainMins,
-    source: resolved.source,
+    trainMins: mayTrainDuration ? trainMins : null,
+    source: mayTrainDuration ? resolved.source : 'none',
   };
 }
 
-/**
- * History row for in-memory clusters — only when trainMins is set.
- */
 export function historyRowFromCompletion(
   task: {
     text: string;

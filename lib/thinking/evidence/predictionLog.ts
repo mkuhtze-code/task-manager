@@ -1,17 +1,9 @@
 // lib/thinking/evidence/predictionLog.ts
 //
 // Ties together the observation → evidence → persistence pipeline.
-// When a task completes, this module:
-//   1. Observes the estimate accuracy.
-//   2. Logs the prediction with its outcome.
-//   3. Persists to Supabase.
 //
-// When a task is captured (before completion), this module:
-//   1. Logs the prediction (what the engine thinks it'll take).
-//   2. Persists to Supabase with null actual_mins.
-//
-// This is the only module in the thinking engine that touches
-// Supabase — everything else is pure functions over data.
+// Phase 2: predictions link primarily by task_id (and prediction id).
+// task_text remains context only — never the primary identity for closure.
 
 import type { PredictionLogEntry, Confidence } from '../types';
 import { observeEstimateAccuracy } from '../observations/estimateAccuracy';
@@ -19,24 +11,34 @@ import {
   logPrediction,
   recordOutcome,
   persistPrediction,
-  getBuffer,
+  resolveOpenPrediction,
 } from '../evidence';
+import {
+  MODEL_VERSION,
+  ALGORITHM_VERSION,
+  FEATURE_VERSION,
+} from '../v3/types';
 
 // ── Log at capture time ───────────────────────────────────────────
-// Called when a task is captured (created). Logs what the engine
-// predicted so it can be compared against the actual outcome later.
 
 export async function logCapturePrediction(params: {
   userId: string;
+  /** Stable task id after insert — required for reliable closure. */
+  taskId?: string | null;
   taskText: string;
   clusterLabel: string | null;
   clusterCount: number;
   estimatedMins: number;
   suggestedMins: number | null;
   confidence: Confidence;
+  modelVersion?: string;
+  algorithmVersion?: string;
+  featureVersion?: string;
+  decisionId?: string | null;
 }): Promise<PredictionLogEntry | null> {
   const entry = logPrediction({
     user_id: params.userId,
+    task_id: params.taskId ?? null,
     task_text: params.taskText,
     cluster_label: params.clusterLabel,
     cluster_count: params.clusterCount,
@@ -45,18 +47,21 @@ export async function logCapturePrediction(params: {
     confidence: params.confidence,
     actual_mins: null,
     completed_at: null,
+    outcome_kind: null,
+    model_version: params.modelVersion ?? MODEL_VERSION,
+    algorithm_version: params.algorithmVersion ?? ALGORITHM_VERSION,
+    feature_version: params.featureVersion ?? FEATURE_VERSION,
+    decision_id: params.decisionId ?? null,
   });
 
-  // Persist to Supabase for durable evidence.
   return persistPrediction(entry);
 }
 
 // ── Log at completion time ────────────────────────────────────────
-// Called when a task completes. Observes the accuracy, records the
-// outcome in the buffer, and persists the completed prediction.
 
 export async function logCompletionOutcome(params: {
   userId: string;
+  taskId?: string | null;
   taskText: string;
   clusterLabel: string | null;
   clusterCount: number;
@@ -64,19 +69,38 @@ export async function logCompletionOutcome(params: {
   suggestedMins: number | null;
   confidence: Confidence;
   actualMins: number;
+  outcomeKind?: PredictionLogEntry['outcome_kind'];
+  modelVersion?: string;
+  algorithmVersion?: string;
+  featureVersion?: string;
 }): Promise<{
   observation: ReturnType<typeof observeEstimateAccuracy>;
   prediction: PredictionLogEntry | null;
 }> {
-  // Observe the accuracy.
   const observation = observeEstimateAccuracy(params);
 
-  // Record outcome in the in-memory buffer.
-  recordOutcome(params.taskText, params.actualMins);
+  recordOutcome({
+    taskId: params.taskId ?? null,
+    taskText: params.taskText,
+    actualMins: params.actualMins,
+    outcomeKind: params.outcomeKind ?? 'done',
+  });
 
-  // Persist the completed prediction.
+  const resolved = await resolveOpenPrediction({
+    userId: params.userId,
+    taskId: params.taskId ?? null,
+    taskText: params.taskText,
+    actualMins: params.actualMins,
+    outcomeKind: params.outcomeKind ?? 'done',
+  });
+
+  if (resolved) {
+    return { observation, prediction: resolved };
+  }
+
   const prediction = await persistPrediction({
     user_id: params.userId,
+    task_id: params.taskId ?? null,
     task_text: params.taskText,
     cluster_label: params.clusterLabel,
     cluster_count: params.clusterCount,
@@ -85,6 +109,11 @@ export async function logCompletionOutcome(params: {
     confidence: params.confidence,
     actual_mins: params.actualMins,
     completed_at: new Date().toISOString(),
+    outcome_kind: params.outcomeKind ?? 'done',
+    model_version: params.modelVersion ?? MODEL_VERSION,
+    algorithm_version: params.algorithmVersion ?? ALGORITHM_VERSION,
+    feature_version: params.featureVersion ?? FEATURE_VERSION,
+    decision_id: null,
   });
 
   return { observation, prediction };
