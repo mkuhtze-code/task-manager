@@ -81,7 +81,7 @@ export type ConfidenceProfile = {
   effectStrength: Confidence;
   consistencyStrength: Confidence;
   recencyWeight: number | null;
-  specificity: number | null;
+  specificity: number;
   contradiction: ContradictionStatus;
   staleness: StalenessStatus;
 };
@@ -90,86 +90,46 @@ export type TaskFact = {
   taskId: string;
   userId: string;
   text: string;
-  clusterLabel: string | null;
-  clusterId: string | null;
-  clusterVersion: number | null;
+  status: string;
+  estimateMins: number | null;
+  actualMins: number | null;
+  loggedMins: number | null;
   jobId: string | null;
   locationText: string | null;
   lat: number | null;
   lng: number | null;
-  typedEstimateMins: number | null;
-  observedMins: number | null;
-  loggedMins: number;
-  remainingMins: number | null;
-  status: 'open' | 'active' | 'done' | 'partial' | 'carried' | 'skipped';
-  source: 'planned' | 'came_up' | 'imported' | null;
-  createdAt: string;
-  startedAt: string | null;
-  completedAt: string | null;
   surfaceDate: string | null;
-  intendedTime: string | null;
   dueToday: boolean | null;
+  intendedTime: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  startedAt: string | null;
+  source: string | null;
   subtaskCount: number;
-  subtaskDoneCount: number;
-  subtaskTotalMins: number;
-  carryCount: number | null;
-  novel: boolean | null;
 };
 
 export type ContextSnapshot = {
+  snapshotId: string;
+  userId: string;
   at: string;
-  timezone: string;
-  temporal: {
-    localDate: string | null;
-    localHour: number | null;
-    dayOfWeek: number | null;
-    period: 'early' | 'morning' | 'midday' | 'afternoon' | 'evening' | 'night' | null;
-    isWorkday: boolean | null;
-  };
-  spatial: {
-    locationText: string | null;
-    lat: number | null;
-    lng: number | null;
-    placeId: string | null;
-  };
-  work: {
-    jobId: string | null;
-    folderId: string | null;
-    projectLabel: string | null;
-  };
-  calendar: {
-    remainingWindowMins: number | null;
-    meetingDensity: number | null;
-    hasTravelBlock: boolean | null;
-  };
-  lifecycle: {
-    taskAgeDays: number | null;
-    carryCount: number | null;
-    previousPartials: number | null;
-  };
-  sequence: {
-    previousTaskId: string | null;
-    previousClusterLabel: string | null;
-    nextCommitmentAt: string | null;
-  };
+  jobId: string | null;
+  locationText: string | null;
+  lat: number | null;
+  lng: number | null;
+  localHour: number | null;
+  dayOfWeek: number | null;
+  surface: string | null;
+  capacityRemainingMins: number | null;
 };
 
 export type Evidence = {
   evidenceId: string;
   kind: EvidenceKind;
-  label: string;
-  sampleSize: number;
-  effectMagnitude: number | null;
-  consistency: number | null;
-  variance: number | null;
-  recencyDays: number | null;
-  specificity: number | null;
-  contradictionCount: number;
-  missingDataCount: number;
-  insufficient: boolean;
-  sourceRefs: string[];
-  measurements: unknown[];
-  createdAt: string;
+  subject: string;
+  value: unknown;
+  weight: number;
+  sourceIds: string[];
+  recordedAt: string;
 };
 
 export type Belief = {
@@ -182,93 +142,54 @@ export type Belief = {
     locationKey: string | null;
     userWide: boolean;
   };
-  value: number | DurationDistribution | Record<string, unknown>;
+  value: unknown;
   confidence: ConfidenceProfile;
   authority: Authority;
   evidenceIds: string[];
-  origin: 'system_prior' | 'onboarding_prior' | 'observed' | 'posterior';
+  origin: 'observed' | 'prior' | 'derived';
   modelVersion: string;
   updatedAt: string;
 };
 
 export type Prediction = {
   predictionId: string;
-  taskId: string | null;
-  userId: string;
-  kind: DecisionKind | 'duration' | 'same_day' | 'carry' | 'fit' | 'context';
-  predicted: {
-    value: number | string | boolean | DurationDistribution | FitState | null;
-    interval: { low: number; high: number } | null;
-  };
+  taskId: string;
+  modelVersion: string;
+  value: number;
+  interval: { low: number; high: number };
   confidence: ConfidenceProfile;
   authority: Authority;
-  typedEstimateMins: number | null;
-  planningEstimateMins: number | null;
-  context: ContextSnapshot;
   evidenceIds: string[];
-  decisionId: string | null;
-  modelVersion: string;
-  algorithmVersion: string;
-  featureVersion: string;
-  createdAt: string;
-  outcomeId: string | null;
-  resolvedAt: string | null;
+  timestamp: string;
 };
 
 export type Outcome = {
   outcomeId: string;
   predictionId: string | null;
   taskId: string;
-  userId: string;
   kind: OutcomeKind;
-  measuredMins: number | null;
-  trainMins: number | null;
-  remainingMins: number | null;
-  trainSource: 'measured' | 'lifecycle' | 'none';
-  error: {
-    signedMins: number | null;
-    absoluteMins: number | null;
-    relative: number | null;
-  } | null;
-  context: ContextSnapshot | null;
-  createdAt: string;
+  actualMins: number | null;
+  predictedMins: number | null;
+  recordedAt: string;
 };
 
 export type Decision = {
   decisionId: string;
   kind: DecisionKind;
-  value: number | string | boolean | FitState | DurationDistribution | null;
-  interval: { low: number; high: number } | null;
-  confidence: ConfidenceProfile;
+  taskId: string | null;
+  value: unknown;
   authority: Authority;
-  uncertainty: {
-    risk: 'low' | 'medium' | 'high' | 'unknown';
-    spreadMins: number | null;
-  };
-  evidenceIds: string[];
-  predictionId: string | null;
+  confidence: ConfidenceProfile;
+  reasonCodes: string[];
   modelVersion: string;
-  createdAt: string;
-  reasons: string[];
+  timestamp: string;
 };
 
 export type DecisionTrace = {
   decisionId: string;
-  predictionId: string | null;
-  modelVersion: string;
-  algorithmVersion: string;
+  steps: string[];
   evidenceIds: string[];
-  steps: Array<{
-    stage: string;
-    detail: string;
-    refs?: string[];
-  }>;
-  inputs: {
-    taskId: string | null;
-    typedEstimateMins: number | null;
-    contextAt: string | null;
-  };
-  createdAt: string;
+  beliefIds: string[];
 };
 
 export type ModelState = {
@@ -293,7 +214,6 @@ export type ModelState = {
   updatedAt: string;
 };
 
-/** Bump when prediction semantics or algorithm change. */
-export const MODEL_VERSION = '3.0.0-phase4';
-export const ALGORITHM_VERSION = '3.0.0-phase4';
-export const FEATURE_VERSION = '3.0.0-phase4';
+export const MODEL_VERSION = '3.0.0-phase5';
+export const ALGORITHM_VERSION = '3.0.0';
+export const FEATURE_VERSION = '3.0.0';
