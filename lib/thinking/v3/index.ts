@@ -1,7 +1,7 @@
 // lib/thinking/v3/index.ts
 //
 // Public surface for Thinking Engine V3 canonical contracts.
-// Phase 1: types + adapters only. No runtime path switch.
+// Phase 1: types + adapters. Phase 2: events + stable IDs.
 
 export type {
   Confidence,
@@ -44,3 +44,6 @@ export {
   minimalEvidence,
   currentVersions,
 } from './adapters';
+
+export type { ThinkingEventKind, ThinkingEvent } from './events';
+export { makeEventId, makeDecisionId, buildThinkingEvent } from './events';
