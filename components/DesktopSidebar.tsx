@@ -37,10 +37,10 @@ const SETTINGS: NavItem[] = [
     match: (p) => p === '/account' || p.startsWith('/account/'),
   },
   {
-    key: 'feedback',
-    label: 'Feedback',
-    path: '/feedback',
-    match: (p) => p === '/feedback' || p.startsWith('/feedback/'),
+    key: 'contact',
+    label: 'Contact',
+    path: '/contact',
+    match: (p) => p === '/contact' || p.startsWith('/contact/') || p === '/feedback',
   },
 ];
 
@@ -74,7 +74,7 @@ function Icon({ name }: { name: string }) {
           <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
         </svg>
       );
-    case 'feedback':
+    case 'contact':
       return (
         <svg {...common} aria-hidden>
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
