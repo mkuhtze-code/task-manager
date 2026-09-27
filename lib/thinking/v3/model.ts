@@ -1,11 +1,8 @@
 // lib/thinking/v3/model.ts
 //
-// Phase 4 — personal model: hierarchical duration, maturity, ModelState.
+// Phase 4–5.5 — personal model: hierarchical duration, maturity, ModelState.
+// Calibration uses symmetric log(actual/predicted).
 //
-// Hierarchy (most specific first):
-//   cluster (matched) → user median → onboarding prior → system default
-//
-// Shrinkage blends sparse cluster evidence toward the next wider level.
 // Pure. Deterministic. Pass updatedAt explicitly.
 
 import {
@@ -22,6 +19,7 @@ import {
   durationFromSamples,
   median,
 } from './stats';
+import { calibrateFromPairs } from './calibrationMetrics';
 import type {
   Authority,
   Belief,
@@ -160,41 +158,16 @@ function calibrationFromClosed(closed: ClosedOutcomeSample[]): {
   durationMae: number | null;
   explain: string | null;
 } {
-  if (closed.length === 0) {
-    return { durationBias: null, durationMae: null, explain: null };
-  }
-  const ratios = closed
-    .filter((c) => c.predictedMins > 0 && c.actualMins > 0)
-    .map((c) => c.actualMins / c.predictedMins);
-  const errors = closed
-    .filter((c) => c.predictedMins > 0)
-    .map((c) => Math.abs(c.actualMins - c.predictedMins));
-
-  if (ratios.length === 0) {
-    return { durationBias: null, durationMae: null, explain: null };
-  }
-
-  const sorted = [...ratios].sort((a, b) => a - b);
-  const bias = median(sorted);
-  const mae =
-    errors.length > 0
-      ? errors.reduce((a, b) => a + b, 0) / errors.length
-      : null;
-
-  let explain: string | null = null;
-  if (bias != null && closed.length >= 4) {
-    const pct = Math.round(bias * 100);
-    if (bias > 1.05) {
-      explain = `Learned times have been ~${pct - 100}% short — leaning more on history`;
-    } else if (bias < 0.95) {
-      explain = `Learned times have been ~${100 - pct}% long — leaning less on history`;
-    }
-  }
-
+  const report = calibrateFromPairs(
+    closed.map((c) => ({
+      predictedMins: c.predictedMins,
+      actualMins: c.actualMins,
+    }))
+  );
   return {
-    durationBias: bias,
-    durationMae: mae == null ? null : Math.round(mae),
-    explain,
+    durationBias: report.medianLogRatio,
+    durationMae: report.medianAbsErrorMins,
+    explain: report.explain,
   };
 }
 
