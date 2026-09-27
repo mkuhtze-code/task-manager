@@ -2,7 +2,8 @@
 //
 // Ambient reality — single entry for "something finished in life → train Dokkit".
 //
-// Phase 2: pass taskId so prediction closure is identity-based, not text-matched.
+// Phase 2: taskId for identity-based prediction linkage.
+// Phase 5.5: WorkEpisode gates duration training when interruption contaminates.
 
 import {
   suggestEstimate,
@@ -13,6 +14,11 @@ import {
   resolveActualForLearning,
   type LifecycleHints,
 } from '@/lib/thinking/durationQuality';
+import {
+  buildWorkEpisode,
+  trainMinutesFromEpisode,
+  type WorkEpisode,
+} from '@/lib/thinking/v3/episodes';
 import { logCompletionOutcome } from './predictionLog';
 import type { PredictionLogEntry } from '../types';
 
@@ -29,13 +35,36 @@ export type CloseCompletionLoopParams = {
   hints?: LifecycleHints;
   /** Defaults to done. Partial/carry/skip inform different dimensions. */
   outcomeKind?: PredictionLogEntry['outcome_kind'];
+  /**
+   * Optional episode signals (Phase 5.5).
+   * When interruption dominates, duration training is suppressed.
+   */
+  startedAt?: string | null;
+  completedAt?: string | null;
+  /** Explicit active/focused minutes when known (timer). */
+  activeMinutes?: number | null;
+  interruptionMinutes?: number | null;
+  waitingMinutes?: number | null;
 };
 
 export type CloseCompletionLoopResult = {
   actualForDb: number;
   trainMins: number | null;
   source: 'measured' | 'lifecycle' | 'none';
+  /** Episode used for training gate, when built. */
+  episode?: WorkEpisode | null;
+  /** True when interruption/waiting blocked duration learning. */
+  durationTrainingBlocked?: boolean;
 };
+
+function episodeOutcomeFromKind(
+  kind: PredictionLogEntry['outcome_kind'] | undefined
+): 'done' | 'partial' | 'carry' | 'skip' | 'unknown' {
+  if (kind === 'done' || kind === 'partial' || kind === 'carry' || kind === 'skip') {
+    return kind;
+  }
+  return 'unknown';
+}
 
 export function closeCompletionLoop(
   params: CloseCompletionLoopParams
@@ -44,6 +73,11 @@ export function closeCompletionLoop(
     params.measuredMins ?? params.actualMins ?? 0
   );
 
+  const completedAt =
+    params.completedAt ??
+    params.hints?.completedAt ??
+    new Date().toISOString();
+
   const hints: LifecycleHints = {
     estimateMins: params.estimateMins,
     loggedMins: measured > 0 ? measured : params.hints?.loggedMins,
@@ -51,7 +85,7 @@ export function closeCompletionLoop(
     dueToday: params.hints?.dueToday,
     intendedTime: params.hints?.intendedTime,
     createdAt: params.hints?.createdAt,
-    completedAt: params.hints?.completedAt ?? new Date().toISOString(),
+    completedAt,
     surfaceDate: params.hints?.surfaceDate,
     subtaskCount: params.hints?.subtaskCount,
     sameDayRate: params.hints?.sameDayRate,
@@ -63,7 +97,43 @@ export function closeCompletionLoop(
     hints,
   });
 
-  const trainMins = resolved.actualMins;
+  let trainMins = resolved.actualMins;
+  let source: CloseCompletionLoopResult['source'] = resolved.source;
+  let durationTrainingBlocked = false;
+  let episode: WorkEpisode | null = null;
+
+  // Phase 5.5 — episode gate: do not train duration on contaminated elapsed.
+  const taskId = params.taskId?.trim() || null;
+  const userId = params.userId;
+  if (userId && taskId) {
+    episode = buildWorkEpisode({
+      episodeId: `ep_${taskId}_${completedAt}`,
+      taskId,
+      userId,
+      startedAt: params.startedAt ?? params.hints?.createdAt ?? null,
+      endedAt: completedAt,
+      activeMinutes: params.activeMinutes ?? null,
+      interruptionMinutes: params.interruptionMinutes ?? null,
+      waitingMinutes: params.waitingMinutes ?? null,
+      jobId: params.hints?.jobId ?? null,
+      outcome: episodeOutcomeFromKind(params.outcomeKind),
+      legacyActualMins: measured > 0 ? measured : null,
+    });
+
+    const epTrain = trainMinutesFromEpisode(episode);
+    if (episode.durationEvidence === 'contaminated') {
+      durationTrainingBlocked = true;
+      // Still allow lifecycle soft if measured was zero; never train contaminated elapsed.
+      if (source === 'measured') {
+        trainMins = null;
+        source = 'none';
+      }
+    } else if (epTrain != null && source === 'measured') {
+      // Prefer episode-safe train minutes (active when known).
+      trainMins = epTrain;
+    }
+  }
+
   const actualForDb =
     trainMins != null
       ? trainMins
@@ -71,16 +141,15 @@ export function closeCompletionLoop(
         ? measured
         : 0;
 
-  const userId = params.userId;
   const text = (params.taskText || '').trim();
   const outcomeKind = params.outcomeKind ?? 'done';
 
-  // Duration training only for outcomes that legitimately inform duration.
   const mayTrainDuration =
-    outcomeKind === 'done' ||
-    outcomeKind === 'partial' ||
-    outcomeKind === null ||
-    outcomeKind === undefined;
+    (outcomeKind === 'done' ||
+      outcomeKind === 'partial' ||
+      outcomeKind === null ||
+      outcomeKind === undefined) &&
+    !durationTrainingBlocked;
 
   if (userId && text && trainMins != null && trainMins > 0 && mayTrainDuration) {
     const suggestion = suggestEstimate(
@@ -91,7 +160,7 @@ export function closeCompletionLoop(
 
     logCompletionOutcome({
       userId,
-      taskId: params.taskId ?? null,
+      taskId: taskId,
       taskText: text,
       clusterLabel: suggestion?.matchedLabel ?? null,
       clusterCount: suggestion?.sampleCount ?? 0,
@@ -106,7 +175,9 @@ export function closeCompletionLoop(
   return {
     actualForDb,
     trainMins: mayTrainDuration ? trainMins : null,
-    source: mayTrainDuration ? resolved.source : 'none',
+    source: mayTrainDuration ? source : 'none',
+    episode,
+    durationTrainingBlocked,
   };
 }
 
