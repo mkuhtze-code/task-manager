@@ -1,8 +1,7 @@
 // lib/thinking/v3/index.ts
 //
 // Public surface for Thinking Engine V3 canonical contracts.
-// Phase 1: types + adapters. Phase 2: events. Phase 3: robust stats.
-// Phase 4: personal model (clusters, hierarchical duration, ModelState).
+// Phase 1–4 + context-conditional duration.
 
 export type {
   Confidence,
@@ -105,3 +104,17 @@ export {
   historySampleFromRow,
   modelVersions,
 } from './model';
+
+export type {
+  DayPeriod,
+  DurationContext,
+  ContextDurationLevel,
+  ContextualDuration,
+} from './contextDuration';
+export {
+  MIN_CONTEXT_SAMPLES,
+  placeKey,
+  classifyDayPeriod,
+  filterSamplesForContext,
+  lookupContextualDuration,
+} from './contextDuration';
