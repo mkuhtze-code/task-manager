@@ -72,7 +72,14 @@ export type DurationDistribution = {
   expectedMins: number;
   interval: { low: number; high: number };
   sampleSize: number;
-  method: 'median' | 'trimmed_mean' | 'weighted_median' | 'prior' | 'typed' | 'lifecycle_soft' | 'blended';
+  method:
+    | 'median'
+    | 'trimmed_mean'
+    | 'weighted_median'
+    | 'prior'
+    | 'typed'
+    | 'lifecycle_soft'
+    | 'blended';
 };
 
 export type ConfidenceProfile = {
@@ -81,7 +88,11 @@ export type ConfidenceProfile = {
   effectStrength: Confidence;
   consistencyStrength: Confidence;
   recencyWeight: number | null;
-  specificity: number;
+
+  // Specificity is allowed to be unknown when the available evidence
+  // cannot establish how context-specific the observation is.
+  specificity: number | null;
+
   contradiction: ContradictionStatus;
   staleness: StalenessStatus;
 };
