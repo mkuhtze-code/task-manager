@@ -2,6 +2,7 @@
 //
 // Public surface for Thinking Engine V3 canonical contracts.
 // Phase 1: types + adapters. Phase 2: events. Phase 3: robust stats.
+// Phase 4: personal model (clusters, hierarchical duration, ModelState).
 
 export type {
   Confidence,
@@ -71,3 +72,36 @@ export {
   effectMagnitudeFromRatio,
 } from './stats';
 export type { RobustSpread } from './stats';
+
+export type { HistorySample, ClusterModel } from './clusters';
+export {
+  CLUSTER_MATCH_THRESHOLD,
+  CLUSTER_VERSION,
+  tokenize,
+  tokenSet,
+  jaccard,
+  clusterIdFromTokens,
+  buildClusterModels,
+  matchCluster,
+  userDurationFromClusters,
+  personalMedianMins,
+} from './clusters';
+
+export type {
+  PersonalModelPriors,
+  ClosedOutcomeSample,
+  PersonalModel,
+  HierarchicalDuration,
+  SameDayLookup,
+} from './model';
+export {
+  SYSTEM_DEFAULT_MINS,
+  DEFAULT_PRIOR_STRENGTH,
+  buildPersonalModel,
+  lookupHierarchicalDuration,
+  lookupSameDayRate,
+  learningPhaseFromClosedCount,
+  maturityFromEvidence,
+  historySampleFromRow,
+  modelVersions,
+} from './model';
