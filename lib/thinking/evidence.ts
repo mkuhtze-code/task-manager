@@ -1,32 +1,30 @@
 // lib/thinking/evidence.ts
 //
-// Evidence capture interface — the bridge between the pure thinking
-// engine and the persistent world. This module provides the in-memory
-// evidence buffer for client-side use, and the Supabase write path
-// for durable logging.
+// Evidence capture interface — bridge between pure thinking engine and
+// the persistent world. In-memory buffer + Supabase write path.
 //
-// The evidence buffer holds recent prediction log entries in memory
-// so the engine can compare outcomes against predictions without
-// hitting the database on every render. When a task completes, the
-// engine logs the prediction, and the buffer keeps it available for
-// the Patterns surface to query.
+// Phase 2: primary identity is task_id (and prediction id).
+// task_text is context / legacy fallback only.
 
 import type { PredictionLogEntry, Confidence } from './types';
-
-// ── In-memory evidence buffer ─────────────────────────────────────
-// A lightweight ring buffer that holds the most recent prediction
-// logs. This is the "short-term memory" the engine uses to answer
-// questions like "how accurate was my last suggestion for this kind
-// of task?" without hitting Supabase.
 
 const MAX_BUFFER_SIZE = 200;
 
 let buffer: PredictionLogEntry[] = [];
 
-export function logPrediction(entry: Omit<PredictionLogEntry, 'id' | 'logged_at'>): PredictionLogEntry {
+export function logPrediction(
+  entry: Omit<PredictionLogEntry, 'id' | 'logged_at'> &
+    Partial<Pick<PredictionLogEntry, 'id' | 'logged_at'>>
+): PredictionLogEntry {
   const full: PredictionLogEntry = {
+    task_id: entry.task_id ?? null,
+    model_version: entry.model_version ?? null,
+    algorithm_version: entry.algorithm_version ?? null,
+    feature_version: entry.feature_version ?? null,
+    outcome_kind: entry.outcome_kind ?? null,
+    decision_id: entry.decision_id ?? null,
     ...entry,
-    logged_at: new Date().toISOString(),
+    logged_at: entry.logged_at ?? new Date().toISOString(),
   };
   buffer.unshift(full);
   if (buffer.length > MAX_BUFFER_SIZE) {
@@ -35,18 +33,33 @@ export function logPrediction(entry: Omit<PredictionLogEntry, 'id' | 'logged_at'
   return full;
 }
 
-export function recordOutcome(
-  taskText: string,
-  actualMins: number
-): void {
-  // Find the most recent prediction for this task text that hasn't
-  // been completed yet, and fill in the outcome.
-  const entry = buffer.find(
-    (e) => e.task_text === taskText && e.actual_mins === null
-  );
+/**
+ * Attach outcome to the most recent open prediction.
+ * Prefer taskId; fall back to taskText only for legacy buffer entries.
+ */
+export function recordOutcome(params: {
+  taskId?: string | null;
+  taskText?: string | null;
+  actualMins: number;
+  outcomeKind?: PredictionLogEntry['outcome_kind'];
+}): void {
+  const { taskId, taskText, actualMins, outcomeKind } = params;
+  let entry: PredictionLogEntry | undefined;
+
+  if (taskId) {
+    entry = buffer.find(
+      (e) => e.task_id === taskId && e.actual_mins === null
+    );
+  }
+  if (!entry && taskText) {
+    entry = buffer.find(
+      (e) => e.task_text === taskText && e.actual_mins === null
+    );
+  }
   if (entry) {
     entry.actual_mins = actualMins;
     entry.completed_at = new Date().toISOString();
+    if (outcomeKind) entry.outcome_kind = outcomeKind;
   }
 }
 
@@ -58,21 +71,12 @@ export function clearBuffer(): void {
   buffer = [];
 }
 
-// ── Supabase write path ───────────────────────────────────────────
-// Writes a prediction log entry to Supabase. Called from the task
-// completion handler. This is the durable evidence store — the buffer
-// is ephemeral, this is permanent.
-//
-// The supabase client is imported lazily to avoid pulling it into
-// test environments where it isn't available.
+// ── Supabase ──────────────────────────────────────────────────────
 
 let _supabaseClient: any = null;
 
 function getSupabaseClient() {
   if (!_supabaseClient) {
-    // Dynamic import to avoid bundling Supabase in test environments.
-    // In production this resolves immediately; in tests the caller
-    // should mock persistPrediction directly.
     try {
       _supabaseClient = require('@/lib/supabaseClient').supabase;
     } catch {
@@ -82,16 +86,39 @@ function getSupabaseClient() {
   return _supabaseClient;
 }
 
-export async function persistPrediction(entry: Omit<PredictionLogEntry, 'id' | 'logged_at'>): Promise<PredictionLogEntry | null> {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
-    // Test environment or missing config — return the entry without persisting.
-    return { ...entry, id: 'test-id', logged_at: new Date().toISOString() } as PredictionLogEntry;
-  }
-  const full = {
-    ...entry,
-    logged_at: new Date().toISOString(),
+function rowFromEntry(
+  entry: Omit<PredictionLogEntry, 'id' | 'logged_at'> &
+    Partial<Pick<PredictionLogEntry, 'id' | 'logged_at'>>
+) {
+  return {
+    user_id: entry.user_id,
+    task_id: entry.task_id ?? null,
+    task_text: entry.task_text,
+    cluster_label: entry.cluster_label,
+    cluster_count: entry.cluster_count,
+    estimated_mins: entry.estimated_mins,
+    suggested_mins: entry.suggested_mins,
+    confidence: entry.confidence,
+    actual_mins: entry.actual_mins,
+    completed_at: entry.completed_at,
+    logged_at: entry.logged_at ?? new Date().toISOString(),
+    model_version: entry.model_version ?? null,
+    algorithm_version: entry.algorithm_version ?? null,
+    feature_version: entry.feature_version ?? null,
+    outcome_kind: entry.outcome_kind ?? null,
+    decision_id: entry.decision_id ?? null,
   };
+}
+
+export async function persistPrediction(
+  entry: Omit<PredictionLogEntry, 'id' | 'logged_at'> &
+    Partial<Pick<PredictionLogEntry, 'id' | 'logged_at'>>
+): Promise<PredictionLogEntry | null> {
+  const supabase = getSupabaseClient();
+  const full = rowFromEntry(entry);
+  if (!supabase) {
+    return { ...full, id: 'test-id' } as PredictionLogEntry;
+  }
   const { data, error } = await supabase
     .from('prediction_log')
     .insert(full)
@@ -104,10 +131,79 @@ export async function persistPrediction(entry: Omit<PredictionLogEntry, 'id' | '
   return data as PredictionLogEntry;
 }
 
-// ── Evidence queries ──────────────────────────────────────────────
-// Pure functions over the buffer. These let the Patterns surface and
-// the engine itself reason about recent outcomes without a database
-// round-trip.
+/**
+ * Close an open prediction by task_id (preferred) or legacy task_text.
+ * Updates the row in place so prediction remains immutable in identity
+ * while outcome attaches.
+ */
+export async function resolveOpenPrediction(params: {
+  userId: string;
+  taskId?: string | null;
+  taskText?: string | null;
+  actualMins: number;
+  outcomeKind?: PredictionLogEntry['outcome_kind'];
+}): Promise<PredictionLogEntry | null> {
+  const supabase = getSupabaseClient();
+  const completedAt = new Date().toISOString();
+  const patch = {
+    actual_mins: params.actualMins,
+    completed_at: completedAt,
+    outcome_kind: params.outcomeKind ?? 'done',
+  };
+
+  if (!supabase) {
+    recordOutcome({
+      taskId: params.taskId,
+      taskText: params.taskText,
+      actualMins: params.actualMins,
+      outcomeKind: params.outcomeKind,
+    });
+    const hit = buffer.find(
+      (e) =>
+        (params.taskId && e.task_id === params.taskId) ||
+        (params.taskText && e.task_text === params.taskText)
+    );
+    return hit ?? null;
+  }
+
+  if (params.taskId) {
+    const { data, error } = await supabase
+      .from('prediction_log')
+      .update(patch)
+      .eq('user_id', params.userId)
+      .eq('task_id', params.taskId)
+      .is('actual_mins', null)
+      .order('logged_at', { ascending: false })
+      .limit(1)
+      .select()
+      .maybeSingle();
+    if (error) {
+      console.error('[thinking] Failed to resolve prediction by task_id:', error);
+    } else if (data) {
+      return data as PredictionLogEntry;
+    }
+  }
+
+  if (params.taskText) {
+    const { data, error } = await supabase
+      .from('prediction_log')
+      .update(patch)
+      .eq('user_id', params.userId)
+      .eq('task_text', params.taskText)
+      .is('actual_mins', null)
+      .order('logged_at', { ascending: false })
+      .limit(1)
+      .select()
+      .maybeSingle();
+    if (error) {
+      console.error('[thinking] Failed to resolve prediction by text:', error);
+      return null;
+    }
+    return (data as PredictionLogEntry) ?? null;
+  }
+
+  return null;
+}
 
 export function recentOutcomes(
   buffer: readonly PredictionLogEntry[],
@@ -123,10 +219,10 @@ export function accuracySummary(
 ): {
   totalPredictions: number;
   completedPredictions: number;
-  averageError: number; // mean absolute error in minutes
-  averageRatio: number; // mean actual/estimated ratio
-  overEstimates: number; // tasks that took longer than predicted
-  underEstimates: number; // tasks that took shorter than predicted
+  averageError: number;
+  averageRatio: number;
+  overEstimates: number;
+  underEstimates: number;
 } {
   const completed = buffer.filter((e) => e.actual_mins !== null);
   if (completed.length === 0) {
