@@ -15,11 +15,11 @@
 }
 
 .prefs-section-label {
-  font-size: var(--text-2xs, 11px);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
-  color: var(--ink-faint, var(--ink-soft));
+  color: var(--text-tertiary);
   padding: 0 2px;
 }
 
@@ -29,16 +29,19 @@
 
 .prefs-page .settings-panel-title {
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
 }
 
 .prefs-page .settings-help {
   font-size: var(--text-xs);
-  line-height: 1.45;
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
 }
 
 .prefs-to {
-  color: var(--ink-soft);
+  color: var(--text-secondary);
   font-size: var(--text-sm);
 }
 
@@ -46,41 +49,41 @@
   margin-top: var(--space-5);
 }
 
-/* Tighten sort options slightly on this page */
 .prefs-page .sort-option-desc {
   font-size: var(--text-2xs);
-  color: var(--ink-soft);
-  line-height: 1.4;
+  color: var(--text-secondary);
+  line-height: var(--leading-snug);
 }
 
 .prefs-page .settings-label {
   margin-top: 2px;
+  color: var(--text-secondary);
 }
-
 
 .prefs-intro {
   margin: 0 0 var(--space-2);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
 }
 
 .prefs-account-link {
   display: inline-flex;
   margin-top: 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
   text-decoration: none;
+  transition: color 0.15s var(--ease);
 }
 
 .prefs-account-link:hover {
-  color: var(--ink);
+  color: var(--text-primary);
 }
 
 .prefs-plan-note {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
 }
