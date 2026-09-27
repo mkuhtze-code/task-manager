@@ -1,7 +1,5 @@
 // lib/thinking/v3/index.ts
-//
-// Public surface for Thinking Engine V3 canonical contracts.
-// Phase 1–5 + context-conditional duration + production suggest bridge.
+// Public surface — Phase 1–5.5 foundation hardening.
 
 export type {
   Confidence,
@@ -76,9 +74,14 @@ export type { HistorySample, ClusterModel } from './clusters';
 export {
   CLUSTER_MATCH_THRESHOLD,
   CLUSTER_VERSION,
+  GENERIC_TOKENS,
+  JOIN_THRESHOLD,
   tokenize,
   tokenSet,
+  tokenWeight,
+  discriminativeTokens,
   jaccard,
+  weightedJaccard,
   clusterIdFromTokens,
   buildClusterModels,
   matchCluster,
@@ -125,3 +128,57 @@ export {
   suggestEstimateV3,
   personalModelFromHistory,
 } from './suggest';
+
+export type { UserCalendarContext } from './temporal';
+export {
+  localDateString,
+  localHour,
+  localDayOfWeek,
+  sameLocalCalendarDay,
+  completionAgeDays,
+  taskAgeDaysAt,
+  periodFromLocalHour,
+  buildUserCalendarContext,
+} from './temporal';
+
+export type {
+  WorkEpisode,
+  EpisodeOutcome,
+  DurationEvidenceKind,
+  EpisodeBuildInput,
+} from './episodes';
+export {
+  buildWorkEpisode,
+  trainMinutesFromEpisode,
+  safeActualForCalibration,
+} from './episodes';
+
+export type {
+  TaskIdentityRef,
+  TaskFeatures,
+  SequenceEdge,
+} from './identity';
+export {
+  sameTaskIdentity,
+  distinctDespiteSameText,
+  sequenceEdge,
+  taskKeyedMap,
+  assertTaskId,
+} from './identity';
+
+export type { EvidenceQuality, EvidenceQualityInput } from './evidenceQuality';
+export {
+  independentFromEpisodes,
+  assessEvidenceQuality,
+  propagateConfidence,
+  confidenceProfileFromQuality,
+} from './evidenceQuality';
+
+export type { DurationMode, MultimodalDuration } from './durationModes';
+export {
+  detectDurationModes,
+  multimodalDurationFromSamples,
+} from './durationModes';
+
+export type { CalibrationPair, CalibrationReport } from './calibrationMetrics';
+export { logRatio, calibrateFromPairs } from './calibrationMetrics';
