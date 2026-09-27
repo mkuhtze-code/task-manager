@@ -1,12 +1,10 @@
 // lib/thinking/v3/suggest.ts
 //
 // Phase 5 — production-facing duration suggestion from the personal model.
+// Phase 5.5 perf: sample cap + model cache so N task lookups share one build.
 //
-// Maps hierarchical / contextual duration into the same shape the runtime
-// already consumes (suggestedMins, confidence, sampleCount, matchedLabel,
-// source). Callers of suggestEstimate do not change.
-//
-// Pure. Deterministic. No network.
+// Pure aside from a process-local cache keyed by history fingerprint.
+// No network.
 
 import {
   buildPersonalModel,
@@ -26,14 +24,15 @@ import { MODEL_VERSION } from './types';
 
 export const MIN_SAMPLES_FOR_SUGGESTION = 2;
 
+/** Cap samples fed into cluster build — keeps O(n²) clustering bounded. */
+export const MODEL_HISTORY_CAP = 200;
+
 export type V3EstimateSuggestion = {
   suggestedMins: number;
   confidence: Confidence;
   sampleCount: number;
   matchedLabel: string;
-  /** measured = timed history; lifecycle = structure fallback; mixed = both. */
   source: 'measured' | 'lifecycle' | 'mixed';
-  /** V3 diagnostics — optional for callers that care. */
   level?: string;
   modelVersion?: string;
   interval?: { low: number; high: number };
@@ -51,19 +50,19 @@ export type SuggestHistoryRow = {
 };
 
 export type SuggestEstimateOpts = {
-  /** Optional context for conditional duration (job / place / period). */
   context?: DurationContext;
   priors?: Partial<PersonalModelPriors>;
-  /** Explicit clock for model updatedAt — defaults only if omitted. */
   updatedAt?: string;
-  /** Pre-built model to avoid rebuild when caller already has one. */
   model?: PersonalModel;
-  /** Pre-mapped samples when model is also pre-built. */
   samples?: HistorySample[];
 };
 
 function samplesFromHistory(history: SuggestHistoryRow[]): HistorySample[] {
-  return history.map((h) =>
+  const slice =
+    history.length > MODEL_HISTORY_CAP
+      ? history.slice(0, MODEL_HISTORY_CAP)
+      : history;
+  return slice.map((h) =>
     historySampleFromRow({
       text: h.text,
       actual_mins: h.actual_mins,
@@ -73,6 +72,67 @@ function samplesFromHistory(history: SuggestHistoryRow[]): HistorySample[] {
       location_text: h.location_text,
     })
   );
+}
+
+function historyFingerprint(history: SuggestHistoryRow[]): string {
+  const n = history.length;
+  if (n === 0) return '0';
+  const head = history[0];
+  const tail = history[n - 1];
+  const mid = history[Math.floor(n / 2)];
+  return [
+    n,
+    head?.text?.slice(0, 40) ?? '',
+    head?.actual_mins ?? '',
+    head?.completed_at ?? '',
+    mid?.text?.slice(0, 24) ?? '',
+    mid?.actual_mins ?? '',
+    tail?.text?.slice(0, 40) ?? '',
+    tail?.actual_mins ?? '',
+    tail?.completed_at ?? '',
+  ].join('|');
+}
+
+type ModelCacheEntry = {
+  key: string;
+  model: PersonalModel;
+  samples: HistorySample[];
+};
+
+let modelCache: ModelCacheEntry | null = null;
+
+/** Test / hot-reload helper. */
+export function clearPersonalModelCache(): void {
+  modelCache = null;
+}
+
+function resolveModel(
+  history: SuggestHistoryRow[],
+  opts?: SuggestEstimateOpts
+): { model: PersonalModel; samples: HistorySample[] } {
+  if (opts?.model && opts?.samples) {
+    return { model: opts.model, samples: opts.samples };
+  }
+  if (opts?.model) {
+    const samples = opts.samples ?? samplesFromHistory(history);
+    return { model: opts.model, samples };
+  }
+
+  const key = historyFingerprint(history);
+  if (modelCache && modelCache.key === key) {
+    return { model: modelCache.model, samples: modelCache.samples };
+  }
+
+  const samples = samplesFromHistory(history);
+  const updatedAt = opts?.updatedAt ?? '1970-01-01T00:00:00.000Z';
+  const model = buildPersonalModel({
+    userId: 'runtime',
+    samples,
+    priors: opts?.priors,
+    updatedAt,
+  });
+  modelCache = { key, model, samples };
+  return { model, samples };
 }
 
 function hasContext(ctx?: DurationContext): boolean {
@@ -90,7 +150,6 @@ function fromLookup(
   source: V3EstimateSuggestion['source'] = 'measured'
 ): V3EstimateSuggestion | null {
   const n = result.distribution.sampleSize;
-  // Prior / system with zero samples is not a measured suggestion.
   if (result.level === 'system' || result.level === 'onboarding') {
     return null;
   }
@@ -116,7 +175,7 @@ function fromLookup(
 
 /**
  * Duration suggestion from the V3 personal model.
- * Prefer contextual lookup when context is provided and evidence supports it.
+ * Model is built once per history fingerprint and reused across lookups.
  */
 export function suggestEstimateV3(
   text: string,
@@ -126,16 +185,7 @@ export function suggestEstimateV3(
   const trimmed = text.trim();
   if (!trimmed) return null;
 
-  const samples = opts?.samples ?? samplesFromHistory(history);
-  const updatedAt = opts?.updatedAt ?? '1970-01-01T00:00:00.000Z';
-  const model =
-    opts?.model ??
-    buildPersonalModel({
-      userId: 'runtime',
-      samples,
-      priors: opts?.priors,
-      updatedAt,
-    });
+  const { model, samples } = resolveModel(history, opts);
 
   if (hasContext(opts?.context)) {
     const contextual = lookupContextualDuration(
@@ -152,9 +202,6 @@ export function suggestEstimateV3(
   return fromLookup(hierarchical, 'measured');
 }
 
-/**
- * Build a PersonalModel once for a history slice (callers that suggest often).
- */
 export function personalModelFromHistory(
   history: SuggestHistoryRow[],
   opts?: {
@@ -170,5 +217,10 @@ export function personalModelFromHistory(
     priors: opts?.priors,
     updatedAt: opts?.updatedAt ?? '1970-01-01T00:00:00.000Z',
   });
+  modelCache = {
+    key: historyFingerprint(history),
+    model,
+    samples,
+  };
   return { model, samples };
 }

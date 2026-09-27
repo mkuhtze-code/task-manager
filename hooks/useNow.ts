@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from 'react';
 
-/** One-second clock for live remaining time and the day rail. */
-export function useNow(intervalMs = 1000): Date {
+/**
+ * Clock for live remaining time and the day rail.
+ *
+ * Default 5s — was 1s and forced the whole Today surface to re-render
+ * every second. Pass 1000 when an active timer needs second-level precision.
+ */
+export function useNow(intervalMs = 5000): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), intervalMs);
