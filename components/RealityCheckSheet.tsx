@@ -100,39 +100,21 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
         {tasks.length === 0 ? (
           <p className="settings-help">Nothing needed a check today.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div className="reality-task-list">
             {tasks.map((task) => {
               const outcome = outcomes[task.id] ?? 'carried';
               const sourceLabel = prefill.sourceLabels[task.id];
               return (
-                <div
-                  key={task.id}
-                  className="reality-task-row"
-                  style={{
-                    background: 'var(--paper)',
-                    borderRadius: 14,
-                    padding: '12px',
-                  }}
-                >
-                  <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{task.text}</div>
-                  <div
-                    className="mono"
-                    style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 2 }}
-                  >
+                <div key={task.id} className="reality-task-row">
+                  <div className="reality-task-name">{task.text}</div>
+                  <div className="reality-task-meta mono">
                     {fmtMins(task.estimate_mins)}
                     {sourceLabel && outcome === 'done' && actualMins[task.id] != null
                       ? ` · ${sourceLabel.toLowerCase()} (${fmtMins(actualMins[task.id]!)})`
                       : ''}
                   </div>
 
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(4, 1fr)',
-                      gap: 6,
-                      marginTop: 10,
-                    }}
-                  >
+                  <div className="reality-outcome-grid">
                     {OUTCOMES.map(({ key, label }) => {
                       const selected = outcome === key;
                       return (
@@ -140,7 +122,6 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
                           key={key}
                           type="button"
                           className={selected ? 'segmented-btn active' : 'segmented-btn'}
-                          style={{ minHeight: 36, fontSize: 12 }}
                           aria-pressed={selected}
                           onClick={() => setOutcome(task.id, key)}
                         >
@@ -151,11 +132,11 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
                   </div>
 
                   {(outcome === 'done' || outcome === 'partial') && (
-                    <div style={{ marginTop: 10 }}>
+                    <div className="reality-mins-block">
                       <div className="settings-help" style={{ marginBottom: 6 }}>
                         {outcome === 'done' ? 'Time taken' : 'Time spent so far'}
                       </div>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <div className="reality-mins-options">
                         {(outcome === 'done'
                           ? [
                               {
@@ -218,18 +199,10 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
           </div>
         )}
 
-        <div
-          style={{
-            marginTop: 'var(--space-4)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-          }}
-        >
+        <div className="reality-footer">
           <button
             type="button"
             className="btn btn-steel"
-            style={{ width: '100%' }}
             disabled={busy || tasks.length === 0}
             onClick={handleReshape}
           >
