@@ -296,3 +296,39 @@ export type {
   TemporalFacts,
   Period,
 } from './v2';
+
+// ── Thinking Engine V3 (canonical contracts — Phase 1) ────────────
+// Import from '@/lib/thinking/v3' for the full surface.
+// Prefer V3 TaskFact / Prediction / Outcome over text-keyed legacy shapes.
+export type {
+  TaskFact,
+  ContextSnapshot,
+  Belief,
+  Prediction as V3Prediction,
+  Outcome as V3Outcome,
+  Decision as V3Decision,
+  DecisionTrace,
+  ModelState,
+  ConfidenceProfile,
+  DurationDistribution,
+  Authority as V3Authority,
+  FitState,
+  ModelMaturity,
+  LearningPhase,
+  OutcomeKind,
+  DecisionKind,
+} from './v3';
+export {
+  MODEL_VERSION as V3_MODEL_VERSION,
+  ALGORITHM_VERSION as V3_ALGORITHM_VERSION,
+  FEATURE_VERSION as V3_FEATURE_VERSION,
+  confidenceProfileFromV1,
+  emptyContextSnapshot,
+  taskFactFromCompleted,
+  taskFactFromHistorical,
+  predictionFromLogEntry,
+  outcomeFromCompletion,
+  pointDistribution,
+  minimalEvidence,
+  currentVersions as v3CurrentVersions,
+} from './v3';
