@@ -1,5 +1,5 @@
 // lib/thinking/v3/index.ts
-// Public surface — Phase 1–5.5 foundation hardening.
+// Public surface — Phase 1–6 behaviour model.
 
 export type {
   Confidence,
@@ -182,3 +182,14 @@ export {
 
 export type { CalibrationPair, CalibrationReport } from './calibrationMetrics';
 export { logRatio, calibrateFromPairs } from './calibrationMetrics';
+
+export type {
+  BehaviourSample,
+  ClusterBehaviourSlice,
+  UserBehaviourModel,
+} from './behaviour';
+export {
+  buildUserBehaviourModel,
+  lookupClusterBehaviour,
+  behaviourSamplesFromHistory,
+} from './behaviour';

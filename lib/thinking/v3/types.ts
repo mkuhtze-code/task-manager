@@ -1,7 +1,7 @@
 // lib/thinking/v3/types.ts
 //
 // Canonical contracts for Thinking Engine V3.
-// Phase 5.5 foundation hardening.
+// Phase 6 — behaviour model + episode-gated completion.
 
 import type { Confidence as V1Confidence } from '../types';
 
@@ -300,6 +300,6 @@ export type ModelState = {
   updatedAt: string;
 };
 
-export const MODEL_VERSION = '3.0.0-phase5.5';
+export const MODEL_VERSION = '3.0.0-phase6';
 export const ALGORITHM_VERSION = '3.0.0';
 export const FEATURE_VERSION = '3.0.0';
