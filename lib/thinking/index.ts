@@ -44,7 +44,6 @@ export {
   summarizeCluster,
 } from './memory';
 
-// Observations — Scope 1
 export {
   observeEstimateAccuracy,
   classifyAccuracy,
@@ -56,7 +55,6 @@ export {
   observeAllClusters,
 } from './observations/durationMemory';
 
-// Observations — Scope 2
 export {
   observeLifecycle,
   observeClusterLifecycle,
@@ -81,7 +79,6 @@ export {
   observeClusterBehaviour,
 } from './observations/clusterBehaviour';
 
-// Compose
 export {
   buildActivityProfile,
   buildAllActivityProfiles,
@@ -91,14 +88,12 @@ export {
   buildUserPatterns,
 } from './compose/userPatterns';
 
-// Decisions
 export {
   computeEffectiveEstimate,
   effectiveEstimate,
   hasMeaningfulDivergence,
 } from './decisions/effectiveEstimate';
 
-// Decisions — Scope 3E
 export {
   decideJobContext,
   MIN_SPATIAL_COUNT,
@@ -113,7 +108,6 @@ export {
   MIN_RATIO_FOR_LOCATION,
 } from './decisions/locationMemory';
 
-// Decisions — Scope 3G (Personal Gravity)
 export {
   decidePersonalGravity,
   MIN_TOTAL_EVENTS,
@@ -125,13 +119,11 @@ export {
   LOOKBACK_DAYS,
 } from './decisions/personalGravity';
 
-// Decisions — Scope 3H (Capture Context)
 export {
   decideCaptureContext,
 } from './decisions/captureContext';
 export type { CaptureContextInput } from './decisions/captureContext';
 
-// Relationships — Scope 3A
 export {
   distanceMeters,
   areSamePlace,
@@ -158,7 +150,6 @@ export {
   aggregateAdjacency,
 } from './relationships/sequencing';
 
-// Associations — Scope 3B
 export type {
   ClusterPlaceAssociation,
   ClusterTimeAssociation,
@@ -184,13 +175,14 @@ export {
   MIN_TOTAL_FOR_JOB,
 } from './associations/clusterJob';
 
-// Evidence
+// Evidence — Phase 2 includes resolveOpenPrediction (task_id first)
 export {
   logPrediction,
   recordOutcome,
   getBuffer,
   clearBuffer,
   persistPrediction,
+  resolveOpenPrediction,
   recentOutcomes,
   accuracySummary,
 } from './evidence';
@@ -199,7 +191,6 @@ export {
   logCapturePrediction,
   logCompletionOutcome,
 } from './evidence/predictionLog';
-
 
 export {
   calibrateFromOutcomes,
@@ -226,14 +217,12 @@ export type {
   CloseCompletionLoopResult,
 } from './evidence/closeCompletionLoop';
 
-// Decision-value ranking for quiet product surfaces (Patterns)
 export {
   rankActionableObservations,
   topActionableObservations,
   formatObservationLine,
 } from './actionableObservations';
 
-// ── Thinking Engine V2 / V2.1 ─────────────────────────────────────
 export {
   runObservationPipeline,
   buildEvidence,
@@ -297,9 +286,7 @@ export type {
   Period,
 } from './v2';
 
-// ── Thinking Engine V3 (canonical contracts — Phase 1) ────────────
-// Import from '@/lib/thinking/v3' for the full surface.
-// Prefer V3 TaskFact / Prediction / Outcome over text-keyed legacy shapes.
+// ── Thinking Engine V3 ────────────────────────────────────────────
 export type {
   TaskFact,
   ContextSnapshot,
@@ -317,6 +304,8 @@ export type {
   LearningPhase,
   OutcomeKind,
   DecisionKind,
+  ThinkingEventKind,
+  ThinkingEvent,
 } from './v3';
 export {
   MODEL_VERSION as V3_MODEL_VERSION,
@@ -331,4 +320,7 @@ export {
   pointDistribution,
   minimalEvidence,
   currentVersions as v3CurrentVersions,
+  makeEventId,
+  makeDecisionId,
+  buildThinkingEvent,
 } from './v3';
