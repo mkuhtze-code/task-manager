@@ -25,65 +25,63 @@
   gap: 2px;
   min-width: 52px;
   padding: 8px 10px;
-  border-radius: 14px;
-  border: 1px solid var(--line-strong);
-  background: var(--paper);
-  color: var(--ink-soft);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: background 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
 }
 
 .trip-day-chip-wd {
-  font-size: var(--text-2xs, 11px);
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   line-height: 1;
 }
 
 .trip-day-chip-num {
   font-size: var(--text-base);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   line-height: 1.1;
-  color: var(--ink);
+  color: var(--text-primary);
 }
 
 .trip-day-chip-pos {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: rgba(255, 255, 255, 0.85);
   margin-top: 1px;
 }
 
 .trip-day-chip.is-today:not(.active) {
-  border-color: var(--steel);
-  box-shadow: inset 0 0 0 1px rgba(var(--shadow-rgb, 30, 40, 50), 0.04);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(var(--shadow-rgb), 0.04);
 }
 
 .trip-day-chip.is-today:not(.active) .trip-day-chip-wd {
-  color: var(--steel);
+  color: var(--text-accent);
 }
 
 .trip-day-chip.active {
-  background: var(--steel);
-  border-color: var(--steel);
-  color: white;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-inverse);
 }
 
 .trip-day-chip.active .trip-day-chip-num {
-  color: white;
+  color: var(--text-inverse);
 }
 
 .trip-day-chip:active {
   transform: scale(0.97);
 }
 
-/* Day head sits tighter under the strip */
 .trip-day-strip + .day-head {
   margin-top: var(--space-2);
 }
 
-/* Hint that the itinerary is swipeable between days */
 .task-list {
   touch-action: pan-y;
 }
@@ -97,7 +95,7 @@
 .trip-overview-lead {
   margin: 0 0 var(--space-3);
   font-size: var(--text-sm);
-  color: var(--ink-soft);
+  color: var(--text-secondary);
 }
 
 .trip-overview-grid {
@@ -119,10 +117,10 @@
   align-items: flex-start;
   gap: 2px;
   padding: 12px 12px 10px;
-  border-radius: 16px;
-  border: 1px solid var(--line-strong);
-  background: var(--paper);
-  color: var(--ink);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-primary);
   text-align: left;
   cursor: pointer;
   transition: background 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.12s var(--ease);
@@ -133,17 +131,17 @@
 }
 
 .trip-overview-card.is-today:not(.active) {
-  border-color: var(--steel);
+  border-color: var(--accent);
 }
 
 .trip-overview-card.active {
-  background: var(--steel);
-  border-color: var(--steel);
-  color: white;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-inverse);
 }
 
 .trip-overview-card.over:not(.active) {
-  border-color: var(--hazard, #c45c26);
+  border-color: var(--warning);
 }
 
 .trip-overview-card-top {
@@ -155,11 +153,11 @@
 }
 
 .trip-overview-wd {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: var(--text-secondary);
 }
 
 .trip-overview-card.active .trip-overview-wd {
@@ -168,10 +166,10 @@
 
 .trip-overview-today {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--steel);
+  color: var(--text-accent);
 }
 
 .trip-overview-card.active .trip-overview-today {
@@ -180,14 +178,15 @@
 
 .trip-overview-num {
   font-size: 28px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   line-height: 1.05;
   margin-top: 2px;
+  letter-spacing: var(--tracking-tighter);
 }
 
 .trip-overview-date {
-  font-size: var(--text-xs, 12px);
-  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
 }
 
 .trip-overview-card.active .trip-overview-date {
@@ -203,13 +202,13 @@
 }
 
 .trip-overview-stops {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
 }
 
 .trip-overview-stops.faint {
-  color: var(--ink-faint);
-  font-weight: 500;
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
 }
 
 .trip-overview-card.active .trip-overview-stops.faint {
@@ -218,12 +217,12 @@
 
 .trip-overview-fit {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-soft);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
 }
 
 .trip-overview-fit.over {
-  color: var(--hazard, #c45c26);
+  color: var(--text-warning);
 }
 
 .trip-overview-card.active .trip-overview-fit {
@@ -237,15 +236,14 @@
 .trip-overview-pos {
   margin-top: 6px;
   font-size: 10px;
-  font-weight: 600;
-  color: var(--ink-faint);
+  font-weight: var(--weight-semibold);
+  color: var(--text-tertiary);
 }
 
 .trip-overview-card.active .trip-overview-pos {
   color: rgba(255, 255, 255, 0.7);
 }
 
-/* All-days control at the end of the strip */
 .trip-day-overview-btn {
   flex: 0 0 auto;
   scroll-snap-align: center;
@@ -256,13 +254,13 @@
   gap: 4px;
   min-width: 52px;
   padding: 8px 12px;
-  border-radius: 14px;
-  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-strong);
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -281,13 +279,13 @@
   position: sticky;
   top: 0;
   z-index: 18;
-  background: var(--paper);
+  background: var(--bg);
   margin-left: calc(-1 * var(--space-page, 16px));
   margin-right: calc(-1 * var(--space-page, 16px));
   padding-left: var(--space-page, 16px);
   padding-right: var(--space-page, 16px);
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border-default);
 }
 
 html[data-surface='desktop'] .app-shell.desk-trip-detail {
@@ -307,7 +305,7 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .app-header {
   grid-row: 1;
   margin: 0;
   padding: 12px var(--space-5);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border-default);
   border-radius: 0;
 }
 
@@ -322,8 +320,8 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .trip-day-strip {
   margin: 0;
   padding: var(--space-3);
   border-bottom: none;
-  border-right: 1px solid var(--line);
-  background: rgba(var(--glass-rgb, 250, 250, 248), 0.5);
+  border-right: 1px solid var(--border-default);
+  background: var(--surface-inset);
   max-height: none;
   height: 100%;
   scroll-snap-type: none;
@@ -336,7 +334,7 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .trip-day-strip .trip
   min-width: 0;
   width: 100%;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 
 html[data-surface='desktop'] .app-shell.desk-trip-detail > .day-head,
@@ -349,7 +347,7 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .day-head {
   grid-row: 2;
   margin: 0;
   border-radius: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border-default);
 }
 
 html[data-surface='desktop'] .app-shell.desk-trip-detail > .task-list {
@@ -368,67 +366,67 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .surface-nav {
   position: sticky;
   top: 0;
   z-index: 15;
-  background: var(--paper);
+  background: var(--bg);
 }
 
-
-/* Stop kind chip on itinerary rows */
 .stop-kind-chip {
   display: inline-block;
   margin-right: 6px;
   padding: 1px 6px;
   border-radius: 6px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--steel, #1e6be6);
-  background: rgba(var(--steel-rgb, 30, 107, 230), 0.1);
+  color: var(--text-accent);
+  background: var(--accent-muted);
   vertical-align: middle;
 }
 
-
-/* Stop detail card — mobile-first context */
 .stop-detail-sheet {
   gap: 8px;
 }
+
 .stop-context-strip {
   margin: 4px 0 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: rgba(var(--glass-rgb, 250, 250, 248), 0.6);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-inset);
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
+
 .stop-context-line {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  font-size: 13px;
-  color: var(--ink);
-  line-height: 1.35;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: var(--leading-snug);
 }
+
 .stop-context-kicker {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--text-tertiary);
 }
+
 .stop-context-warn {
-  color: var(--hazard-text, var(--hazard));
+  color: var(--text-warning);
 }
+
 .stop-context-warn .stop-context-kicker {
-  color: var(--hazard-text, var(--hazard));
+  color: var(--text-warning);
 }
 
-
-/* Meetings falling on this trip day */
 .trip-day-meetings {
   margin: 8px 0 12px;
 }
+
 .trip-day-meetings-list {
   list-style: none;
   margin: 0;
@@ -437,22 +435,31 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .surface-nav {
   flex-direction: column;
   gap: 6px;
 }
+
 .trip-day-meeting-link {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--paper);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface);
   text-decoration: none;
   color: inherit;
+  transition: background 0.15s var(--ease);
 }
+
+.trip-day-meeting-link:hover {
+  background: var(--surface-hover);
+}
+
 .trip-day-meeting-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
 }
+
 .trip-day-meeting-meta {
-  font-size: 12px;
-  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
 }
