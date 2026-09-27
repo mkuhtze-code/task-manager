@@ -1328,6 +1328,7 @@ export function TodayPage() {
     const suggestion = suggestEstimate(text, history, clusters);
     logCapturePrediction({
       userId,
+      taskId: data.id,
       taskText: text,
       clusterLabel: suggestion?.matchedLabel ?? null,
       clusterCount: suggestion?.sampleCount ?? 0,
@@ -1477,6 +1478,7 @@ export function TodayPage() {
             u.actualMins != null ? u.actualMins : Math.round(finalLogged);
           const loop = closeCompletionLoop({
             userId: session?.user?.id,
+            taskId: task.id,
             taskText: task.text,
             estimateMins: task.estimate_mins,
             measuredMins: measured,
@@ -1553,8 +1555,9 @@ export function TodayPage() {
           if (spent > 0) {
             // Train on time actually spent — not spent+remaining (remaining is still plan).
             closeCompletionLoop({
-              userId: session?.user?.id,
-              taskText: task.text,
+            userId: session?.user?.id,
+            taskId: task.id,
+            taskText: task.text,
               estimateMins: task.estimate_mins,
               measuredMins: spent,
               history,
@@ -1627,6 +1630,7 @@ export function TodayPage() {
       ? { actualForDb: 0, trainMins: null as number | null, source: 'none' as const }
       : closeCompletionLoop({
       userId: session?.user?.id,
+      taskId: task?.id ?? null,
       taskText: task?.text || '',
       estimateMins: task?.estimate_mins || 0,
       measuredMins: measured,
