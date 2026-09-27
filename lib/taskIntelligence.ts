@@ -11,6 +11,9 @@
 // drag cluster averages toward zero. When reliable timed samples are
 // scarce, lifecycle structure (job, carry, subtasks, anchors) seeds a
 // soft duration instead.
+//
+// Phase 5: measured suggestions come from V3 hierarchical duration
+// (median + shrinkage). Surface EstimateSuggestion shape is unchanged.
 
 import {
   computeEffectiveEstimate as _computeEffectiveEstimate,
@@ -34,6 +37,7 @@ import {
   isReliableActualMins,
   lifecycleSoftMins,
 } from '@/lib/thinking/durationQuality';
+import { suggestEstimateV3 } from '@/lib/thinking/v3/suggest';
 
 export type HistoricalTask = {
   text: string;
@@ -275,71 +279,82 @@ function findBestCluster(
 
 /**
  * Suggest a duration for similar work.
- * Prefers reliable timed samples. If those are scarce but the cluster has
- * structure (jobs, carry, subtasks), uses lifecycle soft mins instead of
- * averaging zeros.
+ *
+ * Phase 5: measured path uses V3 hierarchical duration (median + shrinkage)
+ * instead of cluster average. Lifecycle soft mins still apply when timed
+ * samples are scarce. Optional context enables job/place/period conditioning.
+ *
+ * Surface shape unchanged — callers keep the same EstimateSuggestion.
  */
 export function suggestEstimate(
   inputText: string,
   history: HistoricalTask[],
-  precomputedClusters?: TaskCluster[]
+  precomputedClusters?: TaskCluster[],
+  context?: {
+    jobId?: string | null;
+    locationText?: string | null;
+    localHour?: number | null;
+  }
 ): EstimateSuggestion | null {
   const inputTokens = tokenize(inputText);
   if (inputTokens.size === 0) return null;
 
   const clusters = precomputedClusters ?? buildClusters(history);
   const match = findBestCluster(inputTokens, clusters);
+
+  // V3 measured path — robust median + hierarchical shrinkage (and optional context).
+  const v3 = suggestEstimateV3(inputText, history, {
+    context,
+    // Deterministic timestamp; model identity does not depend on wall clock here.
+    updatedAt: '1970-01-01T00:00:00.000Z',
+  });
+
+  if (v3) {
+    // If cluster also has structure and many zeros, keep a light mixed blend.
+    if (match && match.cluster.count >= MIN_SAMPLES_FOR_SUGGESTION) {
+      const c = match.cluster;
+      const soft = lifecycleSoftMins({
+        jobRate: c.jobRate,
+        sameDayRate: c.sameDaySamples >= 2 ? c.sameDayRate : null,
+        subtaskCount: c.subtaskSamples >= 1 ? Math.round(c.avgSubtaskCount) : null,
+      });
+      if (soft != null && c.reliableCount < c.count && c.reliableCount >= MIN_SAMPLES_FOR_SUGGESTION) {
+        return {
+          suggestedMins: Math.round(v3.suggestedMins * 0.75 + soft * 0.25),
+          confidence: v3.confidence,
+          sampleCount: v3.sampleCount,
+          matchedLabel: v3.matchedLabel,
+          source: 'mixed',
+        };
+      }
+    }
+    return {
+      suggestedMins: v3.suggestedMins,
+      confidence: v3.confidence,
+      sampleCount: v3.sampleCount,
+      matchedLabel: v3.matchedLabel,
+      source: 'measured',
+    };
+  }
+
+  // No reliable timed evidence — lifecycle structure only (unchanged).
   if (!match) return null;
   if (match.cluster.count < MIN_SAMPLES_FOR_SUGGESTION) return null;
 
   const c = match.cluster;
-  const hasMeasured = c.reliableCount >= MIN_SAMPLES_FOR_SUGGESTION;
-
-  // Lifecycle soft from cluster-level rates + any matching history rows' structure.
   const soft = lifecycleSoftMins({
     jobRate: c.jobRate,
     sameDayRate: c.sameDaySamples >= 2 ? c.sameDayRate : null,
     subtaskCount: c.subtaskSamples >= 1 ? Math.round(c.avgSubtaskCount) : null,
   });
-
-  let suggestedMins: number;
-  let source: EstimateSuggestion['source'];
-  let sampleCount: number;
-
-  if (hasMeasured && soft != null && c.reliableCount < c.count) {
-    // Mixed: some real times, many zeros — blend toward measured, don't ignore structure.
-    suggestedMins = Math.round(c.avgMins * 0.75 + soft * 0.25);
-    source = 'mixed';
-    sampleCount = c.reliableCount;
-  } else if (hasMeasured) {
-    suggestedMins = Math.round(c.avgMins);
-    source = 'measured';
-    sampleCount = c.reliableCount;
-  } else if (soft != null) {
-    suggestedMins = soft;
-    source = 'lifecycle';
-    sampleCount = c.count;
-  } else {
-    return null;
-  }
-
-  let confidence: Confidence = 'low';
-  if (source === 'measured') {
-    if (sampleCount >= 7) confidence = 'high';
-    else if (sampleCount >= 4) confidence = 'medium';
-  } else if (source === 'mixed') {
-    confidence = sampleCount >= 4 ? 'medium' : 'low';
-  } else {
-    // lifecycle-only — never high; structure is a prior, not a measurement.
-    confidence = c.count >= 6 ? 'medium' : 'low';
-  }
+  if (soft == null) return null;
 
   return {
-    suggestedMins,
-    confidence,
-    sampleCount,
+    suggestedMins: soft,
+    confidence: c.count >= 6 ? 'medium' : 'low',
+    sampleCount: c.count,
     matchedLabel: c.label,
-    source,
+    source: 'lifecycle',
   };
 }
 
