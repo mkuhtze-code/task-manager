@@ -107,10 +107,16 @@ export async function POST(req: NextRequest) {
     customer: customerId,
     client_reference_id: auth.userId,
     metadata: { supabase_user_id: auth.userId },
+    subscription_data: {
+      metadata: { supabase_user_id: auth.userId },
+    },
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${base}/app/account/billing?checkout=success`,
-    cancel_url: `${base}/app/account/billing?checkout=cancel`,
+    // App routes are /account/billing (base URL must be the app origin, not marketing /app rewrite).
+    success_url: `${base}/account/billing?checkout=success`,
+    cancel_url: `${base}/account/billing?checkout=cancel`,
     allow_promotion_codes: true,
+    billing_address_collection: 'auto',
+    customer_update: { address: 'auto', name: 'auto' },
   });
 
   return NextResponse.json({ url: session.url });
