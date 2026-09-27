@@ -79,9 +79,9 @@
 }
 
 .w-nav-mark {
-  font-weight: 900;
-  font-size: 20px;
-  letter-spacing: -0.03em;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.04em;
 }
 
 .w-nav-signin {
@@ -109,30 +109,31 @@
 
 .w-hero-eyebrow {
   font-family: 'Space Mono', ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--w-signature);
-  margin: 0 0 16px;
+  margin: 0 0 14px;
   animation: w-pop-in 0.6s var(--w-spring) both;
 }
 
 .w-hero h1 {
-  font-size: clamp(34px, 7vw, 58px);
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  line-height: 1.05;
+  font-size: clamp(36px, 7.2vw, 60px);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.04;
   margin: 0 0 18px;
   animation: w-pop-in 0.6s var(--w-spring) 0.08s both;
 }
 
 .w-hero-sub {
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.55;
   color: var(--w-ink-soft);
-  max-width: 480px;
+  max-width: 460px;
   margin: 0 auto 40px;
+  font-weight: 450;
   animation: w-pop-in 0.6s var(--w-spring) 0.16s both;
 }
 
@@ -149,10 +150,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  padding: 13px 26px;
+  border-radius: 999px;
+  padding: 13px 28px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   text-decoration: none;
   border: none;
   transition: transform 0.3s var(--w-spring), background 0.15s ease;
@@ -190,14 +192,14 @@
 .rail-demo {
   background: var(--w-paper-raised);
   color: var(--w-ink);
-  border-radius: 16px;
-  border: 1.5px solid var(--w-line);
+  border-radius: 18px;
+  border: 1px solid var(--w-line);
   padding: 28px 24px 20px;
   margin: 0 auto;
   max-width: 460px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 10px rgba(20, 24, 28, 0.1), 0 24px 56px rgba(20, 24, 28, 0.12);
+  box-shadow: 0 2px 8px rgba(20, 24, 28, 0.06), 0 20px 48px rgba(20, 24, 28, 0.1);
   text-align: left;
   animation: w-pop-in 0.6s var(--w-spring) 0.24s both;
 }
@@ -737,13 +739,20 @@
 
 .w-request-form input[type='text'],
 .w-request-form input[type='email'] {
-  border: 1px solid var(--w-line);
-  border-radius: 8px;
+  border: 1.5px solid var(--w-line);
+  border-radius: 10px;
   padding: 12px 14px;
-  font-size: 14px;
+  font-size: 15px;
   background: var(--w-paper-raised);
   font-family: inherit;
   width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.w-request-form input[type='text']:focus,
+.w-request-form input[type='email']:focus {
+  outline: none;
+  border-color: var(--w-steel);
+  box-shadow: 0 0 0 3px rgba(36, 81, 212, 0.18);
 }
 
 .w-form-checkbox {
