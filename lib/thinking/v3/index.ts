@@ -1,7 +1,7 @@
 // lib/thinking/v3/index.ts
 //
 // Public surface for Thinking Engine V3 canonical contracts.
-// Phase 1–4 + context-conditional duration.
+// Phase 1–5 + context-conditional duration + production suggest bridge.
 
 export type {
   Confidence,
@@ -118,3 +118,10 @@ export {
   filterSamplesForContext,
   lookupContextualDuration,
 } from './contextDuration';
+
+export type { V3EstimateSuggestion, SuggestHistoryRow, SuggestEstimateOpts } from './suggest';
+export {
+  MIN_SAMPLES_FOR_SUGGESTION as V3_MIN_SAMPLES_FOR_SUGGESTION,
+  suggestEstimateV3,
+  personalModelFromHistory,
+} from './suggest';
