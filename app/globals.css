@@ -4022,12 +4022,10 @@ select:-webkit-autofill {
    day-head, the rows play the itinerary. No hero boxes, no redundant
    countdowns — just "what's next, and when". */
 .trip-lead {
-  background: var(--paper-raised);
-  border: 1px solid rgba(var(--shadow-rgb), 0.055);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  box-shadow:
-    0 1px 2px rgba(var(--shadow-rgb), 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   padding: var(--space-4) var(--space-5);
   margin: var(--space-4) 0 0;
   cursor: pointer;
@@ -4035,7 +4033,7 @@ select:-webkit-autofill {
 }
 
 .trip-lead:hover {
-  background: var(--paper);
+  background: var(--surface-hover);
 }
 
 .trip-lead-top {
@@ -4046,11 +4044,11 @@ select:-webkit-autofill {
 }
 
 .trip-lead-name {
-  font-size: var(--text-md);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  color: var(--ink);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-tighter);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4797,30 +4795,44 @@ select:-webkit-autofill {
 
 .meeting-section-title {
   font-size: var(--text-2xs);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-faint);
-  padding: 0 16px 6px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-tertiary);
+  padding: 0 var(--space-4) 6px;
 }
 
 .meeting-list {
   display: flex;
   flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
 }
 
 .meeting-row {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line);
+  padding: 14px var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
   text-decoration: none;
   color: inherit;
+  transition: background 0.15s var(--ease);
+}
+
+.meeting-row:last-child {
+  border-bottom: none;
+}
+
+.meeting-row:hover {
+  background: var(--surface-hover);
 }
 
 .meeting-row:active {
-  background: var(--paper-raised);
+  background: var(--surface-active);
 }
 
 .meeting-row-top {
@@ -4831,9 +4843,10 @@ select:-webkit-autofill {
 }
 
 .meeting-row-name {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   font-size: var(--text-base);
-  color: var(--ink);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .meeting-source-tag {
@@ -7303,23 +7316,25 @@ select:-webkit-autofill {
   text-align: left;
   border: none;
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--text-secondary);
   font: inherit;
-  font-size: 13px;
-  font-weight: 550;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
 }
 
 .account-subnav-item:hover {
-  color: var(--ink);
-  background: var(--paper-raised);
+  color: var(--text-primary);
+  background: var(--surface-hover);
 }
 
 .account-subnav-item.is-active {
-  color: var(--ink);
-  background: var(--steel-wash);
+  color: var(--text-primary);
+  background: var(--surface-selected);
+  font-weight: var(--weight-semibold);
 }
 
 .account-subnav-item:focus-visible {
@@ -7328,87 +7343,95 @@ select:-webkit-autofill {
 }
 
 .account-card {
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: var(--space-5);
   margin-bottom: var(--space-4);
+  box-shadow: var(--shadow-xs);
 }
 
 .account-card-danger {
-  border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--border-default));
+  background: color-mix(in srgb, var(--destructive-muted) 40%, var(--surface));
 }
 
 .account-card-kicker {
   margin: 0 0 6px;
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--text-tertiary);
 }
 
 .account-card-title {
   margin: 0 0 8px;
   font-size: var(--text-lg);
-  font-weight: 750;
-  letter-spacing: -0.02em;
-  color: var(--ink);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
   word-break: break-word;
+  line-height: var(--leading-snug);
 }
 
 .account-card-heading {
   margin: 0 0 10px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--ink);
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-tight);
 }
 
 .account-body {
   margin: 0;
-  font-size: 14px;
-  color: var(--ink);
-  line-height: 1.45;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: var(--leading-normal);
 }
 
 .account-muted {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
 }
 
 .account-dl {
-  margin: 16px 0 0;
+  margin: var(--space-4) 0 0;
   display: grid;
   gap: 10px;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .account-dl div {
   display: grid;
   grid-template-columns: 7.5rem 1fr;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .account-dl dt {
   margin: 0;
-  color: var(--ink-faint);
-  font-weight: 500;
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
 }
 
 .account-dl dd {
   margin: 0;
-  color: var(--ink);
-  font-weight: 550;
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
 }
 
 .account-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: var(--space-4);
   align-items: center;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .account-inline-action {
@@ -7449,11 +7472,11 @@ select:-webkit-autofill {
 
 .account-invoice-list {
   list-style: none;
-  margin: 12px 0 0;
+  margin: var(--space-3) 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
 }
 
 .account-invoice-row {
@@ -7461,9 +7484,9 @@ select:-webkit-autofill {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
+  font-size: var(--text-sm);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .account-invoice-row:last-child {
@@ -7486,12 +7509,19 @@ select:-webkit-autofill {
   width: 100%;
   box-sizing: border-box;
   margin-top: 6px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  font-size: 14px;
-  background: var(--paper);
-  color: var(--ink);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--control-radius);
+  padding: 10px 14px;
+  font-size: var(--text-base);
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: var(--control-height);
+}
+.account-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+  background: var(--surface);
 }
 
 .account-delete-confirm {
@@ -7595,42 +7625,42 @@ select:-webkit-autofill {
 /* Billing — Pro feature list */
 .billing-feature-list {
   list-style: none;
-  margin: 16px 0 0;
+  margin: var(--space-4) 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .billing-feature-item {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: var(--paper);
+  border: 1px solid var(--border-default);
+  background: var(--bg);
 }
 
 .billing-feature-item.is-highlight {
-  border-color: color-mix(in srgb, var(--steel-text, var(--steel)) 35%, var(--line));
-  background: var(--steel-wash);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border-default));
+  background: var(--accent-muted);
 }
 
 .billing-feature-name {
   display: block;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .billing-feature-desc {
   display: block;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
 }
 
 
-/* ── Shared sheet language (V2) ───────────────────────────────────── */
+/* ── Shared sheet language (V2)/* ── Shared sheet language (V2) ───────────────────────────────────── */
 .sheet-kicker {
   margin: 0;
   font-size: var(--text-2xs);
