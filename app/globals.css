@@ -698,9 +698,11 @@ select:-webkit-autofill {
 }
 
 .settings-panel-title {
-  font-size: var(--text-base);
-  font-weight: 700;
-  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  line-height: var(--leading-snug);
 }
 
 .settings-saved {
@@ -2023,12 +2025,20 @@ select:-webkit-autofill {
 }
 
 .capture-sheet input[type="text"] {
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  padding: 12px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--control-radius);
+  padding: 12px 14px;
   font-size: var(--text-base);
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: var(--control-height);
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.capture-sheet input[type="text"]:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+  background: var(--surface);
 }
 
 .capture-row {
@@ -2462,19 +2472,24 @@ select:-webkit-autofill {
 .capture-sheet-header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-2);
 }
 
 .capture-sheet-title {
-  font-size: var(--text-md);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  line-height: var(--leading-snug);
 }
 
 .capture-sheet-hint {
   font-size: var(--text-sm);
-  color: var(--ink-soft);
-  line-height: 1.45;
+  color: var(--text-secondary);
+  line-height: var(--leading-snug);
 }
 
 .export-review-group {
@@ -2678,15 +2693,22 @@ select:-webkit-autofill {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .task-detail-name {
   border: none;
   background: none;
-  font-size: var(--text-md);
-  font-weight: 700;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
   padding: 4px 0;
   width: 100%;
+  line-height: var(--leading-snug);
 }
 
 .task-detail-name:focus {
@@ -2722,32 +2744,35 @@ select:-webkit-autofill {
 .auth-card {
   width: 100%;
   max-width: 360px;
-  background: var(--paper-raised);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
-  box-shadow: 0 2px 6px rgba(var(--shadow-rgb), 0.1);
+  box-shadow: var(--shadow-md);
   animation: expand-in 0.35s var(--spring);
 }
 
 .auth-eyebrow {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
-  color: var(--steel-text, var(--steel));
+  color: var(--text-accent);
   margin-bottom: var(--space-1);
 }
 
 .auth-title {
-  font-size: var(--text-lg);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: var(--text-display-sm);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-tighter);
+  color: var(--text-primary);
   margin: 0 0 6px;
+  line-height: var(--leading-tight);
 }
 
 .auth-sub {
   font-size: var(--text-sm);
-  color: var(--ink-soft);
+  color: var(--text-secondary);
   line-height: 1.5;
   margin: 0 0 var(--space-5);
 }
@@ -4527,7 +4552,12 @@ select:-webkit-autofill {
 .job-list {
   display: flex;
   flex-direction: column;
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
 }
 
 .job-row {
@@ -4536,17 +4566,24 @@ select:-webkit-autofill {
   gap: 2px;
   width: 100%;
   text-align: left;
-  background: none;
+  background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(var(--shadow-rgb), 0.06);
-  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 14px var(--space-4);
   cursor: pointer;
   text-decoration: none;
   color: inherit;
+  transition: background 0.15s var(--ease);
+  min-height: 56px;
+  justify-content: center;
 }
 
 .job-row:last-child {
   border-bottom: none;
+}
+
+.job-row:hover {
+  background: var(--surface-hover);
 }
 
 .job-row.completed {
@@ -4564,8 +4601,9 @@ select:-webkit-autofill {
   flex: 1;
   min-width: 0;
   font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--ink);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4581,8 +4619,8 @@ select:-webkit-autofill {
   flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  font-weight: 700;
-  color: var(--ink-faint);
+  font-weight: var(--weight-bold);
+  color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -4598,8 +4636,8 @@ select:-webkit-autofill {
   gap: 6px;
   min-width: 0;
   font-size: var(--text-2xs);
-  font-weight: 600;
-  color: var(--ink-faint);
+  font-weight: var(--weight-medium);
+  color: var(--text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4620,13 +4658,11 @@ select:-webkit-autofill {
   gap: var(--space-2);
   width: 100%;
   text-align: left;
-  background: var(--paper);
-  border: 1px solid rgba(var(--shadow-rgb), 0.055);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  box-shadow:
-    0 1px 2px rgba(var(--shadow-rgb), 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
-  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  padding: var(--space-4);
   margin: var(--space-3) 0;
   cursor: pointer;
   transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
@@ -4696,11 +4732,11 @@ select:-webkit-autofill {
    reads as structure rather than as extra rows. */
 .job-group-label {
   font-size: var(--text-2xs);
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: var(--ink-faint);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-tertiary);
   text-transform: uppercase;
-  margin: var(--space-3) 0 var(--space-1);
+  margin: var(--space-4) 0 var(--space-2);
   padding: 0 var(--space-1);
 }
 
@@ -7591,4 +7627,60 @@ select:-webkit-autofill {
   font-size: 12px;
   line-height: 1.45;
   color: var(--ink-soft);
+}
+
+
+/* ── Shared sheet language (V2) ───────────────────────────────────── */
+.sheet-kicker {
+  margin: 0;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  line-height: var(--leading-none);
+}
+
+.sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sheet-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sheet-section-label {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.sheet-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-2);
+}
+
+.sheet-actions .btn-primary,
+.sheet-actions .btn-secondary,
+.sheet-actions .btn-steel {
+  flex: 1;
+}
+
+.job-detail-kicker {
+  margin: 0;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
 }
