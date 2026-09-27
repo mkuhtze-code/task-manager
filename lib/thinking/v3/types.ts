@@ -294,6 +294,6 @@ export type ModelState = {
 };
 
 /** Bump when prediction semantics or algorithm change. */
-export const MODEL_VERSION = '3.0.0-phase2';
-export const ALGORITHM_VERSION = '3.0.0-phase2';
-export const FEATURE_VERSION = '3.0.0-phase2';
+export const MODEL_VERSION = '3.0.0-phase4';
+export const ALGORITHM_VERSION = '3.0.0-phase4';
+export const FEATURE_VERSION = '3.0.0-phase4';
