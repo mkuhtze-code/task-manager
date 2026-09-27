@@ -1,7 +1,7 @@
 // lib/thinking/v3/adapters.ts
 //
 // Bridge existing V1/V2 shapes into canonical V3 contracts.
-// Runtime paths stay on V1 until Phase 2+ switches deliberately.
+// Runtime paths stay on V1 until deliberately switched.
 // Adapters are pure and side-effect free.
 
 import type { CompletedTaskFacts, PredictionLogEntry, Confidence } from '../types';
@@ -20,8 +20,10 @@ import {
   ALGORITHM_VERSION,
   FEATURE_VERSION,
 } from './types';
-
-// ── Confidence profile from V1 sample-count confidence ────────────
+import {
+  durationFromSamples as _durationFromSamples,
+  shrinkTowardPrior,
+} from './stats';
 
 export function confidenceProfileFromV1(
   confidence: Confidence,
@@ -53,8 +55,6 @@ export function confidenceProfileFromV1(
     staleness: opts?.staleness ?? 'current',
   };
 }
-
-// ── Empty / neutral context ───────────────────────────────────────
 
 export function emptyContextSnapshot(at: string, timezone = 'UTC'): ContextSnapshot {
   return {
@@ -96,13 +96,6 @@ export function emptyContextSnapshot(at: string, timezone = 'UTC'): ContextSnaps
   };
 }
 
-// ── CompletedTaskFacts → TaskFact ─────────────────────────────────
-
-/**
- * Map a completed-task fact row into TaskFact.
- * taskId is required for V3 identity; when only text is available,
- * callers must supply a stable id (or accept text-derived provisional id).
- */
 export function taskFactFromCompleted(
   facts: CompletedTaskFacts,
   params: {
@@ -144,8 +137,6 @@ export function taskFactFromCompleted(
     novel: params.novel ?? null,
   };
 }
-
-// ── HistoricalTask → partial TaskFact fields ──────────────────────
 
 export function taskFactFromHistorical(
   h: HistoricalTask,
@@ -189,12 +180,6 @@ export function taskFactFromHistorical(
   };
 }
 
-// ── PredictionLogEntry → Prediction (legacy bridge) ───────────────
-
-/**
- * Legacy prediction_log rows are text-keyed. This adapter marks
- * taskId null when unknown so Phase 2 can stop text matching.
- */
 export function predictionFromLogEntry(
   entry: PredictionLogEntry,
   params?: {
@@ -213,7 +198,7 @@ export function predictionFromLogEntry(
 
   return {
     predictionId: params?.predictionId ?? entry.id ?? `legacy-${createdAt}`,
-    taskId: params?.taskId ?? null,
+    taskId: params?.taskId ?? entry.task_id ?? null,
     userId: entry.user_id,
     kind: 'duration',
     predicted: {
@@ -227,16 +212,14 @@ export function predictionFromLogEntry(
     context: params?.context ?? emptyContextSnapshot(createdAt),
     evidenceIds: [],
     decisionId: null,
-    modelVersion: '1.x-legacy',
-    algorithmVersion: '1.x-legacy',
-    featureVersion: '1.x-legacy',
+    modelVersion: entry.model_version ?? '1.x-legacy',
+    algorithmVersion: entry.algorithm_version ?? '1.x-legacy',
+    featureVersion: entry.feature_version ?? '1.x-legacy',
     createdAt,
     outcomeId: entry.actual_mins != null ? `outcome-from-${entry.id ?? createdAt}` : null,
     resolvedAt: entry.completed_at,
   };
 }
-
-// ── Outcome from completion ───────────────────────────────────────
 
 export function outcomeFromCompletion(params: {
   outcomeId: string;
@@ -280,8 +263,6 @@ export function outcomeFromCompletion(params: {
   };
 }
 
-// ── Duration helpers ──────────────────────────────────────────────
-
 export function pointDistribution(
   mins: number,
   method: DurationDistribution['method'],
@@ -302,7 +283,36 @@ export function pointDistribution(
   };
 }
 
-// ── Evidence stub for diagnostics ─────────────────────────────────
+/**
+ * Robust duration belief from samples (Phase 3).
+ * Optional shrink toward prior when sample is small.
+ */
+export function durationBeliefFromSamples(
+  values: number[],
+  opts?: {
+    method?: 'median' | 'trimmed_mean' | 'weighted_median';
+    priorMins?: number;
+    priorStrength?: number;
+  }
+): DurationDistribution | null {
+  const method = opts?.method ?? 'median';
+  const dist = _durationFromSamples(values, method);
+  if (!dist) return null;
+  if (opts?.priorMins != null && dist.sampleSize < 8) {
+    const shrunk = shrinkTowardPrior(
+      dist.expectedMins,
+      opts.priorMins,
+      dist.sampleSize,
+      opts.priorStrength ?? 3
+    );
+    return {
+      ...dist,
+      expectedMins: Math.round(shrunk),
+      method: 'blended',
+    };
+  }
+  return dist;
+}
 
 export function minimalEvidence(params: {
   evidenceId: string;
@@ -331,7 +341,6 @@ export function minimalEvidence(params: {
   };
 }
 
-/** Current engine version stamps for new predictions. */
 export function currentVersions() {
   return {
     modelVersion: MODEL_VERSION,
