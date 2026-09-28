@@ -33,7 +33,6 @@ import DesktopJobCard, {
 } from '@/components/DesktopJobCard';
 
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
-import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
@@ -85,14 +84,6 @@ export default function JobsHome() {
     'jobs'
   );
 
-  useEffect(() => {
-    if (!isDesktop || !canJobs) return;
-
-    return registerDesktopPrimaryAction(
-      'New job',
-      () => setNewJobOpen(true)
-    );
-  }, [isDesktop, canJobs]);
 
   const clusters = useMemo(
     () => buildClusters(history),
