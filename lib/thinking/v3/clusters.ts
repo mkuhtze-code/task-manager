@@ -43,6 +43,8 @@ export type HistorySample = {
   locationText?: string | null;
   taskId?: string | null;
   durationContaminated?: boolean;
+  /** S1: precomputed work identity key when available. */
+  workKey?: string | null;
 };
 
 export type ClusterModel = {
