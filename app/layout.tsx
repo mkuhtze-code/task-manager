@@ -4,6 +4,7 @@ import './desktop-phase-2.css';
 import './desktop-heart.css';
 import './desktop-complete.css';
 import './desktop-settings.css';
+import './error-boundary.css';
 import './dokkit-splash.css';
 import './observation-layout-fix.css';
 import './dokkit-player.css';
