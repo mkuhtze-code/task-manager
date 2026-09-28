@@ -99,6 +99,7 @@ import {
   planOverflowCarry,
   buildRuntimeObservations,
   lookupTaskSignals,
+  sequenceOrderIdsForOpenTasks,
 } from '@/lib/dayFit';
 import { calibrateFromOutcomes } from '@/lib/thinking/calibration';
 import { getBuffer } from '@/lib/thinking/evidence';
@@ -114,6 +115,24 @@ import { notifyTaskActivity } from '@/hooks/useActiveTask';
 import { showActiveTimerNotification } from '@/lib/activeTimerNotify';
 
 /** Authenticated Today surface — mounted only after authReady && session. */
+
+/** Phase 5 context for V3 duration conditioning (job / place / hour). */
+function estimateContextFrom(
+  source: {
+    job_id?: string | null;
+    location_text?: string | null;
+    jobId?: string | null;
+    locationText?: string | null;
+  },
+  now: Date
+) {
+  return {
+    jobId: source.job_id ?? source.jobId ?? null,
+    locationText: source.location_text ?? source.locationText ?? null,
+    localHour: now.getHours(),
+  };
+}
+
 export function TodayPage() {
   const router = useRouter();
   const { session, setSignInError } = useTodayAuth();
@@ -416,7 +435,12 @@ export function TodayPage() {
         continue;
       }
 
-      const suggestion = suggestEstimate(t.text, history, clusters);
+      const suggestion = suggestEstimate(
+        t.text,
+        history,
+        clusters,
+        estimateContextFrom(t, now)
+      );
       estimates.set(
         t.id,
         effectiveEstimate(t.estimate_mins, suggestion, runtime.blendScale)
@@ -424,7 +448,7 @@ export function TodayPage() {
     }
 
     return estimates;
-  }, [tasks, history, clusters, runtime.blendScale]);
+  }, [tasks, history, clusters, runtime.blendScale, now.getHours()]);
 
   // Same runtime brain as capacity — duration chip and day rail stay consistent.
   const captureSignals = useMemo(() => {
@@ -1345,7 +1369,18 @@ export function TodayPage() {
     // Log the engine's prediction at capture time so it can be compared
     // against the actual outcome when the task completes. This is the
     // first half of the evidence feedback loop.
-    const suggestion = suggestEstimate(text, history, clusters);
+    const suggestion = suggestEstimate(
+      text,
+      history,
+      clusters,
+      estimateContextFrom(
+        {
+          jobId: confirmedJobId ?? captureJobId,
+          locationText: confirmedLocation?.text ?? null,
+        },
+        now
+      )
+    );
     logCapturePrediction({
       userId,
       taskId: data.id,
@@ -1952,7 +1987,26 @@ export function TodayPage() {
     // order rather than pretending a route exists.
     ordered = sortTasks(visibleTasks, 'manual');
   } else {
-    ordered = sortTasks(visibleTasks, sortMode, effectiveRemainingForTask, taskCapacity);
+    const preferredOrderIds =
+      sortMode === 'capacity_first'
+        ? sequenceOrderIdsForOpenTasks({
+            openTasks: visibleTasks.filter((t) => t.status !== 'done'),
+            history,
+            clusters,
+            runtime,
+            remainingWindowMins: taskCapacity,
+            commitments: dayCommitments,
+            now,
+            workEndMins: workEndMinutes,
+          })
+        : null;
+    ordered = sortTasks(
+      visibleTasks,
+      sortMode,
+      effectiveRemainingForTask,
+      taskCapacity,
+      preferredOrderIds
+    );
   }
   const orderedIds = ordered.map((t) => t.id);
 
@@ -2156,7 +2210,10 @@ export function TodayPage() {
             liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
           }
 
-          const suggestion = t.estimate_mins > 0 ? suggestEstimate(t.text, history, clusters) : null;
+          const suggestion =
+            t.estimate_mins > 0
+              ? suggestEstimate(t.text, history, clusters, estimateContextFrom(t, now))
+              : null;
           const learnedHint =
             suggestion && hasMeaningfulDivergence(t.estimate_mins, suggestion.suggestedMins)
               ? fmtMins(suggestion.suggestedMins)
@@ -2367,7 +2424,12 @@ export function TodayPage() {
           context="today"
           jobs={jobs}
           meetings={meetings}
-          estimateSuggestion={suggestEstimate(openTask.text, history, clusters)}
+          estimateSuggestion={suggestEstimate(
+            openTask.text,
+            history,
+            clusters,
+            estimateContextFrom(openTask, now)
+          )}
           siblingTasks={
             openTask.job_id
               ? tasks
