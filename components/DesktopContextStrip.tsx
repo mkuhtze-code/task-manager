@@ -3,128 +3,128 @@
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 
-type Chip = { label: string; tone?: 'default' | 'good' | 'warn' | 'active' };
-
 type Context = {
   kicker: string;
   headline: string;
-  chips: Chip[];
 };
 
-function todayContext(): Context {
-  const now = new Date();
-  const weekday = now.toLocaleDateString(undefined, { weekday: 'long' });
-  const date = now.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
-  return {
-    kicker: 'Today',
-    headline: `${weekday} · ${date}`,
-    chips: [
-      { label: 'Capacity', tone: 'good' },
-      { label: 'Patterns', tone: 'default' },
-    ],
-  };
-}
-
-function contextForPath(pathname: string): Context {
-  if (pathname === '/' || pathname === '') return todayContext();
+function contextForPath(pathname: string): Context | null {
+  /*
+   * Today already owns its intelligent status header.
+   * Do not duplicate it here.
+   */
+  if (pathname === '/' || pathname === '') {
+    return null;
+  }
 
   if (pathname.startsWith('/jobs/')) {
     return {
       kicker: 'Job',
-      headline: 'Workspace',
-      chips: [{ label: 'Tasks', tone: 'active' }],
+      headline: 'Work that stays connected',
     };
   }
-  if (pathname.startsWith('/jobs')) {
+
+  if (pathname === '/jobs' || pathname.startsWith('/jobs/')) {
     return {
       kicker: 'Jobs',
-      headline: 'Active work across days',
-      chips: [
-        { label: 'Open', tone: 'active' },
-        { label: 'Done', tone: 'default' },
-        { label: 'All', tone: 'default' },
-      ],
+      headline: 'Work that spans days',
     };
   }
-  if (pathname.startsWith('/meetings/')) {
-    return {
-      kicker: 'Meeting',
-      headline: 'Notes & follow-ups',
-      chips: [],
-    };
-  }
-  if (pathname.startsWith('/meetings')) {
+
+  if (
+    pathname === '/meetings' ||
+    pathname.startsWith('/meetings/')
+  ) {
     return {
       kicker: 'Meetings',
       headline: 'Conversations that become work',
-      chips: [
-        { label: 'Upcoming', tone: 'active' },
-        { label: 'Past', tone: 'default' },
-      ],
     };
   }
-  if (pathname.startsWith('/travel/')) {
-    return {
-      kicker: 'Trip',
-      headline: 'Itinerary',
-      chips: [],
-    };
-  }
-  if (pathname.startsWith('/travel')) {
+
+  if (
+    pathname === '/travel' ||
+    pathname.startsWith('/travel/')
+  ) {
     return {
       kicker: 'Travel',
       headline: 'Trips and time away',
-      chips: [
-        { label: 'Active', tone: 'active' },
-        { label: 'Planned', tone: 'default' },
-      ],
     };
   }
-  if (pathname.startsWith('/analytics')) {
+
+  if (
+    pathname === '/analytics' ||
+    pathname.startsWith('/analytics/')
+  ) {
     return {
       kicker: 'Patterns',
-      headline: 'How time actually goes',
-      chips: [],
+      headline: 'How Dokkit learns from reality',
     };
   }
-  if (pathname.startsWith('/preferences')) {
-    return { kicker: 'Settings', headline: 'Preferences', chips: [] };
-  }
-  if (pathname.startsWith('/account')) {
-    return { kicker: 'Settings', headline: 'Account', chips: [] };
+
+  if (
+    pathname === '/preferences' ||
+    pathname.startsWith('/preferences/')
+  ) {
+    return {
+      kicker: 'Settings',
+      headline: 'Preferences',
+    };
   }
 
-  return { kicker: 'Dokkit', headline: '', chips: [] };
+  if (
+    pathname === '/account' ||
+    pathname.startsWith('/account/')
+  ) {
+    return {
+      kicker: 'Settings',
+      headline: 'Account',
+    };
+  }
+
+  if (
+    pathname === '/contact' ||
+    pathname.startsWith('/contact/') ||
+    pathname === '/feedback'
+  ) {
+    return {
+      kicker: 'Support',
+      headline: 'Contact Dokkit',
+    };
+  }
+
+  return null;
 }
 
-/** Elegant per-surface context under the product heart. */
+/**
+ * Small desktop context layer.
+ *
+ * This is deliberately NOT a second page header.
+ * Surface-specific pages own their real controls and data.
+ */
 export default function DesktopContextStrip() {
   const pathname = usePathname() || '/';
-  const ctx = useMemo(() => contextForPath(pathname), [pathname]);
 
-  if (!ctx.headline && ctx.chips.length === 0) return null;
+  const context = useMemo(
+    () => contextForPath(pathname),
+    [pathname]
+  );
+
+  if (!context) return null;
 
   return (
-    <div className="desk-context-strip" aria-label={`${ctx.kicker} context`}>
+    <div
+      className="desk-context-strip"
+      aria-label={`${context.kicker} context`}
+    >
       <div className="desk-context-main">
-        <span className="desk-context-kicker">{ctx.kicker}</span>
-        {ctx.headline && <span className="desk-context-headline">{ctx.headline}</span>}
+        <span className="desk-context-kicker">
+          {context.kicker}
+        </span>
+
+        <span className="desk-context-headline">
+          {context.headline}
+        </span>
       </div>
-      {ctx.chips.length > 0 && (
-        <div className="desk-context-chips" role="group" aria-label="View">
-          {ctx.chips.map((c) => (
-            <span
-              key={c.label}
-              className={`desk-context-chip${c.tone && c.tone !== 'default' ? ` desk-context-chip-${c.tone}` : ''}`}
-            >
-              {c.label}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
