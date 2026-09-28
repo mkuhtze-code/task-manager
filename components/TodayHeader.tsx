@@ -162,6 +162,15 @@ export function TodayHeader(props: {
           className="today-header-top-right"
           onClick={(e) => e.stopPropagation()}
         >
+          {isDesktop && onDockIt ? (
+            <button
+              type="button"
+              className="btn btn-steel desk-today-dock"
+              onClick={onDockIt}
+            >
+              + Dock it
+            </button>
+          ) : null}
           <GearMenu userId={userId} />
         </div>
       </div>
