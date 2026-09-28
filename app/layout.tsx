@@ -4,6 +4,7 @@ import './desktop-phase-2.css';
 import './desktop-heart.css';
 import './desktop-legacy.css';
 import './desktop-complete.css';
+import './desktop-jobs-convergence.css';
 import './desktop-settings.css';
 import './error-boundary.css';
 import './dokkit-splash.css';
