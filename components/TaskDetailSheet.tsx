@@ -1,4 +1,3 @@
-```tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -1027,4 +1026,3 @@ export function TaskDetailSheet(props: {
     </div>
   );
 }
-```
