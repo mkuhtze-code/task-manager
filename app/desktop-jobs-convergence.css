@@ -207,10 +207,12 @@ html[data-surface='desktop'] .desk-surface-search-button:hover {
 
 
 /* Hide desktop surface headers unless desktop surface is active */
+
 .desk-surface-workspace-header,
 .desk-jobs-workspace-header {
   display: none;
 }
+
 
 /* --------------------------------------------------------------------------
    SHARED MEETINGS / TRAVEL DESKTOP HEADER
@@ -629,9 +631,21 @@ html[data-surface='desktop']
 
 
 /* --------------------------------------------------------------------------
-   JOB DETAIL — SECONDARY WORKSPACE (authoritative)
-   Observations, files, site days, and job meetings live in the right column.
-   Task detail replaces that column while a task is open.
+   JOB DETAIL — SECONDARY WORKSPACE
+   --------------------------------------------------------------------------
+
+   The secondary desktop Job column contains:
+   - observations
+   - files
+   - site days
+   - job meetings
+
+   When a task is selected, the task detail pane takes over the right column.
+
+   IMPORTANT:
+   job-library and job-more must never occupy the same grid cell.
+   If they overlap, job-more can sit above the observation controls and
+   intercept pointer events even though the observation UI remains visible.
    -------------------------------------------------------------------------- */
 
 html[data-surface='desktop'] .app-shell.desk-job-detail {
@@ -639,7 +653,9 @@ html[data-surface='desktop'] .app-shell.desk-job-detail {
   grid-template-rows: auto auto minmax(0, 1fr);
 }
 
+
 /* Evidence: observations + files */
+
 html[data-surface='desktop']
   .app-shell.desk-job-detail
   > .job-library {
@@ -654,52 +670,77 @@ html[data-surface='desktop']
   background: var(--paper);
 }
 
-/* Site days + job meetings — stack under evidence in the same column */
+
+/*
+ * Site days + job meetings.
+ *
+ * This is deliberately placed in row 4 rather than row 3.
+ * It must not overlap .job-library.
+ */
+
 html[data-surface='desktop']
   .app-shell.desk-job-detail
   > .job-more {
   display: block;
   grid-column: 2;
-  grid-row: 3;
+  grid-row: 4;
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
   padding: 8px 20px 24px;
   margin: 0;
   background: var(--paper);
-  /* Flow after library inside the shared grid cell via document order + sticky stack */
-  align-self: end;
+  align-self: stretch;
 }
 
+
 /*
- * Without a selected task, library and more share the secondary column.
- * Place library at the start of the cell; more follows in normal flow by
- * using a subgrid-like stack: both in row 3, library first in DOM.
- * Use flex column on a wrapper is not available — instead position more
- * after library with margin-top auto disabled; both scroll in the cell.
- * Practical approach: library takes the cell; more is in-flow below via
- * changing row placement to a stacked area.
+ * Without a selected task, explicitly create a fourth grid row so the
+ * secondary workspace becomes:
+ *
+ *   row 3 → observations / files
+ *   row 4 → site days / meetings
+ *
+ * This prevents the two surfaces from sharing the same physical grid area.
  */
 
 html[data-surface='desktop']
   .app-shell.desk-job-detail:not(.has-desk-detail) {
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows:
+    auto
+    auto
+    minmax(0, 1fr)
+    auto;
 }
 
 html[data-surface='desktop']
   .app-shell.desk-job-detail:not(.has-desk-detail)
   > .job-library {
+  grid-column: 2;
   grid-row: 3;
+  min-width: 0;
+  min-height: 0;
   max-height: none;
+  overflow-y: auto;
 }
 
 html[data-surface='desktop']
   .app-shell.desk-job-detail:not(.has-desk-detail)
   > .job-more {
+  grid-column: 2;
   grid-row: 4;
+  min-width: 0;
+  min-height: 0;
   align-self: stretch;
 }
 
-/* Task open: detail owns the secondary column; hide secondary workspace */
+
+/*
+ * Task open:
+ * task detail owns the secondary column.
+ * Evidence / site-day surfaces are hidden so there is no competing layer.
+ */
+
 html[data-surface='desktop']
   .app-shell.desk-job-detail.has-desk-detail
   > .desk-pane-detail {
