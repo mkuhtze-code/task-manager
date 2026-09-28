@@ -1,3 +1,4 @@
+```tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -120,7 +121,6 @@ export function TaskDetailSheet(props: {
         }
       : null
   );
-  const [jobMoveOpen, setJobMoveOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
 
@@ -142,7 +142,7 @@ export function TaskDetailSheet(props: {
           }
         : null
     );
-    setJobMoveOpen(false);
+    setShowAddForm(false);
     setError('');
   }, [task.id]);
 
@@ -207,6 +207,10 @@ export function TaskDetailSheet(props: {
         )
       : 0;
 
+  const completedSubtasks = subs.filter(
+    (subtask) => subtask.done
+  ).length;
+
   const subtasksBlock = (
     <div
       className={
@@ -228,13 +232,18 @@ export function TaskDetailSheet(props: {
               ? 'desk-detail-panel-title'
               : 'settings-panel-title'
           }
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            minWidth: 0,
+          }}
         >
-          Sub-tasks
+          <span>Sub-tasks</span>
 
           {subs.length > 0 && (
             <span className="mono desk-detail-count">
-              {subs.filter((s) => s.done).length}/
-              {subs.length}
+              {completedSubtasks}/{subs.length}
             </span>
           )}
         </div>
@@ -243,10 +252,49 @@ export function TaskDetailSheet(props: {
           type="button"
           className="subtask-add-btn"
           onClick={() =>
-            setShowAddForm(!showAddForm)
+            setShowAddForm((current) => !current)
           }
+          aria-expanded={showAddForm}
+          aria-label={
+            showAddForm
+              ? 'Close sub-task form'
+              : 'Add sub-task'
+          }
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 5,
+            minHeight: 32,
+            padding: '5px 11px',
+            border: '1px solid var(--line-strong)',
+            borderRadius: 999,
+            background: showAddForm
+              ? 'var(--wash)'
+              : 'var(--paper)',
+            color: 'var(--ink)',
+            fontSize: 12,
+            fontWeight: 600,
+            lineHeight: 1,
+            letterSpacing: '0.01em',
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+          }}
         >
-          +
+          <span
+            aria-hidden="true"
+            style={{
+              fontSize: 16,
+              fontWeight: 400,
+              lineHeight: 0.8,
+              marginTop: -1,
+            }}
+          >
+            +
+          </span>
+          <span>
+            {showAddForm ? 'Close' : 'Add'}
+          </span>
         </button>
       </div>
 
@@ -259,6 +307,7 @@ export function TaskDetailSheet(props: {
             onChange={(e) =>
               setSubDraftText(e.target.value)
             }
+            autoFocus
           />
 
           <MicButton
@@ -280,9 +329,11 @@ export function TaskDetailSheet(props: {
             onChange={(e) =>
               setSubDraftTime(e.target.value)
             }
+            aria-label="Sub-task estimate"
           />
 
           <button
+            type="button"
             className="btn btn-ghost"
             style={{
               padding: '4px 10px',
@@ -294,7 +345,7 @@ export function TaskDetailSheet(props: {
               setShowAddForm(false);
             }}
           >
-            add
+            Add
           </button>
         </div>
       )}
@@ -305,6 +356,7 @@ export function TaskDetailSheet(props: {
           className="subtask-row"
         >
           <button
+            type="button"
             className={
               s.done
                 ? 'subtask-check done'
@@ -317,7 +369,11 @@ export function TaskDetailSheet(props: {
                 s.done
               )
             }
-            aria-label="Complete sub-task"
+            aria-label={
+              s.done
+                ? `Mark "${s.text}" incomplete`
+                : `Complete "${s.text}"`
+            }
           />
 
           <span
@@ -335,6 +391,7 @@ export function TaskDetailSheet(props: {
           </span>
 
           <button
+            type="button"
             className="icon-btn"
             onClick={() =>
               onDeleteSubtask(
@@ -342,7 +399,7 @@ export function TaskDetailSheet(props: {
                 task.id
               )
             }
-            aria-label="Delete sub-task"
+            aria-label={`Delete sub-task "${s.text}"`}
           >
             ×
           </button>
@@ -970,3 +1027,4 @@ export function TaskDetailSheet(props: {
     </div>
   );
 }
+```
