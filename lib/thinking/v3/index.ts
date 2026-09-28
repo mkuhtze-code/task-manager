@@ -259,3 +259,25 @@ export {
   calibrationProgression,
   fitRegretRate,
 } from './calibrationHarness';
+
+export type {
+  StructuralShapeClass,
+  WorkKeyParts,
+  WorkKeyResult,
+  WorkIdentityInput,
+  WorkLeafSample,
+  WorkLeaf,
+} from './workIdentity';
+export {
+  WORK_KEY_VERSION,
+  AMBIGUOUS_ONLY_TOKENS,
+  structuralShapeClass,
+  placeKeyFromText,
+  lexicalFingerprint,
+  computeWorkKey,
+  workIdentitiesCompatible,
+  resolveWorkKeyToLeaf,
+  buildWorkLeaves,
+  matchWorkLeaf,
+  workKeyFromHistoryRow,
+} from './workIdentity';
