@@ -1,5 +1,5 @@
 // lib/thinking/v3/index.ts
-// Public surface — Phase 1–7 fit foundation.
+// Public surface — Phase 1–8 capacity sequencing.
 
 export type {
   Confidence,
@@ -197,3 +197,12 @@ export {
 
 export type { FitInput, FitDecision, FitCalendarContext } from './fit';
 export { decideTaskFit } from './fit';
+
+export type { SequenceItem, SequencePlan, SequenceUrgency } from './sequence';
+export {
+  minsToNextCommitment,
+  meetingDensityInWindow,
+  orderSequenceItems,
+  planCapacitySequence,
+  sequenceItemFromProfile,
+} from './sequence';
