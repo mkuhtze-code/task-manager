@@ -20,6 +20,11 @@ import {
   median,
 } from './stats';
 import { priorStrengthForCleanN } from './learningRates';
+import {
+  detectRegimeShift,
+  regimeAwareExpectedMins,
+  type TimedDurationSample,
+} from './regime';
 import { calibrateFromPairs } from './calibrationMetrics';
 import type {
   Authority,
@@ -321,7 +326,7 @@ export function buildPersonalModel(params: {
 export function lookupHierarchicalDuration(
   text: string,
   model: PersonalModel,
-  opts?: { priorStrength?: number }
+  opts?: { priorStrength?: number; timedSamples?: TimedDurationSample[] }
 ): HierarchicalDuration {
   const softFloor = model.state.priors.softFloorMins;
   const reasons: string[] = [];
@@ -342,6 +347,19 @@ export function lookupHierarchicalDuration(
       let expected = duration.expectedMins;
       const level: HierarchicalDuration['level'] = 'cluster';
       let method: DurationDistribution['method'] = duration.method;
+
+      // FP-3: regime-aware expected when timed clean samples are provided.
+      if (opts?.timedSamples && opts.timedSamples.length >= 8) {
+        const regime = detectRegimeShift(opts.timedSamples);
+        if (regime.shifted) {
+          const adj = regimeAwareExpectedMins(opts.timedSamples, regime);
+          if (adj.expectedMins != null) {
+            expected = adj.expectedMins;
+            method = 'blended';
+            reasons.push(...regime.reasons);
+          }
+        }
+      }
 
       if (n < 4) {
         const wider = model.personalMedianMins ?? softFloor;
