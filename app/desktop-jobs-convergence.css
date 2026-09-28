@@ -792,3 +792,46 @@ html[data-surface='desktop']
     padding-top: 14px;
   }
 }
+
+
+/* --------------------------------------------------------------------------
+   TODAY — workspace header parity (not a stretched mobile card)
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop'] .today-header-card.desk-today-workspace-header {
+  padding: 14px 28px 12px;
+  border-radius: 0;
+  box-shadow: none;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--glass-rgb), 0.96),
+    rgba(var(--glass-rgb), 0.8)
+  );
+}
+
+html[data-surface='desktop'] .desk-today-workspace-header .today-header-top-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+html[data-surface='desktop'] .desk-today-dock {
+  white-space: nowrap;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+html[data-surface='desktop'] .desk-today-workspace-header .today-header-summary-toggle {
+  gap: 20px;
+}
+
+html[data-surface='desktop'] .desk-today-workspace-header .today-capacity-detail {
+  max-width: 720px;
+  margin-top: 8px;
+}
