@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Subtask, Task, TaskContext } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
 import { fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
@@ -8,6 +8,7 @@ import {
   explainEstimate,
   type EstimateSuggestion,
 } from '@/lib/taskIntelligence';
+import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import {
@@ -24,6 +25,9 @@ import {
 } from '@/components/TaskConnections';
 import { TaskJobField } from '@/components/TaskJobField';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
+
+type SubtaskFilter = 'all' | 'open' | 'done';
+type SubtaskSort = 'original' | 'alpha' | 'time_asc' | 'time_desc';
 
 export function TaskDetailSheet(props: {
   task: Task;
@@ -120,8 +124,45 @@ export function TaskDetailSheet(props: {
         }
       : null
   );
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
+
+  /*
+   * Sub-task workspace state.
+   *
+   * These are intentionally local to the detail surface:
+   * - filtering never changes stored order
+   * - sorting never changes stored order
+   * - editing is committed directly to the existing row
+   */
+  const [subtaskFilter, setSubtaskFilter] =
+    useState<SubtaskFilter>('all');
+
+  const [subtaskSort, setSubtaskSort] =
+    useState<SubtaskSort>('original');
+
+  const [editingSubtaskId, setEditingSubtaskId] =
+    useState<string | null>(null);
+
+  const [editingSubtaskText, setEditingSubtaskText] =
+    useState('');
+
+  const [editingSubtaskTime, setEditingSubtaskTime] =
+    useState('');
+
+  const [subtaskError, setSubtaskError] =
+    useState('');
+
+  const [savingSubtaskId, setSavingSubtaskId] =
+    useState<string | null>(null);
+
+  /*
+   * Keep a local representation so an edit is reflected immediately
+   * without waiting for the parent Today/Jobs surface to refresh.
+   */
+  const [localSubs, setLocalSubs] =
+    useState<Subtask[]>(subs);
 
   const estimateExplain = explainEstimate(
     estimateSuggestion,
@@ -141,9 +182,22 @@ export function TaskDetailSheet(props: {
           }
         : null
     );
+
     setShowAddForm(false);
     setError('');
+
+    setEditingSubtaskId(null);
+    setEditingSubtaskText('');
+    setEditingSubtaskTime('');
+    setSubtaskError('');
+    setSavingSubtaskId(null);
+    setSubtaskFilter('all');
+    setSubtaskSort('original');
   }, [task.id]);
+
+  useEffect(() => {
+    setLocalSubs(subs);
+  }, [subs]);
 
   function commit() {
     const trimmed = text.trim();
@@ -206,9 +260,190 @@ export function TaskDetailSheet(props: {
         )
       : 0;
 
-  const completedSubtasks = subs.filter(
+  const completedSubtasks = localSubs.filter(
     (subtask) => subtask.done
   ).length;
+
+  const visibleSubtasks = useMemo(() => {
+    const filtered = localSubs.filter((subtask) => {
+      if (subtaskFilter === 'open') {
+        return !subtask.done;
+      }
+
+      if (subtaskFilter === 'done') {
+        return subtask.done;
+      }
+
+      return true;
+    });
+
+    if (subtaskSort === 'original') {
+      return filtered;
+    }
+
+    return [...filtered].sort((a, b) => {
+      if (subtaskSort === 'alpha') {
+        return a.text.localeCompare(
+          b.text,
+          undefined,
+          {
+            sensitivity: 'base',
+          }
+        );
+      }
+
+      if (subtaskSort === 'time_asc') {
+        return a.mins - b.mins;
+      }
+
+      if (subtaskSort === 'time_desc') {
+        return b.mins - a.mins;
+      }
+
+      return 0;
+    });
+  }, [
+    localSubs,
+    subtaskFilter,
+    subtaskSort,
+  ]);
+
+  function beginEditSubtask(subtask: Subtask) {
+    setEditingSubtaskId(subtask.id);
+    setEditingSubtaskText(subtask.text);
+    setEditingSubtaskTime(fmtMins(subtask.mins));
+    setSubtaskError('');
+  }
+
+  function cancelEditSubtask() {
+    setEditingSubtaskId(null);
+    setEditingSubtaskText('');
+    setEditingSubtaskTime('');
+    setSubtaskError('');
+  }
+
+  async function saveSubtaskEdit(subtask: Subtask) {
+    const nextText =
+      editingSubtaskText.trim();
+
+    if (nextText.length === 0) {
+      setSubtaskError(
+        'Sub-task name cannot be empty'
+      );
+      return;
+    }
+
+    const nextMins =
+      parseMins(editingSubtaskTime);
+
+    if (
+      nextMins === null ||
+      nextMins < 0
+    ) {
+      setSubtaskError(
+        'Could not read that time, try 15m, 1.5h, or 0m'
+      );
+      return;
+    }
+
+    setSavingSubtaskId(subtask.id);
+    setSubtaskError('');
+
+    const { error: updateError } =
+      await supabase
+        .from('subtasks')
+        .update({
+          text: nextText,
+          mins: nextMins,
+        })
+        .eq('id', subtask.id);
+
+    if (updateError) {
+      console.error(
+        'Could not update sub-task:',
+        updateError
+      );
+
+      setSubtaskError(
+        'Could not save this sub-task'
+      );
+      setSavingSubtaskId(null);
+      return;
+    }
+
+    setLocalSubs((current) =>
+      current.map((item) =>
+        item.id === subtask.id
+          ? {
+              ...item,
+              text: nextText,
+              mins: nextMins,
+            }
+          : item
+      )
+    );
+
+    setSavingSubtaskId(null);
+    cancelEditSubtask();
+  }
+
+  function handleSubtaskKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>,
+    subtask: Subtask
+  ) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void saveSubtaskEdit(subtask);
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelEditSubtask();
+    }
+  }
+
+  function handleSubtaskDelete(
+    subtaskId: string,
+    taskId: string
+  ) {
+    if (editingSubtaskId === subtaskId) {
+      cancelEditSubtask();
+    }
+
+    setLocalSubs((current) =>
+      current.filter(
+        (item) => item.id !== subtaskId
+      )
+    );
+
+    onDeleteSubtask(
+      subtaskId,
+      taskId
+    );
+  }
+
+  function handleSubtaskToggle(
+    subtask: Subtask
+  ) {
+    const nextDone = !subtask.done;
+
+    setLocalSubs((current) =>
+      current.map((item) =>
+        item.id === subtask.id
+          ? {
+              ...item,
+              done: nextDone,
+            }
+          : item
+      )
+    );
+
+    onToggleSubtaskDone(
+      subtask.id,
+      task.id,
+      subtask.done
+    );
+  }
 
   const subtasksBlock = (
     <div
@@ -240,9 +475,9 @@ export function TaskDetailSheet(props: {
         >
           <span>Sub-tasks</span>
 
-          {subs.length > 0 && (
+          {localSubs.length > 0 && (
             <span className="mono desk-detail-count">
-              {completedSubtasks}/{subs.length}
+              {completedSubtasks}/{localSubs.length}
             </span>
           )}
         </div>
@@ -266,7 +501,8 @@ export function TaskDetailSheet(props: {
             gap: 5,
             minHeight: 32,
             padding: '5px 11px',
-            border: '1px solid var(--line-strong)',
+            border:
+              '1px solid var(--line-strong)',
             borderRadius: 999,
             background: showAddForm
               ? 'var(--wash)'
@@ -291,8 +527,11 @@ export function TaskDetailSheet(props: {
           >
             +
           </span>
+
           <span>
-            {showAddForm ? 'Close' : 'Add'}
+            {showAddForm
+              ? 'Close'
+              : 'Add'}
           </span>
         </button>
       </div>
@@ -304,9 +543,26 @@ export function TaskDetailSheet(props: {
             placeholder="Sub-task"
             value={subDraftText}
             onChange={(e) =>
-              setSubDraftText(e.target.value)
+              setSubDraftText(
+                e.target.value
+              )
             }
             autoFocus
+            onKeyDown={(event) => {
+              if (
+                event.key === 'Enter' &&
+                subDraftText.trim().length > 0
+              ) {
+                event.preventDefault();
+                onAddSubtask(task.id);
+                setShowAddForm(false);
+              }
+
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setShowAddForm(false);
+              }
+            }}
           />
 
           <MicButton
@@ -326,7 +582,9 @@ export function TaskDetailSheet(props: {
             style={{ width: 60 }}
             value={subDraftTime}
             onChange={(e) =>
-              setSubDraftTime(e.target.value)
+              setSubDraftTime(
+                e.target.value
+              )
             }
             aria-label="Sub-task estimate"
           />
@@ -349,63 +607,408 @@ export function TaskDetailSheet(props: {
         </div>
       )}
 
-      {subs.map((s) => (
+      {localSubs.length > 0 && (
         <div
-          key={s.id}
-          className="subtask-row"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+            marginTop: 10,
+            marginBottom: 8,
+          }}
         >
-          <button
-            type="button"
-            className={
-              s.done
-                ? 'subtask-check done'
-                : 'subtask-check'
-            }
-            onClick={() =>
-              onToggleSubtaskDone(
-                s.id,
-                task.id,
-                s.done
+          <div
+            role="group"
+            aria-label="Sub-task filter"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 3,
+              padding: 3,
+              border:
+                '1px solid var(--line)',
+              borderRadius: 999,
+              background:
+                'var(--surface-inset)',
+            }}
+          >
+            {(
+              [
+                ['all', 'All'],
+                ['open', 'Open'],
+                ['done', 'Done'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() =>
+                  setSubtaskFilter(value)
+                }
+                aria-pressed={
+                  subtaskFilter === value
+                }
+                style={{
+                  border: 0,
+                  borderRadius: 999,
+                  padding: '5px 9px',
+                  background:
+                    subtaskFilter === value
+                      ? 'var(--paper-raised)'
+                      : 'transparent',
+                  color:
+                    subtaskFilter === value
+                      ? 'var(--ink)'
+                      : 'var(--ink-faint)',
+                  fontSize: 11,
+                  fontWeight:
+                    subtaskFilter === value
+                      ? 650
+                      : 550,
+                  cursor: 'pointer',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <select
+            value={subtaskSort}
+            onChange={(event) =>
+              setSubtaskSort(
+                event.target.value as SubtaskSort
               )
             }
-            aria-label={
-              s.done
-                ? `Mark "${s.text}" incomplete`
-                : `Complete "${s.text}"`
-            }
-          />
-
-          <span
-            className={
-              s.done
-                ? 'subtask-text done'
-                : 'subtask-text'
-            }
+            aria-label="Order sub-tasks"
+            style={{
+              minHeight: 32,
+              padding: '5px 9px',
+              border:
+                '1px solid var(--line)',
+              borderRadius: 999,
+              background:
+                'var(--paper)',
+              color:
+                'var(--ink-soft)',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
           >
-            {s.text}
-          </span>
-
-          <span className="tag mono">
-            {fmtMins(s.mins)}
-          </span>
-
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={() =>
-              onDeleteSubtask(
-                s.id,
-                task.id
-              )
-            }
-            aria-label={`Delete sub-task "${s.text}"`}
-          >
-            ×
-          </button>
+            <option value="original">
+              Order: Original
+            </option>
+            <option value="alpha">
+              Order: A–Z
+            </option>
+            <option value="time_asc">
+              Order: Shortest
+            </option>
+            <option value="time_desc">
+              Order: Longest
+            </option>
+          </select>
         </div>
-      ))}
+      )}
 
-      {subs.length === 0 &&
+      {visibleSubtasks.map((s) => {
+        const editing =
+          editingSubtaskId === s.id;
+
+        if (editing) {
+          return (
+            <div
+              key={s.id}
+              className="subtask-row"
+              style={{
+                alignItems: 'flex-start',
+                padding:
+                  '8px 0',
+              }}
+            >
+              <button
+                type="button"
+                className={
+                  s.done
+                    ? 'subtask-check done'
+                    : 'subtask-check'
+                }
+                onClick={() =>
+                  handleSubtaskToggle(s)
+                }
+                aria-label={
+                  s.done
+                    ? `Mark "${s.text}" incomplete`
+                    : `Complete "${s.text}"`
+                }
+              />
+
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection:
+                    'column',
+                  gap: 7,
+                }}
+              >
+                <input
+                  type="text"
+                  value={
+                    editingSubtaskText
+                  }
+                  onChange={(event) =>
+                    setEditingSubtaskText(
+                      event.target.value
+                    )
+                  }
+                  autoFocus
+                  aria-label="Sub-task name"
+                  onKeyDown={(event) =>
+                    handleSubtaskKeyDown(
+                      event,
+                      s
+                    )
+                  }
+                  style={{
+                    width: '100%',
+                    boxSizing:
+                      'border-box',
+                    minHeight: 36,
+                    padding:
+                      '7px 9px',
+                    border:
+                      '1px solid var(--line-strong)',
+                    borderRadius:
+                      'var(--radius-sm)',
+                    background:
+                      'var(--paper)',
+                    color:
+                      'var(--ink)',
+                    fontSize:
+                      'var(--text-sm)',
+                  }}
+                />
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems:
+                      'center',
+                    gap: 7,
+                    flexWrap:
+                      'wrap',
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={
+                      editingSubtaskTime
+                    }
+                    onChange={(event) =>
+                      setEditingSubtaskTime(
+                        event.target.value
+                      )
+                    }
+                    aria-label="Sub-task estimate"
+                    placeholder="15m"
+                    onKeyDown={(event) =>
+                      handleSubtaskKeyDown(
+                        event,
+                        s
+                      )
+                    }
+                    style={{
+                      width: 76,
+                      minHeight: 32,
+                      boxSizing:
+                        'border-box',
+                      padding:
+                        '5px 8px',
+                      border:
+                        '1px solid var(--line)',
+                      borderRadius:
+                        'var(--radius-sm)',
+                      background:
+                        'var(--paper)',
+                      color:
+                        'var(--ink)',
+                      fontSize: 12,
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    className="btn btn-steel"
+                    disabled={
+                      savingSubtaskId ===
+                      s.id
+                    }
+                    style={{
+                      minHeight: 32,
+                      padding:
+                        '5px 10px',
+                      fontSize: 12,
+                    }}
+                    onClick={() =>
+                      void saveSubtaskEdit(
+                        s
+                      )
+                    }
+                  >
+                    {savingSubtaskId ===
+                    s.id
+                      ? 'Saving…'
+                      : 'Save'}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    disabled={
+                      savingSubtaskId ===
+                      s.id
+                    }
+                    style={{
+                      minHeight: 32,
+                      padding:
+                        '5px 10px',
+                      fontSize: 12,
+                    }}
+                    onClick={
+                      cancelEditSubtask
+                    }
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                {subtaskError && (
+                  <span
+                    style={{
+                      color:
+                        'var(--hazard)',
+                      fontSize: 11,
+                    }}
+                  >
+                    {subtaskError}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={s.id}
+            className="subtask-row"
+            style={{
+              minHeight: 36,
+            }}
+          >
+            <button
+              type="button"
+              className={
+                s.done
+                  ? 'subtask-check done'
+                  : 'subtask-check'
+              }
+              onClick={() =>
+                handleSubtaskToggle(s)
+              }
+              aria-label={
+                s.done
+                  ? `Mark "${s.text}" incomplete`
+                  : `Complete "${s.text}"`
+              }
+            />
+
+            <button
+              type="button"
+              onClick={() =>
+                beginEditSubtask(s)
+              }
+              aria-label={`Edit sub-task "${s.text}"`}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: '3px 0',
+                border: 0,
+                background:
+                  'transparent',
+                color: s.done
+                  ? 'var(--ink-faint)'
+                  : 'var(--ink)',
+                textDecoration:
+                  s.done
+                    ? 'line-through'
+                    : 'none',
+                textAlign: 'left',
+                fontSize:
+                  'var(--text-sm)',
+                lineHeight: 1.35,
+                cursor: 'text',
+              }}
+            >
+              {s.text}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                beginEditSubtask(s)
+              }
+              aria-label={`Edit estimate for "${s.text}"`}
+              className="tag mono"
+              style={{
+                border: 0,
+                cursor: 'pointer',
+                background:
+                  'var(--surface-inset)',
+              }}
+            >
+              {fmtMins(s.mins)}
+            </button>
+
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() =>
+                handleSubtaskDelete(
+                  s.id,
+                  task.id
+                )
+              }
+              aria-label={`Delete sub-task "${s.text}"`}
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
+
+      {localSubs.length > 0 &&
+        visibleSubtasks.length === 0 && (
+          <div
+            style={{
+              padding:
+                '14px 4px',
+              color:
+                'var(--ink-faint)',
+              fontSize: 12,
+            }}
+          >
+            {subtaskFilter === 'done'
+              ? 'No completed sub-tasks.'
+              : 'All sub-tasks are complete.'}
+          </div>
+        )}
+
+      {localSubs.length === 0 &&
         !showAddForm &&
         isPane && (
           <p className="desk-detail-muted">
@@ -770,6 +1373,7 @@ export function TaskDetailSheet(props: {
           }}
         >
           <button
+            type="button"
             className="gear-btn"
             onClick={handleClose}
             aria-label="Close"
@@ -906,6 +1510,7 @@ export function TaskDetailSheet(props: {
 
           {surfaceDate.length > 0 && (
             <button
+              type="button"
               className="btn-text"
               onClick={() => {
                 setSurfaceDate('');
@@ -959,6 +1564,7 @@ export function TaskDetailSheet(props: {
           {task.estimate_mins > 0 &&
             (task.status === 'active' ? (
               <button
+                type="button"
                 className="btn btn-ghost start-stop-btn"
                 style={{ flex: 1 }}
                 onClick={() =>
@@ -980,6 +1586,7 @@ export function TaskDetailSheet(props: {
               </button>
             ) : (
               <button
+                type="button"
                 className="btn btn-steel start-stop-btn"
                 style={{ flex: 1 }}
                 disabled={startDisabled}
@@ -993,6 +1600,7 @@ export function TaskDetailSheet(props: {
             ))}
 
           <button
+            type="button"
             className="btn btn-ghost"
             style={{ flex: 1 }}
             onClick={() => {
@@ -1008,6 +1616,7 @@ export function TaskDetailSheet(props: {
         {subtasksBlock}
 
         <button
+          type="button"
           className="btn btn-ghost danger-btn task-detail-delete"
           onClick={() => {
             if (
