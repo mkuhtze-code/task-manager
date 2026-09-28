@@ -318,21 +318,41 @@ export function behaviourSamplesFromHistory(
     completed_at?: string | null;
     job_id?: string | null;
     task_id?: string | null;
+    /** FP-0/FP-1: when not done, exclude from duration/bias learning. */
+    outcome_kind?: string | null;
+    outcome_channel?: string | null;
   }>
 ): BehaviourSample[] {
-  return rows.map((r) => ({
-    text: r.text,
-    taskId: r.task_id ?? null,
-    actualMins:
-      typeof r.actual_mins === 'number' && r.actual_mins > 0
-        ? r.actual_mins
-        : null,
-    estimateMins:
-      typeof r.estimate_mins === 'number' && r.estimate_mins > 0
-        ? r.estimate_mins
-        : null,
-    createdAt: r.created_at ?? null,
-    completedAt: r.completed_at ?? null,
-    jobId: r.job_id ?? null,
-  }));
+  return rows.map((r) => {
+    const channel = r.outcome_channel ?? null;
+    const kind = r.outcome_kind ?? null;
+    const dirty =
+      channel === 'partial' ||
+      channel === 'carry' ||
+      channel === 'interrupted' ||
+      channel === 'blocked' ||
+      channel === 'skip' ||
+      kind === 'partial' ||
+      kind === 'carry' ||
+      kind === 'skip' ||
+      kind === 'carried' ||
+      kind === 'skipped';
+    return {
+      text: r.text,
+      taskId: r.task_id ?? null,
+      actualMins:
+        typeof r.actual_mins === 'number' && r.actual_mins > 0
+          ? r.actual_mins
+          : null,
+      estimateMins:
+        typeof r.estimate_mins === 'number' && r.estimate_mins > 0
+          ? r.estimate_mins
+          : null,
+      createdAt: r.created_at ?? null,
+      completedAt: r.completed_at ?? null,
+      jobId: r.job_id ?? null,
+      durationContaminated: dirty,
+      outcomeKind: kind,
+    };
+  });
 }
