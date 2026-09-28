@@ -272,8 +272,13 @@ export function profileTask(
           isActive: task.status === 'active',
           behaviour: rt.behaviour,
           clusterBehaviour: signals?.clusterBehaviour ?? null,
-          duration: null,
+          duration: signals?.hierarchicalDuration ?? null,
           capacityBiasScale: signals?.capacityBiasScale ?? 1,
+          calendar: {
+            remainingWindowMins: remainingWindowMins ?? null,
+            minsToNextCommitment: null,
+            meetingDensity: null,
+          },
         })
       : null;
 
