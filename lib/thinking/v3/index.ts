@@ -151,6 +151,7 @@ export {
   buildWorkEpisode,
   trainMinutesFromEpisode,
   safeActualForCalibration,
+  episodeSignalsFromTask,
 } from './episodes';
 
 export type {
@@ -194,5 +195,5 @@ export {
   behaviourSamplesFromHistory,
 } from './behaviour';
 
-export type { FitInput, FitDecision } from './fit';
+export type { FitInput, FitDecision, FitCalendarContext } from './fit';
 export { decideTaskFit } from './fit';
