@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { SearchIcon } from '@/components/icons';
 
 export type JobsListFilter = 'open' | 'done' | 'all';
 
@@ -15,6 +14,25 @@ type Props = {
   onSearchChange: (value: string) => void;
   onCreate: () => void;
 };
+
+function SearchGlyph() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-4-4" />
+    </svg>
+  );
+}
 
 export default function DesktopJobsHeader({
   openCount,
@@ -42,26 +60,37 @@ export default function DesktopJobsHeader({
       <div className="desk-jobs-header-main">
         <div className="desk-jobs-header-title">
           <span className="desk-jobs-header-kicker">Work</span>
+
           <h1>Jobs</h1>
+
           <p>
             Work that spans days, with its tasks, evidence and context gathered
             together.
           </p>
         </div>
 
-        <div className="desk-jobs-header-summary" aria-label="Job summary">
+        <div
+          className="desk-jobs-header-summary"
+          aria-label="Job summary"
+        >
           <div className="desk-jobs-stat">
-            <span className="desk-jobs-stat-value mono">{openCount}</span>
+            <span className="desk-jobs-stat-value mono">
+              {openCount}
+            </span>
             <span className="desk-jobs-stat-label">open</span>
           </div>
 
           <div className="desk-jobs-stat">
-            <span className="desk-jobs-stat-value mono">{doneCount}</span>
+            <span className="desk-jobs-stat-value mono">
+              {doneCount}
+            </span>
             <span className="desk-jobs-stat-label">done</span>
           </div>
 
           <div className="desk-jobs-stat">
-            <span className="desk-jobs-stat-value mono">{allCount}</span>
+            <span className="desk-jobs-stat-value mono">
+              {allCount}
+            </span>
             <span className="desk-jobs-stat-label">total</span>
           </div>
         </div>
@@ -78,7 +107,11 @@ export default function DesktopJobsHeader({
       </div>
 
       <div className="desk-jobs-header-controls">
-        <div className="desk-jobs-filter" role="group" aria-label="Filter jobs">
+        <div
+          className="desk-jobs-filter"
+          role="group"
+          aria-label="Filter jobs"
+        >
           {filterItems.map((item) => (
             <button
               key={item.key}
@@ -112,15 +145,19 @@ export default function DesktopJobsHeader({
           <button
             type="button"
             className="desk-jobs-search-button"
-            aria-label={searchOpen ? 'Close job search' : 'Search jobs'}
+            aria-label={
+              searchOpen ? 'Close job search' : 'Search jobs'
+            }
+            aria-expanded={searchOpen}
             onClick={() => {
               if (searchOpen && search.length > 0) {
                 onSearchChange('');
               }
+
               setSearchOpen((value) => !value);
             }}
           >
-            <SearchIcon size={16} />
+            <SearchGlyph />
           </button>
         </div>
       </div>
