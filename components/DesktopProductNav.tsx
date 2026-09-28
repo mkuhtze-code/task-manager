@@ -187,6 +187,17 @@ export default function DesktopProductNav() {
       () => null
     );
 
+  // Jobs / Meetings / Travel list headers own the create CTA — do not
+  // also show the top-nav primary (double "add" buttons).
+  // Surfaces that place create/dock in their own workspace header.
+  const surfaceOwnsPrimary =
+    pathname === '/' ||
+    pathname === '' ||
+    pathname === '/jobs' ||
+    pathname === '/meetings' ||
+    pathname === '/travel';
+  const showPrimary = Boolean(primary) && !surfaceOwnsPrimary;
+
   const order =
     useSyncExternalStore(
       subscribeNavOrder,
@@ -411,7 +422,7 @@ export default function DesktopProductNav() {
           )}
         </nav>
 
-        {primary && (
+        {showPrimary && primary && (
           <button
             type="button"
             className="btn btn-steel desk-product-primary"
