@@ -235,3 +235,27 @@ export {
   lookupMultiChannelBelief,
   beliefSamplesFromHistory,
 } from './beliefs';
+
+export type { TimedDurationSample, RegimeDetection } from './regime';
+export {
+  detectRegimeShift,
+  regimeAwareExpectedMins,
+  timedSamplesFromHistory,
+  REGIME_MIN_WINDOW,
+  REGIME_RECENT_K,
+  REGIME_LOG_THRESHOLD,
+  REGIME_PRE_SHIFT_WEIGHT,
+} from './regime';
+
+export type {
+  TimedCalibrationPair,
+  HorizonDays,
+  HorizonCalibration,
+  CalibrationProgression,
+} from './calibrationHarness';
+export {
+  pairsInHorizon,
+  calibrationAtHorizon,
+  calibrationProgression,
+  fitRegretRate,
+} from './calibrationHarness';
