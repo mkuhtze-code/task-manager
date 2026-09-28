@@ -17,6 +17,15 @@ function contextForPath(pathname: string): Context | null {
     return null;
   }
 
+  /* List surfaces own Desktop*Header — strip would only echo the title. */
+  if (
+    pathname === '/jobs' ||
+    pathname === '/meetings' ||
+    pathname === '/travel'
+  ) {
+    return null;
+  }
+
   if (pathname.startsWith('/jobs/')) {
     return {
       kicker: 'Job',
