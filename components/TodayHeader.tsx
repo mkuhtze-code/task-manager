@@ -35,6 +35,9 @@ export function TodayHeader(props: {
   onRealityCheck?: () => void;
   showRealityCheck?: boolean;
   realityCheckMessage?: string | null;
+  /** Desktop: match Jobs/Travel workspace header chrome. */
+  isDesktop?: boolean;
+  onDockIt?: () => void;
 }) {
   const {
     overloaded,
@@ -60,6 +63,8 @@ export function TodayHeader(props: {
     onRealityCheck,
     showRealityCheck,
     realityCheckMessage,
+    isDesktop = false,
+    onDockIt,
   } = props;
 
   const [capacityOpen, setCapacityOpen] = useState(false);
@@ -93,11 +98,12 @@ export function TodayHeader(props: {
 
   return (
     <div
-      className={
-        overloaded
-          ? 'today-header-card overloaded'
-          : 'today-header-card'
-      }
+      className={[
+        overloaded ? 'today-header-card overloaded' : 'today-header-card',
+        isDesktop ? 'desk-today-workspace-header' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
       <div className="today-header-top-row">
         <button
