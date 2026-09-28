@@ -124,11 +124,14 @@ function beliefFromSamples(
 ): MultiChannelBelief {
   const total = samples.length;
   const clean = samples.filter(isCleanDuration);
-  const cleanMins = clean
-    .map((s) => s.actualMins as number)
-    .filter((m) => m > 0);
-  const durationMins =
-    cleanMins.length > 0 ? Math.round(median(cleanMins)) : null;
+  const cleanMins: number[] = clean
+    .map((s) => s.actualMins)
+    .filter(
+      (m): m is number =>
+        typeof m === 'number' && Number.isFinite(m) && m > 0
+    );
+  const med = cleanMins.length > 0 ? median(cleanMins) : null;
+  const durationMins = med != null ? Math.round(med) : null;
   const durationSpreadMins =
     cleanMins.length >= 3 ? madScaled(cleanMins) : null;
 
