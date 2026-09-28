@@ -1,1 +1,43 @@
+/*
+ * ==========================================================================
+ * DOKKIT DESKTOP LEGACY LAYER
+ * ==========================================================================
+ *
+ * Transitional file.
+ *
+ * These rules are still loaded while desktop-complete.css and the newer
+ * desktop surface layers become authoritative.
+ *
+ * DO NOT add new desktop features here.
+ *
+ * Migration rule:
+ *
+ *   1. Identify a rule used by an existing surface.
+ *   2. Move/rewrite it into the appropriate modern desktop file.
+ *   3. Verify the affected surface.
+ *   4. Delete the old rule.
+ *
+ * Target end state:
+ *
+ *   desktop-complete.css
+ *   desktop-settings.css
+ *   surface-specific CSS where genuinely required
+ *
+ * This file exists to prevent a risky "big bang" CSS deletion.
+ */
 
+
+/* --------------------------------------------------------------------------
+   Legacy marker
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop'] {
+  --dokkit-desktop-legacy-layer: 1;
+}
+
+
+/*
+ * Intentionally empty.
+ *
+ * Existing legacy files remain loaded during the transition.
+ */
