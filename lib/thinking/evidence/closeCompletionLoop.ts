@@ -4,6 +4,7 @@
 //
 // Phase 2: taskId for identity-based prediction linkage.
 // Phase 5.5: WorkEpisode gates duration training when interruption contaminates.
+// FP-0: Outcome channels — only clean_done trains duration; partial/carry/skip do not.
 
 import {
   suggestEstimate,
@@ -19,12 +20,21 @@ import {
   trainMinutesFromEpisode,
   type WorkEpisode,
 } from '@/lib/thinking/v3/episodes';
+import {
+  classifyOutcomeChannel,
+  type OutcomeChannelResult,
+  type RealityOutcomeLike,
+  type TrainingChannel,
+} from '@/lib/thinking/v3/outcomeChannels';
 import { logCompletionOutcome } from './predictionLog';
 import type { PredictionLogEntry } from '../types';
 
 export type CloseCompletionLoopParams = {
   userId: string | null | undefined;
-  /** Stable task identity — preferred over taskText for prediction linkage. */
+  /**
+   * Stable task identity — required for reliable prediction linkage (FP-0).
+   * When missing, duration may still resolve for DB but prediction close is weak.
+   */
   taskId?: string | null;
   taskText: string;
   estimateMins: number;
@@ -33,8 +43,10 @@ export type CloseCompletionLoopParams = {
   history: HistoricalTask[];
   clusters: TaskCluster[];
   hints?: LifecycleHints;
-  /** Defaults to done. Partial/carry/skip inform different dimensions. */
+  /** Defaults to done. Prefer realityOutcome when from Reality Check. */
   outcomeKind?: PredictionLogEntry['outcome_kind'];
+  /** Reality Check outcome when known (FP-0). */
+  realityOutcome?: RealityOutcomeLike | null;
   /**
    * Optional episode signals (Phase 5.5).
    * When interruption dominates, duration training is suppressed.
@@ -53,16 +65,24 @@ export type CloseCompletionLoopResult = {
   source: 'measured' | 'lifecycle' | 'none';
   /** Episode used for training gate, when built. */
   episode?: WorkEpisode | null;
-  /** True when interruption/waiting blocked duration learning. */
+  /** True when interruption/waiting/channel blocked duration learning. */
   durationTrainingBlocked?: boolean;
+  /** FP-0 channel classification. */
+  channel?: TrainingChannel;
+  channelReasons?: string[];
 };
 
 function episodeOutcomeFromKind(
-  kind: PredictionLogEntry['outcome_kind'] | undefined
+  kind: PredictionLogEntry['outcome_kind'] | undefined,
+  reality: RealityOutcomeLike | null | undefined
 ): 'done' | 'partial' | 'carry' | 'skip' | 'unknown' {
+  if (reality === 'partial') return 'partial';
+  if (reality === 'carried') return 'carry';
+  if (reality === 'skipped') return 'skip';
   if (kind === 'done' || kind === 'partial' || kind === 'carry' || kind === 'skip') {
     return kind;
   }
+  if (reality === 'done') return 'done';
   return 'unknown';
 }
 
@@ -102,9 +122,10 @@ export function closeCompletionLoop(
   let durationTrainingBlocked = false;
   let episode: WorkEpisode | null = null;
 
-  // Phase 5.5 — episode gate: do not train duration on contaminated elapsed.
   const taskId = params.taskId?.trim() || null;
   const userId = params.userId;
+  const realityOutcome = params.realityOutcome ?? null;
+
   if (userId && taskId) {
     episode = buildWorkEpisode({
       episodeId: `ep_${taskId}_${completedAt}`,
@@ -116,42 +137,58 @@ export function closeCompletionLoop(
       interruptionMinutes: params.interruptionMinutes ?? null,
       waitingMinutes: params.waitingMinutes ?? null,
       jobId: params.hints?.jobId ?? null,
-      outcome: episodeOutcomeFromKind(params.outcomeKind),
+      outcome: episodeOutcomeFromKind(params.outcomeKind, realityOutcome),
       legacyActualMins: measured > 0 ? measured : null,
     });
 
     const epTrain = trainMinutesFromEpisode(episode);
     if (episode.durationEvidence === 'contaminated') {
       durationTrainingBlocked = true;
-      // Still allow lifecycle soft if measured was zero; never train contaminated elapsed.
       if (source === 'measured') {
         trainMins = null;
         source = 'none';
       }
     } else if (epTrain != null && source === 'measured') {
-      // Prefer episode-safe train minutes (active when known).
       trainMins = epTrain;
     }
   }
 
+  // FP-0 — channel classification (partial/carry/skip/interrupt never train duration).
+  const channelResult: OutcomeChannelResult = classifyOutcomeChannel({
+    realityOutcome,
+    outcomeKind: params.outcomeKind ?? episode?.outcome ?? null,
+    durationEvidence: episode?.durationEvidence ?? null,
+    interruptionMinutes:
+      params.interruptionMinutes ?? episode?.interruptionMinutes ?? null,
+    waitingMinutes: params.waitingMinutes ?? episode?.waitingMinutes ?? null,
+    measuredMins: trainMins ?? measured,
+    hasTaskId: Boolean(taskId),
+  });
+
+  if (!channelResult.mayTrainDuration) {
+    durationTrainingBlocked = true;
+    trainMins = null;
+    source = 'none';
+  }
+
   const actualForDb =
-    trainMins != null
+    channelResult.mayTrainDuration && trainMins != null
       ? trainMins
       : measured > 0
         ? measured
         : 0;
 
   const text = (params.taskText || '').trim();
-  const outcomeKind = params.outcomeKind ?? 'done';
+  const logKind = channelResult.logOutcomeKind ?? params.outcomeKind ?? 'done';
 
-  const mayTrainDuration =
-    (outcomeKind === 'done' ||
-      outcomeKind === 'partial' ||
-      outcomeKind === null ||
-      outcomeKind === undefined) &&
-    !durationTrainingBlocked;
-
-  if (userId && text && trainMins != null && trainMins > 0 && mayTrainDuration) {
+  // Duration prediction close only on clean_done with train minutes.
+  if (
+    userId &&
+    text &&
+    trainMins != null &&
+    trainMins > 0 &&
+    channelResult.mayTrainDuration
+  ) {
     const suggestion = suggestEstimate(
       text,
       params.history,
@@ -168,16 +205,18 @@ export function closeCompletionLoop(
       suggestedMins: suggestion?.suggestedMins ?? null,
       confidence: suggestion?.confidence ?? 'low',
       actualMins: trainMins,
-      outcomeKind,
+      outcomeKind: logKind ?? 'done',
     }).catch(() => {});
   }
 
   return {
     actualForDb,
-    trainMins: mayTrainDuration ? trainMins : null,
-    source: mayTrainDuration ? source : 'none',
+    trainMins: channelResult.mayTrainDuration ? trainMins : null,
+    source: channelResult.mayTrainDuration ? source : 'none',
     episode,
     durationTrainingBlocked,
+    channel: channelResult.channel,
+    channelReasons: channelResult.reasons,
   };
 }
 
