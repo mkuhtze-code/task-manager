@@ -3,7 +3,7 @@
  * Deterministic, no AI. Aligns with docs/reality-capture.md.
  *
  * Scope: reality teaches the plan
- * - Done / Partial observations feed history (Carry / Skip do not)
+ * - Done observations may feed duration history (FP-0: Partial / Carry / Skip do not)
  * - Zero-minute "done" without a timer does not train duration memory
  * - A calm morning line surfaces yesterday’s reshape without homework
  */
@@ -115,7 +115,7 @@ function subtaskCountFromUnknown(task: Task): number | null {
 /**
  * Turn one Reality Update into a history observation when reality was measured.
  * - Done → reliable actual, or lifecycle soft if structure exists; never train 0
- * - Partial → spent + remaining (total work this kind of task took)
+ * - Partial → null for duration history (FP-0 channel; multi-channel in FP-1)
  * - Carry / Skip → null (must not poison learning)
  */
 export function historyObservationForUpdate(
@@ -165,33 +165,10 @@ export function historyObservationForUpdate(
     };
   }
 
+  // FP-0: Partial does not train duration memory.
+  // spent+remaining was poisoning the personal model (treated partial as full task duration).
   if (update.outcome === 'partial') {
-    const spent = Math.round(spentMinsNow(task, nowMs));
-    const remaining =
-      update.remainingMins != null && update.remainingMins > 0
-        ? update.remainingMins
-        : Math.max(5, Math.round(task.estimate_mins / 2));
-    const total = Math.max(spent + remaining, remaining);
-
-    // Partial always implies real work remained — accept even if spent was 0.
-    if (!isReliableActualMins(total) && total < 5) return null;
-
-    return {
-      text: task.text,
-      actual_mins: total,
-      location_text: task.location_text,
-      lat: task.lat,
-      lng: task.lng,
-      job_id: task.job_id,
-      created_at: task.created_at,
-      completed_at: new Date(nowMs).toISOString(),
-      estimate_mins: task.estimate_mins,
-      logged_mins: spent,
-      due_today: task.due_today,
-      surface_date: task.surface_date,
-      intended_time: task.intended_time,
-      subtask_count: subtaskCountFromUnknown(task),
-    };
+    return null;
   }
 
   return null;
