@@ -12,7 +12,6 @@ import {
 } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
-import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
@@ -158,14 +157,6 @@ export default function TravelHome() {
     useState<TravelListFilter>('all');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    if (!isDesktop || !canTravel) return;
-
-    return registerDesktopPrimaryAction(
-      'Plan a trip',
-      () => openCreate()
-    );
-  }, [isDesktop, canTravel]);
 
   useEffect(() => {
     supabase.auth
