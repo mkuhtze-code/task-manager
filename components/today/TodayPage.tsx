@@ -2129,11 +2129,13 @@ export function TodayPage() {
         hasRoute={hasRoute}
         routeDriveMins={routeDriveMins}
         onViewMap={() => setMapOpen(true)}
-         userId={session.user.id}
+        userId={session.user.id}
         commitments={activeCommitments}
         onRealityCheck={() => setRealityCheckOpen(true)}
         showRealityCheck={showRealityCheck}
         realityCheckMessage={realityCheckMessage}
+        isDesktop={isDesktop}
+        onDockIt={isDesktop ? () => setCaptureOpen(true) : undefined}
       />
 
 
