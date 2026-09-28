@@ -2,6 +2,7 @@ import './globals.css';
 import './desktop-surface.css';
 import './desktop-phase-2.css';
 import './desktop-heart.css';
+import './desktop-legacy.css';
 import './desktop-complete.css';
 import './desktop-settings.css';
 import './error-boundary.css';
