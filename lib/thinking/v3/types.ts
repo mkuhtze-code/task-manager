@@ -300,6 +300,6 @@ export type ModelState = {
   updatedAt: string;
 };
 
-export const MODEL_VERSION = '3.1.0-fp3';
+export const MODEL_VERSION = '3.1.0-s1';
 export const ALGORITHM_VERSION = '3.0.0';
-export const FEATURE_VERSION = '3.0.0';
+export const FEATURE_VERSION = '3.1.0-s1-workkey';
