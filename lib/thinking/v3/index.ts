@@ -217,3 +217,21 @@ export {
   recordSequenceDecision,
   decisionFromDuration,
 } from './decisionTrace';
+
+export type { BeliefAuthority } from './learningRates';
+export {
+  priorStrengthForCleanN,
+  authorityFromCleanN,
+  CONTEXT_LEAF_AUTHORITY_MIN,
+} from './learningRates';
+
+export type {
+  MultiChannelBelief,
+  MultiChannelModel,
+  BeliefBuildSample,
+} from './beliefs';
+export {
+  buildMultiChannelModel,
+  lookupMultiChannelBelief,
+  beliefSamplesFromHistory,
+} from './beliefs';
