@@ -1,35 +1,70 @@
-/* Pill → overlay panel (Jobs meetings, Meeting connections).
-   Desktop job secondary column layout is owned by desktop-jobs-convergence.css.
-   Keep only observation/file panel chrome here — not display/grid placement. */
+/* Pill → overlay panel (Jobs meetings, Meeting connections / files) */
 
-.pill-reveal-shell {
+.pill-reveal {
   position: relative;
-}
-
-.pill-reveal-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+}
+
+.pill-reveal-count {
+  margin-left: 6px;
+  font-weight: 600;
+  opacity: 0.8;
 }
 
 .pill-reveal-panel {
   position: absolute;
-  z-index: 40;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
-  min-width: min(320px, 90vw);
+  z-index: 90;
+  min-width: min(320px, 92vw);
   max-width: min(420px, 94vw);
-  max-height: min(70vh, 520px);
-  overflow: auto;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
+  max-height: min(56vh, 440px);
+  overflow-y: auto;
+  padding: 12px;
   background: var(--paper);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.14);
 }
 
+.pill-reveal-panel.align-end {
+  left: auto;
+  right: 0;
+}
+
+/* Room for JobFilesPanel (folders + list) */
+.pill-reveal-panel--wide {
+  min-width: min(360px, 94vw);
+  max-width: min(480px, 96vw);
+  max-height: min(70vh, 560px);
+}
+
+.pill-reveal-panel .task-connections,
+.pill-reveal-panel .job-meetings-popover,
 .pill-reveal-panel .job-files-panel {
-  margin-top: 0;
+  margin: 0;
+  border: none;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.job-meetings-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.job-meetings-popover-empty {
+  font-size: 13px;
+  color: var(--ink-faint);
+  margin: 0;
+  padding: 8px 4px;
+}
+
+.job-meetings-popover a.task-conn-node {
+  text-decoration: none;
 }
 
 /*
