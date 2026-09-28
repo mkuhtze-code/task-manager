@@ -1,101 +1,41 @@
-/* Pill → overlay panel (Jobs meetings, Meeting connections / files) */
+/* Pill → overlay panel (Jobs meetings, Meeting connections).
+   Desktop job secondary column layout is owned by desktop-jobs-convergence.css.
+   Keep only observation/file panel chrome here — not display/grid placement. */
 
-.pill-reveal {
+.pill-reveal-shell {
   position: relative;
-  display: inline-flex;
-  align-items: center;
 }
 
-.pill-reveal-count {
-  margin-left: 6px;
-  font-weight: 600;
-  opacity: 0.8;
+.pill-reveal-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .pill-reveal-panel {
   position: absolute;
-  top: calc(100% + 8px);
+  z-index: 40;
+  top: calc(100% + 6px);
   left: 0;
-  z-index: 90;
-  min-width: min(320px, 92vw);
+  min-width: min(320px, 90vw);
   max-width: min(420px, 94vw);
-  max-height: min(56vh, 440px);
-  overflow-y: auto;
-  padding: 12px;
+  max-height: min(70vh, 520px);
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
   background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: 14px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
 }
 
-.pill-reveal-panel.align-end {
-  left: auto;
-  right: 0;
-}
-
-/* Room for JobFilesPanel (folders + list) */
-.pill-reveal-panel--wide {
-  min-width: min(360px, 94vw);
-  max-width: min(480px, 96vw);
-  max-height: min(70vh, 560px);
-}
-
-.pill-reveal-panel .task-connections,
-.pill-reveal-panel .job-meetings-popover,
 .pill-reveal-panel .job-files-panel {
-  margin: 0;
-  border: none;
-  padding: 0;
-  background: transparent;
-  box-shadow: none;
+  margin-top: 0;
 }
 
-.job-meetings-popover {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.job-meetings-popover-empty {
-  font-size: 13px;
-  color: var(--ink-faint);
-  margin: 0;
-  padding: 8px 4px;
-}
-
-.job-meetings-popover a.task-conn-node {
-  text-decoration: none;
-}
-
-/* Desktop job: observations + files own the right column */
-html[data-surface='desktop'] .app-shell.desk-job-detail {
-  grid-template-columns: minmax(300px, 38%) minmax(0, 1fr);
-}
-
-html[data-surface='desktop'] .app-shell.desk-job-detail > .job-library {
-  grid-column: 2;
-  grid-row: 3;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--space-5) var(--space-6);
-  border-top: none;
-  margin: 0;
-  background: var(--paper);
-}
-
-html[data-surface='desktop'] .app-shell.desk-job-detail.has-desk-detail > .job-library {
-  display: none;
-}
-
-html[data-surface='desktop'] .app-shell.desk-job-detail > .job-more {
-  display: none;
-}
-
-html[data-surface='desktop']
-  .app-shell.desk-job-detail:not(.has-desk-detail):has(> .job-library)::after {
-  display: none;
-}
-
+/*
+ * Desktop job secondary column layout is owned by desktop-jobs-convergence.css.
+ * Keep only observation/file panel chrome here — not display/grid placement.
+ */
 html[data-surface='desktop'] .job-observations-panel {
   margin-bottom: 20px;
 }
