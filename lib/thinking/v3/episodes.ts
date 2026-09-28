@@ -151,3 +151,26 @@ export function trainMinutesFromEpisode(ep: WorkEpisode): number | null {
 export function safeActualForCalibration(ep: WorkEpisode): number | null {
   return trainMinutesFromEpisode(ep);
 }
+
+/**
+ * Derive optional episode fields for closeCompletionLoop from a task row.
+ * Does not invent interruption; only passes startedAt and active minutes when timed.
+ */
+export function episodeSignalsFromTask(task: {
+  started_at?: string | null;
+  status?: string | null;
+  logged_mins?: number | null;
+} | null | undefined, measuredMins: number): {
+  startedAt: string | null;
+  activeMinutes: number | null;
+} {
+  if (!task) {
+    return { startedAt: null, activeMinutes: measuredMins > 0 ? measuredMins : null };
+  }
+  const startedAt = task.started_at ?? null;
+  const activeMinutes =
+    measuredMins > 0
+      ? Math.round(measuredMins)
+      : null;
+  return { startedAt, activeMinutes };
+}
