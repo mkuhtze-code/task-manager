@@ -1484,6 +1484,8 @@ export function TodayPage() {
             measuredMins: measured,
             history,
             clusters,
+            startedAt: task.started_at ?? null,
+            activeMinutes: measured > 0 ? measured : null,
             hints: {
               estimateMins: task.estimate_mins,
               loggedMins: measured,
@@ -1562,6 +1564,8 @@ export function TodayPage() {
               measuredMins: spent,
               history,
               clusters,
+              startedAt: task.started_at ?? null,
+              activeMinutes: spent > 0 ? spent : null,
               hints: {
                 estimateMins: task.estimate_mins,
                 loggedMins: spent,
@@ -1636,6 +1640,8 @@ export function TodayPage() {
       measuredMins: measured,
       history,
       clusters,
+      startedAt: task?.started_at ?? null,
+      activeMinutes: measured > 0 ? measured : null,
       hints: {
         estimateMins: task?.estimate_mins,
         loggedMins: measured,
