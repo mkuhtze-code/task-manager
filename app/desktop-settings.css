@@ -1,1 +1,678 @@
+/* ==========================================================================
+   DOKKIT DESKTOP SETTINGS
 
+   Account, Preferences and Billing are intentionally more sophisticated
+   surfaces than Today/Jobs.
+
+   They are not productivity surfaces. They are the user's control plane.
+
+   Goals:
+   - clear hierarchy
+   - strong information architecture
+   - readable density
+   - obvious save state
+   - obvious account/security boundaries
+   - no fake dashboard/KPI treatment
+   - same underlying functionality as handheld
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   SETTINGS WORKSPACE
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .prefs-page,
+html[data-surface='desktop']
+  .account-page,
+html[data-surface='desktop']
+  .billing-page {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+}
+
+
+/*
+ * Most existing settings pages are intentionally content-constrained.
+ * The desktop shell supplies the width; the settings content supplies
+ * the readable measure.
+ */
+
+html[data-surface='desktop']
+  .prefs-body,
+html[data-surface='desktop']
+  .account-body,
+html[data-surface='desktop']
+  .billing-body {
+  width: min(
+    1180px,
+    calc(100% - 64px)
+  );
+
+  margin:
+    0 auto;
+
+  padding:
+    28px 0 56px;
+}
+
+
+/* --------------------------------------------------------------------------
+   PAGE INTRO
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .prefs-intro,
+html[data-surface='desktop']
+  .account-intro,
+html[data-surface='desktop']
+  .billing-intro {
+  max-width: 720px;
+
+  margin:
+    0 0 28px;
+
+  font-size: 14px;
+  line-height: 1.55;
+
+  color: var(--ink-soft);
+}
+
+
+/* --------------------------------------------------------------------------
+   SECTION STRUCTURE
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .prefs-section,
+html[data-surface='desktop']
+  .account-section,
+html[data-surface='desktop']
+  .billing-section {
+  margin-bottom: 30px;
+}
+
+html[data-surface='desktop']
+  .prefs-section-label,
+html[data-surface='desktop']
+  .account-section-label,
+html[data-surface='desktop']
+  .billing-section-label {
+  margin-bottom: 8px;
+
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+
+  color: var(--ink-faint);
+}
+
+
+/* --------------------------------------------------------------------------
+   PANELS
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .settings-panel {
+  width: 100%;
+
+  border:
+    1px solid var(--line);
+
+  border-radius:
+    var(--radius-md);
+
+  background:
+    var(--paper-raised);
+
+  box-shadow:
+    0 1px 2px
+    rgba(var(--shadow-rgb), 0.025);
+
+  overflow: hidden;
+}
+
+html[data-surface='desktop']
+  .settings-panel + .settings-panel {
+  margin-top: 10px;
+}
+
+html[data-surface='desktop']
+  .settings-panel-title {
+  padding:
+    15px 18px 4px;
+
+  font-size: 14px;
+  font-weight: 750;
+
+  color: var(--ink);
+}
+
+html[data-surface='desktop']
+  .settings-panel-description {
+  padding:
+    0 18px 14px;
+
+  max-width: 760px;
+
+  font-size: 12px;
+  line-height: 1.5;
+
+  color: var(--ink-soft);
+}
+
+
+/* --------------------------------------------------------------------------
+   SETTINGS ROWS
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .settings-row {
+  display: grid;
+
+  grid-template-columns:
+    minmax(220px, 0.85fr)
+    minmax(280px, 1.15fr);
+
+  align-items: center;
+
+  gap: 28px;
+
+  min-height: 64px;
+
+  padding:
+    12px 18px;
+
+  border-top:
+    1px solid var(--line);
+}
+
+html[data-surface='desktop']
+  .settings-row:first-child {
+  border-top: 0;
+}
+
+html[data-surface='desktop']
+  .settings-row-label {
+  min-width: 0;
+}
+
+html[data-surface='desktop']
+  .settings-row-title {
+  font-size: 13px;
+  font-weight: 700;
+
+  color: var(--ink);
+}
+
+html[data-surface='desktop']
+  .settings-row-help {
+  margin-top: 3px;
+
+  max-width: 520px;
+
+  font-size: 11px;
+  line-height: 1.45;
+
+  color: var(--ink-faint);
+}
+
+html[data-surface='desktop']
+  .settings-row-control {
+  min-width: 0;
+
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* --------------------------------------------------------------------------
+   FORM CONTROLS
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .settings-panel input,
+html[data-surface='desktop']
+  .settings-panel textarea,
+html[data-surface='desktop']
+  .settings-panel select {
+  max-width: 480px;
+}
+
+html[data-surface='desktop']
+  .settings-panel textarea {
+  min-height: 110px;
+}
+
+html[data-surface='desktop']
+  .settings-panel input:focus-visible,
+html[data-surface='desktop']
+  .settings-panel textarea:focus-visible,
+html[data-surface='desktop']
+  .settings-panel select:focus-visible {
+  outline:
+    2px solid var(--steel);
+
+  outline-offset: 2px;
+}
+
+
+/* --------------------------------------------------------------------------
+   SEGMENTED CONTROLS
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .segmented {
+  width: fit-content;
+
+  display: inline-flex;
+
+  gap: 2px;
+
+  padding: 3px;
+
+  border:
+    1px solid var(--line);
+
+  border-radius:
+    9px;
+
+  background:
+    rgba(var(--shadow-rgb), 0.035);
+}
+
+html[data-surface='desktop']
+  .segmented-btn {
+  min-height: 32px;
+
+  padding:
+    0 12px;
+
+  border: 0;
+  border-radius: 6px;
+
+  background: transparent;
+
+  color: var(--ink-faint);
+
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+
+  cursor: pointer;
+}
+
+html[data-surface='desktop']
+  .segmented-btn:hover {
+  color: var(--ink);
+}
+
+html[data-surface='desktop']
+  .segmented-btn.active {
+  color: var(--ink);
+
+  background:
+    var(--paper-raised);
+
+  box-shadow:
+    0 1px 3px
+    rgba(var(--shadow-rgb), 0.08);
+}
+
+
+/* --------------------------------------------------------------------------
+   SAVE / STATUS MESSAGES
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .settings-save-status {
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 28px;
+
+  font-size: 11px;
+  font-weight: 650;
+
+  color: var(--ink-soft);
+}
+
+html[data-surface='desktop']
+  .settings-save-status.error {
+  color: var(--hazard);
+}
+
+html[data-surface='desktop']
+  .settings-save-status.success {
+  color: var(--moss-text, var(--moss));
+}
+
+
+/* --------------------------------------------------------------------------
+   ACCOUNT — CONTROL PLANE
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .account-overview {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(260px, 340px);
+
+  gap: 16px;
+
+  margin-bottom: 28px;
+}
+
+html[data-surface='desktop']
+  .account-card {
+  min-width: 0;
+
+  padding:
+    20px;
+
+  border:
+    1px solid var(--line);
+
+  border-radius:
+    var(--radius-md);
+
+  background:
+    var(--paper-raised);
+}
+
+html[data-surface='desktop']
+  .account-card-title {
+  margin: 0 0 5px;
+
+  font-size: 14px;
+  font-weight: 750;
+
+  color: var(--ink);
+}
+
+html[data-surface='desktop']
+  .account-card-description {
+  margin: 0;
+
+  font-size: 12px;
+  line-height: 1.5;
+
+  color: var(--ink-soft);
+}
+
+
+/* --------------------------------------------------------------------------
+   PLAN / BILLING
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .billing-plan-card {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+
+  gap: 24px;
+
+  padding:
+    22px;
+
+  border:
+    1px solid var(--line);
+
+  border-radius:
+    var(--radius-md);
+
+  background:
+    var(--paper-raised);
+}
+
+html[data-surface='desktop']
+  .billing-plan-name {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+
+  color: var(--ink);
+}
+
+html[data-surface='desktop']
+  .billing-plan-meta {
+  margin-top: 5px;
+
+  font-size: 12px;
+
+  color: var(--ink-soft);
+}
+
+html[data-surface='desktop']
+  .billing-plan-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* --------------------------------------------------------------------------
+   BILLING HISTORY
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .billing-history {
+  border:
+    1px solid var(--line);
+
+  border-radius:
+    var(--radius-md);
+
+  overflow: hidden;
+
+  background:
+    var(--paper-raised);
+}
+
+html[data-surface='desktop']
+  .billing-history-row {
+  display: grid;
+
+  grid-template-columns:
+    minmax(180px, 1fr)
+    160px
+    120px
+    auto;
+
+  align-items: center;
+
+  gap: 16px;
+
+  min-height: 54px;
+
+  padding:
+    8px 16px;
+
+  border-top:
+    1px solid var(--line);
+}
+
+html[data-surface='desktop']
+  .billing-history-row:first-child {
+  border-top: 0;
+}
+
+html[data-surface='desktop']
+  .billing-history-header {
+  min-height: 40px;
+
+  background:
+    rgba(var(--shadow-rgb), 0.025);
+
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  color: var(--ink-faint);
+}
+
+
+/* --------------------------------------------------------------------------
+   SECURITY
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .security-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 24px;
+
+  padding:
+    16px 18px;
+
+  border-top:
+    1px solid var(--line);
+}
+
+html[data-surface='desktop']
+  .security-action:first-child {
+  border-top: 0;
+}
+
+html[data-surface='desktop']
+  .security-action-copy {
+  min-width: 0;
+}
+
+html[data-surface='desktop']
+  .security-action-title {
+  font-size: 13px;
+  font-weight: 700;
+
+  color: var(--ink);
+}
+
+html[data-surface='desktop']
+  .security-action-description {
+  margin-top: 3px;
+
+  font-size: 11px;
+  line-height: 1.45;
+
+  color: var(--ink-faint);
+}
+
+
+/* --------------------------------------------------------------------------
+   STORAGE
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop']
+  .storage-meter {
+  width: 100%;
+  max-width: 720px;
+}
+
+html[data-surface='desktop']
+  .storage-meter-track {
+  height: 7px;
+
+  border-radius: 999px;
+
+  overflow: hidden;
+
+  background:
+    var(--line);
+}
+
+html[data-surface='desktop']
+  .storage-meter-fill {
+  height: 100%;
+
+  border-radius: inherit;
+
+  background:
+    var(--steel);
+}
+
+
+/* --------------------------------------------------------------------------
+   LARGE DESKTOP
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 1600px) {
+  html[data-surface='desktop']
+    .prefs-body,
+  html[data-surface='desktop']
+    .account-body,
+  html[data-surface='desktop']
+    .billing-body {
+    width: min(
+      1240px,
+      calc(100% - 96px)
+    );
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   COMPACT DESKTOP
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 960px) and (max-width: 1279px) {
+  html[data-surface='desktop']
+    .prefs-body,
+  html[data-surface='desktop']
+    .account-body,
+  html[data-surface='desktop']
+    .billing-body {
+    width:
+      calc(100% - 40px);
+  }
+
+  html[data-surface='desktop']
+    .settings-row {
+    grid-template-columns:
+      minmax(180px, 0.8fr)
+      minmax(240px, 1.2fr);
+
+    gap: 18px;
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   SAFETY
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 959px) {
+  html[data-surface='desktop']
+    .settings-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  html[data-surface='desktop']
+    .settings-row-control {
+    justify-content: flex-start;
+  }
+
+  html[data-surface='desktop']
+    .account-overview,
+  html[data-surface='desktop']
+    .billing-plan-card {
+    grid-template-columns: 1fr;
+  }
+}
