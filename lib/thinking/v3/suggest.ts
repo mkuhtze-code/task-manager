@@ -31,6 +31,10 @@ import {
   matchWorkLeaf,
   type WorkLeaf,
 } from './workIdentity';
+import {
+  computeRegimeLeafState,
+  expectedMinsForRegimeState,
+} from './regimeLeaf';
 import { shrinkTowardPrior, durationFromSamples } from './stats';
 
 export const MIN_SAMPLES_FOR_SUGGESTION = 2;
@@ -249,30 +253,72 @@ function suggestFromWorkIdentity(
   const n = mins.length;
   if (n < MIN_SAMPLES_FOR_SUGGESTION) return null;
 
-  const dist = durationFromSamples(mins, 'median');
-  if (!dist || dist.expectedMins <= 0) return null;
-
   const floor = opts?.priors?.softFloorMins ?? SYSTEM_DEFAULT_MINS;
   const strength =
     opts?.priors?.priorStrength ?? priorStrengthForCleanN(n);
-  let expected = dist.expectedMins;
   const reasons = [`work identity n=${n}`];
-  if (n < 4) {
-    expected = Math.round(shrinkTowardPrior(expected, floor, n, strength));
-    reasons.push('sparse work leaf; shrunk toward prior');
-  }
   if (hit.leaf.parts.jobId) reasons.push('job-scoped work key');
   if (hit.leaf.parts.placeKey) reasons.push('place-scoped work key');
 
-  const authBand = authorityFromCleanN(n);
-  const authority =
-    authBand === 'established'
-      ? 'strong'
-      : authBand === 'forming'
-        ? 'suggest'
-        : 'observe';
-  const confidence =
-    authBand === 'established' ? 'high' : authBand === 'forming' ? 'medium' : 'low';
+  // S3: regime leaf state when timed clean samples exist.
+  let expected: number;
+  let interval: { low: number; high: number } | undefined;
+  let authority: string;
+  let confidence: 'low' | 'medium' | 'high';
+
+  const timed = hit.leaf.timedClean ?? [];
+  if (timed.length >= 4) {
+    const state = computeRegimeLeafState(
+      timed.map((t) => ({ mins: t.mins, completedAt: t.completedAt }))
+    );
+    const reg = expectedMinsForRegimeState(
+      timed.map((t) => ({ mins: t.mins, completedAt: t.completedAt })),
+      state
+    );
+    if (reg.expectedMins == null || reg.expectedMins <= 0) return null;
+    expected = reg.expectedMins;
+    if (reg.interval) interval = reg.interval;
+    reasons.push(...reg.reasons);
+    if (reg.phase === 'shifting') {
+      authority = 'contested';
+      confidence = 'low';
+    } else if (reg.phase === 'post_shift') {
+      authority = reg.authority === 'suggest' ? 'suggest' : 'observe';
+      confidence = 'medium';
+    } else {
+      const authBand = authorityFromCleanN(n);
+      authority =
+        authBand === 'established'
+          ? 'strong'
+          : authBand === 'forming'
+            ? 'suggest'
+            : 'observe';
+      confidence =
+        authBand === 'established'
+          ? 'high'
+          : authBand === 'forming'
+            ? 'medium'
+            : 'low';
+    }
+  } else {
+    const dist = durationFromSamples(mins, 'median');
+    if (!dist || dist.expectedMins <= 0) return null;
+    expected = dist.expectedMins;
+    interval = dist.interval ?? undefined;
+    if (n < 4) {
+      expected = Math.round(shrinkTowardPrior(expected, floor, n, strength));
+      reasons.push('sparse work leaf; shrunk toward prior');
+    }
+    const authBand = authorityFromCleanN(n);
+    authority =
+      authBand === 'established'
+        ? 'strong'
+        : authBand === 'forming'
+          ? 'suggest'
+          : 'observe';
+    confidence =
+      authBand === 'established' ? 'high' : authBand === 'forming' ? 'medium' : 'low';
+  }
 
   const label =
     hit.leaf.parts.lexicalFingerprint.replace(/\|/g, ' ').trim() ||
@@ -286,7 +332,7 @@ function suggestFromWorkIdentity(
     source: 'measured',
     level: 'work',
     modelVersion: MODEL_VERSION,
-    interval: dist.interval,
+    interval,
     authority,
     reasons,
   };
