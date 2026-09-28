@@ -19,6 +19,7 @@ import {
   durationFromSamples,
   median,
 } from './stats';
+import { priorStrengthForCleanN } from './learningRates';
 import { calibrateFromPairs } from './calibrationMetrics';
 import type {
   Authority,
@@ -322,11 +323,16 @@ export function lookupHierarchicalDuration(
   model: PersonalModel,
   opts?: { priorStrength?: number }
 ): HierarchicalDuration {
-  const priorStrength = opts?.priorStrength ?? DEFAULT_PRIOR_STRENGTH;
   const softFloor = model.state.priors.softFloorMins;
   const reasons: string[] = [];
 
   const match = matchCluster(text, model.clusters, model.matchThreshold);
+
+  // FP-1: adaptive leaf rate — early clean-n learns faster (lower prior strength).
+  const leafN = match?.cluster.durationSamples.length ?? 0;
+  const priorStrength =
+    opts?.priorStrength ??
+    priorStrengthForCleanN(leafN);
 
   if (match) {
     const c = match.cluster;
@@ -498,3 +504,6 @@ export function modelVersions() {
     featureVersion: FEATURE_VERSION,
   };
 }
+
+export { priorStrengthForCleanN, authorityFromCleanN } from './learningRates';
+export type { BeliefAuthority } from './learningRates';
