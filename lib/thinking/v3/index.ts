@@ -1,5 +1,5 @@
 // lib/thinking/v3/index.ts
-// Public surface — Phase 1–6 behaviour model.
+// Public surface — Phase 1–7 fit foundation.
 
 export type {
   Confidence,
@@ -193,3 +193,6 @@ export {
   lookupClusterBehaviour,
   behaviourSamplesFromHistory,
 } from './behaviour';
+
+export type { FitInput, FitDecision } from './fit';
+export { decideTaskFit } from './fit';
