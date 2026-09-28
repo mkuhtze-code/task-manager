@@ -1,10 +1,19 @@
 import type { SortMode, Task } from '@/lib/taskTypes';
 
+/**
+ * Order tasks for display.
+ *
+ * capacity_first: due-today first, then fit timed work into remaining capacity.
+ * Optional preferredOrderIds (from planCapacitySequence) aligns list order with
+ * the same urgency/fit ranking used for overflow/carry — so the day rail and
+ * auto-carry share one pressure model.
+ */
 export function sortTasks(
   list: Task[],
   mode: SortMode,
   remainingForTaskFn?: (t: Task) => number,
-  taskCapacity?: number
+  taskCapacity?: number,
+  preferredOrderIds?: string[] | null
 ): Task[] {
   const arr = [...list];
 
@@ -37,10 +46,22 @@ export function sortTasks(
     const timed = arr.filter((t) => t.estimate_mins > 0);
     const listItems = arr.filter((t) => t.estimate_mins <= 0);
 
+    let orderedTimed = timed;
+    if (preferredOrderIds && preferredOrderIds.length > 0) {
+      const rank = new Map(preferredOrderIds.map((id, i) => [id, i]));
+      const fallback = preferredOrderIds.length;
+      orderedTimed = [...timed].sort((a, b) => {
+        const ra = rank.has(a.id) ? (rank.get(a.id) as number) : fallback + a.order_index;
+        const rb = rank.has(b.id) ? (rank.get(b.id) as number) : fallback + b.order_index;
+        if (ra !== rb) return ra - rb;
+        return a.order_index - b.order_index;
+      });
+    }
+
     let cumulative = 0;
     const fits: Task[] = [];
     const overflow: Task[] = [];
-    for (const t of timed) {
+    for (const t of orderedTimed) {
       cumulative += remainingForTaskFn(t);
       if (cumulative <= taskCapacity) {
         fits.push(t);
