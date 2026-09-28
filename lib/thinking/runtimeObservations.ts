@@ -4,8 +4,8 @@
  * Capture (duration chip), capacity (dayFit), and Jobs remaining should all
  * read the same match: duration, same-day behaviour, place, and label.
  *
- * Phase 6: includes UserBehaviourModel (bias, carry, variance) built once
- * per history load — not per-task.
+ * Phase 6–7: UserBehaviourModel + PersonalModel (hierarchical duration)
+ * built once per history load — not per-task.
  *
  * Pure and deterministic. Never invents jobs or places.
  */
@@ -26,10 +26,17 @@ import {
   type UserBehaviourModel,
   type ClusterBehaviourSlice,
 } from '@/lib/thinking/v3/behaviour';
+import {
+  buildPersonalModel,
+  lookupHierarchicalDuration,
+  historySampleFromRow,
+  type PersonalModel,
+  type HierarchicalDuration,
+} from '@/lib/thinking/v3/model';
 
 const MATCH_THRESHOLD = 0.4;
 const MIN_BEHAVIOUR_SAMPLES = 2;
-/** Cap history fed into behaviour + V1 clusters for runtime cost. */
+/** Cap history fed into behaviour + clusters for runtime cost. */
 const RUNTIME_HISTORY_CAP = 200;
 
 export type ClusterBehaviour = {
@@ -50,6 +57,8 @@ export type RuntimeObservations = {
   flexibleSameDayRate: number;
   /** Phase 6 — estimation bias, carry patterns, variance. */
   behaviour: UserBehaviourModel | null;
+  /** Phase 7 — hierarchical duration model (built once). */
+  personalModel: PersonalModel | null;
 };
 
 export type TaskSignals = {
@@ -64,6 +73,8 @@ export type TaskSignals = {
   clusterBehaviour: ClusterBehaviourSlice | null;
   /** Soft capacity scale from estimation bias (1 = neutral). */
   capacityBiasScale: number;
+  /** Phase 7 hierarchical duration belief. */
+  hierarchicalDuration: HierarchicalDuration | null;
 };
 
 function tokenize(text: string): Set<string> {
@@ -135,7 +146,6 @@ export function capacityBiasScaleFromBehaviour(
   const logBias =
     slice?.estimationLogBias ?? behaviour.estimationLogBias;
   if (logBias == null || !Number.isFinite(logBias)) return 1;
-  // Half-strength exp — avoid over-correcting sparse evidence.
   const scale = Math.exp(logBias * 0.5);
   return Math.min(1.45, Math.max(0.75, scale));
 }
@@ -179,6 +189,9 @@ export function buildRuntimeObservations(
     }
   }
 
+  const updatedAt = options?.updatedAt ?? '1970-01-01T00:00:00.000Z';
+  const userId = options?.userId ?? 'runtime';
+
   let behaviour: UserBehaviourModel | null = null;
   if (capped.length >= 2) {
     const samples = behaviourSamplesFromHistory(
@@ -192,14 +205,38 @@ export function buildRuntimeObservations(
       }))
     );
     behaviour = buildUserBehaviourModel({
-      userId: options?.userId ?? 'runtime',
+      userId,
       samples,
-      updatedAt: options?.updatedAt ?? '1970-01-01T00:00:00.000Z',
+      updatedAt,
       timezone: options?.timezone,
     });
   }
 
-  // Prefer observed rates from behaviour model when strong enough.
+  let personalModel: PersonalModel | null = null;
+  if (capped.length >= 1) {
+    const samples = capped.map((h) =>
+      historySampleFromRow({
+        text: h.text,
+        actual_mins: h.actual_mins,
+        created_at: h.created_at,
+        completed_at: h.completed_at,
+        job_id: h.job_id,
+        location_text: h.location_text,
+      })
+    );
+    personalModel = buildPersonalModel({
+      userId,
+      samples,
+      priors: {
+        softFloorMins: options?.softFloorMins ?? 30,
+        anchorSameDayRate: options?.anchorSameDayRate ?? 0.55,
+        flexibleSameDayRate: options?.flexibleSameDayRate ?? 0.4,
+        blendScale: options?.blendScale ?? 1,
+      },
+      updatedAt,
+    });
+  }
+
   let anchorSameDayRate = options?.anchorSameDayRate ?? 0.55;
   let flexibleSameDayRate = options?.flexibleSameDayRate ?? 0.4;
   if (
@@ -233,6 +270,7 @@ export function buildRuntimeObservations(
     anchorSameDayRate,
     flexibleSameDayRate,
     behaviour,
+    personalModel,
   };
 }
 
@@ -250,6 +288,7 @@ export function lookupTaskSignals(
     explainBehaviour: null,
     clusterBehaviour: null,
     capacityBiasScale: 1,
+    hierarchicalDuration: null,
   };
 
   const trimmed = text.trim();
@@ -286,8 +325,21 @@ export function lookupTaskSignals(
     }
   }
 
+  const hierarchicalDuration = runtime.personalModel
+    ? lookupHierarchicalDuration(trimmed, runtime.personalModel)
+    : null;
+
   let explainDuration: string | null = null;
-  if (estimate) {
+  if (hierarchicalDuration && hierarchicalDuration.distribution.sampleSize > 0) {
+    const m = hierarchicalDuration.distribution.expectedMins;
+    const n = hierarchicalDuration.distribution.sampleSize;
+    if (hierarchicalDuration.level === 'cluster') {
+      explainDuration = `≈ ${m}m — ${n} similar (${hierarchicalDuration.clusterLabel ?? 'cluster'})`;
+    } else if (hierarchicalDuration.level === 'user') {
+      explainDuration = `≈ ${m}m typical for you`;
+    }
+  }
+  if (!explainDuration && estimate) {
     if (estimate.source === 'lifecycle') {
       explainDuration = `≈ ${estimate.suggestedMins}m — from how this work usually behaves`;
     } else if (estimate.source === 'mixed') {
@@ -295,7 +347,7 @@ export function lookupTaskSignals(
     } else {
       explainDuration = `≈ ${estimate.suggestedMins}m — ${estimate.sampleCount} similar`;
     }
-  } else if (runtime.personalMedian != null) {
+  } else if (!explainDuration && runtime.personalMedian != null) {
     explainDuration = `≈ ${runtime.personalMedian}m typical for you`;
   }
 
@@ -323,5 +375,6 @@ export function lookupTaskSignals(
     explainBehaviour,
     clusterBehaviour,
     capacityBiasScale,
+    hierarchicalDuration,
   };
 }
