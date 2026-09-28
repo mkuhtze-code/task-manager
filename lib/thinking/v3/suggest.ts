@@ -16,12 +16,22 @@ import {
   lookupContextualDuration,
   type DurationContext,
 } from './contextDuration';
-import { lookupHierarchicalDuration, type HierarchicalDuration } from './model';
+import {
+  lookupHierarchicalDuration,
+  type HierarchicalDuration,
+  SYSTEM_DEFAULT_MINS,
+} from './model';
 import type { ContextualDuration } from './contextDuration';
 import type { HistorySample } from './clusters';
 import type { Confidence } from './types';
 import { MODEL_VERSION } from './types';
-import { priorStrengthForCleanN } from './learningRates';
+import { priorStrengthForCleanN, authorityFromCleanN } from './learningRates';
+import {
+  buildWorkLeaves,
+  matchWorkLeaf,
+  type WorkLeaf,
+} from './workIdentity';
+import { shrinkTowardPrior, durationFromSamples } from './stats';
 
 export const MIN_SAMPLES_FOR_SUGGESTION = 2;
 
@@ -48,6 +58,10 @@ export type SuggestHistoryRow = {
   completed_at?: string | null;
   job_id?: string | null;
   location_text?: string | null;
+  task_id?: string | null;
+  subtask_count?: number | null;
+  /** S1: when true, excluded from work-leaf clean duration. */
+  duration_contaminated?: boolean | null;
 };
 
 export type SuggestEstimateOpts = {
@@ -105,6 +119,7 @@ let modelCache: ModelCacheEntry | null = null;
 /** Test / hot-reload helper. */
 export function clearPersonalModelCache(): void {
   modelCache = null;
+  workLeafCache = null;
 }
 
 function resolveModel(
@@ -174,6 +189,109 @@ function fromLookup(
   };
 }
 
+
+type WorkLeafCacheEntry = {
+  key: string;
+  leaves: WorkLeaf[];
+};
+
+let workLeafCache: WorkLeafCacheEntry | null = null;
+
+function resolveWorkLeaves(history: SuggestHistoryRow[]): WorkLeaf[] {
+  const key = historyFingerprint(history);
+  if (workLeafCache && workLeafCache.key === key) return workLeafCache.leaves;
+  const leafSamples = (
+    history.length > MODEL_HISTORY_CAP
+      ? history.slice(0, MODEL_HISTORY_CAP)
+      : history
+  ).map((h) => ({
+    text: h.text,
+    actualMins:
+      typeof h.actual_mins === 'number' && h.actual_mins > 0
+        ? h.actual_mins
+        : null,
+    completedAt: h.completed_at ?? null,
+    createdAt: h.created_at ?? null,
+    jobId: h.job_id ?? null,
+    locationText: h.location_text ?? null,
+    taskId: h.task_id ?? null,
+    subtaskCount: h.subtask_count ?? null,
+    durationContaminated: Boolean(h.duration_contaminated),
+  }));
+  const leaves = buildWorkLeaves(leafSamples);
+  workLeafCache = { key, leaves };
+  return leaves;
+}
+
+/**
+ * S1: duration from work identity leaf (job + place + lexical fingerprint).
+ * Preferred over text-cluster hierarchical when a leaf has enough clean samples.
+ */
+function suggestFromWorkIdentity(
+  text: string,
+  history: SuggestHistoryRow[],
+  opts?: SuggestEstimateOpts
+): V3EstimateSuggestion | null {
+  const leaves = resolveWorkLeaves(history);
+  if (leaves.length === 0) return null;
+
+  const hit = matchWorkLeaf(
+    {
+      text,
+      jobId: opts?.context?.jobId ?? null,
+      locationText: opts?.context?.locationText ?? null,
+    },
+    leaves
+  );
+  if (!hit) return null;
+
+  const mins = hit.leaf.cleanDurationMins;
+  const n = mins.length;
+  if (n < MIN_SAMPLES_FOR_SUGGESTION) return null;
+
+  const dist = durationFromSamples(mins, 'median');
+  if (!dist || dist.expectedMins <= 0) return null;
+
+  const floor = opts?.priors?.softFloorMins ?? SYSTEM_DEFAULT_MINS;
+  const strength =
+    opts?.priors?.priorStrength ?? priorStrengthForCleanN(n);
+  let expected = dist.expectedMins;
+  const reasons = [`work identity n=${n}`];
+  if (n < 4) {
+    expected = Math.round(shrinkTowardPrior(expected, floor, n, strength));
+    reasons.push('sparse work leaf; shrunk toward prior');
+  }
+  if (hit.leaf.parts.jobId) reasons.push('job-scoped work key');
+  if (hit.leaf.parts.placeKey) reasons.push('place-scoped work key');
+
+  const authBand = authorityFromCleanN(n);
+  const authority =
+    authBand === 'established'
+      ? 'strong'
+      : authBand === 'forming'
+        ? 'suggest'
+        : 'observe';
+  const confidence =
+    authBand === 'established' ? 'high' : authBand === 'forming' ? 'medium' : 'low';
+
+  const label =
+    hit.leaf.parts.lexicalFingerprint.replace(/\|/g, ' ').trim() ||
+    'this kind of work';
+
+  return {
+    suggestedMins: Math.max(1, Math.round(expected)),
+    confidence,
+    sampleCount: n,
+    matchedLabel: label,
+    source: 'measured',
+    level: 'work',
+    modelVersion: MODEL_VERSION,
+    interval: dist.interval,
+    authority,
+    reasons,
+  };
+}
+
 /**
  * Duration suggestion from the V3 personal model.
  * Model is built once per history fingerprint and reused across lookups.
@@ -185,6 +303,10 @@ export function suggestEstimateV3(
 ): V3EstimateSuggestion | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
+
+  // S1: work identity leaf first (job/place/fingerprint) — not raw text cluster.
+  const fromWork = suggestFromWorkIdentity(trimmed, history, opts);
+  if (fromWork) return fromWork;
 
   const { model, samples } = resolveModel(history, opts);
 
