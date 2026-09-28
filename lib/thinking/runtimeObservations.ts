@@ -1,1 +1,327 @@
-PLACEHOLDER
+/**
+ * Runtime observations — one shared slice of history for daily decisions.
+ *
+ * Capture (duration chip), capacity (dayFit), and Jobs remaining should all
+ * read the same match: duration, same-day behaviour, place, and label.
+ *
+ * Phase 6: includes UserBehaviourModel (bias, carry, variance) built once
+ * per history load — not per-task.
+ *
+ * Pure and deterministic. Never invents jobs or places.
+ */
+
+import {
+  buildClusters,
+  suggestEstimate,
+  type HistoricalTask,
+  type TaskCluster,
+  type EstimateSuggestion,
+  type ClusterLocation,
+} from '@/lib/taskIntelligence';
+import { isReliableActualMins } from '@/lib/thinking/durationQuality';
+import {
+  buildUserBehaviourModel,
+  behaviourSamplesFromHistory,
+  lookupClusterBehaviour,
+  type UserBehaviourModel,
+  type ClusterBehaviourSlice,
+} from '@/lib/thinking/v3/behaviour';
+
+const MATCH_THRESHOLD = 0.4;
+const MIN_BEHAVIOUR_SAMPLES = 2;
+/** Cap history fed into behaviour + V1 clusters for runtime cost. */
+const RUNTIME_HISTORY_CAP = 200;
+
+export type ClusterBehaviour = {
+  sameDayRate: number;
+  samples: number;
+};
+
+export type RuntimeObservations = {
+  history: HistoricalTask[];
+  clusters: TaskCluster[];
+  personalMedian: number | null;
+  behaviourByLabel: Record<string, ClusterBehaviour>;
+  softFloorMins: number;
+  /** Scales lean on learned duration (from calibration). */
+  blendScale: number;
+  calibrationExplain: string | null;
+  anchorSameDayRate: number;
+  flexibleSameDayRate: number;
+  /** Phase 6 — estimation bias, carry patterns, variance. */
+  behaviour: UserBehaviourModel | null;
+};
+
+export type TaskSignals = {
+  estimate: EstimateSuggestion | null;
+  sameDayRate: number | null;
+  sameDaySamples: number;
+  location: ClusterLocation | null;
+  matchedLabel: string | null;
+  explainDuration: string | null;
+  explainBehaviour: string | null;
+  /** Phase 6 cluster behaviour slice when matched. */
+  clusterBehaviour: ClusterBehaviourSlice | null;
+  /** Soft capacity scale from estimation bias (1 = neutral). */
+  capacityBiasScale: number;
+};
+
+function tokenize(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 1)
+  );
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter++;
+  return inter / (a.size + b.size - inter);
+}
+
+function sameCalendarDay(a: string, b: string): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+}
+
+function findBestCluster(
+  inputTokens: Set<string>,
+  clusters: TaskCluster[]
+): { cluster: TaskCluster; score: number } | null {
+  let best: TaskCluster | null = null;
+  let bestScore = 0;
+  for (const c of clusters) {
+    const score = jaccard(inputTokens, c.tokens);
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  if (!best || bestScore < MATCH_THRESHOLD) return null;
+  return { cluster: best, score: bestScore };
+}
+
+function personalMedianActual(history: HistoricalTask[]): number | null {
+  const vals = history
+    .map((h) => h.actual_mins)
+    .filter((m): m is number => isReliableActualMins(m))
+    .sort((a, b) => a - b);
+  if (vals.length === 0) return null;
+  const mid = Math.floor(vals.length / 2);
+  return vals.length % 2 === 0
+    ? Math.round((vals[mid - 1] + vals[mid]) / 2)
+    : vals[mid];
+}
+
+/**
+ * Dampened capacity scale from log-bias.
+ * Positive bias (actual > estimate) → scale > 1 so the day plans more honestly.
+ */
+export function capacityBiasScaleFromBehaviour(
+  behaviour: UserBehaviourModel | null,
+  text: string
+): number {
+  if (!behaviour || behaviour.calibrationSampleCount < 3) return 1;
+  const slice = lookupClusterBehaviour(text, behaviour);
+  const logBias =
+    slice?.estimationLogBias ?? behaviour.estimationLogBias;
+  if (logBias == null || !Number.isFinite(logBias)) return 1;
+  // Half-strength exp — avoid over-correcting sparse evidence.
+  const scale = Math.exp(logBias * 0.5);
+  return Math.min(1.45, Math.max(0.75, scale));
+}
+
+export function buildRuntimeObservations(
+  history: HistoricalTask[],
+  options?: {
+    softFloorMins?: number;
+    blendScale?: number;
+    calibrationExplain?: string | null;
+    anchorSameDayRate?: number;
+    flexibleSameDayRate?: number;
+    userId?: string;
+    updatedAt?: string;
+    timezone?: string;
+  }
+): RuntimeObservations {
+  const capped =
+    history.length > RUNTIME_HISTORY_CAP
+      ? history.slice(0, RUNTIME_HISTORY_CAP)
+      : history;
+
+  const clusters = buildClusters(capped);
+  const behaviourByLabel: Record<string, ClusterBehaviour> = {};
+
+  for (const cluster of clusters) {
+    let matched = 0;
+    let sameDay = 0;
+    for (const h of capped) {
+      const score = jaccard(cluster.tokens, tokenize(h.text));
+      if (score < MATCH_THRESHOLD) continue;
+      if (!(h.created_at && h.completed_at)) continue;
+      matched++;
+      if (sameCalendarDay(h.created_at, h.completed_at)) sameDay++;
+    }
+    if (matched >= MIN_BEHAVIOUR_SAMPLES) {
+      behaviourByLabel[cluster.label] = {
+        sameDayRate: sameDay / matched,
+        samples: matched,
+      };
+    }
+  }
+
+  let behaviour: UserBehaviourModel | null = null;
+  if (capped.length >= 2) {
+    const samples = behaviourSamplesFromHistory(
+      capped.map((h) => ({
+        text: h.text,
+        actual_mins: h.actual_mins,
+        estimate_mins: h.estimate_mins,
+        created_at: h.created_at,
+        completed_at: h.completed_at,
+        job_id: h.job_id,
+      }))
+    );
+    behaviour = buildUserBehaviourModel({
+      userId: options?.userId ?? 'runtime',
+      samples,
+      updatedAt: options?.updatedAt ?? '1970-01-01T00:00:00.000Z',
+      timezone: options?.timezone,
+    });
+  }
+
+  // Prefer observed rates from behaviour model when strong enough.
+  let anchorSameDayRate = options?.anchorSameDayRate ?? 0.55;
+  let flexibleSameDayRate = options?.flexibleSameDayRate ?? 0.4;
+  if (
+    behaviour &&
+    behaviour.sameDaySamples >= 5 &&
+    behaviour.sameDayRate != null
+  ) {
+    const r = behaviour.sameDayRate;
+    anchorSameDayRate = Math.min(0.75, Math.max(0.5, r + 0.1));
+    flexibleSameDayRate = Math.max(0.25, Math.min(0.45, r - 0.15));
+  }
+
+  let blendScale = options?.blendScale ?? 1;
+  if (
+    behaviour &&
+    behaviour.calibrationSampleCount >= 4 &&
+    behaviour.estimationLogBias != null &&
+    behaviour.estimationLogBias > 0.08
+  ) {
+    blendScale = Math.min(1.25, blendScale * 1.1);
+  }
+
+  return {
+    history: capped,
+    clusters,
+    personalMedian: personalMedianActual(capped),
+    behaviourByLabel,
+    softFloorMins: options?.softFloorMins ?? 30,
+    blendScale,
+    calibrationExplain: options?.calibrationExplain ?? null,
+    anchorSameDayRate,
+    flexibleSameDayRate,
+    behaviour,
+  };
+}
+
+export function lookupTaskSignals(
+  text: string,
+  runtime: RuntimeObservations
+): TaskSignals {
+  const empty: TaskSignals = {
+    estimate: null,
+    sameDayRate: null,
+    sameDaySamples: 0,
+    location: null,
+    matchedLabel: null,
+    explainDuration: null,
+    explainBehaviour: null,
+    clusterBehaviour: null,
+    capacityBiasScale: 1,
+  };
+
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return empty;
+
+  const estimate = suggestEstimate(trimmed, runtime.history, runtime.clusters);
+  const match = findBestCluster(tokenize(trimmed), runtime.clusters);
+  const matchedLabel = match?.cluster.label ?? estimate?.matchedLabel ?? null;
+  const location = match?.cluster.location ?? null;
+
+  let sameDayRate: number | null = null;
+  let sameDaySamples = 0;
+  if (matchedLabel && runtime.behaviourByLabel[matchedLabel]) {
+    const b = runtime.behaviourByLabel[matchedLabel];
+    sameDayRate = b.sameDayRate;
+    sameDaySamples = b.samples;
+  }
+
+  const clusterBehaviour = runtime.behaviour
+    ? lookupClusterBehaviour(trimmed, runtime.behaviour)
+    : null;
+
+  if (
+    clusterBehaviour &&
+    clusterBehaviour.sameDayRate != null &&
+    clusterBehaviour.sampleCount >= MIN_BEHAVIOUR_SAMPLES
+  ) {
+    if (
+      sameDaySamples < clusterBehaviour.sampleCount ||
+      sameDayRate == null
+    ) {
+      sameDayRate = clusterBehaviour.sameDayRate;
+      sameDaySamples = clusterBehaviour.sampleCount;
+    }
+  }
+
+  let explainDuration: string | null = null;
+  if (estimate) {
+    if (estimate.source === 'lifecycle') {
+      explainDuration = `≈ ${estimate.suggestedMins}m — from how this work usually behaves`;
+    } else if (estimate.source === 'mixed') {
+      explainDuration = `≈ ${estimate.suggestedMins}m — timed samples + how it behaves`;
+    } else {
+      explainDuration = `≈ ${estimate.suggestedMins}m — ${estimate.sampleCount} similar`;
+    }
+  } else if (runtime.personalMedian != null) {
+    explainDuration = `≈ ${runtime.personalMedian}m typical for you`;
+  }
+
+  let explainBehaviour: string | null = null;
+  if (sameDayRate != null && sameDaySamples >= MIN_BEHAVIOUR_SAMPLES) {
+    if (sameDayRate >= runtime.anchorSameDayRate) {
+      explainBehaviour = `Usually finished same day (${Math.round(sameDayRate * 100)}%)`;
+    } else if (sameDayRate < runtime.flexibleSameDayRate) {
+      explainBehaviour = `Often moves forward (${Math.round((1 - sameDayRate) * 100)}% carried)`;
+    }
+  }
+
+  const capacityBiasScale = capacityBiasScaleFromBehaviour(
+    runtime.behaviour,
+    trimmed
+  );
+
+  return {
+    estimate,
+    sameDayRate,
+    sameDaySamples,
+    location,
+    matchedLabel,
+    explainDuration,
+    explainBehaviour,
+    clusterBehaviour,
+    capacityBiasScale,
+  };
+}
