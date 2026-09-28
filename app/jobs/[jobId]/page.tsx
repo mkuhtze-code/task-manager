@@ -463,6 +463,8 @@ export default function JobDetailPage() {
       measuredMins: measured,
       history,
       clusters,
+      startedAt: task?.started_at ?? null,
+      activeMinutes: measured > 0 ? measured : null,
       hints: {
         estimateMins: task?.estimate_mins,
         loggedMins: measured,
