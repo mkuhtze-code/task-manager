@@ -910,3 +910,23 @@ html[data-surface='desktop']
   .surface-nav {
   display: none !important;
 }
+
+
+/* ------------------------------------------------------------------------
+   JOB DETAIL — INTERACTION SAFETY
+   ------------------------------------------------------------------------
+
+   The empty desktop Job detail message is a pseudo-element in the same
+   grid area used by the Job evidence workspace.
+
+   It is visual-only. It MUST NEVER receive pointer events.
+
+   Without this rule the pseudo-element can sit above .job-library and
+   intercept clicks on observations, files, buttons, expanders, media,
+   and other interactive evidence controls.
+   ------------------------------------------------------------------------ */
+
+html[data-surface='desktop']
+  .app-shell.desk-job-detail:not(.has-desk-detail)::after {
+  pointer-events: none;
+}
