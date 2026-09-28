@@ -282,7 +282,7 @@ export function profileTask(
     rt
   );
   const urg = urgencyForTask(task, history, rt);
-  const signals = rt ? lookupTaskSignals(task.text, rt) : null;
+  const signals = rt ? lookupTaskSignals(task.text, rt, { jobId: task.job_id, locationText: task.location_text }) : null;
 
   const fit =
     rt != null
