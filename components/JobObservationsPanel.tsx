@@ -1,8 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import type { Meeting, MeetingMedia, MeetingObservation } from '@/lib/meetingTypes';
+import type {
+  Meeting,
+  MeetingMedia,
+  MeetingObservation,
+} from '@/lib/meetingTypes';
 import { fmtCapturedAt } from '@/lib/meetingCapture';
 import { PhotoImage, AudioNote } from '@/components/MediaRender';
 
@@ -13,27 +18,40 @@ type RolledObservation = MeetingObservation & {
 };
 
 /**
- * Observations from all meetings on this job, viewed in-place on the Job
- * (no navigation away). Meeting attribution stays as metadata on each item.
+ * Observations from all meetings on this job.
+ *
+ * Observations remain meeting evidence, but are surfaced here because
+ * the Job is the convergence point for related work.
+ *
+ * Each observation uses native <details>/<summary> interaction so the
+ * desktop surface does not depend on a parent click handler or fragile
+ * pointer interaction.
  */
 export default function JobObservationsPanel(props: {
   jobId: string;
   userId: string;
-  /** When true, start collapsed (mobile library). */
+  /** When true, start collapsed. */
   defaultCollapsed?: boolean;
 }) {
-  const { jobId, userId, defaultCollapsed = false } = props;
+  const {
+    jobId,
+    userId,
+    defaultCollapsed = false,
+  } = props;
+
   const [items, setItems] = useState<RolledObservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    const { data: meetings, error: mErr } = await supabase
+    const {
+      data: meetings,
+      error: mErr,
+    } = await supabase
       .from('meetings')
       .select('id, text')
       .eq('job_id', jobId)
@@ -45,7 +63,9 @@ export default function JobObservationsPanel(props: {
       return;
     }
 
-    const meetingList = (meetings || []) as Pick<Meeting, 'id' | 'text'>[];
+    const meetingList =
+      (meetings || []) as Pick<Meeting, 'id' | 'text'>[];
+
     if (meetingList.length === 0) {
       setItems([]);
       setLoading(false);
@@ -53,9 +73,18 @@ export default function JobObservationsPanel(props: {
     }
 
     const meetingIds = meetingList.map((m) => m.id);
-    const titleById = new Map(meetingList.map((m) => [m.id, m.text || 'Meeting']));
 
-    const { data: observations, error: oErr } = await supabase
+    const titleById = new Map(
+      meetingList.map((m) => [
+        m.id,
+        m.text || 'Meeting',
+      ])
+    );
+
+    const {
+      data: observations,
+      error: oErr,
+    } = await supabase
       .from('meeting_observations')
       .select('*')
       .eq('user_id', userId)
@@ -68,10 +97,16 @@ export default function JobObservationsPanel(props: {
       return;
     }
 
-    const obs = (observations || []) as MeetingObservation[];
+    const obs =
+      (observations || []) as MeetingObservation[];
+
     const obsIds = obs.map((o) => o.id);
 
-    const mediaByObs = new Map<string, MeetingMedia[]>();
+    const mediaByObs = new Map<
+      string,
+      MeetingMedia[]
+    >();
+
     if (obsIds.length > 0) {
       const { data: media } = await supabase
         .from('meeting_media')
@@ -82,9 +117,15 @@ export default function JobObservationsPanel(props: {
 
       for (const row of (media || []) as MeetingMedia[]) {
         if (!row.observation_id) continue;
-        const list = mediaByObs.get(row.observation_id) || [];
+
+        const list =
+          mediaByObs.get(row.observation_id) || [];
+
         list.push(row);
-        mediaByObs.set(row.observation_id, list);
+        mediaByObs.set(
+          row.observation_id,
+          list
+        );
       }
     }
 
@@ -92,10 +133,14 @@ export default function JobObservationsPanel(props: {
       obs.map((o) => ({
         ...o,
         meeting_id: o.meeting_id,
-        meeting_title: titleById.get(o.meeting_id) || 'Meeting',
-        media: mediaByObs.get(o.id) || [],
+        meeting_title:
+          titleById.get(o.meeting_id) ||
+          'Meeting',
+        media:
+          mediaByObs.get(o.id) || [],
       }))
     );
+
     setLoading(false);
   }, [jobId, userId]);
 
@@ -103,17 +148,41 @@ export default function JobObservationsPanel(props: {
     void load();
   }, [load]);
 
-  function previewLabel(o: RolledObservation): string {
-    if (o.text?.trim()) return o.text.trim();
-    const photos = o.media.filter((m) => m.media_type === 'photo').length;
-    const audios = o.media.filter((m) => m.media_type === 'audio').length;
-    if (photos > 0) return `${photos} photo${photos === 1 ? '' : 's'}`;
-    if (audios > 0) return 'Voice note';
+  function previewLabel(
+    observation: RolledObservation
+  ): string {
+    if (observation.text?.trim()) {
+      return observation.text.trim();
+    }
+
+    const photos =
+      observation.media.filter(
+        (m) => m.media_type === 'photo'
+      ).length;
+
+    const audios =
+      observation.media.filter(
+        (m) => m.media_type === 'audio'
+      ).length;
+
+    if (photos > 0) {
+      return `${photos} photo${
+        photos === 1 ? '' : 's'
+      }`;
+    }
+
+    if (audios > 0) {
+      return 'Voice note';
+    }
+
     return 'Observation';
   }
 
   return (
-    <section className="job-observations-panel" style={{ marginBottom: 12 }}>
+    <section
+      className="job-observations-panel"
+      style={{ marginBottom: 12 }}
+    >
       <button
         type="button"
         className="job-group-label"
@@ -128,88 +197,203 @@ export default function JobObservationsPanel(props: {
           justifyContent: 'space-between',
           alignItems: 'center',
         }}
-        onClick={() => setCollapsed((c) => !c)}
+        onClick={() =>
+          setCollapsed((current) => !current)
+        }
         aria-expanded={!collapsed}
       >
-        <span>Observations · {loading ? '…' : items.length}</span>
-        <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{collapsed ? 'Show' : 'Hide'}</span>
+        <span>
+          Observations ·{' '}
+          {loading ? '…' : items.length}
+        </span>
+
+        <span
+          style={{
+            fontSize: 12,
+            color: 'var(--ink-faint)',
+          }}
+        >
+          {collapsed ? 'Show' : 'Hide'}
+        </span>
       </button>
 
       {!collapsed && (
         <>
-          {error && <p className="meeting-capture-error">{error}</p>}
-          {loading && (
-            <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 8 }}>Loading…</p>
-          )}
-
-          {!loading && items.length === 0 && (
-            <p style={{ fontSize: 13, color: 'var(--ink-faint)', margin: '8px 0 0' }}>
-              Nothing captured in meetings on this job yet.
+          {error && (
+            <p className="meeting-capture-error">
+              {error}
             </p>
           )}
 
-          <ul
-            style={{
-              listStyle: 'none',
-              margin: '8px 0 0',
-              padding: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            {items.map((o) => {
-              const isOpen = openId === o.id;
-              const photos = o.media.filter((m) => m.media_type === 'photo');
-              const audios = o.media.filter((m) => m.media_type === 'audio');
-              return (
-                <li key={o.id}>
-                  <button
-                    type="button"
-                    onClick={() => setOpenId(isOpen ? null : o.id)}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '10px 12px',
-                      border: '1px solid var(--line)',
-                      borderRadius: 'var(--radius-sm)',
-                      background: isOpen ? 'var(--paper-2, rgba(0,0,0,0.03))' : 'var(--paper)',
-                      cursor: 'pointer',
-                      color: 'inherit',
-                      font: 'inherit',
-                    }}
-                    aria-expanded={isOpen}
-                  >
-                    <div style={{ fontSize: 13, lineHeight: 1.4, marginBottom: 4 }}>
-                      {previewLabel(o)}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>
-                      {o.meeting_title} · {fmtCapturedAt(o.captured_at)}
-                      {photos.length > 0 || audios.length > 0
-                        ? ` · ${[
-                            photos.length ? `${photos.length} photo` : null,
-                            audios.length ? `${audios.length} audio` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(', ')}`
-                        : ''}
-                    </div>
-                  </button>
+          {loading && (
+            <p
+              style={{
+                fontSize: 13,
+                color: 'var(--ink-soft)',
+                marginTop: 8,
+              }}
+            >
+              Loading…
+            </p>
+          )}
 
-                  {isOpen && (
-                    <div
+          {!loading && items.length === 0 && (
+            <p
+              style={{
+                fontSize: 13,
+                color: 'var(--ink-faint)',
+                margin: '8px 0 0',
+              }}
+            >
+              Nothing captured in meetings on
+              this job yet.
+            </p>
+          )}
+
+          {!loading && items.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                marginTop: 8,
+              }}
+            >
+              {items.map((observation) => {
+                const photos =
+                  observation.media.filter(
+                    (m) =>
+                      m.media_type === 'photo'
+                  );
+
+                const audios =
+                  observation.media.filter(
+                    (m) =>
+                      m.media_type === 'audio'
+                  );
+
+                return (
+                  <details
+                    key={observation.id}
+                    className="job-observation-item"
+                    style={{
+                      border:
+                        '1px solid var(--line)',
+                      borderRadius:
+                        'var(--radius-sm)',
+                      background:
+                        'var(--paper)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <summary
                       style={{
-                        border: '1px solid var(--line)',
-                        borderTop: 'none',
-                        borderRadius: '0 0 var(--radius-sm) var(--radius-sm)',
-                        padding: '10px 12px 12px',
-                        background: 'var(--paper)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent:
+                          'space-between',
+                        gap: 12,
+                        padding:
+                          '10px 12px',
+                        cursor: 'pointer',
+                        listStyle: 'none',
+                        userSelect: 'none',
                       }}
                     >
-                      {o.text?.trim() && (
-                        <p style={{ fontSize: 14, lineHeight: 1.45, margin: '0 0 10px' }}>
-                          {o.text.trim()}
+                      <span
+                        style={{
+                          minWidth: 0,
+                          flex: 1,
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'block',
+                            fontSize: 13,
+                            lineHeight: 1.4,
+                            overflow: 'hidden',
+                            textOverflow:
+                              'ellipsis',
+                            whiteSpace:
+                              'nowrap',
+                          }}
+                        >
+                          {previewLabel(
+                            observation
+                          )}
+                        </span>
+
+                        <span
+                          style={{
+                            display: 'block',
+                            marginTop: 3,
+                            fontSize: 11,
+                            color:
+                              'var(--ink-faint)',
+                          }}
+                        >
+                          {observation.meeting_title}
+                          {' · '}
+                          {fmtCapturedAt(
+                            observation.captured_at
+                          )}
+
+                          {photos.length > 0 ||
+                          audios.length > 0
+                            ? ` · ${[
+                                photos.length
+                                  ? `${photos.length} photo${
+                                      photos.length ===
+                                      1
+                                        ? ''
+                                        : 's'
+                                    }`
+                                  : null,
+                                audios.length
+                                  ? `${audios.length} audio`
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(
+                                  ', '
+                                )}`
+                            : ''}
+                        </span>
+                      </span>
+
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          flexShrink: 0,
+                          color:
+                            'var(--ink-faint)',
+                          fontSize: 14,
+                        }}
+                      >
+                        +
+                      </span>
+                    </summary>
+
+                    <div
+                      style={{
+                        borderTop:
+                          '1px solid var(--line)',
+                        padding:
+                          '12px',
+                      }}
+                    >
+                      {observation.text?.trim() && (
+                        <p
+                          style={{
+                            fontSize: 14,
+                            lineHeight: 1.5,
+                            margin:
+                              '0 0 12px',
+                            color:
+                              'var(--ink)',
+                          }}
+                        >
+                          {observation.text.trim()}
                         </p>
                       )}
 
@@ -217,70 +401,138 @@ export default function JobObservationsPanel(props: {
                         <div
                           style={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                            gridTemplateColumns:
+                              'repeat(auto-fill, minmax(120px, 1fr))',
                             gap: 8,
-                            marginBottom: audios.length > 0 ? 10 : 0,
+                            marginBottom:
+                              audios.length > 0
+                                ? 12
+                                : 0,
                           }}
                         >
-                          {photos.map((m) => (
-                            <figure key={m.id} style={{ margin: 0, position: 'relative' }}>
+                          {photos.map((media) => (
+                            <figure
+                              key={media.id}
+                              style={{
+                                margin: 0,
+                              }}
+                            >
                               <div
                                 style={{
                                   borderRadius: 8,
-                                  overflow: 'hidden',
+                                  overflow:
+                                    'hidden',
                                   aspectRatio: '1',
-                                  background: 'var(--line)',
+                                  background:
+                                    'var(--line)',
                                 }}
                               >
                                 <PhotoImage
-                                  uri={m.local_uri}
-                                  storagePath={m.storage_path}
-                                  alt={`Photo from ${o.meeting_title}`}
+                                  uri={
+                                    media.local_uri
+                                  }
+                                  storagePath={
+                                    media.storage_path
+                                  }
+                                  alt={`Photo from ${observation.meeting_title}`}
                                   className="job-obs-photo"
                                   eager
                                 />
                               </div>
+
                               <figcaption
                                 style={{
-                                  fontSize: 10,
-                                  color: 'var(--ink-faint)',
                                   marginTop: 4,
+                                  fontSize: 10,
                                   lineHeight: 1.3,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
+                                  color:
+                                    'var(--ink-faint)',
                                 }}
-                                title={o.meeting_title}
                               >
-                                {o.meeting_title}
+                                {
+                                  observation.meeting_title
+                                }
                               </figcaption>
                             </figure>
                           ))}
                         </div>
                       )}
 
-                      {audios.map((m) => (
-                        <div key={m.id} style={{ marginTop: 8 }}>
+                      {audios.map((media) => (
+                        <div
+                          key={media.id}
+                          style={{
+                            marginTop: 8,
+                          }}
+                        >
                           <AudioNote
-                            uri={m.local_uri}
-                            storagePath={m.storage_path}
+                            uri={
+                              media.local_uri
+                            }
+                            storagePath={
+                              media.storage_path
+                            }
                             className="media-audio"
                           />
-                          <div style={{ fontSize: 10, color: 'var(--ink-faint)', marginTop: 2 }}>
-                            {o.meeting_title}
+
+                          <div
+                            style={{
+                              marginTop: 3,
+                              fontSize: 10,
+                              color:
+                                'var(--ink-faint)',
+                            }}
+                          >
+                            {
+                              observation.meeting_title
+                            }
                           </div>
                         </div>
                       ))}
 
-                      <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '10px 0 0' }}>
-                        From meeting · {o.meeting_title}
-                      </p>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems:
+                            'center',
+                          justifyContent:
+                            'space-between',
+                          gap: 10,
+                          marginTop: 12,
+                          paddingTop: 10,
+                          borderTop:
+                            '1px solid var(--line)',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color:
+                              'var(--ink-faint)',
+                          }}
+                        >
+                          From meeting ·{' '}
+                          {
+                            observation.meeting_title
+                          }
+                        </span>
+
+                        <Link
+                          href={`/meetings/${observation.meeting_id}`}
+                          className="meeting-pill meeting-pill--quiet"
+                          onClick={(event) =>
+                            event.stopPropagation()
+                          }
+                        >
+                          Open meeting
+                        </Link>
+                      </div>
                     </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                  </details>
+                );
+              })}
+            </div>
+          )}
         </>
       )}
     </section>
