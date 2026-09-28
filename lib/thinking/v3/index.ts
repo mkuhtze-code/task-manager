@@ -281,3 +281,22 @@ export {
   matchWorkLeaf,
   workKeyFromHistoryRow,
 } from './workIdentity';
+
+export type {
+  TrainingChannelTag,
+  TripleCalibrationPair,
+  HorizonTriple,
+  TripleCalibrationProgression,
+} from './tripleCalibration';
+export {
+  OVERRIDE_RELATIVE_EPSILON,
+  isCleanDoneChannel,
+  isOverride,
+  modelPairsFromTriple,
+  intentPairsFromTriple,
+  overrideRateFromPairs,
+  tripleAtHorizon,
+  tripleCalibrationProgression,
+  intentResidualBias,
+  modelOnlyProgressionFromLegacy,
+} from './tripleCalibration';
