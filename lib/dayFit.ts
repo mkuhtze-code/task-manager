@@ -4,7 +4,7 @@
  *
  * Deterministic. No AI. Tool conforms to the user.
  *
- * Phase 6: capacity bias from UserBehaviourModel (via runtime observations).
+ * Phase 6–8: capacity bias, fit, sequence-aware overflow under calendar pressure.
  */
 
 import {
@@ -21,6 +21,12 @@ import {
   type RuntimeObservations,
 } from '@/lib/thinking/runtimeObservations';
 import { decideTaskFit, type FitDecision } from '@/lib/thinking/v3/fit';
+import {
+  minsToNextCommitment,
+  meetingDensityInWindow,
+  planCapacitySequence,
+  sequenceItemFromProfile,
+} from '@/lib/thinking/v3/sequence';
 
 export type { RuntimeObservations } from '@/lib/thinking/runtimeObservations';
 export { buildRuntimeObservations, lookupTaskSignals } from '@/lib/thinking/runtimeObservations';
@@ -41,13 +47,20 @@ export type DayFitProfile = {
   inferred: boolean;
   behaviourHint: string | null;
   protectFromCarry: boolean;
-  /** Phase 7 foundation — optional fit decision. */
+  /** Phase 7+ — optional fit decision. */
   fit?: FitDecision | null;
 };
 
 export type OverflowCarryPlan = {
   carryIds: string[];
   message: string;
+};
+
+export type ProfileCalendarOpts = {
+  remainingWindowMins?: number | null;
+  commitments?: Array<{ start: Date; end: Date }>;
+  now?: Date;
+  workEndMins?: number;
 };
 
 function tokenize(text: string): Set<string> {
@@ -245,14 +258,26 @@ export function profileTask(
   history: HistoricalTask[],
   clusters?: TaskCluster[],
   runtime?: RuntimeObservations | null,
-  remainingWindowMins?: number | null
+  remainingWindowMins?: number | null,
+  calendarOpts?: ProfileCalendarOpts | null
 ): DayFitProfile {
   const rt = runtime ?? null;
+  const now = calendarOpts?.now ?? new Date();
+  const window =
+    calendarOpts?.remainingWindowMins ?? remainingWindowMins ?? null;
+  const commitments = calendarOpts?.commitments ?? [];
+  const nextCommit =
+    commitments.length > 0 ? minsToNextCommitment(now, commitments) : null;
+  const density =
+    calendarOpts?.workEndMins != null && commitments.length > 0
+      ? meetingDensityInWindow(now, calendarOpts.workEndMins, commitments)
+      : null;
+
   const cap = capacityMinsForTask(
     task,
     history,
     clusters ?? rt?.clusters,
-    Date.now(),
+    now.getTime(),
     rt
   );
   const urg = urgencyForTask(task, history, rt);
@@ -262,7 +287,7 @@ export function profileTask(
     rt != null
       ? decideTaskFit({
           capacityMins: cap.mins,
-          remainingWindowMins: remainingWindowMins ?? null,
+          remainingWindowMins: window,
           sameDayRate: signals?.sameDayRate ?? null,
           protectFromCarry: urg.protectFromCarry,
           dueToday: Boolean(task.due_today),
@@ -275,9 +300,9 @@ export function profileTask(
           duration: signals?.hierarchicalDuration ?? null,
           capacityBiasScale: signals?.capacityBiasScale ?? 1,
           calendar: {
-            remainingWindowMins: remainingWindowMins ?? null,
-            minsToNextCommitment: null,
-            meetingDensity: null,
+            remainingWindowMins: window,
+            minsToNextCommitment: nextCommit,
+            meetingDensity: density,
           },
         })
       : null;
@@ -301,6 +326,10 @@ export function planOverflowCarry(params: {
   incomingCostMins: number;
   protectId?: string | null;
   workDays?: number[];
+  /** Phase 8 — fixed calendar blocks for commitment pressure. */
+  commitments?: Array<{ start: Date; end: Date }>;
+  now?: Date;
+  workEndMins?: number;
 }): OverflowCarryPlan {
   const {
     openTasks,
@@ -317,56 +346,65 @@ export function planOverflowCarry(params: {
   const clusterList = clusters ?? runtime?.clusters;
 
   const window = Math.max(0, remainingWindowMins);
+  const calendarOpts = {
+    remainingWindowMins: window,
+    commitments: params.commitments,
+    now: params.now,
+    workEndMins: params.workEndMins,
+  };
 
   const profiles = openTasks.map((t) => ({
     task: t,
-    profile: profileTask(t, history, clusterList, runtime, window),
+    profile: profileTask(t, history, clusterList, runtime, window, calendarOpts),
   }));
 
-  let load =
-    profiles.reduce((s, p) => s + p.profile.capacityMins, 0) +
-    Math.max(0, incomingCostMins);
+  const sequenceItems = profiles.map((p) =>
+    sequenceItemFromProfile({
+      id: p.task.id,
+      capacityMins: p.profile.capacityMins,
+      urgency: p.profile.urgency,
+      protectFromCarry: p.profile.protectFromCarry,
+      fit: p.profile.fit,
+      orderIndex: p.task.order_index,
+      text: p.task.text,
+    })
+  );
 
-  if (load <= window) {
-    return { carryIds: [], message: '' };
-  }
+  const plan = planCapacitySequence({
+    items: sequenceItems,
+    remainingWindowMins: window,
+    incomingCostMins,
+    protectIds: params.protectId ? [params.protectId] : [],
+  });
 
-  const candidates = profiles
-    .filter(
-      (p) =>
-        (p.profile.urgency === 'flexible' ||
-          p.profile.fit?.fit === 'carry_safe') &&
-        !p.profile.protectFromCarry
-    )
-    .sort((a, b) => {
-      const bySize = b.profile.capacityMins - a.profile.capacityMins;
-      if (bySize !== 0) return bySize;
-      return a.task.order_index - b.task.order_index;
-    });
-
-  const carryIds: string[] = [];
-  const carriedTitles: string[] = [];
-  const carriedHints: string[] = [];
-
-  for (const c of candidates) {
-    if (load <= window) break;
-    carryIds.push(c.task.id);
-    carriedTitles.push(c.task.text);
-    if (c.profile.behaviourHint) carriedHints.push(c.profile.behaviourHint);
-    load -= c.profile.capacityMins;
-  }
-
-  const next = nextWorkSurfaceDate(new Date(), workDays);
-
-  if (carryIds.length === 0) {
+  if (plan.carryIds.length === 0) {
     return {
       carryIds: [],
       message:
-        load > window
+        plan.totalLoadMins > window
           ? 'Day is full. Nothing here usually moves forward on its own — carry something manually if needed.'
           : '',
     };
   }
+
+  const byId = new Map(profiles.map((p) => [p.task.id, p]));
+  const carryIds = plan.carryIds;
+  const carriedTitles: string[] = [];
+  const carriedHints: string[] = [];
+  for (const id of carryIds) {
+    const p = byId.get(id);
+    if (!p) continue;
+    carriedTitles.push(p.task.text);
+    if (p.profile.behaviourHint) carriedHints.push(p.profile.behaviourHint);
+  }
+  let load =
+    plan.totalLoadMins -
+    carryIds.reduce((s, id) => {
+      const p = byId.get(id);
+      return s + (p?.profile.capacityMins ?? 0);
+    }, 0);
+
+  const next = nextWorkSurfaceDate(new Date(), workDays);
 
   const uniqueHints = [...new Set(carriedHints.filter(Boolean))];
   let label: string;
