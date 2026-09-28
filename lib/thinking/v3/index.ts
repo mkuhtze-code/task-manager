@@ -300,3 +300,16 @@ export {
   intentResidualBias,
   modelOnlyProgressionFromLegacy,
 } from './tripleCalibration';
+
+export type { RegimePhase, RegimeLeafState, RegimeExpected } from './regimeLeaf';
+export {
+  CUSUM_THRESHOLD,
+  CUSUM_MIN_RECENT,
+  DAY_WINDOW_DAYS,
+  POST_SHIFT_CONFIRM,
+  detectCusumShift,
+  detectDayWindowShift,
+  computeRegimeLeafState,
+  expectedMinsForRegimeState,
+  regimeStateFromWorkLeaf,
+} from './regimeLeaf';
