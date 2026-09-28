@@ -136,3 +136,58 @@ export function meetingDensityInWindow(
   }
   return Math.min(1, Math.max(0, blocked / horizonMs));
 }
+
+/**
+ * Unify calendar events and timed manual meetings into commitment intervals.
+ * Untimed meetings are excluded (they are flat capacity subtractors elsewhere).
+ * Outlook-sourced meeting rows are excluded when calendar_events already
+ * represent the same blocks.
+ */
+export function buildDayCommitments(params: {
+  calendarEvents?: Array<{ start_at: string; end_at: string }>;
+  meetings?: Array<{
+    start_time: string | null;
+    duration_mins: number;
+    source?: string | null;
+  }>;
+}): Array<{ start: Date; end: Date }> {
+  const out: Array<{ start: Date; end: Date }> = [];
+  for (const e of params.calendarEvents ?? []) {
+    const start = new Date(e.start_at);
+    const end = new Date(e.end_at);
+    if (end.getTime() > start.getTime()) out.push({ start, end });
+  }
+  for (const m of params.meetings ?? []) {
+    if (m.source === 'outlook') continue;
+    if (!m.start_time) continue;
+    if (!(m.duration_mins > 0)) continue;
+    const start = new Date(m.start_time);
+    if (Number.isNaN(start.getTime())) continue;
+    const end = new Date(start.getTime() + m.duration_mins * 60000);
+    out.push({ start, end });
+  }
+  return out;
+}
+
+/**
+ * Remaining task capacity for the rest of the workday after commitments.
+ */
+export function remainingTaskCapacityMins(params: {
+  now: Date;
+  workStartMins: number;
+  workEndMins: number;
+  isWorkDay: boolean;
+  commitments: Array<{ start: Date; end: Date }>;
+  /** Flat subtractors (e.g. untimed manual meetings total mins). */
+  flatBlockedMins?: number;
+}): number {
+  const availability = computeAvailability({
+    now: params.now,
+    workStartMins: params.workStartMins,
+    workEndMins: params.workEndMins,
+    isWorkDay: params.isWorkDay,
+    commitments: params.commitments,
+  });
+  const flat = Math.max(0, params.flatBlockedMins ?? 0);
+  return Math.max(0, availability.availableMinutes - flat);
+}
