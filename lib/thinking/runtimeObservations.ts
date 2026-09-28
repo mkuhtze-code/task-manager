@@ -33,6 +33,14 @@ import {
   type PersonalModel,
   type HierarchicalDuration,
 } from '@/lib/thinking/v3/model';
+import {
+  buildWorkLeaves,
+  matchWorkLeaf,
+  type WorkLeaf,
+} from '@/lib/thinking/v3/workIdentity';
+import { durationFromSamples } from '@/lib/thinking/v3/stats';
+import { priorStrengthForCleanN, authorityFromCleanN } from '@/lib/thinking/v3/learningRates';
+import { shrinkTowardPrior } from '@/lib/thinking/v3/stats';
 
 const MATCH_THRESHOLD = 0.4;
 const MIN_BEHAVIOUR_SAMPLES = 2;
@@ -59,6 +67,8 @@ export type RuntimeObservations = {
   behaviour: UserBehaviourModel | null;
   /** Phase 7 — hierarchical duration model (built once). */
   personalModel: PersonalModel | null;
+  /** S1 — work identity leaves (job/place/fingerprint aggregation). */
+  workLeaves: WorkLeaf[];
 };
 
 export type TaskSignals = {
@@ -75,6 +85,9 @@ export type TaskSignals = {
   capacityBiasScale: number;
   /** Phase 7 hierarchical duration belief. */
   hierarchicalDuration: HierarchicalDuration | null;
+  /** S1 matched work identity leaf. */
+  workLeaf: WorkLeaf | null;
+  workKey: string | null;
 };
 
 function tokenize(text: string): Set<string> {
@@ -237,6 +250,20 @@ export function buildRuntimeObservations(
     });
   }
 
+  // S1 — work identity leaves for duration aggregation beyond text clusters.
+  const workLeaves = buildWorkLeaves(
+    capped.map((h) => ({
+      text: h.text,
+      actualMins: h.actual_mins,
+      completedAt: h.completed_at ?? null,
+      createdAt: h.created_at ?? null,
+      jobId: h.job_id ?? null,
+      locationText: h.location_text ?? null,
+      subtaskCount: h.subtask_count ?? null,
+      estimateMins: h.estimate_mins ?? null,
+    }))
+  );
+
   let anchorSameDayRate = options?.anchorSameDayRate ?? 0.55;
   let flexibleSameDayRate = options?.flexibleSameDayRate ?? 0.4;
   if (
@@ -271,12 +298,14 @@ export function buildRuntimeObservations(
     flexibleSameDayRate,
     behaviour,
     personalModel,
+    workLeaves,
   };
 }
 
 export function lookupTaskSignals(
   text: string,
-  runtime: RuntimeObservations
+  runtime: RuntimeObservations,
+  context?: { jobId?: string | null; locationText?: string | null }
 ): TaskSignals {
   const empty: TaskSignals = {
     estimate: null,
@@ -289,6 +318,8 @@ export function lookupTaskSignals(
     clusterBehaviour: null,
     capacityBiasScale: 1,
     hierarchicalDuration: null,
+    workLeaf: null,
+    workKey: null,
   };
 
   const trimmed = text.trim();
@@ -325,12 +356,93 @@ export function lookupTaskSignals(
     }
   }
 
-  const hierarchicalDuration = runtime.personalModel
+  let hierarchicalDuration = runtime.personalModel
     ? lookupHierarchicalDuration(trimmed, runtime.personalModel)
     : null;
 
+  // S1: prefer work identity leaf duration when clean-n is sufficient.
+  let workLeaf: WorkLeaf | null = null;
+  let workKey: string | null = null;
+  const workHit =
+    runtime.workLeaves.length > 0
+      ? matchWorkLeaf(
+          {
+            text: trimmed,
+            jobId: context?.jobId ?? null,
+            locationText: context?.locationText ?? null,
+          },
+          runtime.workLeaves
+        )
+      : null;
+  if (workHit && workHit.leaf.cleanDurationMins.length >= 2) {
+    workLeaf = workHit.leaf;
+    workKey = workHit.workKey;
+    const mins = workLeaf.cleanDurationMins;
+    const n = mins.length;
+    const dist = durationFromSamples(mins, 'median');
+    if (dist) {
+      const strength = priorStrengthForCleanN(n);
+      let expected = dist.expectedMins;
+      if (n < 4) {
+        expected = Math.round(
+          shrinkTowardPrior(expected, runtime.softFloorMins, n, strength)
+        );
+      }
+      const authBand = authorityFromCleanN(n);
+      hierarchicalDuration = {
+        distribution: {
+          expectedMins: expected,
+          interval: dist.interval,
+          sampleSize: n,
+          method: n < 4 ? 'blended' : dist.method,
+        },
+        level: 'cluster',
+        clusterId: workKey,
+        clusterLabel:
+          workLeaf.parts.lexicalFingerprint.replace(/\|/g, ' ').trim() ||
+          'this kind of work',
+        matchScore: 1,
+        authority:
+          authBand === 'established'
+            ? 'strong'
+            : authBand === 'forming'
+              ? 'suggest'
+              : 'observe',
+        confidence: {
+          overall:
+            authBand === 'established'
+              ? 'high'
+              : authBand === 'forming'
+                ? 'medium'
+                : 'low',
+          sampleStrength:
+            n >= 7 ? 'high' : n >= 3 ? 'medium' : 'low',
+          effectStrength:
+            authBand === 'established'
+              ? 'high'
+              : authBand === 'forming'
+                ? 'medium'
+                : 'low',
+          consistencyStrength: 'medium',
+          recencyWeight: null,
+          specificity: workLeaf.parts.jobId ? 0.85 : 0.55,
+          contradiction: 'none',
+          staleness: 'current',
+        },
+        reasons: [
+          `work identity n=${n}`,
+          workLeaf.parts.jobId ? 'job-scoped' : 'work-scoped',
+        ],
+      };
+    }
+  }
+
   let explainDuration: string | null = null;
-  if (hierarchicalDuration && hierarchicalDuration.distribution.sampleSize > 0) {
+  if (workLeaf && hierarchicalDuration && hierarchicalDuration.distribution.sampleSize > 0) {
+    const m = hierarchicalDuration.distribution.expectedMins;
+    const n = hierarchicalDuration.distribution.sampleSize;
+    explainDuration = `≈ ${m}m — ${n} on this work`;
+  } else if (hierarchicalDuration && hierarchicalDuration.distribution.sampleSize > 0) {
     const m = hierarchicalDuration.distribution.expectedMins;
     const n = hierarchicalDuration.distribution.sampleSize;
     if (hierarchicalDuration.level === 'cluster') {
@@ -376,5 +488,7 @@ export function lookupTaskSignals(
     clusterBehaviour,
     capacityBiasScale,
     hierarchicalDuration,
+    workLeaf,
+    workKey,
   };
 }
