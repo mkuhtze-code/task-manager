@@ -11,7 +11,6 @@ import { NewMeetingSheet, type NewMeetingPayload } from '@/components/MeetingShe
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon } from '@/components/icons';
-import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { authedFetch } from '@/lib/authedFetch';
 import { useEntitlements } from '@/hooks/useEntitlements';
@@ -45,14 +44,6 @@ export default function MeetingsHome() {
     'meetings'
   );
 
-  useEffect(() => {
-    if (!isDesktop || !canMeetings) return;
-
-    return registerDesktopPrimaryAction(
-      'Record a meeting',
-      () => setNewMeetingOpen(true)
-    );
-  }, [isDesktop, canMeetings]);
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(
