@@ -1,15 +1,28 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Subtask, Task, TaskContext } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
 import { fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
-import { explainEstimate, type EstimateSuggestion } from '@/lib/taskIntelligence';
+import {
+  explainEstimate,
+  type EstimateSuggestion,
+} from '@/lib/taskIntelligence';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
-import { CheckIcon, ChevronIcon, CloseIcon, PlayIcon, StopIcon } from '@/components/icons';
+import {
+  CheckIcon,
+  CloseIcon,
+  PlayIcon,
+  StopIcon,
+} from '@/components/icons';
 import { TaskInfo } from '@/components/TaskInfo';
-import { TaskConnections, type SiblingTask, type ConnectedMeeting } from '@/components/TaskConnections';
+import {
+  TaskConnections,
+  type SiblingTask,
+  type ConnectedMeeting,
+} from '@/components/TaskConnections';
+import { TaskJobField } from '@/components/TaskJobField';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 export function TaskDetailSheet(props: {
@@ -21,13 +34,25 @@ export function TaskDetailSheet(props: {
   context: TaskContext;
   jobs: Job[];
   onClose: () => void;
-  onSave: (id: string, text: string, mins: number, surfaceDate: string | null, locationText: string | null, lat: number | null, lng: number | null) => void;
+  onSave: (
+    id: string,
+    text: string,
+    mins: number,
+    surfaceDate: string | null,
+    locationText: string | null,
+    lat: number | null,
+    lng: number | null
+  ) => void;
   onComplete: (id: string) => void;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
   onToggleDue: (id: string, current: boolean) => void;
   onAddSubtask: (id: string) => void;
-  onToggleSubtaskDone: (subId: string, taskId: string, current: boolean) => void;
+  onToggleSubtaskDone: (
+    subId: string,
+    taskId: string,
+    current: boolean
+  ) => void;
   onDeleteSubtask: (subId: string, taskId: string) => void;
   onDelete: (id: string) => void;
   onSaveInfo: (id: string, info: string) => void;
@@ -44,10 +69,29 @@ export function TaskDetailSheet(props: {
   estimateSuggestion?: EstimateSuggestion | null;
 }) {
   const {
-    task, subs, remainingForThis, liveLogged, anyActive, context, jobs, onClose, onSave,
-    onComplete, onStart, onStop, onToggleDue, onAddSubtask, onToggleSubtaskDone, onDeleteSubtask,
-    onDelete, onSaveInfo, onMoveToJob,
-    subDraftText, subDraftTime, setSubDraftText, setSubDraftTime,
+    task,
+    subs,
+    remainingForThis,
+    liveLogged,
+    anyActive,
+    context,
+    jobs,
+    onClose,
+    onSave,
+    onComplete,
+    onStart,
+    onStop,
+    onToggleDue,
+    onAddSubtask,
+    onToggleSubtaskDone,
+    onDeleteSubtask,
+    onDelete,
+    onSaveInfo,
+    onMoveToJob,
+    subDraftText,
+    subDraftTime,
+    setSubDraftText,
+    setSubDraftTime,
     presentation = 'sheet',
     meetings = [],
     siblingTasks = [],
@@ -56,14 +100,27 @@ export function TaskDetailSheet(props: {
   } = props;
 
   const [text, setText] = useState(task.text);
-  const [timeStr, setTimeStr] = useState(fmtMins(task.estimate_mins));
-  const [surfaceDate, setSurfaceDate] = useState(task.surface_date || '');
-  const [locationText, setLocationText] = useState(task.location_text || '');
-  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(
-    task.lat != null && task.lng != null ? { lat: task.lat, lng: task.lng } : null
+  const [timeStr, setTimeStr] = useState(
+    fmtMins(task.estimate_mins)
+  );
+  const [surfaceDate, setSurfaceDate] = useState(
+    task.surface_date || ''
+  );
+  const [locationText, setLocationText] = useState(
+    task.location_text || ''
+  );
+  const [locationCoords, setLocationCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(
+    task.lat != null && task.lng != null
+      ? {
+          lat: task.lat,
+          lng: task.lng,
+        }
+      : null
   );
   const [jobMoveOpen, setJobMoveOpen] = useState(false);
-  const [jobSearch, setJobSearch] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
 
@@ -77,14 +134,21 @@ export function TaskDetailSheet(props: {
     setTimeStr(fmtMins(task.estimate_mins));
     setSurfaceDate(task.surface_date || '');
     setLocationText(task.location_text || '');
-    setLocationCoords(task.lat != null && task.lng != null ? { lat: task.lat, lng: task.lng } : null);
+    setLocationCoords(
+      task.lat != null && task.lng != null
+        ? {
+            lat: task.lat,
+            lng: task.lng,
+          }
+        : null
+    );
     setJobMoveOpen(false);
-    setJobSearch('');
     setError('');
   }, [task.id]);
 
   function commit() {
     const trimmed = text.trim();
+
     if (trimmed.length === 0) {
       setError('Name cannot be empty');
       return;
@@ -93,7 +157,9 @@ export function TaskDetailSheet(props: {
     const mins = parseMins(timeStr);
 
     if (mins === null || mins < 0) {
-      setError('Could not read that time, try 15m, 1.5h, or 0m');
+      setError(
+        'Could not read that time, try 15m, 1.5h, or 0m'
+      );
       return;
     }
 
@@ -104,7 +170,9 @@ export function TaskDetailSheet(props: {
       trimmed,
       mins,
       surfaceDate.length > 0 ? surfaceDate : null,
-      locationText.trim().length > 0 ? locationText.trim() : null,
+      locationText.trim().length > 0
+        ? locationText.trim()
+        : null,
       locationCoords?.lat ?? null,
       locationCoords?.lng ?? null
     );
@@ -117,7 +185,9 @@ export function TaskDetailSheet(props: {
 
   const dialogRef = useDialogA11y(handleClose);
 
-  const startDisabled = anyActive && task.status !== 'active';
+  const startDisabled =
+    anyActive && task.status !== 'active';
+
   const isPane = presentation === 'pane';
 
   const linkedJob = task.job_id
@@ -126,153 +196,45 @@ export function TaskDetailSheet(props: {
 
   const jobName = linkedJob?.name ?? null;
 
-  const filteredJobs = useMemo(() => {
-    const query = jobSearch.trim().toLowerCase();
-
-    if (!query) return jobs;
-
-    return jobs.filter((job) => {
-      const name = job.name?.toLowerCase() ?? '';
-      return name.includes(query);
-    });
-  }, [jobs, jobSearch]);
-
   const progressPct =
     task.estimate_mins > 0
       ? Math.min(
-          (1 - remainingForThis / Math.max(task.estimate_mins, 1)) * 100,
+          (1 -
+            remainingForThis /
+              Math.max(task.estimate_mins, 1)) *
+            100,
           100
         )
       : 0;
 
-  const jobPicker = (
-    <div className="desk-detail-job-picker">
-      <div className="desk-detail-job-search">
-        <input
-          type="search"
-          value={jobSearch}
-          onChange={(e) => setJobSearch(e.target.value)}
-          placeholder="Search jobs..."
-          aria-label="Search jobs"
-          autoComplete="off"
-        />
-
-        {jobSearch.length > 0 && (
-          <button
-            type="button"
-            className="desk-detail-job-search-clear"
-            onClick={() => setJobSearch('')}
-            aria-label="Clear job search"
-          >
-            ×
-          </button>
-        )}
-      </div>
-
-      <div className="move-day-list desk-detail-job-list">
-        <button
-          type="button"
-          className="move-day-option"
-          onClick={() => {
-            onMoveToJob(task.id, null);
-            setJobMoveOpen(false);
-            setJobSearch('');
-          }}
-        >
-          No job
-        </button>
-
-        {filteredJobs.map((j) => (
-          <button
-            key={j.id}
-            type="button"
-            className="move-day-option"
-            onClick={() => {
-              onMoveToJob(task.id, j.id);
-              setJobMoveOpen(false);
-              setJobSearch('');
-            }}
-          >
-            {j.name}
-          </button>
-        ))}
-
-        {filteredJobs.length === 0 && (
-          <p className="desk-detail-job-empty">
-            No matching jobs
-          </p>
-        )}
-      </div>
-    </div>
-  );
-
-  const mobileJobPicker = (
-    <div className="move-day-list">
-      <div className="desk-detail-job-search">
-        <input
-          type="search"
-          value={jobSearch}
-          onChange={(e) => setJobSearch(e.target.value)}
-          placeholder="Search jobs..."
-          aria-label="Search jobs"
-          autoComplete="off"
-        />
-
-        {jobSearch.length > 0 && (
-          <button
-            type="button"
-            className="desk-detail-job-search-clear"
-            onClick={() => setJobSearch('')}
-            aria-label="Clear job search"
-          >
-            ×
-          </button>
-        )}
-      </div>
-
-      <button
-        type="button"
-        className="move-day-option"
-        onClick={() => {
-          onMoveToJob(task.id, null);
-          setJobMoveOpen(false);
-          setJobSearch('');
-        }}
-      >
-        No job
-      </button>
-
-      {filteredJobs.map((j) => (
-        <button
-          key={j.id}
-          type="button"
-          className="move-day-option"
-          onClick={() => {
-            onMoveToJob(task.id, j.id);
-            setJobMoveOpen(false);
-            setJobSearch('');
-          }}
-        >
-          {j.name}
-        </button>
-      ))}
-
-      {filteredJobs.length === 0 && (
-        <p className="desk-detail-job-empty">
-          No matching jobs
-        </p>
-      )}
-    </div>
-  );
-
   const subtasksBlock = (
-    <div className={isPane ? 'desk-detail-panel' : 'subtask-panel'}>
-      <div className={isPane ? 'desk-detail-panel-head' : 'subtask-header'}>
-        <div className={isPane ? 'desk-detail-panel-title' : 'settings-panel-title'}>
+    <div
+      className={
+        isPane
+          ? 'desk-detail-panel'
+          : 'subtask-panel'
+      }
+    >
+      <div
+        className={
+          isPane
+            ? 'desk-detail-panel-head'
+            : 'subtask-header'
+        }
+      >
+        <div
+          className={
+            isPane
+              ? 'desk-detail-panel-title'
+              : 'settings-panel-title'
+          }
+        >
           Sub-tasks
+
           {subs.length > 0 && (
             <span className="mono desk-detail-count">
-              {subs.filter((s) => s.done).length}/{subs.length}
+              {subs.filter((s) => s.done).length}/
+              {subs.length}
             </span>
           )}
         </div>
@@ -280,7 +242,9 @@ export function TaskDetailSheet(props: {
         <button
           type="button"
           className="subtask-add-btn"
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() =>
+            setShowAddForm(!showAddForm)
+          }
         >
           +
         </button>
@@ -292,7 +256,9 @@ export function TaskDetailSheet(props: {
             type="text"
             placeholder="Sub-task"
             value={subDraftText}
-            onChange={(e) => setSubDraftText(e.target.value)}
+            onChange={(e) =>
+              setSubDraftText(e.target.value)
+            }
           />
 
           <MicButton
@@ -311,7 +277,9 @@ export function TaskDetailSheet(props: {
             placeholder="15m"
             style={{ width: 60 }}
             value={subDraftTime}
-            onChange={(e) => setSubDraftTime(e.target.value)}
+            onChange={(e) =>
+              setSubDraftTime(e.target.value)
+            }
           />
 
           <button
@@ -332,18 +300,31 @@ export function TaskDetailSheet(props: {
       )}
 
       {subs.map((s) => (
-        <div key={s.id} className="subtask-row">
+        <div
+          key={s.id}
+          className="subtask-row"
+        >
           <button
-            className={s.done ? 'subtask-check done' : 'subtask-check'}
+            className={
+              s.done
+                ? 'subtask-check done'
+                : 'subtask-check'
+            }
             onClick={() =>
-              onToggleSubtaskDone(s.id, task.id, s.done)
+              onToggleSubtaskDone(
+                s.id,
+                task.id,
+                s.done
+              )
             }
             aria-label="Complete sub-task"
           />
 
           <span
             className={
-              s.done ? 'subtask-text done' : 'subtask-text'
+              s.done
+                ? 'subtask-text done'
+                : 'subtask-text'
             }
           >
             {s.text}
@@ -356,7 +337,10 @@ export function TaskDetailSheet(props: {
           <button
             className="icon-btn"
             onClick={() =>
-              onDeleteSubtask(s.id, task.id)
+              onDeleteSubtask(
+                s.id,
+                task.id
+              )
             }
             aria-label="Delete sub-task"
           >
@@ -365,11 +349,13 @@ export function TaskDetailSheet(props: {
         </div>
       ))}
 
-      {subs.length === 0 && !showAddForm && isPane && (
-        <p className="desk-detail-muted">
-          Break this into steps if it helps.
-        </p>
-      )}
+      {subs.length === 0 &&
+        !showAddForm &&
+        isPane && (
+          <p className="desk-detail-muted">
+            Break this into steps if it helps.
+          </p>
+        )}
     </div>
   );
 
@@ -415,7 +401,9 @@ export function TaskDetailSheet(props: {
             type="text"
             className="desk-detail-title"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) =>
+              setText(e.target.value)
+            }
             onBlur={commit}
             placeholder="Task name"
           />
@@ -425,7 +413,9 @@ export function TaskDetailSheet(props: {
               <div className="task-progress-track">
                 <div
                   className="task-progress-fill"
-                  style={{ width: `${progressPct}%` }}
+                  style={{
+                    width: `${progressPct}%`,
+                  }}
                 />
               </div>
 
@@ -460,7 +450,9 @@ export function TaskDetailSheet(props: {
           {estimateExplain && (
             <p
               className="desk-detail-muted"
-              style={{ margin: '4px 0 8px' }}
+              style={{
+                margin: '4px 0 8px',
+              }}
             >
               {estimateExplain}
             </p>
@@ -472,13 +464,19 @@ export function TaskDetailSheet(props: {
                 <button
                   type="button"
                   className="btn btn-ghost"
-                  onClick={() => onStop(task.id)}
+                  onClick={() =>
+                    onStop(task.id)
+                  }
                 >
                   <StopIcon />
+
                   Stop
+
                   <span
                     className="mono"
-                    style={{ fontWeight: 600 }}
+                    style={{
+                      fontWeight: 600,
+                    }}
                   >
                     {fmtMins(liveLogged)}
                   </span>
@@ -488,7 +486,9 @@ export function TaskDetailSheet(props: {
                   type="button"
                   className="btn btn-steel"
                   disabled={startDisabled}
-                  onClick={() => onStart(task.id)}
+                  onClick={() =>
+                    onStart(task.id)
+                  }
                 >
                   <PlayIcon />
                   Start
@@ -515,7 +515,10 @@ export function TaskDetailSheet(props: {
                   : 'btn btn-ghost'
               }
               onClick={() =>
-                onToggleDue(task.id, !!task.due_today)
+                onToggleDue(
+                  task.id,
+                  !!task.due_today
+                )
               }
             >
               {task.due_today
@@ -560,7 +563,9 @@ export function TaskDetailSheet(props: {
                     className="desk-detail-input"
                     value={surfaceDate}
                     onChange={(e) =>
-                      setSurfaceDate(e.target.value)
+                      setSurfaceDate(
+                        e.target.value
+                      )
                     }
                     onBlur={commit}
                   />
@@ -582,7 +587,10 @@ export function TaskDetailSheet(props: {
                 {surfaceDate.length > 0 && (
                   <p className="desk-detail-muted">
                     Hidden until{' '}
-                    {fmtSurfaceDate(surfaceDate)}.
+                    {fmtSurfaceDate(
+                      surfaceDate
+                    )}
+                    .
                   </p>
                 )}
               </label>
@@ -628,29 +636,16 @@ export function TaskDetailSheet(props: {
                   Job
                 </span>
 
-                <button
-                  type="button"
-                  className={
-                    jobMoveOpen
-                      ? 'detail-reveal active desk-detail-job-btn'
-                      : 'detail-reveal desk-detail-job-btn'
-                  }
-                  onClick={() => {
-                    setJobMoveOpen((o) => !o);
-
-                    if (jobMoveOpen) {
-                      setJobSearch('');
-                    }
+                <TaskJobField
+                  jobs={jobs}
+                  jobId={task.job_id}
+                  onMoveToJob={(jobId) => {
+                    onMoveToJob(
+                      task.id,
+                      jobId
+                    );
                   }}
-                >
-                  <span>
-                    {jobName || 'No job'}
-                  </span>
-
-                  <ChevronIcon size={14} />
-                </button>
-
-                {jobMoveOpen && jobPicker}
+                />
               </div>
             </section>
           </div>
@@ -663,7 +658,10 @@ export function TaskDetailSheet(props: {
             <TaskInfo
               value={task.info || ''}
               onSave={(info) =>
-                onSaveInfo(task.id, info)
+                onSaveInfo(
+                  task.id,
+                  info
+                )
               }
               surface="edit"
             />
@@ -702,14 +700,18 @@ export function TaskDetailSheet(props: {
       <div
         ref={dialogRef}
         className="capture-sheet task-detail-sheet"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) =>
+          e.stopPropagation()
+        }
         role="dialog"
         aria-modal="true"
         aria-label="Task"
       >
         <div
           className="task-detail-header"
-          style={{ justifyContent: 'flex-end' }}
+          style={{
+            justifyContent: 'flex-end',
+          }}
         >
           <button
             className="gear-btn"
@@ -724,19 +726,25 @@ export function TaskDetailSheet(props: {
           type="text"
           className="task-detail-name"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) =>
+            setText(e.target.value)
+          }
           onBlur={commit}
         />
 
         {task.estimate_mins > 0 && (
           <div
             className="task-progress-row"
-            style={{ marginTop: 0 }}
+            style={{
+              marginTop: 0,
+            }}
           >
             <div className="task-progress-track">
               <div
                 className="task-progress-fill"
-                style={{ width: `${progressPct}%` }}
+                style={{
+                  width: `${progressPct}%`,
+                }}
               />
             </div>
 
@@ -794,7 +802,9 @@ export function TaskDetailSheet(props: {
         {estimateExplain && (
           <p
             className="settings-help"
-            style={{ margin: '2px 0 6px' }}
+            style={{
+              margin: '2px 0 6px',
+            }}
           >
             {estimateExplain}
           </p>
@@ -831,7 +841,9 @@ export function TaskDetailSheet(props: {
             type="date"
             value={surfaceDate}
             onChange={(e) =>
-              setSurfaceDate(e.target.value)
+              setSurfaceDate(
+                e.target.value
+              )
             }
             onBlur={commit}
           />
@@ -856,36 +868,36 @@ export function TaskDetailSheet(props: {
         <TaskInfo
           value={task.info || ''}
           onSave={(info) =>
-            onSaveInfo(task.id, info)
+            onSaveInfo(
+              task.id,
+              info
+            )
           }
           surface="edit"
         />
 
-        <button
-          type="button"
-          className={
-            jobMoveOpen
-              ? 'detail-reveal active'
-              : 'detail-reveal'
-          }
-          onClick={() => {
-            setJobMoveOpen((o) => !o);
+        <div className="task-detail-job-section">
+          <div className="task-detail-job-section-head">
+            <span className="settings-label">
+              Job
+            </span>
 
-            if (jobMoveOpen) {
-              setJobSearch('');
-            }
-          }}
-        >
-          <span>
-            {task.job_id
-              ? 'Filed under a job'
-              : 'Add to a job'}
-          </span>
+            <span className="task-detail-job-section-hint">
+              Optional
+            </span>
+          </div>
 
-          <ChevronIcon size={14} />
-        </button>
-
-        {jobMoveOpen && mobileJobPicker}
+          <TaskJobField
+            jobs={jobs}
+            jobId={task.job_id}
+            onMoveToJob={(jobId) => {
+              onMoveToJob(
+                task.id,
+                jobId
+              );
+            }}
+          />
+        </div>
 
         <div className="task-detail-actions">
           {task.estimate_mins > 0 &&
@@ -898,10 +910,14 @@ export function TaskDetailSheet(props: {
                 }
               >
                 <StopIcon />
+
                 Stop
+
                 <span
                   className="mono"
-                  style={{ fontWeight: 600 }}
+                  style={{
+                    fontWeight: 600,
+                  }}
                 >
                   {fmtMins(liveLogged)}
                 </span>
