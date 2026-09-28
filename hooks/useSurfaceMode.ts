@@ -1,12 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+
 import {
   applySurfaceAttribute,
   detectWideViewport,
   readSurfacePreference,
   resolveSurfaceMode,
   writeSurfacePreference,
+  DESKTOP_MIN_WIDTH_PX,
   type SurfaceMode,
   type SurfacePreference,
 } from '@/lib/surfaceMode';
@@ -15,39 +21,70 @@ export function useSurfaceMode(): {
   mode: SurfaceMode;
   preference: SurfacePreference;
   isDesktop: boolean;
-  setPreference: (pref: SurfacePreference) => void;
+  setPreference: (preference: SurfacePreference) => void;
 } {
-  const [preference, setPreferenceState] = useState<SurfacePreference>('auto');
+  const [preference, setPreferenceState] =
+    useState<SurfacePreference>('auto');
+
   const [isWide, setIsWide] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const pref = readSurfacePreference();
+    const storedPreference = readSurfacePreference();
     const wide = detectWideViewport();
-    setPreferenceState(pref);
+
+    setPreferenceState(storedPreference);
     setIsWide(wide);
-    applySurfaceAttribute(resolveSurfaceMode(pref, wide));
+
+    const initialMode = resolveSurfaceMode(
+      storedPreference,
+      wide
+    );
+
+    applySurfaceAttribute(initialMode);
     setReady(true);
 
-    const mq = window.matchMedia(`(min-width: ${900}px)`);
-    function onChange(e: MediaQueryListEvent) {
-      setIsWide(e.matches);
+    const mediaQuery = window.matchMedia(
+      `(min-width: ${DESKTOP_MIN_WIDTH_PX}px)`
+    );
+
+    function handleViewportChange(
+      event: MediaQueryListEvent
+    ) {
+      setIsWide(event.matches);
     }
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+
+    mediaQuery.addEventListener(
+      'change',
+      handleViewportChange
+    );
+
+    return () => {
+      mediaQuery.removeEventListener(
+        'change',
+        handleViewportChange
+      );
+    };
   }, []);
 
-  const mode = resolveSurfaceMode(preference, isWide);
+  const mode = resolveSurfaceMode(
+    preference,
+    isWide
+  );
 
   useEffect(() => {
     if (!ready) return;
+
     applySurfaceAttribute(mode);
   }, [mode, ready]);
 
-  const setPreference = useCallback((pref: SurfacePreference) => {
-    writeSurfacePreference(pref);
-    setPreferenceState(pref);
-  }, []);
+  const setPreference = useCallback(
+    (nextPreference: SurfacePreference) => {
+      writeSurfacePreference(nextPreference);
+      setPreferenceState(nextPreference);
+    },
+    []
+  );
 
   return {
     mode,
