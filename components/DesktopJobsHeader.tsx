@@ -1,187 +1,129 @@
 'use client';
 
-import { PlusIcon } from '@/components/icons';
+import { useMemo, useState } from 'react';
+import { SearchIcon } from '@/components/icons';
 
-export type JobsListFilter =
-  | 'open'
-  | 'done'
-  | 'all';
+export type JobsListFilter = 'open' | 'done' | 'all';
 
 type Props = {
-  total: number;
   openCount: number;
   doneCount: number;
+  allCount: number;
   filter: JobsListFilter;
-  onFilterChange: (
-    filter: JobsListFilter
-  ) => void;
+  onFilterChange: (filter: JobsListFilter) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
   onCreate: () => void;
-  disabled?: boolean;
 };
 
-/**
- * Desktop Jobs workstation header.
- *
- * This is operational context, not business analytics.
- *
- * It answers:
- *   - How much work is here?
- *   - What am I currently looking at?
- *   - What can I do next?
- *
- * It deliberately avoids:
- *   - revenue dashboards
- *   - productivity scores
- *   - efficiency scores
- *   - KPI walls
- *   - gamification
- */
 export default function DesktopJobsHeader({
-  total,
   openCount,
   doneCount,
+  allCount,
   filter,
   onFilterChange,
+  search,
+  onSearchChange,
   onCreate,
-  disabled = false,
 }: Props) {
-  const visibleCount =
-    filter === 'open'
-      ? openCount
-      : filter === 'done'
-        ? doneCount
-        : total;
+  const [searchOpen, setSearchOpen] = useState(search.length > 0);
+
+  const filterItems = useMemo(
+    () => [
+      { key: 'open' as const, label: 'Open', count: openCount },
+      { key: 'done' as const, label: 'Done', count: doneCount },
+      { key: 'all' as const, label: 'All', count: allCount },
+    ],
+    [openCount, doneCount, allCount]
+  );
 
   return (
-    <section
-      className="desk-jobs-header"
-      aria-label="Jobs overview"
-    >
+    <header className="desk-jobs-workspace-header">
       <div className="desk-jobs-header-main">
         <div className="desk-jobs-header-title">
-          <span className="desk-jobs-header-kicker">
-            Jobs
-          </span>
-
-          <h1>
-            Work that spans days
-          </h1>
-
+          <span className="desk-jobs-header-kicker">Work</span>
+          <h1>Jobs</h1>
           <p>
-            Keep the work, context and progress
-            together until the job is finished.
+            Work that spans days, with its tasks, evidence and context gathered
+            together.
           </p>
         </div>
 
-        <div className="desk-jobs-header-summary">
+        <div className="desk-jobs-header-summary" aria-label="Job summary">
           <div className="desk-jobs-stat">
-            <span className="desk-jobs-stat-value mono">
-              {openCount}
-            </span>
-
-            <span className="desk-jobs-stat-label">
-              open
-            </span>
+            <span className="desk-jobs-stat-value mono">{openCount}</span>
+            <span className="desk-jobs-stat-label">open</span>
           </div>
 
           <div className="desk-jobs-stat">
-            <span className="desk-jobs-stat-value mono">
-              {doneCount}
-            </span>
-
-            <span className="desk-jobs-stat-label">
-              done
-            </span>
+            <span className="desk-jobs-stat-value mono">{doneCount}</span>
+            <span className="desk-jobs-stat-label">done</span>
           </div>
 
-          <div className="desk-jobs-stat desk-jobs-stat-current">
-            <span className="desk-jobs-stat-value mono">
-              {visibleCount}
-            </span>
-
-            <span className="desk-jobs-stat-label">
-              showing
-            </span>
+          <div className="desk-jobs-stat">
+            <span className="desk-jobs-stat-value mono">{allCount}</span>
+            <span className="desk-jobs-stat-label">total</span>
           </div>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-steel desk-jobs-create"
-          onClick={onCreate}
-          disabled={disabled}
-        >
-          <PlusIcon size={15} />
-          New job
-        </button>
+        <div className="desk-jobs-header-actions">
+          <button
+            type="button"
+            className="btn btn-steel desk-jobs-create"
+            onClick={onCreate}
+          >
+            + New job
+          </button>
+        </div>
       </div>
 
       <div className="desk-jobs-header-controls">
-        <div
-          className="desk-jobs-filter"
-          role="group"
-          aria-label="Job filter"
-        >
-          <button
-            type="button"
-            className={
-              filter === 'open'
-                ? 'desk-jobs-filter-btn active'
-                : 'desk-jobs-filter-btn'
-            }
-            aria-pressed={
-              filter === 'open'
-            }
-            onClick={() =>
-              onFilterChange('open')
-            }
-          >
-            Open
-            <span>{openCount}</span>
-          </button>
-
-          <button
-            type="button"
-            className={
-              filter === 'done'
-                ? 'desk-jobs-filter-btn active'
-                : 'desk-jobs-filter-btn'
-            }
-            aria-pressed={
-              filter === 'done'
-            }
-            onClick={() =>
-              onFilterChange('done')
-            }
-          >
-            Done
-            <span>{doneCount}</span>
-          </button>
-
-          <button
-            type="button"
-            className={
-              filter === 'all'
-                ? 'desk-jobs-filter-btn active'
-                : 'desk-jobs-filter-btn'
-            }
-            aria-pressed={
-              filter === 'all'
-            }
-            onClick={() =>
-              onFilterChange('all')
-            }
-          >
-            All
-            <span>{total}</span>
-          </button>
+        <div className="desk-jobs-filter" role="group" aria-label="Filter jobs">
+          {filterItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={
+                filter === item.key
+                  ? 'desk-jobs-filter-btn active'
+                  : 'desk-jobs-filter-btn'
+              }
+              aria-pressed={filter === item.key}
+              onClick={() => onFilterChange(item.key)}
+            >
+              {item.label}
+              <span className="mono">{item.count}</span>
+            </button>
+          ))}
         </div>
 
-        <span className="desk-jobs-header-note">
-          Select a job to continue working with
-          its tasks and context.
-        </span>
+        <div className="desk-jobs-search">
+          {searchOpen && (
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="Search jobs…"
+              aria-label="Search jobs"
+              autoFocus
+            />
+          )}
+
+          <button
+            type="button"
+            className="desk-jobs-search-button"
+            aria-label={searchOpen ? 'Close job search' : 'Search jobs'}
+            onClick={() => {
+              if (searchOpen && search.length > 0) {
+                onSearchChange('');
+              }
+              setSearchOpen((value) => !value);
+            }}
+          >
+            <SearchIcon size={16} />
+          </button>
+        </div>
       </div>
-    </section>
+    </header>
   );
 }
