@@ -5,6 +5,7 @@
  * Deterministic. No AI. Tool conforms to the user.
  *
  * Phase 6–8: capacity bias, fit, sequence-aware overflow under calendar pressure.
+ * Phase 5 context build: sequenceOrderIdsForOpenTasks for capacity_first list order.
  */
 
 import {
@@ -315,6 +316,56 @@ export function profileTask(
     protectFromCarry: urg.protectFromCarry,
     fit,
   };
+}
+
+/**
+ * Recommended open-task order under the same pressure model as overflow/carry.
+ * Pure. Used by capacity_first so the list and auto-carry agree.
+ */
+export function sequenceOrderIdsForOpenTasks(params: {
+  openTasks: Task[];
+  history: HistoricalTask[];
+  clusters?: TaskCluster[];
+  runtime?: RuntimeObservations | null;
+  remainingWindowMins: number;
+  commitments?: Array<{ start: Date; end: Date }>;
+  now?: Date;
+  workEndMins?: number;
+}): string[] {
+  const window = Math.max(0, params.remainingWindowMins);
+  const runtime =
+    params.runtime ??
+    (params.history.length > 0 ? buildRuntimeObservations(params.history) : null);
+  const clusterList = params.clusters ?? runtime?.clusters;
+  const calendarOpts = {
+    remainingWindowMins: window,
+    commitments: params.commitments,
+    now: params.now,
+    workEndMins: params.workEndMins,
+  };
+  const sequenceItems = params.openTasks.map((t) => {
+    const profile = profileTask(
+      t,
+      params.history,
+      clusterList,
+      runtime,
+      window,
+      calendarOpts
+    );
+    return sequenceItemFromProfile({
+      id: t.id,
+      capacityMins: profile.capacityMins,
+      urgency: profile.urgency,
+      protectFromCarry: profile.protectFromCarry,
+      fit: profile.fit,
+      orderIndex: t.order_index,
+      text: t.text,
+    });
+  });
+  return planCapacitySequence({
+    items: sequenceItems,
+    remainingWindowMins: window,
+  }).orderedIds;
 }
 
 export function planOverflowCarry(params: {
