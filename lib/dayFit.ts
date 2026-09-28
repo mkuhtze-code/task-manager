@@ -4,10 +4,7 @@
  *
  * Deterministic. No AI. Tool conforms to the user.
  *
- * Runtime observations (optional): pass buildRuntimeObservations(history)
- * so duration + behaviour match the same cluster as capture chips.
- * softFloorMins and same-day rate thresholds may be seeded from onboarding
- * and later calibrated from prediction outcomes.
+ * Phase 6: capacity bias from UserBehaviourModel (via runtime observations).
  */
 
 import {
@@ -23,9 +20,12 @@ import {
   lookupTaskSignals,
   type RuntimeObservations,
 } from '@/lib/thinking/runtimeObservations';
+import { decideTaskFit, type FitDecision } from '@/lib/thinking/v3/fit';
 
 export type { RuntimeObservations } from '@/lib/thinking/runtimeObservations';
 export { buildRuntimeObservations, lookupTaskSignals } from '@/lib/thinking/runtimeObservations';
+export type { FitDecision } from '@/lib/thinking/v3/fit';
+export { decideTaskFit } from '@/lib/thinking/v3/fit';
 
 export const SOFT_DEFAULT_MINS = 30;
 
@@ -41,6 +41,8 @@ export type DayFitProfile = {
   inferred: boolean;
   behaviourHint: string | null;
   protectFromCarry: boolean;
+  /** Phase 7 foundation — optional fit decision. */
+  fit?: FitDecision | null;
 };
 
 export type OverflowCarryPlan = {
@@ -72,7 +74,9 @@ export function personalMedianActual(history: HistoricalTask[]): number | null {
     .sort((a, b) => a - b);
   if (vals.length === 0) return null;
   const mid = Math.floor(vals.length / 2);
-  return vals.length % 2 === 0 ? Math.round((vals[mid - 1] + vals[mid]) / 2) : vals[mid];
+  return vals.length % 2 === 0
+    ? Math.round((vals[mid - 1] + vals[mid]) / 2)
+    : vals[mid];
 }
 
 export function similarSameDayRate(
@@ -109,7 +113,16 @@ function sameCalendarDay(a: string, b: string): boolean {
 }
 
 export function capacityMinsForTask(
-  task: Pick<Task, 'text' | 'estimate_mins' | 'logged_mins' | 'status' | 'started_at' | 'due_today' | 'intended_time'>,
+  task: Pick<
+    Task,
+    | 'text'
+    | 'estimate_mins'
+    | 'logged_mins'
+    | 'status'
+    | 'started_at'
+    | 'due_today'
+    | 'intended_time'
+  >,
   history: HistoricalTask[],
   clusters?: TaskCluster[],
   nowMs: number = Date.now(),
@@ -126,6 +139,10 @@ export function capacityMinsForTask(
     suggestEstimate(task.text, history, clusters ?? runtime?.clusters);
   const median = runtime?.personalMedian ?? personalMedianActual(history);
   const softFloor = runtime?.softFloorMins ?? SOFT_DEFAULT_MINS;
+  const biasScale = signals?.capacityBiasScale ?? 1;
+
+  const varianceBump =
+    signals?.clusterBehaviour?.highVariance ? softFloor * 0.15 : 0;
 
   if (task.estimate_mins > 0) {
     const eff = effectiveEstimate(
@@ -133,31 +150,34 @@ export function capacityMinsForTask(
       suggestion,
       runtime?.blendScale
     );
+    const adjusted = Math.round(eff * biasScale);
     return {
-      mins: Math.max(eff - logged, 0),
+      mins: Math.max(adjusted - logged, 0),
       inferred: false,
       explain: signals?.explainDuration ?? null,
     };
   }
 
   if (suggestion && suggestion.suggestedMins > 0) {
+    const adjusted = Math.round(suggestion.suggestedMins * biasScale);
     return {
-      mins: Math.max(suggestion.suggestedMins - logged, softFloor * 0.5),
+      mins: Math.max(adjusted - logged, softFloor * 0.5 + varianceBump),
       inferred: true,
       explain: signals?.explainDuration ?? null,
     };
   }
 
   if (median != null && median > 0) {
+    const adjusted = Math.round(median * biasScale);
     return {
-      mins: Math.max(median - logged, softFloor * 0.5),
+      mins: Math.max(adjusted - logged, softFloor * 0.5 + varianceBump),
       inferred: true,
       explain: signals?.explainDuration ?? `≈ ${median}m typical for you`,
     };
   }
 
   return {
-    mins: Math.max(softFloor - logged, 5),
+    mins: Math.max(softFloor - logged + varianceBump, 5),
     inferred: true,
     explain:
       runtime?.calibrationExplain ??
@@ -166,10 +186,17 @@ export function capacityMinsForTask(
 }
 
 export function urgencyForTask(
-  task: Pick<Task, 'text' | 'due_today' | 'intended_time' | 'estimate_mins' | 'status'>,
+  task: Pick<
+    Task,
+    'text' | 'due_today' | 'intended_time' | 'estimate_mins' | 'status'
+  >,
   history: HistoricalTask[],
   runtime?: RuntimeObservations | null
-): { urgency: UrgencyClass; behaviourHint: string | null; protectFromCarry: boolean } {
+): {
+  urgency: UrgencyClass;
+  behaviourHint: string | null;
+  protectFromCarry: boolean;
+} {
   if (task.status === 'active') {
     return { urgency: 'anchor', behaviourHint: null, protectFromCarry: true };
   }
@@ -179,7 +206,8 @@ export function urgencyForTask(
   }
 
   const anchorRate = runtime?.anchorSameDayRate ?? DEFAULT_ANCHOR_SAME_DAY_RATE;
-  const flexibleRate = runtime?.flexibleSameDayRate ?? DEFAULT_FLEXIBLE_SAME_DAY_RATE;
+  const flexibleRate =
+    runtime?.flexibleSameDayRate ?? DEFAULT_FLEXIBLE_SAME_DAY_RATE;
 
   const signals = runtime ? lookupTaskSignals(task.text, runtime) : null;
   const behaviour =
@@ -187,17 +215,24 @@ export function urgencyForTask(
       ? { rate: signals.sameDayRate, samples: signals.sameDaySamples }
       : similarSameDayRate(task.text, history);
 
+  const carryHeavy =
+    signals?.clusterBehaviour?.carryRate != null &&
+    signals.clusterBehaviour.carryRate >= 0.5 &&
+    signals.clusterBehaviour.sampleCount >= MIN_BEHAVIOUR_SAMPLES;
+
   if (behaviour && behaviour.rate >= anchorRate) {
     return {
       urgency: 'anchor',
-      behaviourHint: signals?.explainBehaviour ?? 'Usually finished same day',
+      behaviourHint:
+        signals?.explainBehaviour ?? 'Usually finished same day',
       protectFromCarry: true,
     };
   }
-  if (behaviour && behaviour.rate <= flexibleRate) {
+  if (carryHeavy || (behaviour && behaviour.rate <= flexibleRate)) {
     return {
       urgency: 'flexible',
-      behaviourHint: signals?.explainBehaviour ?? 'Often moves forward',
+      behaviourHint:
+        signals?.explainBehaviour ?? 'Often moves forward',
       protectFromCarry: false,
     };
   }
@@ -209,17 +244,46 @@ export function profileTask(
   task: Task,
   history: HistoricalTask[],
   clusters?: TaskCluster[],
-  runtime?: RuntimeObservations | null
+  runtime?: RuntimeObservations | null,
+  remainingWindowMins?: number | null
 ): DayFitProfile {
   const rt = runtime ?? null;
-  const cap = capacityMinsForTask(task, history, clusters ?? rt?.clusters, Date.now(), rt);
+  const cap = capacityMinsForTask(
+    task,
+    history,
+    clusters ?? rt?.clusters,
+    Date.now(),
+    rt
+  );
   const urg = urgencyForTask(task, history, rt);
+  const signals = rt ? lookupTaskSignals(task.text, rt) : null;
+
+  const fit =
+    rt != null
+      ? decideTaskFit({
+          capacityMins: cap.mins,
+          remainingWindowMins: remainingWindowMins ?? null,
+          sameDayRate: signals?.sameDayRate ?? null,
+          protectFromCarry: urg.protectFromCarry,
+          dueToday: Boolean(task.due_today),
+          hasIntendedTime: Boolean(
+            task.intended_time && task.intended_time.length > 0
+          ),
+          isActive: task.status === 'active',
+          behaviour: rt.behaviour,
+          clusterBehaviour: signals?.clusterBehaviour ?? null,
+          duration: null,
+          capacityBiasScale: signals?.capacityBiasScale ?? 1,
+        })
+      : null;
+
   return {
     capacityMins: cap.mins,
     urgency: urg.urgency,
     inferred: cap.inferred,
     behaviourHint: urg.behaviourHint ?? cap.explain,
     protectFromCarry: urg.protectFromCarry,
+    fit,
   };
 }
 
@@ -251,18 +315,24 @@ export function planOverflowCarry(params: {
 
   const profiles = openTasks.map((t) => ({
     task: t,
-    profile: profileTask(t, history, clusterList, runtime),
+    profile: profileTask(t, history, clusterList, runtime, window),
   }));
 
   let load =
-    profiles.reduce((s, p) => s + p.profile.capacityMins, 0) + Math.max(0, incomingCostMins);
+    profiles.reduce((s, p) => s + p.profile.capacityMins, 0) +
+    Math.max(0, incomingCostMins);
 
   if (load <= window) {
     return { carryIds: [], message: '' };
   }
 
   const candidates = profiles
-    .filter((p) => p.profile.urgency === 'flexible' && !p.profile.protectFromCarry)
+    .filter(
+      (p) =>
+        (p.profile.urgency === 'flexible' ||
+          p.profile.fit?.fit === 'carry_safe') &&
+        !p.profile.protectFromCarry
+    )
     .sort((a, b) => {
       const bySize = b.profile.capacityMins - a.profile.capacityMins;
       if (bySize !== 0) return bySize;
@@ -293,7 +363,6 @@ export function planOverflowCarry(params: {
     };
   }
 
-  // Prefer the engine's behaviourHint so the banner explains *why* this moved.
   const uniqueHints = [...new Set(carriedHints.filter(Boolean))];
   let label: string;
   if (carriedTitles.length === 1) {
@@ -306,7 +375,8 @@ export function planOverflowCarry(params: {
       label = `“${title}” carried (often moves forward).`;
     }
   } else if (uniqueHints.length === 1) {
-    const soft = uniqueHints[0].charAt(0).toLowerCase() + uniqueHints[0].slice(1);
+    const soft =
+      uniqueHints[0].charAt(0).toLowerCase() + uniqueHints[0].slice(1);
     label = `${carriedTitles.length} items carried — ${soft}.`;
   } else {
     label = `${carriedTitles.length} items carried (often move forward).`;
@@ -334,7 +404,9 @@ export function incomingCaptureCost(params: {
 }): number {
   const runtime =
     params.runtime ??
-    (params.history.length > 0 ? buildRuntimeObservations(params.history) : null);
+    (params.history.length > 0
+      ? buildRuntimeObservations(params.history)
+      : null);
   const fake = {
     text: params.text,
     estimate_mins: params.estimateMins,
