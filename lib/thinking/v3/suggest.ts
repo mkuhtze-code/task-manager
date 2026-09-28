@@ -21,6 +21,7 @@ import type { ContextualDuration } from './contextDuration';
 import type { HistorySample } from './clusters';
 import type { Confidence } from './types';
 import { MODEL_VERSION } from './types';
+import { priorStrengthForCleanN } from './learningRates';
 
 export const MIN_SAMPLES_FOR_SUGGESTION = 2;
 
@@ -187,18 +188,23 @@ export function suggestEstimateV3(
 
   const { model, samples } = resolveModel(history, opts);
 
+  // FP-1: hierarchical lookup uses adaptive prior strength from leaf clean-n.
+  // Contextual path uses same schedule via opts.priorStrength when provided.
   if (hasContext(opts?.context)) {
     const contextual = lookupContextualDuration(
       trimmed,
       model,
       samples,
-      opts!.context!
+      opts!.context!,
+      { priorStrength: opts?.priors?.priorStrength }
     );
     const mapped = fromLookup(contextual, 'measured');
     if (mapped) return mapped;
   }
 
-  const hierarchical = lookupHierarchicalDuration(trimmed, model);
+  const hierarchical = lookupHierarchicalDuration(trimmed, model, {
+    priorStrength: opts?.priors?.priorStrength,
+  });
   return fromLookup(hierarchical, 'measured');
 }
 
