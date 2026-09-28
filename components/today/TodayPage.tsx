@@ -1518,7 +1518,7 @@ export function TodayPage() {
         const task = tasks.find((t) => t.id === u.taskId);
         if (!task) continue;
 
-        // Reality → history (Done / Partial only). Carry & Skip never train.
+        // Reality → history (Done only for duration). Partial/Carry/Skip never train duration (FP-0).
         const observation = historyObservationForUpdate(task, u);
         if (observation) {
           setHistory((prev) => [observation, ...prev]);
@@ -1539,6 +1539,8 @@ export function TodayPage() {
             measuredMins: measured,
             history,
             clusters,
+            outcomeKind: 'done',
+            realityOutcome: 'done',
             startedAt: task.started_at ?? null,
             activeMinutes: measured > 0 ? measured : null,
             hints: {
@@ -1612,13 +1614,15 @@ export function TodayPage() {
           if (spent > 0) {
             // Train on time actually spent — not spent+remaining (remaining is still plan).
             closeCompletionLoop({
-            userId: session?.user?.id,
-            taskId: task.id,
-            taskText: task.text,
+              userId: session?.user?.id,
+              taskId: task.id,
+              taskText: task.text,
               estimateMins: task.estimate_mins,
               measuredMins: spent,
               history,
               clusters,
+              outcomeKind: 'partial',
+              realityOutcome: 'partial',
               startedAt: task.started_at ?? null,
               activeMinutes: spent > 0 ? spent : null,
               hints: {
@@ -1688,26 +1692,28 @@ export function TodayPage() {
     const loop = skipLearn
       ? { actualForDb: 0, trainMins: null as number | null, source: 'none' as const }
       : closeCompletionLoop({
-      userId: session?.user?.id,
-      taskId: task?.id ?? null,
-      taskText: task?.text || '',
-      estimateMins: task?.estimate_mins || 0,
-      measuredMins: measured,
-      history,
-      clusters,
-      startedAt: task?.started_at ?? null,
-      activeMinutes: measured > 0 ? measured : null,
-      hints: {
-        estimateMins: task?.estimate_mins,
-        loggedMins: measured,
-        jobId: task?.job_id,
-        dueToday: task?.due_today,
-        intendedTime: task?.intended_time,
-        createdAt: task?.created_at,
-        surfaceDate: task?.surface_date,
-        subtaskCount: task ? (subtasksByTask[task.id]?.length ?? 0) : 0,
-      },
-    });
+          userId: session?.user?.id,
+          taskId: task?.id ?? null,
+          taskText: task?.text || '',
+          estimateMins: task?.estimate_mins || 0,
+          measuredMins: measured,
+          history,
+          clusters,
+          outcomeKind: 'done',
+          realityOutcome: 'done',
+          startedAt: task?.started_at ?? null,
+          activeMinutes: measured > 0 ? measured : null,
+          hints: {
+            estimateMins: task?.estimate_mins,
+            loggedMins: measured,
+            jobId: task?.job_id,
+            dueToday: task?.due_today,
+            intendedTime: task?.intended_time,
+            createdAt: task?.created_at,
+            surfaceDate: task?.surface_date,
+            subtaskCount: task ? (subtasksByTask[task.id]?.length ?? 0) : 0,
+          },
+        });
     const actualForDb = loop.actualForDb;
     const { error } = await supabase
       .from('tasks')
