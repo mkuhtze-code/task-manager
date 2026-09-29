@@ -361,29 +361,37 @@ export function sequenceOrderIdsForOpenTasks(params: {
     now: params.now,
     workEndMins: params.workEndMins,
   };
-  const sequenceItems = params.openTasks.map((t) => {
-    const profile = profileTask(
-      t,
-      params.history,
-      clusterList,
-      runtime,
-      window,
-      calendarOpts
-    );
-    return sequenceItemFromProfile({
-      id: t.id,
-      capacityMins: profile.capacityMins,
-      urgency: profile.urgency,
-      protectFromCarry: profile.protectFromCarry,
-      fit: profile.fit,
-      orderIndex: t.order_index,
-      text: t.text,
+  try {
+    const sequenceItems = params.openTasks.map((t) => {
+      const profile = profileTask(
+        t,
+        params.history,
+        clusterList,
+        runtime,
+        window,
+        calendarOpts
+      );
+      return sequenceItemFromProfile({
+        id: t.id,
+        capacityMins: profile.capacityMins,
+        urgency: profile.urgency,
+        protectFromCarry: profile.protectFromCarry,
+        fit: profile.fit,
+        orderIndex: t.order_index,
+        text: t.text,
+      });
     });
-  });
-  return planCapacitySequence({
-    items: sequenceItems,
-    remainingWindowMins: window,
-  }).orderedIds;
+    return planCapacitySequence({
+      items: sequenceItems,
+      remainingWindowMins: window,
+    }).orderedIds;
+  } catch (err) {
+    console.error('[dayFit] sequenceOrderIdsForOpenTasks failed', err);
+    return params.openTasks
+      .slice()
+      .sort((a, b) => a.order_index - b.order_index)
+      .map((t) => t.id);
+  }
 }
 
 export function planOverflowCarry(params: {
