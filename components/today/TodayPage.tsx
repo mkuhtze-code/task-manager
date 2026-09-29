@@ -2142,6 +2142,13 @@ export function TodayPage() {
         realityCheckMessage={realityCheckMessage}
         isDesktop={isDesktop}
         onDockIt={isDesktop ? () => setCaptureOpen(true) : undefined}
+        orderHint={
+  sortMode === 'capacity_first'
+    ? 'Ordered by what is likely to fit today'
+    : sortMode === 'geo_aware'
+      ? 'Ordered with travel in mind'
+      : null
+}
       />
 
 
