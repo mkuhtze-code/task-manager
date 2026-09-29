@@ -313,3 +313,25 @@ export {
   expectedMinsForRegimeState,
   regimeStateFromWorkLeaf,
 } from './regimeLeaf';
+
+export type {
+  PredictionLifecycleStatus,
+  LifecycleOutcomeKind,
+  OpenPredictionRow,
+  ResolvePolicy,
+} from './predictionLifecycle';
+export {
+  PREDICTION_OPEN_HORIZON_DAYS,
+  DEFAULT_RESOLVE_POLICY,
+  isCleanOutcome,
+  isDirtyOutcome,
+  statusAfterOutcome,
+  mayTrainDurationFromLifecycle,
+  isOpenRow,
+  shouldExpireOpen,
+  expireOpenPredictions,
+  selectOpenPredictionForTaskId,
+  assertResolveIdentity,
+  supersedeOpenForTask,
+  estimateOnlyRate,
+} from './predictionLifecycle';
