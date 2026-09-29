@@ -39,6 +39,9 @@ export function TaskCard(props: {
     onPointerMove: (e: React.PointerEvent) => void;
     onPointerUp: (e: React.PointerEvent) => void;
   };
+  geoAware?: boolean;
+  onRoute?: boolean;
+  onSetRouteIntent?: (id: string, requiresVisit: boolean | null) => void;
 }) {
   const {
     task: t,
@@ -58,6 +61,9 @@ export function TaskCard(props: {
     onSaveInfo,
     dragHandleProps,
     jobLabel,
+    geoAware = false,
+    onRoute = false,
+    onSetRouteIntent,
   } = props;
 
   const timed = t.estimate_mins > 0;
@@ -400,11 +406,57 @@ export function TaskCard(props: {
               </button>
             )}
 
+            {geoAware && onSetRouteIntent ? (
+              <div
+                className="task-route-intent"
+                role="group"
+                aria-label="Travel for this task"
+              >
+                <span className="task-route-intent-label">Travel</span>
+                <div className="task-route-intent-seg">
+                  <button
+                    type="button"
+                    className={
+                      t.requires_visit == null
+                        ? 'task-route-intent-btn current'
+                        : 'task-route-intent-btn'
+                    }
+                    onClick={isolate(() => onSetRouteIntent(t.id, null))}
+                  >
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      t.requires_visit === true ||
+                      (t.requires_visit == null && onRoute)
+                        ? 'task-route-intent-btn current'
+                        : 'task-route-intent-btn'
+                    }
+                    onClick={isolate(() => onSetRouteIntent(t.id, true))}
+                  >
+                    On route
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      t.requires_visit === false
+                        ? 'task-route-intent-btn current'
+                        : 'task-route-intent-btn'
+                    }
+                    onClick={isolate(() => onSetRouteIntent(t.id, false))}
+                  >
+                    Not travel
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
             <button
               className="task-action-link"
               onClick={isolate(onOpenDetails)}
             >
-              Edit
+              Details
             </button>
           </div>
         </div>
