@@ -23,6 +23,10 @@ import {
 } from '@/lib/thinking/runtimeObservations';
 import { decideTaskFit, type FitDecision } from '@/lib/thinking/v3/fit';
 import {
+  structuralFeaturesFromTask,
+  isColdStartDuration,
+} from '@/lib/thinking/v3/coldStart';
+import {
   minsToNextCommitment,
   meetingDensityInWindow,
   planCapacitySequence,
@@ -300,6 +304,15 @@ export function profileTask(
           clusterBehaviour: signals?.clusterBehaviour ?? null,
           duration: signals?.hierarchicalDuration ?? null,
           capacityBiasScale: signals?.capacityBiasScale ?? 1,
+          structural: structuralFeaturesFromTask({
+            text: task.text,
+            job_id: task.job_id,
+            location_text: task.location_text,
+            estimate_mins: task.estimate_mins,
+            logged_mins: task.logged_mins,
+            due_today: task.due_today,
+            intended_time: task.intended_time,
+          }),
           calendar: {
             remainingWindowMins: window,
             minsToNextCommitment: nextCommit,
