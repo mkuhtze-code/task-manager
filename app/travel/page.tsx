@@ -531,8 +531,8 @@ export default function TravelHome() {
           </div>
 
           <div className="empty-state-sub">
-            Add a trip, block out the days, and Dokkit
-            works out what actually fits.
+            Block the days you are away. Dokkit uses the trip
+            so Today reflects what can still fit.
           </div>
 
           <button
