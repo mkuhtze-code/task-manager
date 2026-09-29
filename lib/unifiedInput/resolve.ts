@@ -4,6 +4,7 @@
 // jobs. Purely deterministic fuzzy matching over the jobs the user already
 // has — it never creates a job, address, category, or person.
 //
+// UX: high-confidence matches resolve as `known` (silent attach).
 // Output is a discrete state so the caller (and the user) always knows how
 // much to trust the result, following the existing DecisionAuthority
 // discipline:
@@ -293,8 +294,35 @@ export function resolveJobAndLocation(
     }
   }
 
+  // UX capture calm: only interrupt when the match is genuinely fuzzy.
+  // Near-exact / strong single match attaches silently as `known` (same path
+  // as a confirmed alias) so typing the real job name never asks "Do you mean?".
+  const HIGH_CONFIDENCE = 0.85;
+  const CLEAR_WIN_GAP = 0.22;
+
   if (reliable.length === 1) {
-    return { state: 'proposed', candidate: reliable[0], candidates: reliable };
+    const only = reliable[0];
+    if (only.score >= HIGH_CONFIDENCE) {
+      return { state: 'known', candidate: only, candidates: reliable };
+    }
+    return { state: 'proposed', candidate: only, candidates: reliable };
   }
+
+  // Clear winner among several: still silent when the top score is strong
+  // and clearly ahead of the runner-up.
+  const top = reliable[0];
+  const second = reliable[1];
+  if (
+    top.score >= HIGH_CONFIDENCE &&
+    top.score - second.score >= CLEAR_WIN_GAP
+  ) {
+    return { state: 'known', candidate: top, candidates: reliable };
+  }
+
+  // Ambiguous cluster — ask which one (or propose only if a mid-strength unique lead).
+  if (top.score >= 0.55 && top.score - second.score >= CLEAR_WIN_GAP) {
+    return { state: 'proposed', candidate: top, candidates: reliable };
+  }
+
   return { state: 'choose', candidates: reliable };
 }
