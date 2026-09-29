@@ -144,3 +144,29 @@ export function surfaceEmptyPurpose(key: Exclude<SurfaceKey, 'today'>): {
       };
   }
 }
+
+/**
+ * UX-4 — list order framing.
+ * Prefer cold-start honesty until personal evidence exists.
+ */
+export function dayOrderHint(opts: {
+  sortMode: string;
+  /** Clean completions or measured samples available for this user. */
+  personalEvidenceCount?: number | null;
+}): string | null {
+  const n = opts.personalEvidenceCount ?? 0;
+  const cold = n < 5;
+  if (opts.sortMode === 'capacity_first') {
+    if (cold) {
+      return 'Using what we know so far — order improves as you work';
+    }
+    return 'Ordered by what is likely to fit today';
+  }
+  if (opts.sortMode === 'geo_aware') {
+    if (cold) {
+      return 'Travel-aware order · still learning how long things take';
+    }
+    return 'Ordered with travel in mind';
+  }
+  return null;
+}
