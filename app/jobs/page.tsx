@@ -557,8 +557,9 @@ export default function JobsHome() {
           </div>
 
           <div className="empty-state-sub">
-            Group work that spans days. A job gathers its
-            tasks, evidence and context together.
+            A job is a home for work that spans days — tasks,
+            places, and evidence stay together. Optional until
+            a project needs one.
           </div>
 
           <button
