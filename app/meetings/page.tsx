@@ -314,9 +314,8 @@ export default function MeetingsHome() {
           </div>
 
           <div className="empty-state-sub">
-            A meeting is a block of time where people came
-            together around a job — capture the moment now,
-            structure it later.
+            Capture who met, when, and around which job — while
+            it is still fresh. Structure can wait.
           </div>
 
           <button
