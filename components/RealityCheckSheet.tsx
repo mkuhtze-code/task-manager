@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Task } from '@/lib/taskTypes';
 import { fmtMins } from '@/lib/timeFormat';
 import {
@@ -10,6 +10,7 @@ import {
 } from '@/lib/realityCapture';
 import { CloseIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
+import { shouldShowRealityIntro, markRealityIntroSeen } from '@/lib/uxFlags';
 
 type Props = {
   tasks: Task[];
@@ -30,8 +31,16 @@ const OUTCOMES: { key: RealityOutcome; label: string }[] = [
  * Prefills Done + minutes only when Dokkit already has recorded time.
  * Everything else stays Carry. Quiet language; user can change any row.
  */
-export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
+export function RealityCheckSheet({
+  tasks, onClose, onReshape, busy }: Props) {
   const dialogRef = useDialogA11y(onClose);
+  const [showIntro, setShowIntro] = useState(false);
+  useEffect(() => {
+    if (shouldShowRealityIntro()) {
+      setShowIntro(true);
+      markRealityIntroSeen();
+    }
+  }, []);
 
   const prefill = useMemo(() => buildRealityPrefillMaps(tasks), [tasks]);
 
@@ -91,6 +100,11 @@ export function RealityCheckSheet({ tasks, onClose, onReshape, busy }: Props) {
           </button>
         </div>
 
+        {showIntro && (
+          <p className="ux-once-hint">
+            This is how Dokkit learns what actually fits — no ratings needed.
+          </p>
+        )}
         <p className="settings-help" style={{ margin: '0 0 var(--space-3)' }}>
           {suggestedCount > 0
             ? 'A few rows reflect time already recorded. Change anything that isn’t right.'
