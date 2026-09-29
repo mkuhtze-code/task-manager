@@ -1,4 +1,7 @@
-/* Today header — mobile base (desktop overrides live under data-surface=desktop) */
+/* ==========================================================================
+   TODAY HEADER
+   Mobile base + desktop capacity dashboard
+   ========================================================================== */
 
 .today-header-top-row {
   display: flex;
@@ -8,7 +11,6 @@
   margin-bottom: var(--space-3, 12px);
 }
 
-/* Capacity / fit summary is a real control; must lay out as a row on mobile. */
 .today-header-summary-toggle {
   display: flex;
   align-items: center;
@@ -85,7 +87,6 @@
   padding-top: 2px;
 }
 
-/* Dock it is desktop-only (rendered when isDesktop); never show on mobile chrome. */
 .desk-today-dock {
   display: none;
 }
@@ -100,7 +101,252 @@ html[data-surface='desktop'] .desk-today-dock {
   font-weight: 600;
 }
 
-/* Mobile: keep the card readable in the sticky top slot */
+.today-header-weekday {
+  color: var(--ink-faint);
+}
+
+.today-header-date {
+  color: var(--ink);
+}
+
+.today-capacity-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 160ms var(--ease);
+}
+
+.today-capacity-chevron.open {
+  transform: rotate(180deg);
+}
+
+.today-capacity-detail {
+  min-width: 0;
+}
+
+.header-fit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.header-fit-icon.fits {
+  color: var(--moss-text, var(--moss));
+}
+
+.header-fit-icon.over {
+  color: var(--danger-text, var(--danger));
+}
+
+.today-commitments {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.today-commitments::-webkit-scrollbar {
+  display: none;
+}
+
+.today-commitment {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  max-width: 260px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.today-commitment-title {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-commitment-when {
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.today-commitment-when.all-day {
+  color: var(--ink-soft);
+}
+
+.today-reality-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.today-reality-msg {
+  min-width: 0;
+  color: var(--ink-faint);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-compare-row {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--line);
+}
+
+.header-compare-stat {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  background: var(--paper-raised);
+}
+
+.header-compare-number {
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.header-compare-number.over {
+  color: var(--danger-text, var(--danger));
+}
+
+.header-compare-label {
+  margin-top: 4px;
+  color: var(--ink-faint);
+  font-size: 10px;
+}
+
+.day-rail-wrap {
+  margin-top: 12px;
+}
+
+.day-rail-track {
+  position: relative;
+  height: 7px;
+  overflow: visible;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.day-rail-elapsed,
+.day-rail-plan {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+
+.day-rail-elapsed {
+  left: 0;
+  border-radius: 999px 0 0 999px;
+  background: var(--ink-faint);
+  opacity: 0.25;
+}
+
+.day-rail-plan {
+  border-radius: 0 999px 999px 0;
+  background: var(--steel);
+}
+
+.day-rail-plan.over {
+  background: var(--danger, #c84b4b);
+}
+
+.day-rail-now-dot {
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 4px rgba(var(--shadow-rgb), 0.18);
+}
+
+.day-rail-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 5px;
+  color: var(--ink-faint);
+  font-size: 10px;
+}
+
+.day-rail-overflow-label {
+  color: var(--danger-text, var(--danger));
+  font-weight: 700;
+}
+
+.spatial-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.spatial-strip-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.spatial-strip-actions {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.spatial-strip-action {
+  border: 0;
+  background: none;
+  color: var(--steel-dark, var(--steel));
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.spatial-strip-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.spatial-strip-error {
+  width: 100%;
+  margin: 0;
+  color: var(--danger-text, var(--danger));
+  font-size: 11px;
+}
+
+.header-off-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 @media (max-width: 959px) {
   .today-header-card {
     margin-left: 0;
@@ -117,5 +363,642 @@ html[data-surface='desktop'] .desk-today-dock {
 
   .today-header-date {
     font-size: 15px;
+  }
+}
+
+
+/* ==========================================================================
+   DESKTOP TODAY — CAPACITY DASHBOARD
+   ========================================================================== */
+
+html[data-surface='desktop'] .desk-today-capacity-dashboard {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20px 28px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(var(--glass-rgb), 0.98),
+      rgba(var(--glass-rgb), 0.90)
+    );
+  box-shadow: none;
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+}
+
+html[data-surface='desktop'] .desk-today-dashboard-top {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+html[data-surface='desktop'] .desk-today-dashboard-title {
+  min-width: 0;
+}
+
+html[data-surface='desktop'] .desk-today-dashboard-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+html[data-surface='desktop'] .desk-today-dashboard-heading-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+html[data-surface='desktop'] .desk-today-dashboard-heading-row h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(25px, 2vw, 32px);
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-weight: 800;
+}
+
+html[data-surface='desktop'] .desk-today-dashboard-date {
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+html[data-surface='desktop'] .desk-today-dashboard-subtitle {
+  max-width: 640px;
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+html[data-surface='desktop'] .desk-today-dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+html[data-surface='desktop'] .desk-today-dashboard-actions .gear-menu-wrap {
+  display: flex;
+  z-index: 80;
+}
+
+html[data-surface='desktop'] .desk-today-dashboard-actions .desk-today-dock {
+  display: inline-flex;
+}
+
+
+/* --------------------------------------------------------------------------
+   Capacity hero
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop'] .desk-today-capacity-hero {
+  width: 100%;
+  max-width: 1500px;
+  margin: 20px auto 0;
+  padding: 20px 22px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper-raised);
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.04);
+}
+
+html[data-surface='desktop'] .desk-today-capacity-primary {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-surface='desktop'] .desk-today-capacity-label {
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+html[data-surface='desktop'] .desk-today-capacity-number {
+  margin-top: 5px;
+  color: var(--ink);
+  font-size: clamp(34px, 3vw, 48px);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  font-weight: 700;
+}
+
+html[data-surface='desktop'] .desk-today-capacity-context {
+  margin-top: 6px;
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
+html[data-surface='desktop'] .desk-today-fit {
+  min-width: 300px;
+  max-width: 440px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(var(--glass-rgb), 0.62);
+}
+
+html[data-surface='desktop'] .desk-today-fit.is-fit {
+  border-color: var(--line);
+}
+
+html[data-surface='desktop'] .desk-today-fit.is-over {
+  border-color: rgba(var(--danger-rgb, 200, 75, 75), 0.3);
+  background: var(--danger-bg, rgba(200, 75, 75, 0.06));
+}
+
+html[data-surface='desktop'] .desk-today-fit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  flex-shrink: 0;
+}
+
+html[data-surface='desktop'] .desk-today-fit.is-fit .desk-today-fit-icon {
+  color: var(--moss-text, var(--moss));
+}
+
+html[data-surface='desktop'] .desk-today-fit.is-over .desk-today-fit-icon {
+  color: var(--danger-text, var(--danger));
+}
+
+html[data-surface='desktop'] .desk-today-fit-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+html[data-surface='desktop'] .desk-today-fit-copy strong {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+html[data-surface='desktop'] .desk-today-fit-copy span {
+  color: var(--ink-faint);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+
+/* --------------------------------------------------------------------------
+   Capacity model
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop'] .desk-today-capacity-model {
+  width: 100%;
+  max-width: 1500px;
+  margin: 10px auto 0;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+html[data-surface='desktop'] .desk-today-capacity-stat {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 11px 14px;
+  background: var(--paper-raised);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+html[data-surface='desktop'] .desk-today-capacity-stat span {
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+html[data-surface='desktop'] .desk-today-capacity-stat strong {
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+html[data-surface='desktop'] .desk-today-capacity-stat strong.is-over {
+  color: var(--danger-text, var(--danger));
+}
+
+html[data-surface='desktop'] .desk-today-capacity-stat strong.is-positive {
+  color: var(--moss-text, var(--moss));
+}
+
+html[data-surface='desktop'] .desk-today-capacity-stat small {
+  color: var(--ink-faint);
+  font-size: 9px;
+}
+
+html[data-surface='desktop'] .desk-today-capacity-divider {
+  width: 1px;
+  background: var(--line);
+}
+
+
+/* --------------------------------------------------------------------------
+   Workday rail
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop'] .desk-today-rail-section {
+  width: 100%;
+  max-width: 1500px;
+  margin: 16px auto 0;
+}
+
+html[data-surface='desktop'] .desk-today-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+html[data-surface='desktop'] .desk-today-rail-times {
+  color: var(--ink-faint);
+  font-size: 10px;
+}
+
+html[data-surface='desktop'] .desk-today-rail-times span {
+  padding: 0 3px;
+}
+
+html[data-surface='desktop'] .desk-today-rail {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+html[data-surface='desktop'] .desk-today-rail-elapsed {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px 0 0 999px;
+  background: var(--ink-faint);
+  opacity: 0.24;
+}
+
+html[data-surface='desktop'] .desk-today-rail-load {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 0 999px 999px 0;
+  background: var(--steel);
+}
+
+html[data-surface='desktop'] .desk-today-rail-load.is-over {
+  background: var(--danger, #c84b4b);
+}
+
+html[data-surface='desktop'] .desk-today-rail-now {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 4px rgba(var(--shadow-rgb), 0.18);
+}
+
+html[data-surface='desktop'] .desk-today-rail-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  color: var(--ink-faint);
+  font-size: 9px;
+}
+
+html[data-surface='desktop'] .desk-today-rail-warning {
+  color: var(--danger-text, var(--danger));
+  font-weight: 700;
+}
+
+
+/* --------------------------------------------------------------------------
+   Commitments
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop'] .desk-today-commitment-section {
+  width: 100%;
+  max-width: 1500px;
+  margin: 15px auto 0;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+html[data-surface='desktop'] .desk-today-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+html[data-surface='desktop'] .desk-today-section-heading span:last-child {
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-surface='desktop'] .desk-today-commitment-list {
+  display: flex;
+  gap: 7px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+html[data-surface='desktop'] .desk-today-commitment-item {
+  min-width: 150px;
+  max-width: 280px;
+  flex: 0 1 220px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-raised);
+}
+
+html[data-surface='desktop'] .desk-today-commitment-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--steel);
+}
+
+html[data-surface='desktop'] .desk-today-commitment-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+html[data-surface='desktop'] .desk-today-commitment-copy strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+html[data-surface='desktop'] .desk-today-commitment-copy span {
+  color: var(--ink-faint);
+  font-size: 9px;
+}
+
+
+/* --------------------------------------------------------------------------
+   Secondary row: travel + reality check
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop'] .desk-today-secondary-row {
+  width: 100%;
+  max-width: 1500px;
+  margin: 11px auto 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+html[data-surface='desktop'] .desk-today-route-summary {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: var(--ink-soft);
+  font-size: 10px;
+}
+
+html[data-surface='desktop'] .desk-today-secondary-kicker {
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+html[data-surface='desktop'] .desk-today-route-actions {
+  display: inline-flex;
+  gap: 7px;
+  margin-left: 3px;
+}
+
+html[data-surface='desktop'] .desk-today-inline-action {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--steel-dark, var(--steel));
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+html[data-surface='desktop'] .desk-today-inline-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+html[data-surface='desktop'] .desk-today-route-error {
+  flex-basis: 100%;
+  color: var(--danger-text, var(--danger));
+}
+
+html[data-surface='desktop'] .desk-today-reality {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+html[data-surface='desktop'] .desk-today-reality > span {
+  color: var(--ink-faint);
+  font-size: 10px;
+}
+
+
+/* --------------------------------------------------------------------------
+   Optional detail disclosure
+   -------------------------------------------------------------------------- */
+
+html[data-surface='desktop'] .desk-today-details-toggle {
+  width: 100%;
+  max-width: 1500px;
+  margin: 9px auto 0;
+  padding: 8px 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+}
+
+html[data-surface='desktop'] .desk-today-details-toggle:hover {
+  color: var(--ink);
+}
+
+html[data-surface='desktop'] .desk-today-detail-panel {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 10px 0 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+html[data-surface='desktop'] .desk-today-detail-panel > div {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-raised);
+}
+
+html[data-surface='desktop'] .desk-today-detail-panel span {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+html[data-surface='desktop'] .desk-today-detail-panel strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+html[data-surface='desktop'] .desk-today-detail-panel strong.is-over {
+  color: var(--danger-text, var(--danger));
+}
+
+html[data-surface='desktop'] .desk-today-detail-panel strong.is-positive {
+  color: var(--moss-text, var(--moss));
+}
+
+
+/* --------------------------------------------------------------------------
+   Desktop sizing
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 960px) and (max-width: 1279px) {
+  html[data-surface='desktop'] .desk-today-capacity-dashboard {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  html[data-surface='desktop'] .desk-today-dashboard-top,
+  html[data-surface='desktop'] .desk-today-capacity-hero,
+  html[data-surface='desktop'] .desk-today-capacity-model,
+  html[data-surface='desktop'] .desk-today-rail-section,
+  html[data-surface='desktop'] .desk-today-commitment-section,
+  html[data-surface='desktop'] .desk-today-secondary-row,
+  html[data-surface='desktop'] .desk-today-details-toggle,
+  html[data-surface='desktop'] .desk-today-detail-panel {
+    max-width: none;
+  }
+
+  html[data-surface='desktop'] .desk-today-capacity-hero {
+    gap: 18px;
+  }
+
+  html[data-surface='desktop'] .desk-today-fit {
+    min-width: 260px;
+  }
+}
+
+@media (min-width: 1600px) {
+  html[data-surface='desktop'] .desk-today-capacity-dashboard {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 960px) {
+  html[data-surface='desktop'] .desk-today-capacity-dashboard {
+    padding-top: 14px;
+  }
+
+  html[data-surface='desktop'] .desk-today-capacity-hero {
+    margin-top: 12px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  html[data-surface='desktop'] .desk-today-capacity-number {
+    font-size: 36px;
+  }
+
+  html[data-surface='desktop'] .desk-today-rail-section {
+    margin-top: 11px;
+  }
+
+  html[data-surface='desktop'] .desk-today-commitment-section {
+    margin-top: 10px;
+    padding-top: 9px;
+  }
+
+  html[data-surface='desktop'] .desk-today-secondary-row {
+    margin-top: 8px;
+    padding-top: 7px;
   }
 }
