@@ -8,6 +8,13 @@
 import type { FitState, Confidence, ConfidenceProfile } from './types';
 import type { UserBehaviourModel, ClusterBehaviourSlice } from './behaviour';
 import type { HierarchicalDuration } from './model';
+import type { MultiChannelBelief } from './beliefs';
+import type { BeliefAuthority } from './learningRates';
+import {
+  type StructuralFeatures,
+  coldStartCapacityHint,
+  isColdStartDuration,
+} from './coldStart';
 
 export type FitCalendarContext = {
   remainingWindowMins: number | null;
@@ -33,6 +40,12 @@ export type FitInput = {
   capacityBiasScale?: number;
   /** Optional richer calendar. */
   calendar?: FitCalendarContext | null;
+  /** FP-2 — multi-channel belief for matched work (carry / fragility / authority). */
+  multiChannel?: MultiChannelBelief | null;
+  /** FP-2 — structural task features for cold-start honesty. */
+  structural?: StructuralFeatures | null;
+  /** Soft floor when personal duration is absent. */
+  softFloorMins?: number;
 };
 
 export type FitDecision = {
@@ -57,23 +70,88 @@ function weaker(a: Confidence, b: Confidence): Confidence {
   return rank[a] <= rank[b] ? a : b;
 }
 
+/** UX-4 / S5 — never present strong fit without personal evidence. */
+function demoteStrongIfCold(
+  decision: FitDecision,
+  cold: boolean
+): FitDecision {
+  if (!cold || decision.fit !== 'strong') return decision;
+  return {
+    ...decision,
+    fit: 'possible',
+    confidence: weaker(decision.confidence, 'low'),
+    reasons: [
+      ...decision.reasons,
+      'using structure until personal evidence builds',
+    ],
+  };
+}
+
+function mayCarry(input: FitInput): boolean {
+  if (input.protectFromCarry) return false;
+  if (input.sameDayRate != null && input.sameDayRate < 0.45) return true;
+  if (
+    input.clusterBehaviour?.carryRate != null &&
+    input.clusterBehaviour.carryRate >= 0.5
+  ) {
+    return true;
+  }
+  // FP-2: multi-channel carry hazard
+  if (
+    input.multiChannel?.carryHazard != null &&
+    input.multiChannel.carryHazard >= 0.45
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function beliefAuthority(input: FitInput): BeliefAuthority | null {
+  return input.multiChannel?.authority ?? null;
+}
+
 /**
  * Decide whether this task fits the remaining day for this person.
+ * FP-2 + UX-4/S5: cold-start structural path; never strong fit without evidence.
  */
 export function decideTaskFit(input: FitInput): FitDecision {
   const reasons: string[] = [];
-  const capacity = Math.max(0, input.capacityMins);
-  const cost = capacity;
+  let capacity = Math.max(0, input.capacityMins);
   const durationLevel = input.duration?.level ?? null;
+  const cold = isColdStartDuration(input.duration);
+  const auth = beliefAuthority(input);
+
+  // Cold-start: when personal duration is weak, prefer structural capacity hint.
+  if (cold && input.structural) {
+    const hint = coldStartCapacityHint(input.structural, {
+      softFloorMins: input.softFloorMins ?? 30,
+    });
+    if (capacity <= 0 || durationLevel === 'system' || durationLevel === 'onboarding') {
+      capacity = hint.mins;
+      reasons.push(...hint.reasons.map((r) => `cold-start: ${r}`));
+    } else if (input.structural.estimateMins == null) {
+      // Blend slightly toward structure when evidence is thin
+      capacity = Math.round(capacity * 0.7 + hint.mins * 0.3);
+      reasons.push('cold-start blend with structure');
+    }
+  }
+
+  if (auth === 'unknown' || auth === 'early') {
+    reasons.push(`belief authority ${auth ?? 'unknown'}`);
+  }
+
+  const cost = capacity;
 
   const interval = input.duration?.distribution.interval ?? null;
   const spread =
     interval != null ? Math.max(0, interval.high - interval.low) : null;
   const highDurationUncertainty =
+    cold ||
     (spread != null && cost > 0 && spread / Math.max(cost, 1) >= 0.6) ||
     (input.duration != null &&
       input.duration.authority === 'observe' &&
-      input.duration.distribution.sampleSize < 2);
+      input.duration.distribution.sampleSize < 2) ||
+    (auth === 'unknown' || auth === 'early');
 
   if (input.isActive) {
     return {
@@ -104,11 +182,7 @@ export function decideTaskFit(input: FitInput): FitDecision {
 
   if (minsToNext != null && minsToNext >= 0 && cost > minsToNext * 1.05) {
     reasons.push('would overrun next commitment');
-    const carryOk =
-      !input.protectFromCarry &&
-      ((input.sameDayRate != null && input.sameDayRate < 0.45) ||
-        (input.clusterBehaviour?.carryRate != null &&
-          input.clusterBehaviour.carryRate >= 0.5));
+    const carryOk = mayCarry(input);
     if (carryOk) {
       return {
         fit: 'carry_safe',
@@ -130,11 +204,7 @@ export function decideTaskFit(input: FitInput): FitDecision {
   }
 
   if (window != null && window >= 0 && cost > window * 1.05) {
-    const carryOk =
-      !input.protectFromCarry &&
-      ((input.sameDayRate != null && input.sameDayRate < 0.45) ||
-        (input.clusterBehaviour?.carryRate != null &&
-          input.clusterBehaviour.carryRate >= 0.5));
+    const carryOk = mayCarry(input);
 
     if (carryOk) {
       reasons.push('exceeds remaining window; often moves forward');
@@ -186,7 +256,7 @@ export function decideTaskFit(input: FitInput): FitDecision {
         `duration from cluster (${input.duration.distribution.sampleSize} samples)`
       );
     }
-    return {
+    return demoteStrongIfCold({
       fit: 'strong',
       confidence: weaker(
         durConf || 'medium',
@@ -196,7 +266,7 @@ export function decideTaskFit(input: FitInput): FitDecision {
       reasons,
       effectiveCapacityMins: cost,
       durationLevel,
-    };
+    }, cold);
   }
 
   if (window != null && cost <= window) {
@@ -216,14 +286,14 @@ export function decideTaskFit(input: FitInput): FitDecision {
 
   if (input.sameDayRate != null && input.sameDayRate >= 0.55) {
     reasons.push('usually finished same day');
-    return {
+    return demoteStrongIfCold({
       fit: 'strong',
       confidence: 'medium',
       protectFromCarry: true,
       reasons,
       effectiveCapacityMins: cost,
       durationLevel,
-    };
+    }, cold);
   }
 
   if (input.sameDayRate != null && input.sameDayRate < 0.4) {
