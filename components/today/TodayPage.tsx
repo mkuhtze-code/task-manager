@@ -2060,6 +2060,8 @@ export function TodayPage() {
     console.error('[TodayPage] order/fit failed', err);
     ordered = sortTasks(visibleTasks, 'manual');
   }
+  // Guard: weaveGeoOrder must never leave holes (visit-intent vs lat/lng mismatch).
+  ordered = ordered.filter((t): t is Task => t != null && typeof t.id === 'string');
   const orderedIds = ordered.map((t) => t.id);
 
   // Route drive time only enters capacity math in geo_aware mode. Each
