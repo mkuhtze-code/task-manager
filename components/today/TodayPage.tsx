@@ -2149,7 +2149,8 @@ export function TodayPage() {
                 onDockIt={isDesktop ? () => setCaptureOpen(true) : undefined}
         orderHint={dayOrderHint({
           sortMode,
-          personalEvidenceCount: history.filter((t) => t.status === 'done').length,
+          // history is already completed-task rows (no status field on HistoricalTask)
+          personalEvidenceCount: history.length,
         })}
       />
 
