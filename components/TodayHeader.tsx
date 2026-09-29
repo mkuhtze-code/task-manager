@@ -37,6 +37,8 @@ export function TodayHeader(props: {
   realityCheckMessage?: string | null;
   isDesktop?: boolean;
   onDockIt?: () => void;
+  /** Plain-language list order (e.g. capacity_first). */
+  orderHint?: string | null;
 }) {
   const {
     overloaded,
@@ -64,6 +66,7 @@ export function TodayHeader(props: {
     realityCheckMessage,
     isDesktop = false,
     onDockIt,
+    orderHint = null,
   } = props;
 
   const [capacityOpen, setCapacityOpen] = useState(false);
@@ -131,6 +134,11 @@ export function TodayHeader(props: {
                 ? 'Your available time and everything currently competing for it.'
                 : 'Today is outside your normal working days.'}
             </p>
+            {orderHint ? (
+              <p className="today-fit-order-hint" style={{ padding: 0, marginTop: 6 }}>
+                {orderHint}
+              </p>
+            ) : null}
           </div>
 
           <div className="desk-today-dashboard-actions">
@@ -556,6 +564,10 @@ export function TodayHeader(props: {
         </div>
       </div>
 
+      {orderHint ? (
+        <p className="today-fit-order-hint">{orderHint}</p>
+      ) : null}
+
       {commitments.length > 0 && (
         <div className="today-commitments">
           {commitments.map((c) => (
@@ -745,3 +757,4 @@ export function TodayHeader(props: {
     </div>
   );
 }
+
