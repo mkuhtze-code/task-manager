@@ -22,6 +22,7 @@ import {
 
 type Step =
   | 'role'
+  | 'fast_track'
   | 'professional_work'
   | 'professional_day'
   | 'professional_eaters'
@@ -166,10 +167,30 @@ export function OnboardingScreen(props: {
 
   function goNextFromRole(r: UserRole) {
     setRole(r);
+    // UX-2: role → fast track (defaults) or optional deep questions
+    setStep('fast_track');
+  }
+
+  function applyFastDefaultsAndContinue() {
+    if (!carryStyle) setCarryStyle('unsure');
+    setStep('hours');
+  }
+
+  function startDetailedQuestions() {
+    const r = role;
+    if (!r) {
+      setStep('role');
+      return;
+    }
     if (r === 'professional') setStep('professional_work');
     else if (r === 'student') setStep('student_level');
     else if (r === 'knowledge_worker' || r === 'personal') setStep('knowledge_day');
     else setStep('carry');
+  }
+
+  function skipToHours() {
+    if (!carryStyle) setCarryStyle('unsure');
+    setStep('hours');
   }
 
   function toggleMulti<T>(list: T[], value: T, max?: number): T[] {
@@ -201,8 +222,8 @@ export function OnboardingScreen(props: {
 
         {step === 'role' && (
           <>
-            <h1 className="auth-title">What best describes you right now?</h1>
-            <p className="auth-sub">This helps Dokkit start with defaults that fit how your days usually work.</p>
+            <h1 className="auth-title">What best describes you?</h1>
+            <p className="auth-sub">One choice. Dokkit uses it for starting defaults — not a permanent profile quiz.</p>
             <div className="onboard-choices">
               {ROLE_OPTIONS.map((o) => (
                 <ChoiceButton key={o.value} selected={role === o.value} onClick={() => goNextFromRole(o.value)}>
@@ -210,6 +231,35 @@ export function OnboardingScreen(props: {
                 </ChoiceButton>
               ))}
             </div>
+          </>
+        )}
+
+        {step === 'fast_track' && (
+          <>
+            <h1 className="auth-title">Ready when you are</h1>
+            <p className="auth-sub">
+              We can set sensible defaults from that choice and take you straight toward your day.
+              Optional questions improve priors — never required.
+            </p>
+            <button
+              type="button"
+              className="btn btn-steel"
+              style={{ width: '100%', marginTop: 'var(--space-4)' }}
+              onClick={applyFastDefaultsAndContinue}
+            >
+              Continue with defaults
+            </button>
+            <button
+              type="button"
+              className="btn-text"
+              style={{ marginTop: 12, width: '100%' }}
+              onClick={startDetailedQuestions}
+            >
+              A few more questions
+            </button>
+            <button type="button" className="btn-text" style={{ marginTop: 8 }} onClick={() => setStep('role')}>
+              Back
+            </button>
           </>
         )}
 
@@ -284,7 +334,10 @@ export function OnboardingScreen(props: {
             >
               Continue
             </button>
-            <button type="button" className="btn-text" style={{ marginTop: 12 }} onClick={() => setStep('professional_day')}>
+            <button type="button" className="btn-text" style={{ marginTop: 12 }} onClick={skipToHours}>
+              Skip to hours
+            </button>
+            <button type="button" className="btn-text" style={{ marginTop: 8 }} onClick={() => setStep('professional_day')}>
               Back
             </button>
           </>
@@ -337,7 +390,10 @@ export function OnboardingScreen(props: {
             >
               Continue
             </button>
-            <button type="button" className="btn-text" style={{ marginTop: 12 }} onClick={() => setStep('student_level')}>
+            <button type="button" className="btn-text" style={{ marginTop: 12 }} onClick={skipToHours}>
+              Skip to hours
+            </button>
+            <button type="button" className="btn-text" style={{ marginTop: 8 }} onClick={() => setStep('student_level')}>
               Back
             </button>
           </>
@@ -414,7 +470,10 @@ export function OnboardingScreen(props: {
             >
               Continue
             </button>
-            <button type="button" className="btn-text" style={{ marginTop: 12 }} onClick={() => setStep('knowledge_day')}>
+            <button type="button" className="btn-text" style={{ marginTop: 12 }} onClick={skipToHours}>
+              Skip to hours
+            </button>
+            <button type="button" className="btn-text" style={{ marginTop: 8 }} onClick={() => setStep('knowledge_day')}>
               Back
             </button>
           </>
@@ -525,7 +584,7 @@ export function OnboardingScreen(props: {
               ))}
             </ul>
             <p className="auth-sub" style={{ marginTop: 12 }}>
-              Dokkit will keep learning from what you actually finish and carry. You can change any of this later in Preferences.
+              From here, ordinary use is enough — finish, carry, and Reality Check teach Dokkit. Change any of this later in Preferences.
             </p>
             <button
               type="button"
