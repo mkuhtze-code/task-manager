@@ -288,38 +288,43 @@ export function profileTask(
   const urg = urgencyForTask(task, history, rt);
   const signals = rt ? lookupTaskSignals(task.text, rt, { jobId: task.job_id, locationText: task.location_text }) : null;
 
-  const fit =
-    rt != null
-      ? decideTaskFit({
-          capacityMins: cap.mins,
+  let fit: FitDecision | null = null;
+  if (rt != null) {
+    try {
+      fit = decideTaskFit({
+        capacityMins: cap.mins,
+        remainingWindowMins: window,
+        sameDayRate: signals?.sameDayRate ?? null,
+        protectFromCarry: urg.protectFromCarry,
+        dueToday: Boolean(task.due_today),
+        hasIntendedTime: Boolean(
+          task.intended_time && task.intended_time.length > 0
+        ),
+        isActive: task.status === 'active',
+        behaviour: rt.behaviour,
+        clusterBehaviour: signals?.clusterBehaviour ?? null,
+        duration: signals?.hierarchicalDuration ?? null,
+        capacityBiasScale: signals?.capacityBiasScale ?? 1,
+        structural: structuralFeaturesFromTask({
+          text: task.text,
+          job_id: task.job_id,
+          location_text: task.location_text,
+          estimate_mins: task.estimate_mins,
+          logged_mins: task.logged_mins,
+          due_today: task.due_today,
+          intended_time: task.intended_time,
+        }),
+        calendar: {
           remainingWindowMins: window,
-          sameDayRate: signals?.sameDayRate ?? null,
-          protectFromCarry: urg.protectFromCarry,
-          dueToday: Boolean(task.due_today),
-          hasIntendedTime: Boolean(
-            task.intended_time && task.intended_time.length > 0
-          ),
-          isActive: task.status === 'active',
-          behaviour: rt.behaviour,
-          clusterBehaviour: signals?.clusterBehaviour ?? null,
-          duration: signals?.hierarchicalDuration ?? null,
-          capacityBiasScale: signals?.capacityBiasScale ?? 1,
-          structural: structuralFeaturesFromTask({
-            text: task.text,
-            job_id: task.job_id,
-            location_text: task.location_text,
-            estimate_mins: task.estimate_mins,
-            logged_mins: task.logged_mins,
-            due_today: task.due_today,
-            intended_time: task.intended_time,
-          }),
-          calendar: {
-            remainingWindowMins: window,
-            minsToNextCommitment: nextCommit,
-            meetingDensity: density,
-          },
-        })
-      : null;
+          minsToNextCommitment: nextCommit,
+          meetingDensity: density,
+        },
+      });
+    } catch {
+      // Fit must never blank the Today surface.
+      fit = null;
+    }
+  }
 
   return {
     capacityMins: cap.mins,
