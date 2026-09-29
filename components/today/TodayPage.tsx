@@ -33,6 +33,7 @@ import {
   firstSessionLine,
   dayOrderHint,
 } from '@/lib/surfaceCopy';
+import { shouldShowSetupLine, markSetupLineSeen } from '@/lib/uxFlags';
 import { persistNavOrder } from '@/components/DesktopProductNav';
 
 import {
@@ -237,7 +238,8 @@ export function TodayPage() {
   /** Next-morning optional card — never auto-opens the sheet. */
   const [pendingRealityInvite, setPendingRealityInvite] = useState<PendingRealityInvite | null>(null);
   const [clearingStarter, setClearingStarter] = useState(false);
-  const [setupLineDismissed, setSetupLineDismissed] = useState(false);
+  const [setupLineDismissed, setSetupLineDismissed] = useState(() => !shouldShowSetupLine());
+
 
   // ── Home & Work base pins, and the route state geo_aware sort mode
   // depends on. driveFromBaseMins/basePolyline are never persisted —
@@ -410,6 +412,18 @@ export function TodayPage() {
   // effective (learned) estimates below. Location suggestions ride the
   // same clusters now — see suggestLocation in taskIntelligence.ts.
   const [history, setHistory] = useState<HistoricalTask[]>([]);
+
+  // Once the user has real work (or dismisses), never show the setup cue again.
+  useEffect(() => {
+    if (setupLineDismissed) return;
+    const hasRealWork =
+      history.length > 0 ||
+      tasks.some((t) => !isStarterTask(t));
+    if (hasRealWork) {
+      markSetupLineSeen();
+      setSetupLineDismissed(true);
+    }
+  }, [setupLineDismissed, history.length, tasks]);
   // One shared brain slice: duration + behaviour + calibrated soft floor.
   const runtime = useMemo(() => {
     // Onboarding seeds the soft floor; calibration only overrides once it
@@ -2340,12 +2354,22 @@ export function TodayPage() {
         </div>
       )}
 
-      {!setupLineDismissed && firstSessionLine(userProfile) && !tasks.some((t) => isStarterTask(t)) && (
+      {!setupLineDismissed &&
+        firstSessionLine(userProfile) &&
+        history.length === 0 &&
+        tasks.filter((t) => !isStarterTask(t)).length === 0 && (
         <div className="reality-invite-card" role="status">
           <p className="reality-invite-body" style={{ marginBottom: 8 }}>
             {firstSessionLine(userProfile)}
           </p>
-          <button type="button" className="btn-text" onClick={() => setSetupLineDismissed(true)}>
+          <button
+            type="button"
+            className="btn-text"
+            onClick={() => {
+              markSetupLineSeen();
+              setSetupLineDismissed(true);
+            }}
+          >
             Got it
           </button>
         </div>
