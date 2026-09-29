@@ -94,3 +94,77 @@
   color: var(--ink-soft, #64748b);
 }
 
+
+/* Capture entity match — quiet chip, not a jump panel */
+.capture-entity-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--line, #e2e8f0);
+  font-size: var(--text-sm, 0.8125rem);
+  line-height: 1.35;
+  color: var(--ink-soft, #64748b);
+}
+
+.capture-entity-chip-known {
+  background: transparent;
+  border: 1px solid var(--line, #e2e8f0);
+  padding: 4px 8px;
+}
+
+.capture-entity-chip-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.capture-entity-chip-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.capture-entity-chip-yes {
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+}
+
+/* Bottom nav: never force four labeled tabs on a narrow bar */
+.surface-rail {
+  gap: 0;
+  max-width: calc(100% - 56px);
+}
+
+.surface-rail-item {
+  padding: 0 8px;
+  max-width: 4.75rem;
+}
+
+.surface-rail-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
+/* Icon-primary rail on very narrow screens */
+@media (max-width: 380px) {
+  .surface-rail-label {
+    display: none;
+  }
+  .surface-rail-item.current .surface-rail-label {
+    display: inline;
+    max-width: 3.5rem;
+  }
+  .surface-rail-item {
+    padding: 0 6px;
+  }
+}
+
+.surface-switcher-label {
+  max-width: 4.5rem;
+}
