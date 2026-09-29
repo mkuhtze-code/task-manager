@@ -438,13 +438,14 @@ export function lookupTaskSignals(
   }
 
   let explainDuration: string | null = null;
-  if (workLeaf && hierarchicalDuration && hierarchicalDuration.distribution.sampleSize > 0) {
-    const m = hierarchicalDuration.distribution.expectedMins;
-    const n = hierarchicalDuration.distribution.sampleSize;
+  const hdDist = hierarchicalDuration?.distribution ?? null;
+  if (workLeaf && hierarchicalDuration && hdDist && (hdDist.sampleSize ?? 0) > 0) {
+    const m = hdDist.expectedMins;
+    const n = hdDist.sampleSize;
     explainDuration = `≈ ${m}m — ${n} on this work`;
-  } else if (hierarchicalDuration && hierarchicalDuration.distribution.sampleSize > 0) {
-    const m = hierarchicalDuration.distribution.expectedMins;
-    const n = hierarchicalDuration.distribution.sampleSize;
+  } else if (hierarchicalDuration && hdDist && (hdDist.sampleSize ?? 0) > 0) {
+    const m = hdDist.expectedMins;
+    const n = hdDist.sampleSize;
     if (hierarchicalDuration.level === 'cluster') {
       explainDuration = `≈ ${m}m — ${n} similar (${hierarchicalDuration.clusterLabel ?? 'cluster'})`;
     } else if (hierarchicalDuration.level === 'user') {
