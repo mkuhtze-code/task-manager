@@ -40,3 +40,15 @@ export function shouldShowEstimateHint(): boolean {
 export function markEstimateHintSeen(): void {
   writeFlag('estimate_hint_v1');
 }
+
+/**
+ * First-session “Add what needs doing” cue on Today.
+ * Once dismissed (or auto-cleared after real work), never again on this browser.
+ */
+export function shouldShowSetupLine(): boolean {
+  return !readFlag('setup_line_v1');
+}
+
+export function markSetupLineSeen(): void {
+  writeFlag('setup_line_v1');
+}
