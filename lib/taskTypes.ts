@@ -29,6 +29,11 @@ export type Task = {
   location_text: string | null;
   lat: number | null;
   lng: number | null;
+  /**
+   * Explicit travel intent for geo-aware routing.
+   * null = auto (engine decides); true = on route; false = place is context only.
+   */
+  requires_visit: boolean | null;
   drive_mins_to_next: number;
   route_polyline: string | null;
   // Freeform information the person would write underneath this task on
