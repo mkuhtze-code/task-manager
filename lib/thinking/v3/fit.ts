@@ -142,15 +142,18 @@ export function decideTaskFit(input: FitInput): FitDecision {
 
   const cost = capacity;
 
-  const interval = input.duration?.distribution.interval ?? null;
+  // Optional-chain distribution: incomplete hierarchical rows must not throw in render.
+  const dist = input.duration?.distribution ?? null;
+  const interval = dist?.interval ?? null;
   const spread =
     interval != null ? Math.max(0, interval.high - interval.low) : null;
+  const sampleSize = dist?.sampleSize ?? 0;
   const highDurationUncertainty =
     cold ||
     (spread != null && cost > 0 && spread / Math.max(cost, 1) >= 0.6) ||
     (input.duration != null &&
       input.duration.authority === 'observe' &&
-      input.duration.distribution.sampleSize < 2) ||
+      sampleSize < 2) ||
     (auth === 'unknown' || auth === 'early');
 
   if (input.isActive) {
@@ -253,7 +256,7 @@ export function decideTaskFit(input: FitInput): FitDecision {
     reasons.push('comfortable within remaining window');
     if (input.duration && input.duration.level === 'cluster') {
       reasons.push(
-        `duration from cluster (${input.duration.distribution.sampleSize} samples)`
+        `duration from cluster (${input.duration.distribution?.sampleSize ?? 0} samples)`
       );
     }
     return demoteStrongIfCold({
