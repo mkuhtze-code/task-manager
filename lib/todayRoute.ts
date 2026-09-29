@@ -78,28 +78,37 @@ export function nearestNeighborOrder(base: Coords, tasks: LocatedTask[]): string
   return order;
 }
 
-// Weaves a geo-ordered sequence of located task ids back into the
-// original relative structure — non-located tasks keep the exact
-// structural slot they held before, while located tasks fill their
-// slots in nearest-neighbor order instead of original order_index
-// order. Same "weave by original slot" technique already used in
-// lib/travelSort.ts for fixed/flexible items, applied here to
-// located/non-located instead.
-export function weaveGeoOrder<T extends { id: string; lat: number | null; lng: number | null }>(
+/**
+ * Weaves a geo-ordered sequence of *route-stop* ids back into the list.
+ *
+ * `geoOrderedIds` is the authoritative set of stops (e.g. visit-intent only).
+ * Tasks not in that set keep their structural slot — coordinates alone are
+ * not enough (context locations must not invent drive stops).
+ *
+ * Never returns undefined entries.
+ */
+export function weaveGeoOrder<T extends { id: string; lat?: number | null; lng?: number | null }>(
   originalOrder: T[],
   geoOrderedIds: string[]
 ): T[] {
   const byId: Record<string, T> = {};
-  originalOrder.forEach((t) => (byId[t.id] = t));
+  for (const t of originalOrder) {
+    if (t && t.id != null) byId[t.id] = t;
+  }
 
+  // Only ids in the geo list are route stops. Slot count matches list length
+  // so the pointer cannot run past the end when visit-intent is a subset of
+  // geocoded tasks.
+  const routeStopIds = new Set(geoOrderedIds);
   let geoPtr = 0;
+
   return originalOrder.map((t) => {
-    const isLocated = t.lat != null && t.lng != null;
-    if (isLocated) {
-      const nextId = geoOrderedIds[geoPtr];
-      geoPtr++;
-      return byId[nextId];
-    }
-    return t;
-  });
+    if (!t) return t;
+    if (!routeStopIds.has(t.id)) return t;
+
+    const nextId = geoOrderedIds[geoPtr];
+    geoPtr += 1;
+    if (nextId == null) return t;
+    return byId[nextId] ?? t;
+  }).filter((t): t is T => t != null);
 }
