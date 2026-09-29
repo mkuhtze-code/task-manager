@@ -12,6 +12,7 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { MapPinIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
+import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
 
 export function CaptureSheet(props: {
   taskText: string;
@@ -59,6 +60,13 @@ export function CaptureSheet(props: {
     thought, intendedTime, locationResolution, declinedResolution, onConfirmResolution, onDeclineResolution,
     confirmedJobId = null, durationExplain = null, error, onClose,
   } = props;
+
+  const [showEstimateHint, setShowEstimateHint] = useState(false);
+  useEffect(() => {
+    if (shouldShowEstimateHint()) {
+      setShowEstimateHint(true);
+    }
+  }, []);
   const dialogRef = useDialogA11y(onClose);
 
   const gate = oneShotGate({
@@ -202,14 +210,26 @@ export function CaptureSheet(props: {
           </button>
         )}
 
+        {showEstimateHint && (
+          <span className="capture-estimate-hint" id="capture-estimate-hint">
+            Rough minutes help — optional
+          </span>
+        )}
         <div className="capture-row">
           <input
             type="text"
             value={taskTime}
-            onChange={(e) => setTaskTime(e.target.value)}
+            onChange={(e) => {
+              setTaskTime(e.target.value);
+              if (showEstimateHint) {
+                setShowEstimateHint(false);
+                markEstimateHintSeen();
+              }
+            }}
             placeholder="0m"
             id="capture-estimate"
             aria-label="Estimate minutes"
+            aria-describedby={showEstimateHint ? 'capture-estimate-hint' : undefined}
             style={{ width: 80 }}
           />
           <button
