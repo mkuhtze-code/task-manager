@@ -7,6 +7,10 @@
 // task_text is context / legacy fallback only.
 
 import type { PredictionLogEntry, Confidence } from './types';
+import {
+  assertResolveIdentity,
+  DEFAULT_RESOLVE_POLICY,
+} from './v3/predictionLifecycle';
 
 const MAX_BUFFER_SIZE = 200;
 
@@ -142,6 +146,8 @@ export async function resolveOpenPrediction(params: {
   taskText?: string | null;
   actualMins: number;
   outcomeKind?: PredictionLogEntry['outcome_kind'];
+  /** S4: default taskId-only. Set false only for audited legacy recovery. */
+  allowTextFallback?: boolean;
 }): Promise<PredictionLogEntry | null> {
   const supabase = getSupabaseClient();
   const completedAt = new Date().toISOString();
@@ -151,6 +157,28 @@ export async function resolveOpenPrediction(params: {
     outcome_kind: params.outcomeKind ?? 'done',
   };
 
+  const policy = {
+    ...DEFAULT_RESOLVE_POLICY,
+    taskIdOnly: params.allowTextFallback === true ? false : true,
+  };
+  const identity = assertResolveIdentity(
+    { taskId: params.taskId, taskText: params.taskText },
+    policy
+  );
+
+  // S4: without taskId, do not resolve by text under default policy.
+  if (!identity.ok && policy.taskIdOnly) {
+    if (!supabase) {
+      recordOutcome({
+        taskId: params.taskId,
+        taskText: params.taskText,
+        actualMins: params.actualMins,
+        outcomeKind: params.outcomeKind,
+      });
+    }
+    return null;
+  }
+
   if (!supabase) {
     recordOutcome({
       taskId: params.taskId,
@@ -159,9 +187,7 @@ export async function resolveOpenPrediction(params: {
       outcomeKind: params.outcomeKind,
     });
     const hit = buffer.find(
-      (e) =>
-        (params.taskId && e.task_id === params.taskId) ||
-        (params.taskText && e.task_text === params.taskText)
+      (e) => params.taskId && e.task_id === params.taskId && e.actual_mins == null
     );
     return hit ?? null;
   }
@@ -184,7 +210,8 @@ export async function resolveOpenPrediction(params: {
     }
   }
 
-  if (params.taskText) {
+  // Text fallback only when explicitly allowed (legacy recovery).
+  if (params.allowTextFallback === true && params.taskText) {
     const { data, error } = await supabase
       .from('prediction_log')
       .update(patch)
@@ -203,6 +230,55 @@ export async function resolveOpenPrediction(params: {
   }
 
   return null;
+}
+
+/**
+ * S4: expire open predictions older than horizon (default 14 days).
+ * Sets completed_at; leaves actual_mins null — no duration train.
+ */
+export async function expireStaleOpenPredictions(params: {
+  userId: string;
+  asOf?: string;
+  horizonDays?: number;
+}): Promise<number> {
+  const supabase = getSupabaseClient();
+  const asOf = params.asOf ?? new Date().toISOString();
+  const horizon = params.horizonDays ?? 14;
+  const cutoff = new Date(asOf);
+  cutoff.setUTCDate(cutoff.getUTCDate() - horizon);
+  const cutoffIso = cutoff.toISOString();
+
+  if (!supabase) {
+    let n = 0;
+    for (const e of buffer) {
+      if (
+        e.user_id === params.userId &&
+        e.actual_mins == null &&
+        !e.completed_at &&
+        e.logged_at &&
+        e.logged_at < cutoffIso
+      ) {
+        (e as PredictionLogEntry).completed_at = asOf;
+        n++;
+      }
+    }
+    return n;
+  }
+
+  const { data, error } = await supabase
+    .from('prediction_log')
+    .update({ completed_at: asOf })
+    .eq('user_id', params.userId)
+    .is('actual_mins', null)
+    .is('completed_at', null)
+    .lt('logged_at', cutoffIso)
+    .select('id');
+
+  if (error) {
+    console.error('[thinking] Failed to expire open predictions:', error);
+    return 0;
+  }
+  return data?.length ?? 0;
 }
 
 export function recentOutcomes(
