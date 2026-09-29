@@ -429,14 +429,26 @@ export function TodayPage() {
   const runtime = useMemo(() => {
     // Onboarding seeds the soft floor; calibration only overrides once it
     // has enough closed prediction loops (see MIN_SAMPLES in calibration).
-    const cal = calibrateFromOutcomes(getBuffer(), userProfile.softFloorBaseMins);
-    return buildRuntimeObservations(history, {
-      softFloorMins: cal.softFloorMins,
-      blendScale: cal.blendScale,
-      calibrationExplain: cal.explain,
-      anchorSameDayRate: userProfile.anchorSameDayRate,
-      flexibleSameDayRate: userProfile.flexibleSameDayRate,
-    });
+    // Must never throw during render — blank Today is worse than a soft prior.
+    try {
+      const cal = calibrateFromOutcomes(getBuffer(), userProfile.softFloorBaseMins);
+      return buildRuntimeObservations(history, {
+        softFloorMins: cal.softFloorMins,
+        blendScale: cal.blendScale,
+        calibrationExplain: cal.explain,
+        anchorSameDayRate: userProfile.anchorSameDayRate,
+        flexibleSameDayRate: userProfile.flexibleSameDayRate,
+      });
+    } catch (err) {
+      console.error('[TodayPage] runtime observations failed', err);
+      return buildRuntimeObservations([], {
+        softFloorMins: userProfile.softFloorBaseMins,
+        blendScale: 1,
+        calibrationExplain: null,
+        anchorSameDayRate: userProfile.anchorSameDayRate,
+        flexibleSameDayRate: userProfile.flexibleSameDayRate,
+      });
+    }
   }, [history, userProfile.softFloorBaseMins, userProfile.anchorSameDayRate, userProfile.flexibleSameDayRate]);
   const clusters = runtime.clusters;
 
@@ -2006,42 +2018,47 @@ export function TodayPage() {
   const currentBase = geoAware ? determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords) : { coords: null, label: null };
 
   let ordered: Task[];
-  if (geoAware && currentBase.coords) {
-    const routeBases = {
-      home: homeCoords,
-      work: workCoords,
-    };
-    const locatedForOrder = visibleTasks
-      .filter((t) => isRouteStop(t, routeBases))
-      .map((t) => ({ id: t.id, lat: t.lat as number, lng: t.lng as number }));
-    const structuralOrder = [...visibleTasks].sort((a, b) => a.order_index - b.order_index);
-    const geoIds = nearestNeighborOrder(currentBase.coords, locatedForOrder);
-    ordered = weaveGeoOrder(structuralOrder as any, geoIds) as Task[];
-  } else if (geoAware) {
-    // geo_aware selected but no base configured — falls back to manual
-    // order rather than pretending a route exists.
+  try {
+    if (geoAware && currentBase.coords) {
+      const routeBases = {
+        home: homeCoords,
+        work: workCoords,
+      };
+      const locatedForOrder = visibleTasks
+        .filter((t) => isRouteStop(t, routeBases))
+        .map((t) => ({ id: t.id, lat: t.lat as number, lng: t.lng as number }));
+      const structuralOrder = [...visibleTasks].sort((a, b) => a.order_index - b.order_index);
+      const geoIds = nearestNeighborOrder(currentBase.coords, locatedForOrder);
+      ordered = weaveGeoOrder(structuralOrder as any, geoIds) as Task[];
+    } else if (geoAware) {
+      // geo_aware selected but no base configured — falls back to manual
+      // order rather than pretending a route exists.
+      ordered = sortTasks(visibleTasks, 'manual');
+    } else {
+      const preferredOrderIds =
+        sortMode === 'capacity_first'
+          ? sequenceOrderIdsForOpenTasks({
+              openTasks: visibleTasks.filter((t) => t.status !== 'done'),
+              history,
+              clusters,
+              runtime,
+              remainingWindowMins: taskCapacity,
+              commitments: dayCommitments,
+              now,
+              workEndMins: workEndMinutes,
+            })
+          : null;
+      ordered = sortTasks(
+        visibleTasks,
+        sortMode,
+        effectiveRemainingForTask,
+        taskCapacity,
+        preferredOrderIds
+      );
+    }
+  } catch (err) {
+    console.error('[TodayPage] order/fit failed', err);
     ordered = sortTasks(visibleTasks, 'manual');
-  } else {
-    const preferredOrderIds =
-      sortMode === 'capacity_first'
-        ? sequenceOrderIdsForOpenTasks({
-            openTasks: visibleTasks.filter((t) => t.status !== 'done'),
-            history,
-            clusters,
-            runtime,
-            remainingWindowMins: taskCapacity,
-            commitments: dayCommitments,
-            now,
-            workEndMins: workEndMinutes,
-          })
-        : null;
-    ordered = sortTasks(
-      visibleTasks,
-      sortMode,
-      effectiveRemainingForTask,
-      taskCapacity,
-      preferredOrderIds
-    );
   }
   const orderedIds = ordered.map((t) => t.id);
 
