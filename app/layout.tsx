@@ -14,6 +14,7 @@ import './job-mobile.css';
 import './today-header.css';
 import './ux-instrument.css';
 import './ux-nav.css';
+import './ux-surface-tabs.css';
 import './pill-reveal.css';
 import './travel-aware.css';
 import DokkitSplash from '@/components/DokkitSplash';
