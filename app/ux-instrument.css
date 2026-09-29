@@ -1,0 +1,71 @@
+/* UX-1 — Instrument fixes (WORLD_CLASS_UX_STRATEGY)
+   Import after today-header.css / globals. Additive only. */
+
+/* Primary Add: strongest bottom affordance */
+.surface-add {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  box-shadow: 0 4px 14px rgba(var(--shadow-rgb, 15, 23, 42), 0.18);
+}
+
+.surface-add:hover {
+  transform: scale(1.03);
+}
+
+.surface-add:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-add:hover,
+  .surface-add:active {
+    transform: none;
+  }
+}
+
+/* Bottom bar: room for 48px control */
+.surface-nav {
+  height: 56px;
+  padding-left: var(--space-4, 16px);
+  padding-right: var(--space-4, 16px);
+}
+
+/* Plain-language fit order (mobile + desktop summary) */
+.today-fit-order-hint {
+  margin: 0 0 var(--space-2, 8px);
+  padding: 0 var(--space-5, 20px);
+  font-size: var(--text-sm, 0.8125rem);
+  line-height: 1.35;
+  color: var(--ink-soft, #64748b);
+}
+
+.today-header-card > .today-fit-order-hint {
+  padding-left: 0;
+  padding-right: 0;
+  margin-top: 2px;
+}
+
+/* Once-only micro-hints in sheets */
+.ux-once-hint {
+  margin: 0 0 var(--space-3, 12px);
+  font-size: var(--text-sm, 0.8125rem);
+  line-height: 1.4;
+  color: var(--ink-soft, #64748b);
+}
+
+.capture-estimate-hint {
+  display: block;
+  margin: 0 0 4px;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--ink-faint, #94a3b8);
+}
+
+/* Keep sticky header from eating the list: commitments stay one row */
+.today-commitments {
+  max-height: 40px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+}
