@@ -12,6 +12,7 @@ import './observation-layout-fix.css';
 import './dokkit-player.css';
 import './job-mobile.css';
 import './today-header.css';
+import './ux-instrument.css';
 import './pill-reveal.css';
 import './travel-aware.css';
 import DokkitSplash from '@/components/DokkitSplash';
