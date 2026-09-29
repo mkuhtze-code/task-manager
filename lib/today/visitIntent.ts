@@ -78,5 +78,9 @@ export function isRouteStop(
   task: VisitTaskLike,
   bases?: { home?: Coords | null; work?: Coords | null }
 ): boolean {
-  return classifyVisitIntent(task, bases) === 'must_visit';
+  try {
+    return classifyVisitIntent(task, bases) === 'must_visit';
+  } catch {
+    return false;
+  }
 }
