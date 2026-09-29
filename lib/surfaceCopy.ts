@@ -104,3 +104,43 @@ export function firstSessionLine(profile: UserProfile): string | null {
   }
   return 'Add what needs doing. Reality Check later is how Dokkit learns — no extra homework.';
 }
+
+/** One-line purpose for nav menu / empty states — why this surface exists. */
+export function surfacePurpose(key: SurfaceKey): string {
+  switch (key) {
+    case 'today':
+      return 'What can fit today';
+    case 'jobs':
+      return 'Work that spans days, in one place';
+    case 'meetings':
+      return 'Capture the moment; structure it later';
+    case 'travel':
+      return 'Trips that reshape what fits';
+    default:
+      return '';
+  }
+}
+
+/** Short empty-state purpose (Pro surfaces, when list is empty). */
+export function surfaceEmptyPurpose(key: Exclude<SurfaceKey, 'today'>): {
+  title: string;
+  sub: string;
+} {
+  switch (key) {
+    case 'jobs':
+      return {
+        title: 'No jobs yet.',
+        sub: 'A job is a home for work that spans days — tasks, places, and evidence stay together. Optional until a project needs one.',
+      };
+    case 'meetings':
+      return {
+        title: 'No meetings recorded.',
+        sub: 'Capture who met, when, and around which job — while it is still fresh. Structure can wait.',
+      };
+    case 'travel':
+      return {
+        title: 'Where to next?',
+        sub: 'Block the days you are away. Dokkit uses the trip so Today reflects what can still fit.',
+      };
+  }
+}
