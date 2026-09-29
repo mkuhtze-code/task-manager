@@ -83,17 +83,24 @@ export function orderedNavSurfaces(profile: UserProfile): SurfaceKey[] {
 }
 
 export function firstSessionLine(profile: UserProfile): string | null {
+  // UX-2: always give a calm first-session cue when profile is known
   if (profile.role === 'professional' && profile.travelEmphasis) {
-    return 'Set up for field-style days — locations and capacity matter more.';
+    return 'Add what needs doing — locations and capacity matter more on field-style days.';
+  }
+  if (profile.role === 'professional' && profile.jobsEmphasis === 'heavy') {
+    return 'Add a task for today. Jobs can wait until a project needs a home.';
   }
   if (profile.role === 'student') {
-    return 'Set up for study — lists first, light structure.';
+    return 'Add what is on your plate — lists first, light structure.';
   }
   if (profile.role === 'personal') {
-    return 'Kept simple — one place for what you need to remember.';
+    return 'Add anything you need to remember. One calm place is enough.';
   }
   if (profile.meetingsEmphasis) {
-    return 'Meetings will count clearly against the day.';
+    return 'Add work for the gaps around meetings — they already count against the day.';
   }
-  return null;
+  if (profile.role === 'knowledge_worker') {
+    return 'Add what should fit today. Dokkit learns from what you finish and carry.';
+  }
+  return 'Add what needs doing. Reality Check later is how Dokkit learns — no extra homework.';
 }
