@@ -5,7 +5,7 @@
  * (notification flags, timestamps) Today never reads.
  */
 export const TASK_COLUMNS =
-  'id, text, status, source, estimate_mins, logged_mins, started_at, due_today, order_index, created_at, surface_date, intended_time, location_text, lat, lng, drive_mins_to_next, route_polyline, info, job_id, original_input';
+  'id, text, status, source, estimate_mins, logged_mins, started_at, due_today, order_index, created_at, surface_date, intended_time, location_text, lat, lng, requires_visit, drive_mins_to_next, route_polyline, info, job_id, original_input';
 
 /**
  * sessionStorage flag: the passive "landed on Today" surface event is the
