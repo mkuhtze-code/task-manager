@@ -1,0 +1,98 @@
+/* Full four-tab mobile surface nav — replaces rail / switcher / ⋯ */
+
+.surface-nav.surface-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px env(safe-area-inset-bottom);
+  height: auto;
+  min-height: 56px;
+  padding-top: 4px;
+  padding-bottom: calc(4px + env(safe-area-inset-bottom));
+}
+
+.surface-tabs {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0;
+}
+
+.surface-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 48px;
+  padding: 4px 2px;
+  margin: 0;
+  border: none;
+  border-radius: var(--radius-sm, 8px);
+  background: transparent;
+  color: var(--ink-soft, #64748b);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.surface-tab:hover {
+  color: var(--ink, #0f172a);
+  background: transparent;
+}
+
+.surface-tab.current {
+  color: var(--ink, #0f172a);
+  font-weight: 600;
+}
+
+.surface-tab.current .surface-tab-icon {
+  color: var(--ink, #0f172a);
+}
+
+.surface-tab.locked {
+  opacity: 0.72;
+}
+
+.surface-tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  line-height: 0;
+}
+
+.surface-tab-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Keep Add as the single primary control on the right */
+.surface-nav.surface-nav-tabs .surface-add {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  margin-left: 2px;
+}
+
+/* Very narrow phones: still four equal tabs */
+@media (max-width: 340px) {
+  .surface-tab-label {
+    font-size: 9px;
+  }
+  .surface-nav.surface-nav-tabs .surface-add {
+    width: 44px;
+    height: 44px;
+  }
+}
