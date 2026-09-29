@@ -119,12 +119,9 @@ export default function SurfaceNav({
   useEffect(() => {
     recordSurfaceVisit(active);
     const visits = readSurfaceVisits();
-    const profilePushesDepth =
-      Boolean(sectionOrder?.length) &&
-      sectionOrder!.some((k, i) => i > 0 && k !== 'today' && i <= 2);
-    setPreferRail(
-      isPro && (shouldPreferSurfaceRail(visits) || profilePushesDepth)
-    );
+    // Rail only after repeated depth use — profile order alone is not enough
+    // (it was overcrowding the bottom bar on small phones).
+    setPreferRail(isPro && shouldPreferSurfaceRail(visits));
   }, [active, isPro, sectionOrder]);
 
   useEffect(() => {
