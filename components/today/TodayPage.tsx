@@ -110,7 +110,7 @@ import {
 import { calibrateFromOutcomes } from '@/lib/thinking/calibration';
 import { getBuffer } from '@/lib/thinking/evidence';
 import { getGpsPosition } from '@/lib/today/geolocation';
-import { isRouteStop } from '@/lib/today/visitIntent';
+import { isRouteStop, personalVisitEvidenceFromHistory } from '@/lib/today/visitIntent';
 import { TASK_COLUMNS, PASSIVE_TODAY_KEY } from '@/lib/today/constants';
 import {
   remainingForTask as remainingForTaskPure,
@@ -1055,13 +1055,20 @@ export function TodayPage() {
     // and making the numbers look wrong for the tasks around it.
     const todayForRoute = localDateStr(now);
     const visibleForRoute = tasks.filter((t) => t.status !== 'done' && !isScheduledForLater(t, todayForRoute));
-    const routeBases = {
-      home: homeCoords,
-      work: workCoords,
-    };
-    // Only tasks that require a physical visit — location alone is not a stop.
     const located = visibleForRoute
-      .filter((t) => isRouteStop(t, routeBases))
+      .filter((t) =>
+        isRouteStop(t, {
+          bases: { home: homeCoords, work: workCoords },
+          profile: {
+            workType: userProfile.workType,
+            travelEmphasis: userProfile.travelEmphasis,
+          },
+          personal: personalVisitEvidenceFromHistory(history, {
+            home: homeCoords,
+            work: workCoords,
+          }),
+        })
+      )
       .map((t) => ({ id: t.id, lat: t.lat as number, lng: t.lng as number }));
 
     if (located.length === 0) {
@@ -2015,17 +2022,25 @@ export function TodayPage() {
   const taskCapacity = availability.availableMinutes - untimedManualMins;
 
   const geoAware = sortMode === 'geo_aware';
+  const visitOpts = {
+    bases: { home: homeCoords, work: workCoords },
+    profile: {
+      workType: userProfile.workType,
+      travelEmphasis: userProfile.travelEmphasis,
+    },
+    personal: personalVisitEvidenceFromHistory(history, {
+      home: homeCoords,
+      work: workCoords,
+    }),
+  };
+
   const currentBase = geoAware ? determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords) : { coords: null, label: null };
 
   let ordered: Task[];
   try {
     if (geoAware && currentBase.coords) {
-      const routeBases = {
-        home: homeCoords,
-        work: workCoords,
-      };
       const locatedForOrder = visibleTasks
-        .filter((t) => isRouteStop(t, routeBases))
+        .filter((t) => isRouteStop(t, visitOpts))
         .map((t) => ({ id: t.id, lat: t.lat as number, lng: t.lng as number }));
       const structuralOrder = [...visibleTasks].sort((a, b) => a.order_index - b.order_index);
       const geoIds = nearestNeighborOrder(currentBase.coords, locatedForOrder);
@@ -2068,22 +2083,16 @@ export function TodayPage() {
   // located task carries its own outgoing leg's drive_mins_to_next (the
   // last located task carries the return leg back to the start), and the
   // origin → first leg is held in driveFromBaseMins.
-  const routeBasesForDrive = {
-    home: homeCoords,
-    work: workCoords,
-  };
   const locatedDriveSum = geoAware
     ? visibleTasks
-        .filter((t) => isRouteStop(t, routeBasesForDrive))
+        .filter((t) => isRouteStop(t, visitOpts))
         .reduce((sum, t) => sum + (t.drive_mins_to_next || 0), 0)
     : 0;
   const routeDriveMins = geoAware ? driveFromBaseMins + locatedDriveSum : 0;
 
   // The located destinations in on-screen (geo) order. Leg rows and the
   // route map both render from this sequence.
-  const locatedInOrder = ordered.filter((t) =>
-    isRouteStop(t, { home: homeCoords, work: workCoords })
-  );
+  const locatedInOrder = ordered.filter((t) => isRouteStop(t, visitOpts));
   const locatedIndexById: Record<string, number> = {};
   locatedInOrder.forEach((t, i) => (locatedIndexById[t.id] = i));
 
@@ -2292,7 +2301,7 @@ export function TodayPage() {
           // distinct rows between the destinations they connect — an
           // origin→first leg before the first located task, a leg between
           // each located task, and the return leg after the last one.
-          const isLocated = isRouteStop(t, { home: homeCoords, work: workCoords });
+          const isLocated = isRouteStop(t, visitOpts);
           const locatedIdx = isLocated ? locatedIndexById[t.id] : -1;
 
           return (
