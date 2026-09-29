@@ -15,6 +15,7 @@ type Props = {
 type State = {
   hasError: boolean;
   errorId: string | null;
+  errorMessage: string | null;
 };
 
 function makeErrorId(): string {
@@ -34,12 +35,14 @@ export default class ErrorBoundary extends Component<
   state: State = {
     hasError: false,
     errorId: null,
+    errorMessage: null,
   };
 
-  static getDerivedStateFromError(): State {
+  static getDerivedStateFromError(error: Error): State {
     return {
       hasError: true,
       errorId: makeErrorId(),
+      errorMessage: error?.message ? String(error.message).slice(0, 240) : null,
     };
   }
 
@@ -144,6 +147,11 @@ export default class ErrorBoundary extends Component<
           {this.state.errorId && (
             <p className="error-boundary-id">
               Reference: {this.state.errorId}
+            {this.state.errorMessage ? (
+              <span style={{ display: 'block', marginTop: 8, opacity: 0.75, fontSize: 12, wordBreak: 'break-word' }}>
+                {this.state.errorMessage}
+              </span>
+            ) : null}
             </p>
           )}
 
