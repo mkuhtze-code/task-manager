@@ -45,7 +45,8 @@ export function TaskDetailSheet(props: {
     surfaceDate: string | null,
     locationText: string | null,
     lat: number | null,
-    lng: number | null
+    lng: number | null,
+    requiresVisit?: boolean | null
   ) => void;
   onComplete: (id: string) => void;
   onStart: (id: string) => void;
@@ -124,6 +125,10 @@ export function TaskDetailSheet(props: {
         }
       : null
   );
+  /** null = auto; true = on route; false = place is context only */
+  const [requiresVisit, setRequiresVisit] = useState<boolean | null>(
+    task.requires_visit ?? null
+  );
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
@@ -182,6 +187,8 @@ export function TaskDetailSheet(props: {
           }
         : null
     );
+    setRequiresVisit(task.requires_visit ?? null);
+
 
     setShowAddForm(false);
     setError('');
@@ -227,7 +234,8 @@ export function TaskDetailSheet(props: {
         ? locationText.trim()
         : null,
       locationCoords?.lat ?? null,
-      locationCoords?.lng ?? null
+      locationCoords?.lng ?? null,
+      requiresVisit
     );
   }
 
@@ -1489,6 +1497,25 @@ export function TaskDetailSheet(props: {
             });
           }}
         />
+
+        <div className="task-route-intent task-route-intent-detail" role="group" aria-label="Travel for this task">
+          <span className="task-route-intent-label">Travel</span>
+          <p className="settings-help" style={{ margin: '0 0 6px' }}>
+            When route-aware is on, choose whether this place needs a trip today.
+          </p>
+          <div className="task-route-intent-seg">
+            <button type="button" className={requiresVisit == null ? 'task-route-intent-btn current' : 'task-route-intent-btn'} onClick={() => { setRequiresVisit(null); }}>
+              Auto
+            </button>
+            <button type="button" className={requiresVisit === true ? 'task-route-intent-btn current' : 'task-route-intent-btn'} onClick={() => { setRequiresVisit(true); }}>
+              On route
+            </button>
+            <button type="button" className={requiresVisit === false ? 'task-route-intent-btn current' : 'task-route-intent-btn'} onClick={() => { setRequiresVisit(false); }}>
+              Not travel
+            </button>
+          </div>
+        </div>
+
 
         <span className="settings-label">
           {context === 'job'
