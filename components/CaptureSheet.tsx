@@ -159,15 +159,32 @@ export function CaptureSheet(props: {
             )}
 
             {!declinedResolution && locationResolution && locationResolution.state === 'proposed' && (
-              <div className="unified-thought-confirm">
-                <span className="unified-thought-prompt">
-                  Do you mean <strong>{locationResolution.candidate.matchedField === 'location' && locationResolution.candidate.locationText ? locationResolution.candidate.locationText : locationResolution.candidate.jobName}</strong>
-                  {locationResolution.candidate.matchedField === 'location' ? ` (${locationResolution.candidate.jobName})` : ''}?
+              <div className="capture-entity-chip capture-entity-chip-ask" role="group" aria-label="Possible job match">
+                <span className="capture-entity-chip-text">
+                  Link to{' '}
+                  <strong>
+                    {locationResolution.candidate.matchedField === 'location' &&
+                    locationResolution.candidate.locationText
+                      ? locationResolution.candidate.locationText
+                      : locationResolution.candidate.jobName}
+                  </strong>
+                  {locationResolution.candidate.matchedField === 'location'
+                    ? ` (${locationResolution.candidate.jobName})`
+                    : ''}
+                  ?
                 </span>
-                <div className="unified-thought-actions">
-                  <button type="button" className="btn btn-steel" onClick={() => onConfirmResolution(locationResolution.candidate)}>Yes</button>
-                  <button type="button" className="btn-text" onClick={onDeclineResolution}>Not this</button>
-                </div>
+                <span className="capture-entity-chip-actions">
+                  <button
+                    type="button"
+                    className="btn-text capture-entity-chip-yes"
+                    onClick={() => onConfirmResolution(locationResolution.candidate)}
+                  >
+                    Link
+                  </button>
+                  <button type="button" className="btn-text" onClick={onDeclineResolution}>
+                    No
+                  </button>
+                </span>
               </div>
             )}
 
@@ -186,12 +203,21 @@ export function CaptureSheet(props: {
             )}
 
             {!declinedResolution && locationResolution && locationResolution.state === 'known' && (
-              <div className="unified-thought-confirm">
-                <span className="unified-thought-prompt">
-                  In <strong>{locationResolution.candidate.matchedField === 'location' && locationResolution.candidate.locationText ? locationResolution.candidate.locationText : locationResolution.candidate.jobName}</strong>
-                  {locationResolution.candidate.matchedField === 'location' ? ` (${locationResolution.candidate.jobName})` : ''}
+              <div className="capture-entity-chip capture-entity-chip-known" role="status">
+                <span className="capture-entity-chip-text">
+                  <strong>
+                    {locationResolution.candidate.matchedField === 'location' &&
+                    locationResolution.candidate.locationText
+                      ? locationResolution.candidate.locationText
+                      : locationResolution.candidate.jobName}
+                  </strong>
+                  {locationResolution.candidate.matchedField === 'location'
+                    ? ` · ${locationResolution.candidate.jobName}`
+                    : ''}
                 </span>
-                <button type="button" className="btn-text" onClick={onDeclineResolution}>Not this</button>
+                <button type="button" className="btn-text" onClick={onDeclineResolution}>
+                  Clear
+                </button>
               </div>
             )}
           </div>
