@@ -27,7 +27,12 @@ import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useDesktopWorkspaceKeys } from '@/hooks/useDesktopWorkspaceKeys';
 import type { OnboardingAnswers } from '@/lib/onboardingTypes';
 import { seedStarterPack, clearStarterPack, isStarterTask } from '@/lib/starterPack';
-import { todayEmptyCopy, orderedNavSurfaces, firstSessionLine } from '@/lib/surfaceCopy';
+import {
+  todayEmptyCopy,
+  orderedNavSurfaces,
+  firstSessionLine,
+  dayOrderHint,
+} from '@/lib/surfaceCopy';
 import { persistNavOrder } from '@/components/DesktopProductNav';
 
 import {
@@ -2141,14 +2146,11 @@ export function TodayPage() {
         showRealityCheck={showRealityCheck}
         realityCheckMessage={realityCheckMessage}
         isDesktop={isDesktop}
-        onDockIt={isDesktop ? () => setCaptureOpen(true) : undefined}
-        orderHint={
-  sortMode === 'capacity_first'
-    ? 'Ordered by what is likely to fit today'
-    : sortMode === 'geo_aware'
-      ? 'Ordered with travel in mind'
-      : null
-}
+                onDockIt={isDesktop ? () => setCaptureOpen(true) : undefined}
+        orderHint={dayOrderHint({
+          sortMode,
+          personalEvidenceCount: history.filter((t) => t.status === 'done').length,
+        })}
       />
 
 
