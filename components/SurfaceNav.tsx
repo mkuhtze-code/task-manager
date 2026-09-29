@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation';
 import { PlusIcon } from '@/components/icons';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import type { Surface } from '@/lib/thinking/types';
+import { surfacePurpose } from '@/lib/surfaceCopy';
+import {
+  readSurfaceVisits,
+  recordSurfaceVisit,
+  shouldPreferSurfaceRail,
+} from '@/lib/surfaceVisits';
 
 export type NavSurface = Surface | 'meetings';
 
@@ -83,6 +89,7 @@ export default function SurfaceNav({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [preferRail, setPreferRail] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { entitlements } = useEntitlements();
@@ -105,6 +112,20 @@ export default function SurfaceNav({
   const freeItems = ordered.filter((i) => !i.pro);
   const proItems = ordered.filter((i) => i.pro);
   const current = ordered.find((i) => i.key === active) || ordered[0];
+
+  // Rail: Today + next two from profile order (Pro + enough visits or strong profile emphasis)
+  const railItems = ordered.slice(0, 3);
+
+  useEffect(() => {
+    recordSurfaceVisit(active);
+    const visits = readSurfaceVisits();
+    const profilePushesDepth =
+      Boolean(sectionOrder?.length) &&
+      sectionOrder!.some((k, i) => i > 0 && k !== 'today' && i <= 2);
+    setPreferRail(
+      isPro && (shouldPreferSurfaceRail(visits) || profilePushesDepth)
+    );
+  }, [active, isPro, sectionOrder]);
 
   useEffect(() => {
     if (!open) return;
@@ -135,88 +156,186 @@ export default function SurfaceNav({
     router.push(path);
   }
 
+  function goSurface(key: NavSurface, path: string) {
+    if (key === active) {
+      setOpen(false);
+      return;
+    }
+    go(path, key === 'meetings' ? undefined : (key as Surface));
+  }
+
+  const showRail = isPro && preferRail;
+
   return (
     <nav className="surface-nav" aria-label="Surface navigation">
-      <div className="surface-switcher" ref={wrapRef}>
-        <button
-          ref={triggerRef}
-          type="button"
-          className="surface-switcher-trigger"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          aria-controls={open ? 'surface-switcher-menu' : undefined}
-          aria-label={`Sections — ${current.label}`}
-        >
-          <SectionGlyph surface={active} />
-        </button>
+      {showRail ? (
+        <div className="surface-rail" role="list">
+          {railItems.map(({ key, label, path }) => {
+            const isCurrent = key === active;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="listitem"
+                className={
+                  isCurrent ? 'surface-rail-item current' : 'surface-rail-item'
+                }
+                aria-current={isCurrent ? 'page' : undefined}
+                onClick={() => goSurface(key, path)}
+              >
+                <span className="surface-rail-icon" aria-hidden="true">
+                  <SectionGlyph surface={key} />
+                </span>
+                <span className="surface-rail-label">{label}</span>
+              </button>
+            );
+          })}
+          {/* Overflow menu for remaining surfaces */}
+          <div className="surface-switcher surface-rail-more" ref={wrapRef}>
+            <button
+              ref={triggerRef}
+              type="button"
+              className="surface-switcher-trigger"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-controls={open ? 'surface-switcher-menu' : undefined}
+              aria-label="More sections"
+            >
+              <span className="surface-more-dots" aria-hidden="true">
+                ···
+              </span>
+            </button>
+            {open && (
+              <div id="surface-switcher-menu" className="surface-menu">
+                {ordered.map(({ key, label, path }) => {
+                  const isCurrent = key === active;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className={
+                        isCurrent ? 'surface-menu-item current' : 'surface-menu-item'
+                      }
+                      aria-current={isCurrent ? 'true' : undefined}
+                      onClick={() => goSurface(key, path)}
+                    >
+                      <span className="surface-menu-icon">
+                        <SectionGlyph surface={key} />
+                      </span>
+                      <span className="surface-menu-copy">
+                        <span className="surface-menu-label">{label}</span>
+                        <span className="surface-menu-purpose">
+                          {surfacePurpose(key as 'today' | 'jobs' | 'meetings' | 'travel')}
+                        </span>
+                      </span>
+                      {isCurrent && (
+                        <span className="surface-menu-marker" aria-hidden="true" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="surface-switcher" ref={wrapRef}>
+          <button
+            ref={triggerRef}
+            type="button"
+            className="surface-switcher-trigger surface-switcher-trigger-labeled"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-controls={open ? 'surface-switcher-menu' : undefined}
+            aria-label={`Sections — ${current.label}`}
+          >
+            <SectionGlyph surface={active} />
+            <span className="surface-switcher-label">{current.label}</span>
+          </button>
 
-        {open && (
-          <div id="surface-switcher-menu" className="surface-menu">
-            {(isPro ? ordered : freeItems).map(({ key, label, path }) => {
-              const isCurrent = key === active;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  className={isCurrent ? 'surface-menu-item current' : 'surface-menu-item'}
-                  aria-current={isCurrent ? 'true' : undefined}
-                  onClick={() =>
-                    isCurrent
-                      ? setOpen(false)
-                      : go(path, key === 'meetings' ? undefined : (key as Surface))
-                  }
-                >
-                  <span className="surface-menu-icon">
-                    <SectionGlyph surface={key} />
-                  </span>
-                  <span className="surface-menu-label">{label}</span>
-                  {isCurrent && <span className="surface-menu-marker" aria-hidden="true" />}
-                </button>
-              );
-            })}
-
-            {!isPro && (
-              <>
-                <div className="surface-menu-divider" role="separator" />
-                <p className="surface-menu-group-label">Dokkit plan</p>
-                {proItems.map(({ key, label }) => (
+          {open && (
+            <div id="surface-switcher-menu" className="surface-menu">
+              {(isPro ? ordered : freeItems).map(({ key, label, path }) => {
+                const isCurrent = key === active;
+                return (
                   <button
                     key={key}
                     type="button"
-                    className="surface-menu-item surface-menu-item-pro"
-                    onClick={() =>
-                      go(
-                        `/account/billing?feature=${
-                          key === 'jobs'
-                            ? 'jobs'
-                            : key === 'meetings'
-                              ? 'meetings'
-                              : 'travel'
-                        }`
-                      )
+                    className={
+                      isCurrent ? 'surface-menu-item current' : 'surface-menu-item'
                     }
+                    aria-current={isCurrent ? 'true' : undefined}
+                    onClick={() => goSurface(key, path)}
                   >
                     <span className="surface-menu-icon">
                       <SectionGlyph surface={key} />
                     </span>
-                    <span className="surface-menu-label">{label}</span>
+                    <span className="surface-menu-copy">
+                      <span className="surface-menu-label">{label}</span>
+                      <span className="surface-menu-purpose">
+                        {surfacePurpose(key as 'today' | 'jobs' | 'meetings' | 'travel')}
+                      </span>
+                    </span>
+                    {isCurrent && (
+                      <span className="surface-menu-marker" aria-hidden="true" />
+                    )}
                   </button>
-                ))}
-                <button
-                  type="button"
-                  className="surface-menu-item surface-menu-upgrade"
-                  onClick={() => go('/account/billing')}
-                >
-                  <span className="surface-menu-label">View plan</span>
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+                );
+              })}
+
+              {!isPro && (
+                <>
+                  <div className="surface-menu-divider" role="separator" />
+                  <p className="surface-menu-group-label">Dokkit plan</p>
+                  {proItems.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className="surface-menu-item surface-menu-item-pro"
+                      onClick={() =>
+                        go(
+                          `/account/billing?feature=${
+                            key === 'jobs'
+                              ? 'jobs'
+                              : key === 'meetings'
+                                ? 'meetings'
+                                : 'travel'
+                          }`
+                        )
+                      }
+                    >
+                      <span className="surface-menu-icon">
+                        <SectionGlyph surface={key} />
+                      </span>
+                      <span className="surface-menu-copy">
+                        <span className="surface-menu-label">{label}</span>
+                        <span className="surface-menu-purpose">
+                          {surfacePurpose(key as 'today' | 'jobs' | 'meetings' | 'travel')}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="surface-menu-item surface-menu-upgrade"
+                    onClick={() => go('/account/billing')}
+                  >
+                    <span className="surface-menu-label">View plan</span>
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {onAdd && (
-        <button type="button" className="surface-add" onClick={onAdd} aria-label={addLabel ?? 'Add'}>
+        <button
+          type="button"
+          className="surface-add"
+          onClick={onAdd}
+          aria-label={addLabel ?? 'Add'}
+        >
           <PlusIcon size={20} />
         </button>
       )}
