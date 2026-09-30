@@ -1,0 +1,262 @@
+/* Desktop Today — SaaS command bar, collapsible depth, resizable list */
+
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
+  grid-template-columns: var(--desk-list-w, 320px) 6px minmax(0, 1fr);
+}
+
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle {
+  grid-column: 2;
+  grid-row: 2;
+  width: 6px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 8;
+  align-self: stretch;
+}
+
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 2px;
+  background: var(--line, #e2e8f0);
+  opacity: 0.9;
+}
+
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle:hover::after,
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle:focus-visible::after {
+  background: var(--steel, #1e6be6);
+  opacity: 1;
+}
+
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-pane-detail {
+  grid-column: 3;
+  grid-row: 2;
+  min-width: 0;
+  background: var(--paper, #fff);
+}
+
+html[data-surface='desktop'] .app-shell:has(> .today-header-card):not(.has-desk-detail)::after {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+/* Compact SaaS header */
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-today-saas,
+html[data-surface='desktop'] .desk-today-saas.today-header-card {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  padding: 10px 20px;
+  gap: 0;
+}
+
+.desk-today-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+}
+
+.desk-today-bar-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  min-width: 0;
+}
+
+.desk-today-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.desk-today-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.desk-today-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.desk-today-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink, #0f172a);
+}
+
+.desk-today-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-today-fit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 12px 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line, #e2e8f0);
+  background: var(--paper, #fff);
+}
+
+.desk-today-fit-chip.is-over {
+  border-color: rgba(185, 28, 28, 0.35);
+  background: rgba(185, 28, 28, 0.06);
+}
+
+.desk-today-fit-chip.is-fit {
+  border-color: var(--line-strong, #cbd5e1);
+}
+
+.desk-today-fit-chip-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.15;
+}
+
+.desk-today-fit-chip-copy strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.desk-today-fit-chip-meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.desk-today-order-hint {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink-faint, #94a3b8);
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desk-today-dock-pill {
+  min-height: 34px;
+}
+
+.desk-today-depth-toggle {
+  min-height: 34px;
+}
+
+/* Depth panel — unique structure, not a repeat of the chip */
+.desk-today-depth {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px 20px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line, #e2e8f0);
+}
+
+@media (max-width: 1100px) {
+  .desk-today-depth {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.desk-today-depth-rail,
+.desk-today-depth-commitments,
+.desk-today-depth-travel,
+.desk-today-depth-reality,
+.desk-today-depth-off {
+  min-width: 0;
+}
+
+.desk-today-depth-section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.desk-today-depth-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-today-depth-rail-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-today-depth-travel-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-today-depth-off {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-today-depth-reality {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink-soft, #64748b);
+}
+
+/* Detail pane is the hero — more air */
+html[data-surface='desktop'] .app-shell.has-desk-detail > .desk-pane-detail {
+  background: var(--paper, #fff);
+}
+
+html[data-surface='desktop'] .desk-detail-pm {
+  max-width: min(1040px, 100%);
+  padding: 20px 28px 40px;
+}
