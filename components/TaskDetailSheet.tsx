@@ -1103,7 +1103,7 @@ export function TaskDetailSheet(props: {
         role="region"
         aria-label="Task detail"
       >
-        <div className="desk-detail desk-detail-dashboard">
+        <div className="desk-detail desk-detail-dashboard desk-detail-pm">
           <header className="desk-detail-toolbar">
             <div className="desk-detail-toolbar-left">
               <span className="desk-detail-kicker">Task</span>
@@ -1172,24 +1172,33 @@ export function TaskDetailSheet(props: {
 
           {error ? <p className="desk-detail-error">{error}</p> : null}
 
-          <div className="desk-detail-actions">
+          <div className="desk-detail-action-pills" role="group" aria-label="Task actions">
+            <button
+              type="button"
+              className={
+                task.due_today
+                  ? 'detail-pill detail-pill-due is-on'
+                  : 'detail-pill detail-pill-due'
+              }
+              onClick={() => onToggleDue(task.id, !!task.due_today)}
+            >
+              Due today
+            </button>
             {task.estimate_mins > 0 ? (
               task.status === 'active' ? (
                 <button
                   type="button"
-                  className="btn btn-ghost"
+                  className="detail-pill detail-pill-primary"
                   onClick={() => onStop(task.id)}
                 >
                   <StopIcon />
                   Stop
-                  <span className="mono" style={{ fontWeight: 600 }}>
-                    {fmtMins(liveLogged)}
-                  </span>
+                  <span className="mono">{fmtMins(liveLogged)}</span>
                 </button>
               ) : (
                 <button
                   type="button"
-                  className="btn btn-steel"
+                  className="detail-pill detail-pill-primary"
                   disabled={startDisabled}
                   onClick={() => onStart(task.id)}
                 >
@@ -1200,7 +1209,7 @@ export function TaskDetailSheet(props: {
             ) : null}
             <button
               type="button"
-              className="btn btn-steel"
+              className="detail-pill detail-pill-done"
               onClick={() => {
                 onComplete(task.id);
                 onClose();
@@ -1208,15 +1217,6 @@ export function TaskDetailSheet(props: {
             >
               <CheckIcon done />
               Done
-            </button>
-            <button
-              type="button"
-              className={
-                task.due_today ? 'btn btn-ghost active-due' : 'btn btn-ghost'
-              }
-              onClick={() => onToggleDue(task.id, !!task.due_today)}
-            >
-              {task.due_today ? 'Due today' : 'Mark due today'}
             </button>
           </div>
 
@@ -1394,33 +1394,33 @@ export function TaskDetailSheet(props: {
           </p>
         ) : null}
 
-        <div className="task-detail-actions">
+        <div className="task-detail-action-pills" role="group" aria-label="Task actions">
           <button
             type="button"
-            className={task.due_today ? 'btn-quiet active' : 'btn-quiet'}
+            className={
+              task.due_today
+                ? 'detail-pill detail-pill-due is-on'
+                : 'detail-pill detail-pill-due'
+            }
             onClick={() => onToggleDue(task.id, !!task.due_today)}
           >
-            {task.due_today ? 'Due today' : 'Due today?'}
+            Due today
           </button>
           {task.estimate_mins > 0 ? (
             task.status === 'active' ? (
               <button
                 type="button"
-                className="btn btn-ghost start-stop-btn"
-                style={{ flex: 1 }}
+                className="detail-pill detail-pill-primary"
                 onClick={() => onStop(task.id)}
               >
                 <StopIcon />
                 Stop
-                <span className="mono" style={{ fontWeight: 600 }}>
-                  {fmtMins(liveLogged)}
-                </span>
+                <span className="mono">{fmtMins(liveLogged)}</span>
               </button>
             ) : (
               <button
                 type="button"
-                className="btn btn-steel start-stop-btn"
-                style={{ flex: 1 }}
+                className="detail-pill detail-pill-primary"
                 disabled={startDisabled}
                 onClick={() => onStart(task.id)}
               >
@@ -1431,8 +1431,7 @@ export function TaskDetailSheet(props: {
           ) : null}
           <button
             type="button"
-            className="btn btn-ghost"
-            style={{ flex: 1 }}
+            className="detail-pill detail-pill-done"
             onClick={() => {
               onComplete(task.id);
               onClose();
@@ -1443,31 +1442,18 @@ export function TaskDetailSheet(props: {
           </button>
         </div>
 
-        {/* Primary interactive areas */}
-        <section className="detail-primary-block">
-          <h3 className="detail-primary-title">Notes</h3>
-          <TaskInfo
-            value={task.info || ''}
-            onSave={(info) => onSaveInfo(task.id, info)}
-            surface="edit"
-          />
-        </section>
-
-        {subtasksBlock}
-
-        {/* Secondary: collapsed by default */}
         <div className="detail-more">
           <button
             type="button"
             className={
               detailsMoreOpen
-                ? 'detail-more-toggle open'
-                : 'detail-more-toggle'
+                ? 'detail-pill detail-pill-more is-on'
+                : 'detail-pill detail-pill-more'
             }
             aria-expanded={detailsMoreOpen}
             onClick={() => setDetailsMoreOpen((v) => !v)}
           >
-            {detailsMoreOpen ? 'Less' : 'Time, place, job…'}
+            {detailsMoreOpen ? 'Less' : 'Time, place, job'}
           </button>
 
           {detailsMoreOpen ? (
@@ -1554,6 +1540,17 @@ export function TaskDetailSheet(props: {
             </div>
           ) : null}
         </div>
+
+        <section className="detail-primary-block">
+          <h3 className="detail-primary-title">Notes</h3>
+          <TaskInfo
+            value={task.info || ''}
+            onSave={(info) => onSaveInfo(task.id, info)}
+            surface="edit"
+          />
+        </section>
+
+        {subtasksBlock}
       </div>
     </div>
   );
