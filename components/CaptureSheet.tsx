@@ -1,12 +1,27 @@
 'use client';
 
+/**
+ * Capture — pen to paper.
+ * Primary path: type (or speak) → Dock.
+ * Time, place, job, and day are optional and stay collapsed until asked for.
+ */
+
 import { useEffect, useState } from 'react';
-import type { EstimateSuggestion, LocationSuggestion, JobSuggestion, LocationMemorySuggestion } from '@/lib/taskIntelligence';
+import type {
+  EstimateSuggestion,
+  LocationSuggestion,
+  JobSuggestion,
+  LocationMemorySuggestion,
+} from '@/lib/taskIntelligence';
 import type { CaptureContextDecision } from '@/lib/thinking/types';
 import { fmtMins, minsToInput, fmtClock } from '@/lib/timeFormat';
 import type { Job } from '@/lib/jobTypes';
 import type { ThoughtParts } from '@/lib/unifiedInput/parse';
-import { hasEntityResolution, type JobLocationResolution, type JobLocationCandidate } from '@/lib/unifiedInput/resolve';
+import {
+  hasEntityResolution,
+  type JobLocationResolution,
+  type JobLocationCandidate,
+} from '@/lib/unifiedInput/resolve';
 import { oneShotGate } from '@/lib/unifiedInput/oneShot';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
@@ -46,81 +61,158 @@ export function CaptureSheet(props: {
   onConfirmResolution: (c: JobLocationCandidate) => void;
   onDeclineResolution: () => void;
   confirmedJobId?: string | null;
-  /** Quiet line from runtime lookup — same story as capacity. */
   durationExplain?: string | null;
   error: string;
   onClose: () => void;
 }) {
   const {
-    taskText, setTaskText, taskTime, setTaskTime, captureSuggestion, captureLocationSuggestion,
-    captureLocationMemorySuggestion, captureJobSuggestion, captureContext, locationFieldVisible, addTask,
-    captureLocation, setCaptureLocation, captureLocationCoords, setCaptureLocationCoords,
-    manualLocationToggle, setManualLocationToggle, showReminderField, setShowReminderField,
-    captureSurfaceDate, setCaptureSurfaceDate, jobs, captureJobId, setCaptureJobId,
-    thought, intendedTime, locationResolution, declinedResolution, onConfirmResolution, onDeclineResolution,
-    confirmedJobId = null, durationExplain = null, error, onClose,
+    taskText,
+    setTaskText,
+    taskTime,
+    setTaskTime,
+    captureSuggestion,
+    captureLocationSuggestion,
+    captureLocationMemorySuggestion,
+    captureJobSuggestion,
+    captureContext,
+    locationFieldVisible,
+    addTask,
+    captureLocation,
+    setCaptureLocation,
+    captureLocationCoords,
+    setCaptureLocationCoords,
+    manualLocationToggle,
+    setManualLocationToggle,
+    showReminderField,
+    setShowReminderField,
+    captureSurfaceDate,
+    setCaptureSurfaceDate,
+    jobs,
+    captureJobId,
+    setCaptureJobId,
+    thought,
+    intendedTime,
+    locationResolution,
+    declinedResolution,
+    onConfirmResolution,
+    onDeclineResolution,
+    confirmedJobId = null,
+    durationExplain = null,
+    error,
+    onClose,
   } = props;
 
-  const [showEstimateHint, setShowEstimateHint] = useState(false);
+  const [showJobField, setShowJobField] = useState(false);
+  const [showTimeField, setShowTimeField] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [estimateHintVisible, setEstimateHintVisible] = useState(false);
+
   useEffect(() => {
-    if (shouldShowEstimateHint()) {
-      setShowEstimateHint(true);
-    }
+    setEstimateHintVisible(shouldShowEstimateHint());
   }, []);
+
+  // Context may seed a job quietly — never opens the job picker.
+  useEffect(() => {
+    if (captureJobId) return;
+    if (
+      captureContext &&
+      captureContext.authority !== 'observe' &&
+      captureContext.suggestedJobId
+    ) {
+      const suggestedJob = jobs.find((j) => j.id === captureContext.suggestedJobId);
+      if (suggestedJob) setCaptureJobId(suggestedJob.id);
+    }
+  }, [captureContext, captureJobId, jobs, setCaptureJobId]);
+
+  // Parent may open location from a seed; keep more panel in sync.
+  useEffect(() => {
+    if (locationFieldVisible || manualLocationToggle || captureLocation.trim()) {
+      setMoreOpen(true);
+      setManualLocationToggle(true);
+    }
+  }, [locationFieldVisible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (showReminderField || captureSurfaceDate) setMoreOpen(true);
+  }, [showReminderField, captureSurfaceDate]);
+
+  useEffect(() => {
+    if (captureJobId || showJobField) setMoreOpen(true);
+  }, [captureJobId, showJobField]);
+
   const dialogRef = useDialogA11y(onClose);
 
   const gate = oneShotGate({
-    rawText: taskText,
+    text: taskText,
     thought,
     locationResolution,
     declinedResolution,
     confirmedJobId: confirmedJobId ?? null,
   });
 
+  const chosenJob =
+    captureJobId != null ? jobs.find((j) => j.id === captureJobId) ?? null : null;
+
+  const resolutionNeedsAttention =
+    !declinedResolution &&
+    locationResolution &&
+    (locationResolution.state === 'proposed' || locationResolution.state === 'choose');
+
+  const showEstimateChip =
+    !!captureSuggestion &&
+    (captureSuggestion.confidence !== 'low' ||
+      captureSuggestion.source === 'measured');
+
+  const hasOptionalActive =
+    !!taskTime.trim() ||
+    !!captureLocation.trim() ||
+    !!captureJobId ||
+    !!captureSurfaceDate ||
+    showTimeField ||
+    manualLocationToggle ||
+    showReminderField ||
+    showJobField;
+
   function tryDock() {
+    if (!gate.ready) return;
     addTask();
   }
 
-  const [showJobField, setShowJobField] = useState(false);
-  const chosenJob = jobs.find((j) => j.id === captureJobId);
-
-  // `known` is silent — parent attaches job/place; no chip in the sheet.
-  const resolutionFocused = !!locationResolution &&
-    (locationResolution.state === 'proposed' ||
-      locationResolution.state === 'choose');
-
-  useEffect(() => {
-    if (captureJobId) return;
-    if (captureContext && captureContext.authority !== 'observe' && captureContext.suggestedJobId) {
-      const suggestedJob = jobs.find((j) => j.id === captureContext.suggestedJobId);
-      if (suggestedJob) {
-        setCaptureJobId(suggestedJob.id);
-      }
+  function applySuggestedMins() {
+    if (!captureSuggestion) return;
+    setTaskTime(minsToInput(captureSuggestion.suggestedMins));
+    setShowTimeField(true);
+    setMoreOpen(true);
+    if (estimateHintVisible) {
+      markEstimateHintSeen();
+      setEstimateHintVisible(false);
     }
-  }, [captureContext, captureJobId, jobs, setCaptureJobId]);
-
-  useEffect(() => {
-    if (!locationFieldVisible) return;
-    if (captureLocationCoords) return;
-    if (captureLocationMemorySuggestion && captureLocationMemorySuggestion.lat != null) {
-      setCaptureLocation(captureLocationMemorySuggestion.locationText);
-      setCaptureLocationCoords({
-        lat: captureLocationMemorySuggestion.lat,
-        lng: captureLocationMemorySuggestion.lng,
-      });
-    }
-  }, [locationFieldVisible, captureLocationCoords, captureLocationMemorySuggestion, setCaptureLocation, setCaptureLocationCoords]);
+  }
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div ref={dialogRef} className="capture-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Capture">
+    <div className="sheet-overlay" onClick={onClose}>
+      <div
+        className="sheet-panel capture-sheet capture-sheet-paper"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="capture-sheet-title"
+        aria-describedby={error ? 'capture-error' : undefined}
+        ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="capture-sheet-header">
+          <h2 id="capture-sheet-title" className="capture-sheet-title">
+            Add
+          </h2>
+          <button type="button" className="btn-text capture-sheet-close" onClick={onClose}>
+            Close
+          </button>
+        </div>
+
+        {/* ── The paper line ─────────────────────────────────────── */}
         <div className="capture-text-row">
-          <label htmlFor="capture-task-text" className="sr-only">
-            What needs doing
-          </label>
           <input
             id="capture-task-text"
-            data-autofocus
             type="text"
             value={taskText}
             onChange={(e) => setTaskText(e.target.value)}
@@ -130,220 +222,338 @@ export function CaptureSheet(props: {
                 tryDock();
               }
             }}
-            placeholder="What needs doing?"
+            placeholder="What needs doing…"
+            autoComplete="off"
             autoFocus
-            aria-invalid={Boolean(error)}
+            aria-invalid={!!error}
             aria-describedby={error ? 'capture-error' : undefined}
           />
           <MicButton
-            onResult={(text) =>
-              setTaskText((prev) => (prev.trim().length > 0 ? `${prev.trim()} ${text}` : text))
+            onTranscript={(t) =>
+              setTaskText((prev) => (prev ? `${prev.trim()} ${t}` : t))
             }
           />
         </div>
 
-        {thought && (thought.hadFacets || hasEntityResolution(locationResolution) || resolutionFocused) && (
-          <div className="unified-thought-panel">
-            {thought.hadFacets && (
-              <div className="unified-thought-summary">
-                {thought.intent && thought.intent.length > 0 && (
-                  <span className="unified-thought-intent">As: <strong>{thought.intent}</strong></span>
-                )}
-                <span className="unified-thought-facets">
-                  {thought.date && <span className="unified-thought-chip">📅 {thought.date}</span>}
-                  {intendedTime && <span className="unified-thought-chip">⏰ {fmtClock(intendedTime)}</span>}
-                  {thought.locationHint && <span className="unified-thought-chip">📍 {thought.locationHint}</span>}
-                  {thought.priority && <span className="unified-thought-chip">{thought.priority}</span>}
-                </span>
-              </div>
+        {/* Quiet interpretation — only when the thought actually parsed facets */}
+        {thought && thought.hadFacets && (
+          <div className="capture-facet-strip" aria-live="polite">
+            {thought.date && (
+              <span className="capture-facet-chip">
+                {thought.date === new Date().toISOString().slice(0, 10)
+                  ? 'Today'
+                  : thought.date}
+              </span>
             )}
-
-            {!declinedResolution && locationResolution && locationResolution.state === 'proposed' && (
-              <div className="capture-entity-chip capture-entity-chip-ask" role="group" aria-label="Possible job match">
-                <span className="capture-entity-chip-text">
-                  <strong>
-                    {locationResolution.candidate.matchedField === 'location' &&
-                    locationResolution.candidate.locationText
-                      ? locationResolution.candidate.locationText
-                      : locationResolution.candidate.jobName}
-                  </strong>
-                  {locationResolution.candidate.matchedField === 'location'
-                    ? ` · ${locationResolution.candidate.jobName}`
-                    : ''}
-                </span>
-                <span className="capture-entity-chip-actions">
-                  <button
-                    type="button"
-                    className="btn-text capture-entity-chip-yes"
-                    onClick={() => onConfirmResolution(locationResolution.candidate)}
-                  >
-                    Yes
-                  </button>
-                  <button type="button" className="btn-text" onClick={onDeclineResolution}>
-                    Skip
-                  </button>
-                </span>
-              </div>
+            {thought.time && (
+              <span className="capture-facet-chip">{fmtClock(thought.time.label)}</span>
             )}
-
-            {!declinedResolution && locationResolution && locationResolution.state === 'choose' && (
-              <div className="unified-thought-choose">
-                <span className="unified-thought-prompt">Job</span>
-                <div className="sheet-inline-options">
-                  {locationResolution.candidates.map((c) => (
-                    <button type="button" key={c.jobId} className="move-day-option" onClick={() => onConfirmResolution(c)}>
-                      {c.matchedField === 'location' && c.locationText ? `${c.locationText} (${c.jobName})` : c.jobName}
-                    </button>
-                  ))}
-                  <button type="button" className="btn-text" onClick={onDeclineResolution}>Not here</button>
-                </div>
-              </div>
+            {thought.locationHint && (
+              <span className="capture-facet-chip">{thought.locationHint}</span>
             )}
-
-            {/* known = silent attach in parent; no chip */}
           </div>
         )}
 
-        {/* Quiet authority: one optional duration chip — only when signal is strong enough. */}
-        {captureSuggestion &&
-          (captureSuggestion.confidence !== 'low' || captureSuggestion.source === 'measured') && (
+        {/* Ambiguous job/place only — known is silent */}
+        {resolutionNeedsAttention && locationResolution?.state === 'proposed' && (
+          <div
+            className="capture-entity-chip capture-entity-chip-ask"
+            role="group"
+            aria-label="Possible job match"
+          >
+            <span className="capture-entity-chip-text">
+              <strong>
+                {locationResolution.candidate.matchedField === 'location' &&
+                locationResolution.candidate.locationText
+                  ? locationResolution.candidate.locationText
+                  : locationResolution.candidate.jobName}
+              </strong>
+              {locationResolution.candidate.matchedField === 'location'
+                ? ` · ${locationResolution.candidate.jobName}`
+                : ''}
+            </span>
+            <span className="capture-entity-chip-actions">
+              <button
+                type="button"
+                className="btn-text capture-entity-chip-yes"
+                onClick={() => onConfirmResolution(locationResolution.candidate)}
+              >
+                Yes
+              </button>
+              <button type="button" className="btn-text" onClick={onDeclineResolution}>
+                Skip
+              </button>
+            </span>
+          </div>
+        )}
+
+        {resolutionNeedsAttention && locationResolution?.state === 'choose' && (
+          <div className="unified-thought-choose">
+            <span className="unified-thought-prompt">Job</span>
+            <div className="sheet-inline-options">
+              {locationResolution.candidates.map((c) => (
+                <button
+                  type="button"
+                  key={c.jobId}
+                  className="move-day-option"
+                  onClick={() => onConfirmResolution(c)}
+                >
+                  {c.matchedField === 'location' && c.locationText
+                    ? `${c.locationText} (${c.jobName})`
+                    : c.jobName}
+                </button>
+              ))}
+              <button type="button" className="btn-text" onClick={onDeclineResolution}>
+                Skip
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Strong estimate only — one tap to adopt, never a form field up front */}
+        {showEstimateChip && captureSuggestion && (
           <button
             type="button"
             className="estimate-suggestion-chip"
-            onClick={() => setTaskTime(minsToInput(captureSuggestion.suggestedMins))}
-            title="Use usual duration"
+            onClick={applySuggestedMins}
           >
-            ≈ {fmtMins(captureSuggestion.suggestedMins)}
+            Usually {fmtMins(captureSuggestion.suggestedMins)}
+            {estimateHintVisible ? ' · tap to use' : ''}
           </button>
         )}
 
-        {showEstimateHint && (
-          <span className="capture-estimate-hint" id="capture-estimate-hint">
-            Rough minutes help — optional
-          </span>
-        )}
-        <div className="capture-row">
-          <input
-            type="text"
-            value={taskTime}
-            onChange={(e) => {
-              setTaskTime(e.target.value);
-              if (showEstimateHint) {
-                setShowEstimateHint(false);
-                markEstimateHintSeen();
-              }
-            }}
-            placeholder="0m"
-            id="capture-estimate"
-            aria-label="Estimate minutes"
-            aria-describedby={showEstimateHint ? 'capture-estimate-hint' : undefined}
-            style={{ width: 80 }}
-          />
-          <button
-            className="btn btn-steel"
-            style={{ flex: 1 }}
-            onClick={tryDock}
-            disabled={taskText.trim().length === 0}
-          >
-            {gate.ready ? 'Dock' : 'Add task'}
-          </button>
-        </div>
-        {gate.blockReason && (
-          <div className="settings-help" style={{ marginTop: 4 }}>{gate.blockReason}</div>
+        {durationExplain && showTimeField && (
+          <p className="settings-help capture-duration-explain">{durationExplain}</p>
         )}
 
-        {!locationFieldVisible ? (
-          <button type="button" className="reveal-reminder-link" onClick={() => setManualLocationToggle(true)}>
-            + Add a location
-          </button>
-        ) : (
-          <>
-            <LocationAutocomplete
-              value={captureLocation}
-              placeholder="Where does this happen?"
-              onChange={setCaptureLocation}
-              onPlaceSelected={(result) => {
-                setCaptureLocation(result.formattedAddress);
-                setCaptureLocationCoords({ lat: result.lat, lng: result.lng });
-              }}
-            />
-            {captureLocationMemorySuggestion && !captureLocationCoords && captureLocationMemorySuggestion.authority !== 'strong' && (
-              <button
-                type="button"
-                className="estimate-suggestion-chip"
-                onClick={() => {
-                  setCaptureLocation(captureLocationMemorySuggestion.locationText);
-                  setCaptureLocationCoords({ lat: captureLocationMemorySuggestion.lat, lng: captureLocationMemorySuggestion.lng });
-                }}
-              >
-                <MapPinIcon size={13} />
-                <span>{captureLocationMemorySuggestion.locationText} ({captureLocationMemorySuggestion.occurrenceCount}×)</span>
-              </button>
-            )}
-            {!captureLocationMemorySuggestion && captureLocationSuggestion && !captureLocationCoords && (
-              <button
-                type="button"
-                className="estimate-suggestion-chip"
-                onClick={() => {
-                  setCaptureLocation(captureLocationSuggestion.location.text);
-                  setCaptureLocationCoords({ lat: captureLocationSuggestion.location.lat, lng: captureLocationSuggestion.location.lng });
-                }}
-              >
-                <MapPinIcon size={13} />
-                <span>{captureLocationSuggestion.location.text} usual ({captureLocationSuggestion.sampleCount}×)</span>
-              </button>
-            )}
-            <button
-              type="button"
-              className="btn-text"
-              onClick={() => {
-                setCaptureLocation('');
-                setCaptureLocationCoords(null);
-                setManualLocationToggle(false);
-              }}
-            >
-              Remove location
-            </button>
-          </>
-        )}
-
-        {!showReminderField ? (
-          <button type="button" className="reveal-reminder-link" onClick={() => setShowReminderField(true)}>
-            + Surface on a day
-          </button>
-        ) : (
-          <div className="capture-row">
-            <input id="capture-surface-date" type="date" value={captureSurfaceDate} onChange={(e) => setCaptureSurfaceDate(e.target.value)} aria-label="Surface on day" />
-            <button type="button" className="btn-text" onClick={() => { setShowReminderField(false); setCaptureSurfaceDate(''); }}>Clear</button>
-          </div>
-        )}
-
-        {!showJobField && !captureJobId ? (
-          <button type="button" className="reveal-reminder-link" onClick={() => setShowJobField(true)}>
-            + Job
-          </button>
-        ) : captureJobId ? (
-          <div className="capture-row" style={{ alignItems: 'center', gap: 8 }}>
-            <span className="settings-help" style={{ margin: 0 }}>Job: {chosenJob?.name ?? '…'}</span>
-            <button type="button" className="btn-text" onClick={() => { setCaptureJobId(null); setShowJobField(false); }}>Clear</button>
-          </div>
-        ) : (
-          <div className="job-picker">
-            {jobs.map((j) => (
-              <button type="button" key={j.id} className="move-day-option" onClick={() => { setCaptureJobId(j.id); setShowJobField(false); }}>
-                {j.name}
-              </button>
-            ))}
-            <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
-          </div>
-        )}
+        {/* ── Primary action first ───────────────────────────────── */}
+        <button
+          type="button"
+          className="btn btn-steel capture-dock-btn"
+          disabled={!gate.ready}
+          onClick={tryDock}
+        >
+          {gate.ready ? 'Dock' : 'Add'}
+        </button>
 
         {error && (
-          <p id="capture-error" role="alert" style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>
+          <p
+            id="capture-error"
+            role="alert"
+            className="capture-error-line"
+          >
             {error}
           </p>
         )}
-        <button className="btn-text" onClick={onClose}>Cancel</button>
+
+        {/* ── Optional details — collapsed by default ───────────── */}
+        <div className="capture-more">
+          <button
+            type="button"
+            className={
+              moreOpen ? 'capture-more-toggle open' : 'capture-more-toggle'
+            }
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((v) => !v)}
+          >
+            {moreOpen ? 'Less' : hasOptionalActive ? 'Details' : 'Time, place, job…'}
+          </button>
+
+          {moreOpen && (
+            <div className="capture-more-body">
+              {/* Time */}
+              {!showTimeField && !taskTime.trim() ? (
+                <button
+                  type="button"
+                  className="reveal-reminder-link"
+                  onClick={() => setShowTimeField(true)}
+                >
+                  + Time estimate
+                </button>
+              ) : (
+                <div className="capture-row">
+                  <input
+                    id="capture-task-time"
+                    type="text"
+                    inputMode="text"
+                    value={taskTime}
+                    onChange={(e) => setTaskTime(e.target.value)}
+                    placeholder="e.g. 25m or 1.5h"
+                    aria-label="Time estimate"
+                  />
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setTaskTime('');
+                      setShowTimeField(false);
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
+              {/* Location */}
+              {!manualLocationToggle && !captureLocation.trim() ? (
+                <button
+                  type="button"
+                  className="reveal-reminder-link"
+                  onClick={() => setManualLocationToggle(true)}
+                >
+                  + Place
+                </button>
+              ) : (
+                <>
+                  <LocationAutocomplete
+                    value={captureLocation}
+                    placeholder="Where?"
+                    onChange={setCaptureLocation}
+                    onPlaceSelected={(result) => {
+                      setCaptureLocation(result.formattedAddress);
+                      setCaptureLocationCoords({
+                        lat: result.lat,
+                        lng: result.lng,
+                      });
+                    }}
+                  />
+                  {captureLocationMemorySuggestion && !captureLocation.trim() && (
+                    <button
+                      type="button"
+                      className="estimate-suggestion-chip"
+                      onClick={() => {
+                        const loc = captureLocationMemorySuggestion.location;
+                        setCaptureLocation(loc.text);
+                        if (loc.lat != null && loc.lng != null) {
+                          setCaptureLocationCoords({ lat: loc.lat, lng: loc.lng });
+                        }
+                      }}
+                    >
+                      <MapPinIcon size={13} />
+                      <span>
+                        {captureLocationMemorySuggestion.location.text}
+                      </span>
+                    </button>
+                  )}
+                  {captureLocationSuggestion &&
+                    !captureLocationMemorySuggestion &&
+                    !captureLocation.trim() && (
+                      <button
+                        type="button"
+                        className="estimate-suggestion-chip"
+                        onClick={() => {
+                          setCaptureLocation(
+                            captureLocationSuggestion.location.text
+                          );
+                          setCaptureLocationCoords({
+                            lat: captureLocationSuggestion.location.lat,
+                            lng: captureLocationSuggestion.location.lng,
+                          });
+                        }}
+                      >
+                        <MapPinIcon size={13} />
+                        <span>
+                          {captureLocationSuggestion.location.text}
+                        </span>
+                      </button>
+                    )}
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setCaptureLocation('');
+                      setCaptureLocationCoords(null);
+                      setManualLocationToggle(false);
+                    }}
+                  >
+                    Clear place
+                  </button>
+                </>
+              )}
+
+              {/* Job */}
+              {!showJobField && !captureJobId ? (
+                <button
+                  type="button"
+                  className="reveal-reminder-link"
+                  onClick={() => setShowJobField(true)}
+                >
+                  + Job
+                </button>
+              ) : captureJobId ? (
+                <div className="capture-row" style={{ alignItems: 'center', gap: 8 }}>
+                  <span className="settings-help" style={{ margin: 0 }}>
+                    {chosenJob?.name ?? 'Job'}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setCaptureJobId(null);
+                      setShowJobField(false);
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : (
+                <div className="job-picker">
+                  {jobs.map((j) => (
+                    <button
+                      type="button"
+                      key={j.id}
+                      className="move-day-option"
+                      onClick={() => {
+                        setCaptureJobId(j.id);
+                        setShowJobField(false);
+                      }}
+                    >
+                      {j.name}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => setShowJobField(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {/* Surface day */}
+              {!showReminderField && !captureSurfaceDate ? (
+                <button
+                  type="button"
+                  className="reveal-reminder-link"
+                  onClick={() => setShowReminderField(true)}
+                >
+                  + Later day
+                </button>
+              ) : (
+                <div className="capture-row">
+                  <input
+                    id="capture-surface-date"
+                    type="date"
+                    value={captureSurfaceDate}
+                    onChange={(e) => setCaptureSurfaceDate(e.target.value)}
+                    aria-label="Surface on day"
+                  />
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setShowReminderField(false);
+                      setCaptureSurfaceDate('');
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
