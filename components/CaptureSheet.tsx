@@ -422,17 +422,15 @@ export function CaptureSheet(props: {
                       type="button"
                       className="estimate-suggestion-chip"
                       onClick={() => {
-                        const loc = captureLocationMemorySuggestion.location;
-                        setCaptureLocation(loc.text);
-                        if (loc.lat != null && loc.lng != null) {
-                          setCaptureLocationCoords({ lat: loc.lat, lng: loc.lng });
+                        const mem = captureLocationMemorySuggestion;
+                        setCaptureLocation(mem.locationText);
+                        if (mem.lat != null && mem.lng != null) {
+                          setCaptureLocationCoords({ lat: mem.lat, lng: mem.lng });
                         }
                       }}
                     >
                       <MapPinIcon size={13} />
-                      <span>
-                        {captureLocationMemorySuggestion.location.text}
-                      </span>
+                      <span>{captureLocationMemorySuggestion.locationText}</span>
                     </button>
                   )}
                   {captureLocationSuggestion &&
