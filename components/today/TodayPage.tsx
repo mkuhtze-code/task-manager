@@ -2051,11 +2051,13 @@ export function TodayPage() {
   // Soft end-of-day nudge: offer Reality Check in the last hour of the workday
   // (or after work end if anything is still on the plate).
   const REALITY_CHECK_WINDOW_MINS = 30;
+  const hasOpenTimedWork = tasks.some(
+    (t) => t.status !== 'done' && t.estimate_mins > 0
+  );
+  // Soft end-of-day offer — only when there is timed work left, never a nag.
   const showRealityCheck =
-    tasks.length > 0 &&
-    (isWorkDay
-      ? minutesLeftToday <= REALITY_CHECK_WINDOW_MINS
-      : true);
+    hasOpenTimedWork &&
+    (isWorkDay ? minutesLeftToday <= REALITY_CHECK_WINDOW_MINS : true);
 
 
   // External commitments only consume capacity while they overlap the time
@@ -2270,8 +2272,9 @@ export function TodayPage() {
                 onDockIt={isDesktop ? () => setCaptureOpen(true) : undefined}
         orderHint={dayOrderHint({
           sortMode,
-          // history is already completed-task rows (no status field on HistoricalTask)
-          personalEvidenceCount: history.length,
+          personalEvidenceCount: history.filter(
+            (h) => typeof h.actual_mins === 'number' && h.actual_mins > 0
+          ).length,
         })}
       />
 
@@ -2492,14 +2495,16 @@ export function TodayPage() {
             {pendingRealityInvite.taskCount === 1
               ? 'One thing may still be open from yesterday.'
               : `${pendingRealityInvite.taskCount} things may still be open from yesterday.`}
-            {' '}
-            A quick reality check helps Dokkit learn.
           </p>
           <div className="reality-invite-actions">
             <button
               type="button"
               className="btn btn-steel"
-              onClick={() => setRealityCheckOpen(true)}
+              onClick={() => {
+                dismissPendingRealityInvite(pendingRealityInvite.forDate);
+                setPendingRealityInvite(null);
+                setRealityCheckOpen(true);
+              }}
             >
               Review
             </button>
