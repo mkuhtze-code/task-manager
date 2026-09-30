@@ -191,6 +191,8 @@ export function TodayPage() {
 
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
   const [subDraftText, setSubDraftText] = useState<Record<string, string>>({});
   const [subDraftTime, setSubDraftTime] = useState<Record<string, string>>({});
@@ -1055,7 +1057,9 @@ export function TodayPage() {
     // shifting which "next stop" each drive_mins_to_next value refers to
     // and making the numbers look wrong for the tasks around it.
     const todayForRoute = localDateStr(now);
-    const visibleForRoute = tasks.filter((t) => t.status !== 'done' && !isScheduledForLater(t, todayForRoute));
+    // Prefer ref so optimistic requires_visit updates are visible immediately.
+    const tasksNow = tasksRef.current;
+    const visibleForRoute = tasksNow.filter((t) => t.status !== 'done' && !isScheduledForLater(t, todayForRoute));
     const located = visibleForRoute
       .filter((t) =>
         isRouteStop(t, {
@@ -1486,21 +1490,32 @@ export function TodayPage() {
   }
 
   async function setRouteIntent(id: string, requiresVisit: boolean | null) {
+    const previous = tasksRef.current.find((t) => t.id === id)?.requires_visit ?? null;
+    // Optimistic local update (ref + state) so route membership flips now.
+    tasksRef.current = tasksRef.current.map((t) =>
+      t.id === id ? { ...t, requires_visit: requiresVisit } : t
+    );
+    setTasks(tasksRef.current);
+    if (sortMode === 'geo_aware') void recalcRoute();
+
     const { error } = await supabase
       .from('tasks')
       .update({ requires_visit: requiresVisit })
       .eq('id', id);
     if (error) {
       console.error(error);
-      alert(
-        'Could not update travel setting. If this is the first time, apply the requires_visit migration.'
+      tasksRef.current = tasksRef.current.map((t) =>
+        t.id === id ? { ...t, requires_visit: previous } : t
       );
-      return;
+      setTasks(tasksRef.current);
+      if (sortMode === 'geo_aware') void recalcRoute();
+      const msg = String((error as { message?: string }).message || error);
+      alert(
+        /requires_visit|PGRST204|schema cache/i.test(msg)
+          ? 'Travel preference needs the requires_visit column. Run 20260930_task_requires_visit.sql in Supabase, then try again.'
+          : 'Could not save travel preference: ' + msg
+      );
     }
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, requires_visit: requiresVisit } : t))
-    );
-    if (sortMode === 'geo_aware') recalcRoute();
   }
 
   // Freeform information ("what I'd write underneath this task on paper").
