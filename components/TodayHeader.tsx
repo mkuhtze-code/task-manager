@@ -39,6 +39,27 @@ export function TodayHeader(props: {
   onDockIt?: () => void;
   /** Plain-language list order (e.g. capacity_first). */
   orderHint?: string | null;
+  /**
+   * Desktop middle rail — day pressure or selected-task context.
+   * Fills the empty command-bar centre without enlarging chrome.
+   */
+  deskContext?: {
+    mode: 'day' | 'task';
+    openCount: number;
+    timedCount: number;
+    nextCommitment?: { title: string; when: string } | null;
+    jobsWithOpen?: number;
+    meetingsToday?: number;
+    travelSummary?: string | null;
+    sortModeLabel?: string | null;
+    taskRemainingMins?: number;
+    taskEstimateMins?: number;
+    taskJobName?: string | null;
+    taskPlace?: string | null;
+    taskActive?: boolean;
+    taskSubsDone?: number;
+    taskSubsTotal?: number;
+  } | null;
 }) {
   const {
     overloaded,
@@ -67,6 +88,7 @@ export function TodayHeader(props: {
     isDesktop = false,
     onDockIt,
     orderHint = null,
+    deskContext = null,
   } = props;
 
   const [capacityOpen, setCapacityOpen] = useState(false);
@@ -160,9 +182,98 @@ export function TodayHeader(props: {
               </span>
             </div>
 
-            {orderHint ? (
-              <span className="desk-today-order-hint">{orderHint}</span>
-            ) : null}
+          </div>
+
+          <div className="desk-today-context" aria-label="Day context">
+            {deskContext?.mode === 'task' ? (
+              <>
+                <span className="desk-ctx-item desk-ctx-emphasis">
+                  {deskContext.taskActive ? 'Running' : 'Selected'}
+                  {typeof deskContext.taskRemainingMins === 'number' &&
+                  deskContext.taskEstimateMins &&
+                  deskContext.taskEstimateMins > 0 ? (
+                    <strong className="mono">
+                      {fmtMins(deskContext.taskRemainingMins)} left
+                    </strong>
+                  ) : (
+                    <strong>untimed</strong>
+                  )}
+                </span>
+                {deskContext.taskJobName ? (
+                  <span className="desk-ctx-item" title={deskContext.taskJobName}>
+                    Job <strong>{deskContext.taskJobName}</strong>
+                  </span>
+                ) : null}
+                {deskContext.taskPlace ? (
+                  <span className="desk-ctx-item" title={deskContext.taskPlace}>
+                    Place <strong>{deskContext.taskPlace}</strong>
+                  </span>
+                ) : null}
+                {typeof deskContext.taskSubsTotal === 'number' &&
+                deskContext.taskSubsTotal > 0 ? (
+                  <span className="desk-ctx-item mono">
+                    {(deskContext.taskSubsDone ?? 0)}/{deskContext.taskSubsTotal} steps
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <span className="desk-ctx-item">
+                  Open{' '}
+                  <strong className="mono">
+                    {deskContext?.openCount ?? 0}
+                  </strong>
+                  {typeof deskContext?.timedCount === 'number' &&
+                  deskContext.timedCount > 0 ? (
+                    <span className="desk-ctx-quiet">
+                      · {deskContext.timedCount} timed
+                    </span>
+                  ) : null}
+                </span>
+                {deskContext?.nextCommitment ? (
+                  <span
+                    className="desk-ctx-item desk-ctx-next"
+                    title={deskContext.nextCommitment.title}
+                  >
+                    Next{' '}
+                    <strong>{deskContext.nextCommitment.when}</strong>
+                    <span className="desk-ctx-quiet">
+                      {deskContext.nextCommitment.title}
+                    </span>
+                  </span>
+                ) : commitments.length > 0 ? (
+                  <span className="desk-ctx-item">
+                    Fixed time{' '}
+                    <strong className="mono">{commitments.length}</strong>
+                  </span>
+                ) : null}
+                {typeof deskContext?.jobsWithOpen === 'number' &&
+                deskContext.jobsWithOpen > 0 ? (
+                  <span className="desk-ctx-item">
+                    Jobs{' '}
+                    <strong className="mono">{deskContext.jobsWithOpen}</strong>
+                    <span className="desk-ctx-quiet">with open work</span>
+                  </span>
+                ) : null}
+                {typeof deskContext?.meetingsToday === 'number' &&
+                deskContext.meetingsToday > 0 ? (
+                  <span className="desk-ctx-item">
+                    Meetings{' '}
+                    <strong className="mono">{deskContext.meetingsToday}</strong>
+                  </span>
+                ) : null}
+                {deskContext?.travelSummary ? (
+                  <span className="desk-ctx-item">{deskContext.travelSummary}</span>
+                ) : null}
+                {orderHint ? (
+                  <span className="desk-ctx-item desk-ctx-quiet">{orderHint}</span>
+                ) : deskContext?.sortModeLabel ? (
+                  <span className="desk-ctx-item desk-ctx-quiet">
+                    {deskContext.sortModeLabel}
+                  </span>
+                ) : null}
+              </>
+            )}
           </div>
 
           <div className="desk-today-bar-right">
