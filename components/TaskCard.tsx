@@ -406,7 +406,7 @@ export function TaskCard(props: {
 
             <button
               type="button"
-              className="task-action-link task-action-details"
+              className="task-action-link"
               onPointerDown={stopPointer}
               onPointerUp={stopPointer}
               onClick={isolate(onOpenDetails)}
