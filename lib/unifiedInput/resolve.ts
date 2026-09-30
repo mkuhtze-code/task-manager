@@ -244,13 +244,11 @@ export function resolveJobAndLocation(
 
     if (nameScore <= 0 && locationScore <= 0) continue;
 
-    // A single candidate can match by name and/or location. When the job has
-    // a location, prefer surfacing that concrete address ("Do you mean 14
-    // Belgium Road?") over the bare job name — it is the more specific,
-    // more useful confirmation. Name-only matches fall back to the name.
+    // Prefer the stronger signal. A name match must not be forced to the
+    // job's address just because the address shares a weak token.
     const bestScore = Math.max(nameScore, locationScore);
     const matchedField: 'name' | 'location' =
-      locationText && locationScore > 0 ? 'location' : 'name';
+      locationText && locationScore > nameScore ? 'location' : 'name';
 
     candidates.push({
       jobId: job.id,
@@ -294,33 +292,42 @@ export function resolveJobAndLocation(
     }
   }
 
-  // UX capture calm: only interrupt when the match is genuinely fuzzy.
-  // Near-exact / strong single match attaches silently as `known` (same path
-  // as a confirmed alias) so typing the real job name never asks "Do you mean?".
-  const HIGH_CONFIDENCE = 0.85;
-  const CLEAR_WIN_GAP = 0.22;
+  // WC-2: interrupt only when genuinely ambiguous.
+  // Full coverage of a job's name tokens → silent known (typed the real name).
+  function coversJobName(c: JobLocationCandidate): boolean {
+    const fieldTokens = distinctTokens(c.jobName);
+    if (fieldTokens.length === 0) return false;
+    return fieldTokens.every((f) =>
+      [...queryTokens].some((q) => tokenMatchesFieldToken(q, f))
+    );
+  }
+
+  const HIGH_CONFIDENCE = 0.78;
+  const CLEAR_WIN_GAP = 0.18;
 
   if (reliable.length === 1) {
     const only = reliable[0];
-    if (only.score >= HIGH_CONFIDENCE) {
+    if (only.score >= HIGH_CONFIDENCE || coversJobName(only)) {
       return { state: 'known', candidate: only, candidates: reliable };
     }
-    return { state: 'proposed', candidate: only, candidates: reliable };
+    // Weak single candidate — still ask once (short confirm), not silent.
+    if (only.score >= 0.34) {
+      return { state: 'proposed', candidate: only, candidates: reliable };
+    }
+    return { state: 'none', candidates: [] };
   }
 
-  // Clear winner among several: still silent when the top score is strong
-  // and clearly ahead of the runner-up.
   const top = reliable[0];
   const second = reliable[1];
   if (
-    top.score >= HIGH_CONFIDENCE &&
+    (top.score >= HIGH_CONFIDENCE || coversJobName(top)) &&
     top.score - second.score >= CLEAR_WIN_GAP
   ) {
     return { state: 'known', candidate: top, candidates: reliable };
   }
 
-  // Ambiguous cluster — ask which one (or propose only if a mid-strength unique lead).
-  if (top.score >= 0.55 && top.score - second.score >= CLEAR_WIN_GAP) {
+  // One clear lead, not quite silent — one-line confirm.
+  if (top.score >= 0.5 && top.score - second.score >= CLEAR_WIN_GAP) {
     return { state: 'proposed', candidate: top, candidates: reliable };
   }
 
