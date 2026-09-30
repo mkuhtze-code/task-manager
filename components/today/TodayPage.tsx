@@ -223,6 +223,60 @@ export function TodayPage() {
   // Desktop sidebar Dock it → open capture sheet
   useEffect(() => registerCaptureOpen(() => setCaptureOpen(true)), []);
   const { isDesktop } = useSurfaceMode();
+  const [deskListWidth, setDeskListWidth] = useState(320);
+  const deskSplitDragging = useRef(false);
+  const deskListWidthRef = useRef(320);
+
+  useEffect(() => {
+    deskListWidthRef.current = deskListWidth;
+  }, [deskListWidth]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('dokkit.ux.desk_list_w');
+      if (raw) {
+        const n = Number(raw);
+        if (n >= 240 && n <= 520) {
+          setDeskListWidth(n);
+          deskListWidthRef.current = n;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    function onMove(e: PointerEvent) {
+      if (!deskSplitDragging.current) return;
+      const next = Math.min(520, Math.max(240, e.clientX));
+      deskListWidthRef.current = next;
+      setDeskListWidth(next);
+    }
+    function onUp() {
+      if (!deskSplitDragging.current) return;
+      deskSplitDragging.current = false;
+      try {
+        window.localStorage.setItem(
+          'dokkit.ux.desk_list_w',
+          String(deskListWidthRef.current)
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, [isDesktop]);
+
 
   // Must run every render (before any early return) — React #310 otherwise.
   useDesktopWorkspaceKeys({
@@ -2241,7 +2295,14 @@ export function TodayPage() {
   }
 
   return (
-    <div className={`app-shell${isDesktop && openTask ? " has-desk-detail" : ""}`}>
+    <div
+      className={`app-shell${isDesktop && openTask ? " has-desk-detail" : ""}`}
+      style={
+        isDesktop
+          ? ({ ['--desk-list-w' as string]: `${deskListWidth}px` } as React.CSSProperties)
+          : undefined
+      }
+    >
       <TravelAwarenessBanner userId={session.user.id} />
 
       <TodayHeader
@@ -2569,6 +2630,19 @@ export function TodayPage() {
           onClose={() => setCaptureOpen(false)}
         />
       )}
+
+      {isDesktop ? (
+        <button
+          type="button"
+          className="desk-split-handle"
+          aria-label="Resize task list"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            deskSplitDragging.current = true;
+            (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+          }}
+        />
+      ) : null}
 
       {openTask && (
         <TaskDetailSheet
