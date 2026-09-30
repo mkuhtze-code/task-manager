@@ -1077,7 +1077,7 @@ export function TaskDetailSheet(props: {
             onChange={(e) =>
               setText(e.target.value)
             }
-            onBlur={commit}
+            onBlur={() => commit()}
             placeholder="Task name"
           />
 
@@ -1218,7 +1218,7 @@ export function TaskDetailSheet(props: {
                   onChange={(e) =>
                     setTimeStr(e.target.value)
                   }
-                  onBlur={commit}
+                  onBlur={() => commit()}
                   placeholder="15m"
                 />
               </label>
@@ -1240,7 +1240,7 @@ export function TaskDetailSheet(props: {
                         e.target.value
                       )
                     }
-                    onBlur={commit}
+                    onBlur={() => commit()}
                   />
 
                   {surfaceDate.length > 0 && (
@@ -1456,7 +1456,7 @@ export function TaskDetailSheet(props: {
           onChange={(e) =>
             setText(e.target.value)
           }
-          onBlur={commit}
+          onBlur={() => commit()}
         />
 
         {task.estimate_mins > 0 && (
@@ -1508,7 +1508,7 @@ export function TaskDetailSheet(props: {
             onChange={(e) =>
               setTimeStr(e.target.value)
             }
-            onBlur={commit}
+            onBlur={() => commit()}
             placeholder="15m"
             aria-label="Estimate"
           />
@@ -1626,7 +1626,7 @@ export function TaskDetailSheet(props: {
                 e.target.value
               )
             }
-            onBlur={commit}
+            onBlur={() => commit()}
           />
 
           {surfaceDate.length > 0 && (
