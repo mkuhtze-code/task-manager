@@ -327,10 +327,7 @@ export function TodayPage() {
     [entityAliases, activeEntityIds]
   );
 
-  // Live interpretation of the capture text: re-parse whenever the typed
-  // thought, the known jobs, or the confirmed-relationship memory changes,
-  // and recompute the job/location resolution. Confirmation state resets on
-  // each text change so an old "yes" never leaks into a new thought.
+  // Live interpretation — debounced so mid-word typing never flashes a match chip.
   useEffect(() => {
     const raw = taskText.trim();
     if (raw.length === 0) {
@@ -342,37 +339,44 @@ export function TodayPage() {
       setDeclinedResolution(false);
       return;
     }
-    const parsed = parseThought(raw);
-    setThought(parsed);
-    const resolution = resolveJobAndLocation(parsed, jobs, entityMemory);
-    setLocationResolution(resolution);
-    setIntendedTime(parsed.time ? parsed.time.label : '');
-    setConfirmedJobId(null);
-    setConfirmedLocation(null);
-    setDeclinedResolution(false);
-    // A confirmed relationship the resolver auto-applied is as explicit as a
-    // manual confirmation — attach the job (and its location) silently, so
-    // no "Do you mean X?" prompt is ever shown again for the learned term.
-        if (resolution.state === 'known') {
-      const c = resolution.candidate;
-      setConfirmedJobId(c.jobId);
-      setConfirmedLocation({
-        text: c.matchedField === 'location' && c.locationText ? c.locationText : c.jobName,
-        lat: c.lat,
-        lng: c.lng,
-      });
-    }
-    // Seed the location field from an unresolved road-phrase hint so the
-    // place is visible and editable, and is saved even without a job match.
-    // Do not overwrite an explicit user edit (non-empty captureLocation).
-    if (
-      resolution.state === 'none' &&
-      parsed.locationHint &&
-      parsed.locationHint.length > 0
-    ) {
-      setCaptureLocation((prev) => (prev.trim().length > 0 ? prev : parsed.locationHint!));
-      setManualLocationToggle(true);
-    }
+
+    const handle = window.setTimeout(() => {
+      const parsed = parseThought(raw);
+      setThought(parsed);
+      const resolution = resolveJobAndLocation(parsed, jobs, entityMemory);
+      setLocationResolution(resolution);
+      setIntendedTime(parsed.time ? parsed.time.label : '');
+      setConfirmedJobId(null);
+      setConfirmedLocation(null);
+      setDeclinedResolution(false);
+
+      // known → silent attach (no chip in CaptureSheet).
+      if (resolution.state === 'known') {
+        const c = resolution.candidate;
+        setConfirmedJobId(c.jobId);
+        setConfirmedLocation({
+          text:
+            c.matchedField === 'location' && c.locationText
+              ? c.locationText
+              : c.jobName,
+          lat: c.lat,
+          lng: c.lng,
+        });
+      }
+
+      if (
+        resolution.state === 'none' &&
+        parsed.locationHint &&
+        parsed.locationHint.length > 0
+      ) {
+        setCaptureLocation((prev) =>
+          prev.trim().length > 0 ? prev : parsed.locationHint!
+        );
+        setManualLocationToggle(true);
+      }
+    }, 380);
+
+    return () => window.clearTimeout(handle);
   }, [taskText, jobs, entityMemory]);
 
   // Surfaced in the task list when the tasks query itself fails, so a
