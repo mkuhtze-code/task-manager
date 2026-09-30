@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import GearMenu from '@/components/GearMenu';
-import { FitCheckIcon, FitWarnIcon } from '@/components/icons';
+import { ChevronIcon, FitCheckIcon, FitWarnIcon } from '@/components/icons';
 
 export type DeskDayDepth = {
   /** Clock time left until work end. */
