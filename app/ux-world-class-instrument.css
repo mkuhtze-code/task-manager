@@ -1,0 +1,77 @@
+/* WC-1 — Instrument spine. Tokens only. No parallel design system. */
+
+/* Empty Today: more air, less "system dialog" */
+.empty-state {
+  padding: 28px 8px 20px;
+  text-align: left;
+  max-width: 28rem;
+}
+
+.empty-state-title {
+  font-size: var(--text-lg, 1.125rem);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--ink, var(--text-primary));
+  margin: 0 0 6px;
+}
+
+.empty-state-sub {
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.45;
+  color: var(--ink-soft, var(--text-secondary));
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Order hint: one quiet line under the day summary */
+.today-fit-order-hint {
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  color: var(--ink-faint, var(--text-tertiary));
+  line-height: 1.35;
+}
+
+/* Task list: consistent vertical rhythm */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.task-card {
+  /* preserve existing card chrome; ensure expand doesn't feel cramped */
+}
+
+.task-card.expanded {
+  margin-bottom: 4px;
+}
+
+/* Details action sits with Start — no competing chrome */
+.task-actions {
+  justify-content: flex-start;
+  gap: 4px 12px;
+}
+
+/* Travel row (geo only) — uses global day-toggle-btn; just spacing */
+.desk-detail-field .day-toggle-row,
+.settings-panel .day-toggle-row {
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.empty-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 16px;
+}
+
+.empty-state-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
