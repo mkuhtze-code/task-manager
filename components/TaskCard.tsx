@@ -432,81 +432,87 @@ export function TaskCard(props: {
               </button>
             )}
 
+            <div className="task-actions-pills">
             {geoAware && onSetRouteIntent ? (
-              <div className="task-pill-wrap" ref={travelWrapRef}>
+              <div className="task-travel-dd" ref={travelWrapRef}>
                 <button
                   type="button"
                   className={
                     travelOpen
-                      ? 'task-pill task-pill-travel open'
-                      : 'task-pill task-pill-travel'
+                      ? 'task-travel-trigger open'
+                      : 'task-travel-trigger'
                   }
                   aria-expanded={travelOpen}
                   aria-haspopup="listbox"
+                  onPointerDown={stopPointer}
                   onClick={isolate(() => setTravelOpen((v) => !v))}
                 >
-                  <span className="task-pill-text">Travel · {travelLabel}</span>
-                  <span className="task-pill-chevron" aria-hidden="true">
-                    <ChevronIcon />
+                  <span className="task-travel-trigger-label">
+                    Travel
+                  </span>
+                  <span className="task-travel-trigger-value">
+                    {travelLabel}
+                  </span>
+                  <span className="task-travel-trigger-chevron" aria-hidden="true">
+                    <ChevronIcon size={14} />
                   </span>
                 </button>
                 {travelOpen ? (
                   <div
-                    className="task-pill-menu"
+                    className="task-travel-menu"
                     role="listbox"
-                    aria-label="Travel for this task"
+                    aria-label="Travel preference"
+                    onPointerDown={stopPointer}
                   >
-                    <button
-                      type="button"
-                      role="option"
-                      className={
-                        t.requires_visit == null
-                          ? 'task-pill-option current'
-                          : 'task-pill-option'
-                      }
-                      aria-selected={t.requires_visit == null}
-                      onClick={isolate(() => {
-                        onSetRouteIntent(t.id, null);
-                        setTravelOpen(false);
-                      })}
-                    >
-                      Auto
-                      <span className="task-pill-option-hint">Dokkit decides</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="option"
-                      className={
-                        t.requires_visit === true
-                          ? 'task-pill-option current'
-                          : 'task-pill-option'
-                      }
-                      aria-selected={t.requires_visit === true}
-                      onClick={isolate(() => {
-                        onSetRouteIntent(t.id, true);
-                        setTravelOpen(false);
-                      })}
-                    >
-                      On route
-                      <span className="task-pill-option-hint">Include drive time</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="option"
-                      className={
-                        t.requires_visit === false
-                          ? 'task-pill-option current'
-                          : 'task-pill-option'
-                      }
-                      aria-selected={t.requires_visit === false}
-                      onClick={isolate(() => {
-                        onSetRouteIntent(t.id, false);
-                        setTravelOpen(false);
-                      })}
-                    >
-                      Not travel
-                      <span className="task-pill-option-hint">Place is context only</span>
-                    </button>
+                    {(
+                      [
+                        {
+                          value: null as boolean | null,
+                          label: 'Auto',
+                          hint: 'Dokkit decides from place and pattern',
+                        },
+                        {
+                          value: true,
+                          label: 'On route',
+                          hint: 'Count drive time for this task',
+                        },
+                        {
+                          value: false,
+                          label: 'Not travel',
+                          hint: 'Place is context only',
+                        },
+                      ] as const
+                    ).map((opt) => {
+                      const selected =
+                        opt.value === null
+                          ? t.requires_visit == null
+                          : t.requires_visit === opt.value;
+                      return (
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          className={
+                            selected
+                              ? 'task-travel-option selected'
+                              : 'task-travel-option'
+                          }
+                          onPointerDown={stopPointer}
+                          onClick={isolate(() => {
+                            onSetRouteIntent(t.id, opt.value);
+                            setTravelOpen(false);
+                          })}
+                        >
+                          <span className="task-travel-option-label">
+                            {opt.label}
+                          </span>
+                          <span className="task-travel-option-hint">
+                            {opt.hint}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : null}
               </div>
@@ -514,11 +520,13 @@ export function TaskCard(props: {
 
             <button
               type="button"
-              className="task-pill task-pill-details"
+              className="task-details-pill"
+              onPointerDown={stopPointer}
               onClick={isolate(onOpenDetails)}
             >
               Details
             </button>
+            </div>
           </div>
         </div>
       )}
