@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import GearMenu from '@/components/GearMenu';
 import { ChevronIcon, FitCheckIcon, FitWarnIcon } from '@/components/icons';
@@ -20,6 +20,12 @@ export type DeskDayDepth = {
   fitsNow: string[];
   /** Quiet day read — derived, not scored. */
   dayRead: string | null;
+  /** Fixed blocks on the workday rail (0–1 of work window). */
+  commitmentMarkers?: Array<{
+    startPct: number;
+    endPct: number;
+    label: string;
+  }>;
 };
 
 export function TodayHeader(props: {
@@ -130,27 +136,28 @@ export function TodayHeader(props: {
   }
 
 
+
   if (isDesktop) {
-    const fitChipLabel = !isWorkDay
-      ? 'Off day'
-      : overloaded
-        ? `Over by ${fmtMins(overBy)}`
-        : remainingWorkMins > 0
-          ? `${fmtMins(remainingWorkMins)} on the plate`
-          : 'Clear';
-
-    const freeLabel =
-      isWorkDay && !overloaded
-        ? `${fmtMins(remainingCapacity)} free`
-        : isWorkDay
-          ? `${fmtMins(minutesLeftToday)} left`
-          : null;
-
     const depth = dayDepth;
     const usable = depth?.usableMins ?? remainingCapacity;
-    const planned = depth?.plannedTaskMins ?? Math.max(remainingWorkMins - (depth?.fixedMins ?? 0) - (depth?.travelMins ?? 0), 0);
+    const planned =
+      depth?.plannedTaskMins ??
+      Math.max(
+        remainingWorkMins - (depth?.fixedMins ?? 0) - (depth?.travelMins ?? 0),
+        0
+      );
     const fixed = depth?.fixedMins ?? 0;
     const travel = depth?.travelMins ?? (geoAware ? routeDriveMins : 0);
+    const markers = depth?.commitmentMarkers ?? [];
+
+    const fitTitle = !isWorkDay
+      ? 'Off day'
+      : overloaded
+        ? 'Does not fit'
+        : remainingWorkMins > 0
+          ? 'Fits today'
+          : 'Clear';
+
     const dayRead =
       depth?.dayRead ??
       (!isWorkDay
@@ -165,6 +172,75 @@ export function TodayHeader(props: {
                 ? 'Your afternoon is getting tighter.'
                 : 'Your day is on track.');
 
+    const contextBits: ReactNode[] = [];
+    if (deskContext?.mode === 'task') {
+      contextBits.push(
+        <span key="sel" className="desk-ctx-bit desk-ctx-bit-strong">
+          {deskContext.taskActive ? 'Running' : 'Selected'}
+          {typeof deskContext.taskRemainingMins === 'number' &&
+          deskContext.taskEstimateMins &&
+          deskContext.taskEstimateMins > 0
+            ? ` · ${fmtMins(deskContext.taskRemainingMins)} left`
+            : ' · untimed'}
+        </span>
+      );
+      if (deskContext.taskJobName) {
+        contextBits.push(
+          <span key="job" className="desk-ctx-bit" title={deskContext.taskJobName}>
+            {deskContext.taskJobName}
+          </span>
+        );
+      }
+      if (deskContext.taskPlace) {
+        contextBits.push(
+          <span key="place" className="desk-ctx-bit" title={deskContext.taskPlace}>
+            {deskContext.taskPlace}
+          </span>
+        );
+      }
+    } else {
+      const open = deskContext?.openCount ?? 0;
+      const timed = deskContext?.timedCount ?? 0;
+      contextBits.push(
+        <span key="open" className="desk-ctx-bit">
+          <strong className="mono">{open}</strong> open
+          {timed > 0 ? (
+            <>
+              {' '}
+              · <strong className="mono">{timed}</strong> timed
+            </>
+          ) : null}
+        </span>
+      );
+      if (deskContext?.nextCommitment) {
+        contextBits.push(
+          <span
+            key="next"
+            className="desk-ctx-bit"
+            title={deskContext.nextCommitment.title}
+          >
+            Next <strong className="mono">{deskContext.nextCommitment.when}</strong>{' '}
+            {deskContext.nextCommitment.title}
+          </span>
+        );
+      }
+      if ((deskContext?.jobsWithOpen ?? 0) > 0) {
+        contextBits.push(
+          <span key="jobs" className="desk-ctx-bit">
+            <strong className="mono">{deskContext!.jobsWithOpen}</strong>{' '}
+            {deskContext!.jobsWithOpen === 1 ? 'job' : 'jobs'}
+          </span>
+        );
+      }
+      if (deskContext?.travelSummary) {
+        contextBits.push(
+          <span key="travel" className="desk-ctx-bit">
+            {deskContext.travelSummary}
+          </span>
+        );
+      }
+    }
+
     return (
       <div
         className={[
@@ -177,7 +253,7 @@ export function TodayHeader(props: {
           .join(' ')}
       >
         <div className="desk-today-bar">
-          <div className="desk-today-bar-left">
+          <div className="desk-today-orient">
             <div className="desk-today-identity">
               <span className="desk-today-kicker">Today</span>
               <h1 className="desk-today-title">{weekdayLabel}</h1>
@@ -186,89 +262,53 @@ export function TodayHeader(props: {
 
             <div
               className={[
-                'desk-today-fit-chip',
+                'desk-today-fit',
                 overloaded ? 'is-over' : 'is-fit',
               ].join(' ')}
-              title="How open work sits against time left today"
             >
-              <span className="desk-today-fit-chip-icon" aria-hidden="true">
+              <span className="desk-today-fit-icon" aria-hidden="true">
                 {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
               </span>
-              <span className="desk-today-fit-chip-copy">
-                <strong>{fitChipLabel}</strong>
-                {freeLabel ? (
-                  <span className="desk-today-fit-chip-meta">{freeLabel}</span>
+              <div className="desk-today-fit-body">
+                <strong className="desk-today-fit-title">{fitTitle}</strong>
+                {isWorkDay ? (
+                  <span className="desk-today-fit-metrics mono">
+                    {planned > 0 ? (
+                      <span>{fmtMins(planned)} planned</span>
+                    ) : (
+                      <span>Nothing timed</span>
+                    )}
+                    <span className="desk-today-fit-sep" aria-hidden>
+                      ·
+                    </span>
+                    <span>{fmtMins(Math.max(usable, 0))} usable</span>
+                    {overloaded ? (
+                      <>
+                        <span className="desk-today-fit-sep" aria-hidden>
+                          ·
+                        </span>
+                        <span className="is-over-text">
+                          over by {fmtMins(overBy)}
+                        </span>
+                      </>
+                    ) : null}
+                  </span>
                 ) : null}
-              </span>
+              </div>
             </div>
           </div>
 
           <div className="desk-today-context" aria-label="Day context">
-            {deskContext?.mode === 'task' ? (
-              <>
-                <span className="desk-ctx-cluster desk-ctx-emphasis">
-                  {deskContext.taskActive ? 'Running' : 'Selected'}
-                  {typeof deskContext.taskRemainingMins === 'number' &&
-                  deskContext.taskEstimateMins &&
-                  deskContext.taskEstimateMins > 0 ? (
-                    <strong className="mono">
-                      {fmtMins(deskContext.taskRemainingMins)} left
-                    </strong>
-                  ) : (
-                    <strong>untimed</strong>
-                  )}
-                </span>
-                {deskContext.taskJobName ? (
-                  <span className="desk-ctx-cluster" title={deskContext.taskJobName}>
-                    <span className="desk-ctx-k">Job</span>
-                    <strong>{deskContext.taskJobName}</strong>
+            {contextBits.map((bit, i) => (
+              <span key={i} className="desk-ctx-wrap">
+                {i > 0 ? (
+                  <span className="desk-ctx-dot" aria-hidden>
+                    ·
                   </span>
                 ) : null}
-                {deskContext.taskPlace ? (
-                  <span className="desk-ctx-cluster" title={deskContext.taskPlace}>
-                    <span className="desk-ctx-k">Place</span>
-                    <strong>{deskContext.taskPlace}</strong>
-                  </span>
-                ) : null}
-                {typeof deskContext.taskSubsTotal === 'number' &&
-                deskContext.taskSubsTotal > 0 ? (
-                  <span className="desk-ctx-cluster mono">
-                    {(deskContext.taskSubsDone ?? 0)}/{deskContext.taskSubsTotal} steps
-                  </span>
-                ) : null}
-              </>
-            ) : (
-              <span className="desk-ctx-line">
-                <span className="desk-ctx-cluster">
-                  <strong className="mono">{deskContext?.openCount ?? 0}</strong> open
-                  {typeof deskContext?.timedCount === 'number' &&
-                  deskContext.timedCount > 0 ? (
-                    <span className="desk-ctx-quiet">
-                      · <strong className="mono">{deskContext.timedCount}</strong> timed
-                    </span>
-                  ) : null}
-                </span>
-                {deskContext?.nextCommitment ? (
-                  <span className="desk-ctx-cluster desk-ctx-next" title={deskContext.nextCommitment.title}>
-                    <span className="desk-ctx-k">Next</span>
-                    <strong className="mono">{deskContext.nextCommitment.when}</strong>
-                    <span className="desk-ctx-quiet">{deskContext.nextCommitment.title}</span>
-                  </span>
-                ) : null}
-                {typeof deskContext?.jobsWithOpen === 'number' &&
-                deskContext.jobsWithOpen > 0 ? (
-                  <span className="desk-ctx-cluster">
-                    <strong className="mono">{deskContext.jobsWithOpen}</strong>
-                    <span className="desk-ctx-quiet">
-                      {deskContext.jobsWithOpen === 1 ? 'job' : 'jobs'}
-                    </span>
-                  </span>
-                ) : null}
-                {deskContext?.travelSummary ? (
-                  <span className="desk-ctx-cluster">{deskContext.travelSummary}</span>
-                ) : null}
+                {bit}
               </span>
-            )}
+            ))}
           </div>
 
           <div className="desk-today-bar-right">
@@ -304,17 +344,23 @@ export function TodayHeader(props: {
               <div className="desk-depth-day">
                 <div className="desk-depth-day-head">
                   <span className="mono">{fmtClock(workStart)}</span>
-                  <span className="desk-depth-day-label">Now</span>
+                  <span className="desk-depth-day-mid">
+                    <span className="desk-depth-now-label">Now</span>
+                    <span className="mono">
+                      {fmtMins(minutesLeftToday)} left ·{' '}
+                      {fmtMins(Math.max(usable, 0))} usable
+                    </span>
+                  </span>
                   <span className="mono">{fmtClock(workEnd)}</span>
                 </div>
-                <div className="desk-today-rail desk-depth-rail-track">
+                <div className="desk-depth-track" role="img" aria-label="Workday progress">
                   <div
-                    className="desk-today-rail-elapsed"
+                    className="desk-depth-track-elapsed"
                     style={{ width: `${nowPercent * 100}%` }}
                   />
                   <div
                     className={[
-                      'desk-today-rail-load',
+                      'desk-depth-track-load',
                       overloaded ? 'is-over' : '',
                     ].join(' ')}
                     style={{
@@ -322,21 +368,32 @@ export function TodayHeader(props: {
                       width: `${planWidthPercent * 100}%`,
                     }}
                   />
+                  {markers.map((m, i) => (
+                    <div
+                      key={`${m.label}-${i}`}
+                      className="desk-depth-track-fixed"
+                      title={m.label}
+                      style={{
+                        left: `${m.startPct * 100}%`,
+                        width: `${Math.max((m.endPct - m.startPct) * 100, 0.8)}%`,
+                      }}
+                    />
+                  ))}
                   <div
-                    className="desk-today-rail-now"
+                    className="desk-depth-track-now"
                     style={{ left: `${nowPercent * 100}%` }}
                   />
                 </div>
-                <div className="desk-depth-day-foot">
-                  <span>
-                    <strong className="mono">{fmtMins(minutesLeftToday)}</strong>{' '}
-                    remaining on the clock
-                  </span>
-                  <span>
-                    <strong className="mono">{fmtMins(Math.max(usable, 0))}</strong>{' '}
-                    usable
-                  </span>
-                </div>
+                {markers.length > 0 ? (
+                  <div className="desk-depth-marker-legend">
+                    {markers.slice(0, 4).map((m, i) => (
+                      <span key={`${m.label}-lg-${i}`} className="desk-depth-marker-item">
+                        <span className="desk-depth-marker-swatch" aria-hidden />
+                        {m.label}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : (
               <p className="desk-depth-off">
@@ -347,63 +404,50 @@ export function TodayHeader(props: {
               </p>
             )}
 
-            <div className="desk-depth-columns">
+            <div className="desk-depth-band">
               <section className="desk-depth-col">
                 <h3 className="desk-depth-col-title">Capacity</h3>
-                <ul className="desk-depth-facts">
-                  {planned > 0 ? (
-                    <li>
-                      <span>Planned work</span>
-                      <strong className="mono">{fmtMins(planned)}</strong>
-                    </li>
-                  ) : (
-                    <li>
-                      <span>Planned work</span>
-                      <strong>None timed</strong>
-                    </li>
-                  )}
+                <dl className="desk-depth-dl">
+                  <div>
+                    <dt>Planned work</dt>
+                    <dd className="mono">
+                      {planned > 0 ? fmtMins(planned) : 'None timed'}
+                    </dd>
+                  </div>
                   {fixed > 0 ? (
-                    <li>
-                      <span>Fixed time</span>
-                      <strong className="mono">{fmtMins(fixed)}</strong>
-                    </li>
+                    <div>
+                      <dt>Fixed time</dt>
+                      <dd className="mono">{fmtMins(fixed)}</dd>
+                    </div>
                   ) : null}
                   {travel > 0 ? (
-                    <li>
-                      <span>Travel</span>
-                      <strong className="mono">~{fmtMins(travel)}</strong>
-                    </li>
+                    <div>
+                      <dt>Travel</dt>
+                      <dd className="mono">~{fmtMins(travel)}</dd>
+                    </div>
                   ) : null}
-                  <li>
-                    <span>Usable from here</span>
-                    <strong className="mono">{fmtMins(Math.max(usable, 0))}</strong>
-                  </li>
-                </ul>
+                  <div>
+                    <dt>Usable from here</dt>
+                    <dd className="mono">{fmtMins(Math.max(usable, 0))}</dd>
+                  </div>
+                </dl>
               </section>
 
               <section className="desk-depth-col">
                 <h3 className="desk-depth-col-title">Reality</h3>
-                <ul className="desk-depth-facts">
-                  {overloaded ? (
-                    <li>
-                      <span>Fit</span>
-                      <strong className="desk-depth-warn">
-                        Over by {fmtMins(overBy)}
-                      </strong>
-                    </li>
-                  ) : remainingWorkMins > 0 ? (
-                    <li>
-                      <span>Fit</span>
-                      <strong>Work fits the remainder</strong>
-                    </li>
-                  ) : (
-                    <li>
-                      <span>Fit</span>
-                      <strong>Clear</strong>
-                    </li>
-                  )}
+                <dl className="desk-depth-dl">
+                  <div>
+                    <dt>Fit</dt>
+                    <dd className={overloaded ? 'desk-depth-warn' : undefined}>
+                      {overloaded
+                        ? `Over by ${fmtMins(overBy)}`
+                        : remainingWorkMins > 0
+                          ? 'Work fits the remainder'
+                          : 'Clear'}
+                    </dd>
+                  </div>
                   {showRealityCheck && onRealityCheck ? (
-                    <li className="desk-depth-action-row">
+                    <div className="desk-depth-action-row">
                       <button
                         type="button"
                         className="btn-text"
@@ -414,50 +458,43 @@ export function TodayHeader(props: {
                       {realityCheckMessage ? (
                         <span className="desk-ctx-quiet">{realityCheckMessage}</span>
                       ) : null}
-                    </li>
-                  ) : (
-                    <li>
-                      <span className="desk-ctx-quiet">
-                        Log finishes as you go — Dokkit learns from what actually happened.
-                      </span>
-                    </li>
-                  )}
-                </ul>
+                    </div>
+                  ) : null}
+                </dl>
               </section>
 
               <section className="desk-depth-col">
                 <h3 className="desk-depth-col-title">Context</h3>
-                <ul className="desk-depth-facts">
+                <dl className="desk-depth-dl">
                   {deskContext?.nextCommitment ? (
-                    <li>
-                      <span>Next</span>
-                      <strong title={deskContext.nextCommitment.title}>
+                    <div>
+                      <dt>Next</dt>
+                      <dd title={deskContext.nextCommitment.title}>
                         {deskContext.nextCommitment.when}{' '}
                         {deskContext.nextCommitment.title}
-                      </strong>
-                    </li>
+                      </dd>
+                    </div>
                   ) : commitments.length > 0 ? (
-                    <li>
-                      <span>Fixed items</span>
-                      <strong className="mono">{commitments.length}</strong>
-                    </li>
+                    <div>
+                      <dt>Fixed items</dt>
+                      <dd className="mono">{commitments.length}</dd>
+                    </div>
                   ) : (
-                    <li>
-                      <span>Fixed items</span>
-                      <strong>None ahead</strong>
-                    </li>
+                    <div>
+                      <dt>Fixed items</dt>
+                      <dd>None ahead</dd>
+                    </div>
                   )}
-                  {typeof deskContext?.jobsWithOpen === 'number' &&
-                  deskContext.jobsWithOpen > 0 ? (
-                    <li>
-                      <span>Jobs with open work</span>
-                      <strong className="mono">{deskContext.jobsWithOpen}</strong>
-                    </li>
+                  {(deskContext?.jobsWithOpen ?? 0) > 0 ? (
+                    <div>
+                      <dt>Jobs with open work</dt>
+                      <dd className="mono">{deskContext!.jobsWithOpen}</dd>
+                    </div>
                   ) : null}
                   {geoAware ? (
-                    <li>
-                      <span>Travel</span>
-                      <strong>
+                    <div>
+                      <dt>Travel</dt>
+                      <dd>
                         {recalculatingRoute
                           ? 'Updating…'
                           : travel > 0
@@ -465,8 +502,8 @@ export function TodayHeader(props: {
                             : hasRoute
                               ? 'Stops ordered'
                               : 'No stops yet'}
-                      </strong>
-                      <span className="desk-depth-inline-actions">
+                      </dd>
+                      <div className="desk-depth-inline-actions">
                         {hasRoute ? (
                           <button
                             type="button"
@@ -484,20 +521,20 @@ export function TodayHeader(props: {
                         >
                           Refresh
                         </button>
-                      </span>
+                      </div>
                       {routeError ? (
                         <span className="desk-today-route-error">{routeError}</span>
                       ) : null}
-                    </li>
+                    </div>
                   ) : null}
-                </ul>
+                </dl>
               </section>
             </div>
 
             {depth && depth.fitsNow.length > 0 ? (
               <div className="desk-depth-fits">
                 <h3 className="desk-depth-col-title">What fits from here</h3>
-                <ol className="desk-depth-fits-list">
+                <ol className="desk-depth-fits-flow">
                   {depth.fitsNow.map((title, i) => (
                     <li key={`${i}-${title}`}>
                       <span className="desk-depth-fits-step">
