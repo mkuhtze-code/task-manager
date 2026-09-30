@@ -2351,8 +2351,42 @@ export function TodayPage() {
           jobsWithOpen: jobIdsWithOpen.size,
           meetingsToday: todayMeetings.length,
           travelSummary,
-          sortModeLabel,
+          // No engine-facing sort labels in the header.
+          sortModeLabel: null,
         }
+    : null;
+
+  const usableMins = Math.max(taskCapacity, 0);
+  const fixedMins =
+    availability.blockedMinutes + untimedManualMins;
+  const fitsNow = ordered
+    .filter((x) => x.status !== 'done')
+    .slice(0, 3)
+    .map((x) => x.text.trim())
+    .filter(Boolean);
+  const dayRead = !isWorkDay
+    ? 'Outside your usual working days.'
+    : overloaded
+      ? 'Remaining work no longer fits today.'
+      : remainingTaskMins <= 0 && openVisible.length === 0
+        ? "You're clear for the rest of today."
+        : remainingTaskMins <= 0
+          ? 'No timed work left — list items can still be cleared.'
+          : usableMins > remainingWorkMins + 30
+            ? 'You have room for another task.'
+            : remainingWorkMins > usableMins
+              ? 'Your afternoon is getting tighter.'
+              : 'Your day is on track.';
+  const dayDepth = isDesktop
+    ? {
+        clockRemainingMins: minutesLeftToday,
+        usableMins,
+        fixedMins,
+        plannedTaskMins: remainingTaskMins,
+        travelMins: routeDriveMins,
+        fitsNow,
+        dayRead,
+      }
     : null;
 
   return (
@@ -2399,6 +2433,7 @@ export function TodayPage() {
           ).length,
         })}
         deskContext={deskContext}
+        dayDepth={dayDepth}
       />
 
 
