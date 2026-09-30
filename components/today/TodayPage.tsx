@@ -891,6 +891,7 @@ export function TodayPage() {
         text: r.text,
         actual_mins: r.actual_mins,
         location_text: r.location_text,
+        requires_visit: r.requires_visit ?? null,
         lat: r.lat,
         lng: r.lng,
         job_id: r.job_id,
@@ -1444,19 +1445,60 @@ export function TodayPage() {
     surfaceDate: string | null,
     locationText: string | null,
     lat: number | null,
-    lng: number | null
+    lng: number | null,
+    requiresVisit?: boolean | null
   ) {
-    const { error } = await supabase
-      .from('tasks')
-      .update({ text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng })
-      .eq('id', id);
+    const payload: Record<string, unknown> = {
+      text,
+      estimate_mins: mins,
+      surface_date: surfaceDate,
+      location_text: locationText,
+      lat,
+      lng,
+    };
+    if (requiresVisit !== undefined) {
+      payload.requires_visit = requiresVisit;
+    }
+    const { error } = await supabase.from('tasks').update(payload).eq('id', id);
     if (error) {
       console.error(error);
       alert('Could not save your changes: ' + error.message);
       return;
     }
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng } : t))
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              text,
+              estimate_mins: mins,
+              surface_date: surfaceDate,
+              location_text: locationText,
+              lat,
+              lng,
+              requires_visit:
+                requiresVisit !== undefined ? requiresVisit : t.requires_visit,
+            }
+          : t
+      )
+    );
+    if (sortMode === 'geo_aware') recalcRoute();
+  }
+
+  async function setRouteIntent(id: string, requiresVisit: boolean | null) {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ requires_visit: requiresVisit })
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      alert(
+        'Could not update travel setting. If this is the first time, apply the requires_visit migration.'
+      );
+      return;
+    }
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, requires_visit: requiresVisit } : t))
     );
     if (sortMode === 'geo_aware') recalcRoute();
   }
@@ -2337,6 +2379,9 @@ export function TodayPage() {
                   onStop={stopTask}
                   onToggleSubtaskDone={toggleSubtaskDone}
                   onSaveInfo={saveTaskInfo}
+                  geoAware={geoAware}
+                  onRoute={isLocated}
+                  onSetRouteIntent={setRouteIntent}
                   dragHandleProps={
                     sortMode === 'manual'
                       ? {
