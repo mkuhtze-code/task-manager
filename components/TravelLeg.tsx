@@ -2,15 +2,10 @@
 
 import { useState, type ReactNode } from 'react';
 
-// Quiet connective tissue between two geo-located stops/tasks in
-// geo_aware (Today) and Travel modes. Renders as a hairline with a tiny
-// drive-time label so the leg reads as a property of the gap rather than
-// a competing row. Tapping the hairline reveals the full origin →
-// destination detail without becoming a focal point.
-//
-// When an action is provided (Travel's "Nearby"), it stays quietly
-// visible on the leg itself — a discoverable, one-tap entry to the leg's
-// hidden capability — instead of being buried behind the reveal.
+/**
+ * Quiet connective tissue between geo stops.
+ * Hairline + mono duration — not a competing task row.
+ */
 export function TravelLeg({
   label,
   detail,
@@ -24,14 +19,20 @@ export function TravelLeg({
   return (
     <div className="leg-wrap">
       <div className="leg-connector">
-        <button className="leg-connector-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-          <span className="leg-connector-line" />
+        <button
+          type="button"
+          className="leg-connector-toggle"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={open ? `Hide: ${detail}` : `Drive ${label}. Show detail.`}
+        >
+          <span className="leg-connector-line" aria-hidden />
           <span className="leg-connector-label">{label}</span>
-          <span className="leg-connector-line" />
+          <span className="leg-connector-line" aria-hidden />
         </button>
-        {action && <div className="leg-connector-action">{action}</div>}
+        {action ? <div className="leg-connector-action">{action}</div> : null}
       </div>
-      {open && <div className="leg-detail">{detail}</div>}
+      {open ? <div className="leg-detail">{detail}</div> : null}
     </div>
   );
 }
