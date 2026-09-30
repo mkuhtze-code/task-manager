@@ -1,4 +1,5 @@
-/* Desktop Today — SaaS command bar, collapsible depth, resizable list */
+/* Desktop Today — command bar + Day Depth 2.0
+   Authoritative styles for desk-today-saas. Import once from layout. */
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
   grid-template-columns: var(--desk-list-w, 320px) 6px minmax(0, 1fr);
@@ -31,13 +32,11 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-
   left: 2px;
   width: 2px;
   background: var(--line, #e2e8f0);
-  opacity: 0.9;
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle:hover::after,
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle:focus-visible::after {
   background: var(--steel, #1e6be6);
-  opacity: 1;
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-pane-detail {
@@ -52,28 +51,30 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card):not(.has-desk-
   grid-row: 2;
 }
 
-/* Compact SaaS header */
-html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-today-saas,
 html[data-surface='desktop'] .desk-today-saas.today-header-card {
   grid-column: 1 / -1;
   grid-row: 1;
-  padding: 10px 20px;
+  padding: 12px 20px 14px;
   gap: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+  background: rgba(var(--glass-rgb, 255, 255, 255), 0.94);
+  backdrop-filter: blur(12px);
 }
 
+/* ── Command bar ─────────────────────────────────────────────── */
 .desk-today-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: 44px;
+  gap: 14px 20px;
+  min-height: 48px;
 }
 
 .desk-today-bar-left {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px 14px;
+  gap: 12px 14px;
   min-width: 0;
 }
 
@@ -117,7 +118,7 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 34px;
+  min-height: 36px;
   padding: 4px 12px 4px 8px;
   border-radius: 999px;
   border: 1px solid var(--line, #e2e8f0);
@@ -127,10 +128,6 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
 .desk-today-fit-chip.is-over {
   border-color: rgba(185, 28, 28, 0.35);
   background: rgba(185, 28, 28, 0.06);
-}
-
-.desk-today-fit-chip.is-fit {
-  border-color: var(--line-strong, #cbd5e1);
 }
 
 .desk-today-fit-chip-copy {
@@ -151,164 +148,55 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
   color: var(--ink-faint, #94a3b8);
 }
 
-.desk-today-order-hint {
-  font-size: 12px;
-  font-weight: 550;
-  color: var(--ink-faint, #94a3b8);
-  max-width: 16rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.desk-today-dock-pill {
-  min-height: 34px;
-}
-
-.desk-today-depth-toggle {
-  min-height: 34px;
-}
-
-/* Depth panel — unique structure, not a repeat of the chip */
-.desk-today-depth {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
-  gap: 14px 20px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line, #e2e8f0);
-}
-
-@media (max-width: 1100px) {
-  .desk-today-depth {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.desk-today-depth-rail,
-.desk-today-depth-commitments,
-.desk-today-depth-travel,
-.desk-today-depth-reality,
-.desk-today-depth-off {
-  min-width: 0;
-}
-
-.desk-today-depth-section-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ink-faint, #94a3b8);
-}
-
-.desk-today-depth-rail-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--ink-soft, #64748b);
-}
-
-.desk-today-depth-rail-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  margin-top: 8px;
-  font-size: 12px;
-  font-weight: 550;
-  color: var(--ink-soft, #64748b);
-}
-
-.desk-today-depth-travel-body {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  font-size: 13px;
-  font-weight: 550;
-  color: var(--ink-soft, #64748b);
-}
-
-.desk-today-depth-off {
-  font-size: 13px;
-  font-weight: 550;
-  color: var(--ink-soft, #64748b);
-}
-
-.desk-today-depth-reality {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--ink-soft, #64748b);
-}
-
-/* Detail pane is the hero — more air */
-html[data-surface='desktop'] .app-shell.has-desk-detail > .desk-pane-detail {
-  background: var(--paper, #fff);
-}
-
-html[data-surface='desktop'] .desk-detail-pm {
-  max-width: min(1040px, 100%);
-  padding: 20px 28px 40px;
-}
-
-/* Middle context rail — fills command-bar dead space with signal */
-.desk-today-bar {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 16px 20px;
-  min-height: 48px;
-}
-
-.desk-today-bar-left {
-  flex-wrap: nowrap;
-}
-
+/* Context as one readable line, not a spray of pills */
 .desk-today-context {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.desk-ctx-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
+  gap: 6px 14px;
   min-width: 0;
-  justify-content: flex-start;
-  padding: 0 4px;
 }
 
-.desk-ctx-item {
+.desk-ctx-cluster {
   display: inline-flex;
   align-items: baseline;
   gap: 5px;
-  max-width: 14rem;
-  min-height: 28px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--line, #e2e8f0);
-  background: var(--paper-raised, #f8fafc);
-  font-size: 12px;
+  max-width: 18rem;
+  font-size: 13px;
   font-weight: 550;
   color: var(--ink-soft, #64748b);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.desk-ctx-item strong {
+.desk-ctx-cluster strong {
   font-weight: 700;
   color: var(--ink, #0f172a);
 }
 
+.desk-ctx-k {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.desk-ctx-quiet {
+  font-weight: 550;
+  color: var(--ink-faint, #94a3b8);
+}
+
 .desk-ctx-emphasis {
-  border-color: var(--steel-wash, rgba(30, 107, 230, 0.35));
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--steel-wash, rgba(30, 107, 230, 0.35));
   background: rgba(30, 107, 230, 0.06);
   color: var(--steel-dark, #1e40af);
 }
@@ -317,15 +205,84 @@ html[data-surface='desktop'] .desk-detail-pm {
   color: var(--steel-dark, #1e40af);
 }
 
-.desk-ctx-quiet {
-  font-weight: 550;
-  color: var(--ink-faint, #94a3b8);
-  overflow: hidden;
-  text-overflow: ellipsis;
+.desk-today-dock-pill,
+.desk-today-depth-toggle {
+  min-height: 34px;
 }
 
-.desk-ctx-next {
-  max-width: 18rem;
+/* ── Day Depth 2.0 — one surface ──────────────────────────────── */
+.desk-today-depth {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line, #e2e8f0);
+}
+
+.desk-depth-read {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ink, #0f172a);
+  line-height: 1.35;
+}
+
+.desk-depth-day {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 52rem;
+}
+
+.desk-depth-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-depth-day-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--steel, #1e6be6);
+}
+
+.desk-depth-rail-track {
+  height: 10px;
+}
+
+.desk-depth-day-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-depth-day-foot strong {
+  color: var(--ink, #0f172a);
+}
+
+.desk-depth-off {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-depth-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 24px;
+  max-width: 56rem;
 }
 
 @media (max-width: 1100px) {
@@ -334,6 +291,160 @@ html[data-surface='desktop'] .desk-detail-pm {
   }
   .desk-today-context {
     grid-column: 1 / -1;
-    order: 3;
   }
+  .desk-depth-columns {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .desk-depth-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.desk-depth-col-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.desk-depth-facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.desk-depth-facts li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-depth-facts li strong {
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+  text-align: right;
+}
+
+.desk-depth-warn {
+  color: var(--hazard, #b91c1c) !important;
+}
+
+.desk-depth-action-row {
+  justify-content: flex-start !important;
+  gap: 10px;
+}
+
+.desk-depth-inline-actions {
+  display: inline-flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.desk-depth-fits {
+  max-width: 40rem;
+  padding-top: 4px;
+  border-top: 1px solid var(--line, #e2e8f0);
+}
+
+.desk-depth-fits-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.desk-depth-fits-list li {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+}
+
+.desk-depth-fits-step {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.desk-depth-fits-title {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ink, #0f172a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desk-depth-commitments {
+  max-width: 40rem;
+}
+
+.desk-today-commitment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.desk-today-commitment-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.desk-today-commitment-title {
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desk-today-commitment-when {
+  flex-shrink: 0;
+  color: var(--ink-soft, #64748b);
+  font-weight: 600;
+}
+
+.desk-today-inline-action {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--steel, #1e6be6);
+  cursor: pointer;
+}
+
+.desk-today-inline-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.desk-today-route-error {
+  color: var(--hazard, #b91c1c);
+  font-size: 12px;
+}
+
+html[data-surface='desktop'] .desk-detail-pm {
+  max-width: min(1040px, 100%);
+  padding: 20px 28px 40px;
 }
