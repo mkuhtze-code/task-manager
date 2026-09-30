@@ -1,6 +1,9 @@
-/* WC-1 — Instrument spine. Tokens only. No parallel design system. */
+/* ============================================================
+   Dokkit WC-1 + WC-3 — Instrument spine + density/motion
+   Tokens only. Import in app/layout.tsx.
+   ============================================================ */
 
-/* Empty Today: more air, less "system dialog" */
+/* --- Empty Today --- */
 .empty-state {
   padding: 28px 8px 20px;
   text-align: left;
@@ -23,45 +26,6 @@
   font-weight: 500;
 }
 
-/* Order hint: one quiet line under the day summary */
-.today-fit-order-hint {
-  margin: 6px 0 0;
-  padding: 0;
-  font-size: 12px;
-  font-weight: 550;
-  letter-spacing: -0.01em;
-  color: var(--ink-faint, var(--text-tertiary));
-  line-height: 1.35;
-}
-
-/* Task list: consistent vertical rhythm */
-.task-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.task-card {
-  /* preserve existing card chrome; ensure expand doesn't feel cramped */
-}
-
-.task-card.expanded {
-  margin-bottom: 4px;
-}
-
-/* Details action sits with Start — no competing chrome */
-.task-actions {
-  justify-content: flex-start;
-  gap: 4px 12px;
-}
-
-/* Travel row (geo only) — uses global day-toggle-btn; just spacing */
-.desk-detail-field .day-toggle-row,
-.settings-panel .day-toggle-row {
-  margin-top: 8px;
-  flex-wrap: wrap;
-}
-
 .empty-state-actions {
   display: flex;
   flex-wrap: wrap;
@@ -74,4 +38,182 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+/* --- Order hint --- */
+.today-fit-order-hint {
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  color: var(--ink-faint, var(--text-tertiary));
+  line-height: 1.35;
+}
+
+/* --- Task list rhythm --- */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.task-card {
+  /* Prefer stable padding so expand does not reflow neighbours hard */
+  padding-top: 11px;
+  padding-bottom: 11px;
+  transition:
+    background 0.15s var(--ease, ease),
+    padding 0.15s var(--ease, ease);
+}
+
+.task-card.expanded {
+  padding-top: 12px;
+  padding-bottom: 14px;
+  background: var(--surface-inset, var(--paper-raised, #f8fafc));
+}
+
+/* Expand body: opacity only — no vertical shove */
+.task-reveal {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line, var(--border-subtle));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: dokkit-reveal 0.18s var(--ease, ease);
+}
+
+@keyframes dokkit-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Kill older translate-based reveal if present (reduces jump) */
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px 12px;
+  margin-top: 2px;
+}
+
+/* Glance time stays secondary */
+.task-card-glance {
+  opacity: 0.92;
+}
+
+.task-card.expanded .task-card-glance {
+  opacity: 0.75;
+}
+
+/* --- Route legs: connective tissue, not rows --- */
+.leg-wrap {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+}
+
+.leg-connector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 18px;
+  padding: 2px 16px;
+}
+
+.leg-connector-toggle {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.leg-connector-line {
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--line, var(--border-subtle));
+  opacity: 0.85;
+  min-width: 12px;
+}
+
+.leg-connector-label {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-faint, var(--text-tertiary));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.leg-detail {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint, var(--text-tertiary));
+  padding: 0 16px 6px;
+  line-height: 1.35;
+}
+
+/* Travel segment in Details (geo only) */
+.desk-detail-field .day-toggle-row,
+.settings-panel .day-toggle-row {
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+/* Capture calm chips — less panel, more instrument */
+.capture-entity-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--line, var(--border-subtle));
+  background: var(--paper, var(--surface));
+}
+
+.capture-entity-chip-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft, var(--text-secondary));
+  min-width: 0;
+}
+
+.capture-entity-chip-text strong {
+  color: var(--ink, var(--text-primary));
+  font-weight: 650;
+}
+
+.capture-entity-chip-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
