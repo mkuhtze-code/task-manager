@@ -18,6 +18,7 @@ import './ux-surface-tabs.css';
 import './pill-reveal.css';
 import './travel-aware.css';
 import './ux-world-class-instrument.css';
+import './ux-capture-paper.css';
 import DokkitSplash from '@/components/DokkitSplash';
 import AppChrome from '@/components/AppChrome';
 import AppProviders from '@/components/providers/AppProviders';
