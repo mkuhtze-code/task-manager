@@ -1,43 +1,153 @@
 
-/* Explicit travel / route membership control */
-.task-route-intent {
+/* Task action pills — Details + Travel dropdown */
+
+.task-actions {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  margin: 4px 0 8px;
-  padding: 0 2px;
-}
-.task-route-intent-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--ink-faint, #94a3b8);
-}
-.task-route-intent-seg {
-  display: flex;
-  gap: 4px;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
-.task-route-intent-btn {
-  flex: 1 1 auto;
-  min-width: 0;
+
+.task-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
   border: 1px solid var(--line, #e2e8f0);
   background: var(--paper, #fff);
-  color: var(--ink-soft, #64748b);
-  border-radius: 8px;
-  padding: 7px 10px;
-  font-size: 12px;
+  color: var(--ink-soft, #475569);
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
 }
-.task-route-intent-btn.current {
+
+.task-pill:hover {
+  border-color: var(--line-strong, #cbd5e1);
+  color: var(--ink, #0f172a);
+}
+
+.task-pill-details {
+  flex-shrink: 0;
+}
+
+.task-pill-wrap {
+  position: relative;
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.task-pill-travel {
+  max-width: 100%;
+}
+
+.task-pill-travel.open {
   border-color: var(--ink, #0f172a);
   color: var(--ink, #0f172a);
   background: var(--paper-raised, #f8fafc);
 }
+
+.task-pill-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-pill-chevron {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-faint, #94a3b8);
+  margin-right: -2px;
+  transition: transform 0.15s ease;
+}
+
+.task-pill-travel.open .task-pill-chevron {
+  transform: rotate(180deg);
+  color: var(--ink-soft, #64748b);
+}
+
+.task-pill-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  min-width: 180px;
+  max-width: min(260px, 80vw);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--line, #e2e8f0);
+  background: var(--paper-raised, #fff);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.task-pill-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+  cursor: pointer;
+}
+
+.task-pill-option:hover {
+  background: var(--paper, #f1f5f9);
+}
+
+.task-pill-option.current {
+  background: var(--paper, #f1f5f9);
+}
+
+.task-pill-option-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint, #94a3b8);
+}
+
+/* Detail sheet segmented pills */
 .task-route-intent-detail {
   margin-top: 10px;
   margin-bottom: 12px;
+}
+
+.task-route-intent-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+  margin-bottom: 4px;
+}
+
+.task-pill-seg {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.task-pill-seg-btn {
+  flex: 1 1 auto;
+  min-width: 72px;
+}
+
+.task-pill-seg-btn.current {
+  border-color: var(--ink, #0f172a);
+  color: var(--ink, #0f172a);
+  background: var(--paper-raised, #f8fafc);
 }
