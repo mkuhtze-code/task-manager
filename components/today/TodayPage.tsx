@@ -2394,9 +2394,6 @@ export function TodayPage() {
                   onStop={stopTask}
                   onToggleSubtaskDone={toggleSubtaskDone}
                   onSaveInfo={saveTaskInfo}
-                  geoAware={geoAware}
-                  onRoute={isLocated}
-                  onSetRouteIntent={setRouteIntent}
                   dragHandleProps={
                     sortMode === 'manual'
                       ? {
@@ -2564,6 +2561,7 @@ export function TodayPage() {
       {openTask && (
         <TaskDetailSheet
           presentation={isDesktop ? 'pane' : 'sheet'}
+          showTravelPref={sortMode === 'geo_aware'}
           task={openTask}
           subs={subtasksByTask[openTask.id] || []}
           remainingForThis={openTaskRemaining}
