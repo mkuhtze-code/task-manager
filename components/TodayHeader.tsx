@@ -107,381 +107,215 @@ export function TodayHeader(props: {
    *
    * The underlying calculations remain owned by TodayPage.
    */
+
   if (isDesktop) {
+    const fitChipLabel = !isWorkDay
+      ? 'Off day'
+      : overloaded
+        ? `Over by ${fmtMins(overBy)}`
+        : remainingWorkMins > 0
+          ? `${fmtMins(remainingWorkMins)} planned`
+          : 'Nothing timed';
+
+    const freeLabel =
+      isWorkDay && !overloaded
+        ? `${fmtMins(remainingCapacity)} free`
+        : isWorkDay
+          ? `${fmtMins(minutesLeftToday)} left in day`
+          : null;
+
     return (
       <div
         className={[
           'today-header-card',
-          'desk-today-capacity-dashboard',
+          'desk-today-saas',
           overloaded ? 'overloaded' : '',
+          capacityOpen ? 'depth-open' : 'depth-closed',
         ]
           .filter(Boolean)
           .join(' ')}
       >
-        <div className="desk-today-dashboard-top">
-          <div className="desk-today-dashboard-title">
-            <span className="desk-today-dashboard-kicker">Today</span>
+        {/* Compact command bar — no GearMenu (product nav owns account) */}
+        <div className="desk-today-bar">
+          <div className="desk-today-bar-left">
+            <div className="desk-today-identity">
+              <span className="desk-today-kicker">Today</span>
+              <h1 className="desk-today-title">{weekdayLabel}</h1>
+              <span className="desk-today-date">{dateOnlyLabel}</span>
+            </div>
 
-            <div className="desk-today-dashboard-heading-row">
-              <h1>{weekdayLabel}</h1>
-              <span className="desk-today-dashboard-date">
-                {dateOnlyLabel}
+            <div
+              className={[
+                'desk-today-fit-chip',
+                overloaded ? 'is-over' : 'is-fit',
+              ].join(' ')}
+              title="How the open work sits against time left today"
+            >
+              <span className="desk-today-fit-chip-icon" aria-hidden="true">
+                {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
+              </span>
+              <span className="desk-today-fit-chip-copy">
+                <strong>{fitChipLabel}</strong>
+                {freeLabel ? <span className="desk-today-fit-chip-meta">{freeLabel}</span> : null}
               </span>
             </div>
 
-            <p className="desk-today-dashboard-subtitle">
-              {isWorkDay
-                ? 'Your available time and everything currently competing for it.'
-                : 'Today is outside your normal working days.'}
-            </p>
             {orderHint ? (
-              <p className="today-fit-order-hint" style={{ padding: 0, marginTop: 6 }}>
-                {orderHint}
-              </p>
+              <span className="desk-today-order-hint">{orderHint}</span>
             ) : null}
           </div>
 
-          <div className="desk-today-dashboard-actions">
+          <div className="desk-today-bar-right">
             {onDockIt ? (
               <button
                 type="button"
-                className="btn btn-steel desk-today-dock"
+                className="detail-pill detail-pill-primary desk-today-dock-pill"
                 onClick={onDockIt}
               >
                 + Dock it
               </button>
             ) : null}
 
-            <GearMenu userId={userId} />
+            <button
+              type="button"
+              className={
+                capacityOpen
+                  ? 'detail-pill desk-today-depth-toggle is-on'
+                  : 'detail-pill desk-today-depth-toggle'
+              }
+              aria-expanded={capacityOpen}
+              onClick={() => setCapacityOpen((v) => !v)}
+            >
+              {capacityOpen ? 'Hide day depth' : 'Day depth'}
+            </button>
           </div>
         </div>
 
-        {isWorkDay ? (
-          <>
-            <div className="desk-today-capacity-hero">
-              <div className="desk-today-capacity-primary">
-                <span className="desk-today-capacity-label">
-                  Time available
-                </span>
-
-                <strong className="desk-today-capacity-number mono">
-                  {fmtMins(minutesLeftToday)}
-                </strong>
-
-                <span className="desk-today-capacity-context">
-                  remaining in your workday
-                </span>
-              </div>
-
-              <div
-                className={[
-                  'desk-today-fit',
-                  overloaded ? 'is-over' : 'is-fit',
-                ].join(' ')}
-              >
-                <span className="desk-today-fit-icon" aria-hidden="true">
-                  {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
-                </span>
-
-                <span className="desk-today-fit-copy">
-                  <strong>
-                    {overloaded
-                      ? `Over capacity by ${fmtMins(overBy)}`
-                      : remainingCapacity > 0
-                        ? `${fmtMins(remainingCapacity)} remaining`
-                        : 'At capacity'}
-                  </strong>
-
-                  <span>
-                    {overloaded
-                      ? 'Some work will need to move or take longer.'
-                      : remainingCapacity > 0
-                        ? 'There is still room in today.'
-                        : 'Your available time is fully accounted for.'}
-                  </span>
-                </span>
-              </div>
-            </div>
-
-            <div className="desk-today-capacity-model">
-              <div className="desk-today-capacity-stat">
-                <span>Time left</span>
-                <strong className="mono">
-                  {fmtMins(minutesLeftToday)}
-                </strong>
-                <small>workday</small>
-              </div>
-
-              <div className="desk-today-capacity-divider" />
-
-              <div className="desk-today-capacity-stat">
-                <span>Plan load</span>
-                <strong
-                  className={[
-                    'mono',
-                    overloaded ? 'is-over' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                >
-                  {fmtMins(remainingWorkMins)}
-                </strong>
-                <small>work + commitments</small>
-              </div>
-
-              <div className="desk-today-capacity-divider" />
-
-              <div className="desk-today-capacity-stat">
-                <span>Remaining</span>
-                <strong
-                  className={[
-                    'mono',
-                    overloaded ? 'is-over' : 'is-positive',
-                  ].join(' ')}
-                >
-                  {overloaded
-                    ? `−${fmtMins(overBy)}`
-                    : fmtMins(remainingCapacity)}
-                </strong>
-                <small>
-                  {overloaded ? 'needs attention' : 'unallocated'}
-                </small>
-              </div>
-            </div>
-
-            <div className="desk-today-rail-section">
-              <div className="desk-today-rail-head">
-                <span>Your workday</span>
-
-                <span className="desk-today-rail-times mono">
-                  {fmtClock(workStart)} <span>→</span> {fmtClock(workEnd)}
-                </span>
-              </div>
-
-              <div className="desk-today-rail">
-                <div
-                  className="desk-today-rail-elapsed"
-                  style={{ width: `${nowPercent * 100}%` }}
-                />
-
-                <div
-                  className={[
-                    'desk-today-rail-load',
-                    overloaded ? 'is-over' : '',
-                  ].join(' ')}
-                  style={{
-                    left: `${nowPercent * 100}%`,
-                    width: `${planWidthPercent * 100}%`,
-                  }}
-                />
-
-                <div
-                  className="desk-today-rail-now"
-                  style={{ left: `${nowPercent * 100}%` }}
-                />
-              </div>
-
-              <div className="desk-today-rail-foot">
-                <span>elapsed</span>
-
-                {overloaded ? (
-                  <span className="desk-today-rail-warning">
-                    +{fmtMins(overBy)} beyond available time
-                  </span>
-                ) : (
-                  <span>
-                    {fmtMins(remainingCapacity)} unallocated
-                  </span>
-                )}
-
-                <span>workday ends {fmtClock(workEnd)}</span>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="desk-today-offday">
-            <div className="desk-today-offday-main">
-              <span className="desk-today-capacity-label">
-                Today
-              </span>
-              <strong>Off</strong>
-            </div>
-
-            <span>
-              {fmtMins(remainingWorkMins)} carrying forward
-            </span>
-          </div>
-        )}
-
-        {commitments.length > 0 && (
-          <div className="desk-today-commitment-section">
-            <div className="desk-today-section-heading">
-              <span>Commitments</span>
-              <span>
-                {commitments.length}{' '}
-                {commitments.length === 1 ? 'item' : 'items'}
-              </span>
-            </div>
-
-            <div className="desk-today-commitment-list">
-              {commitments.map((c) => (
-                <div
-                  key={c.id}
-                  className="desk-today-commitment-item"
-                  title={commitmentWindow(c)}
-                >
-                  <span className="desk-today-commitment-dot" />
-
-                  <span className="desk-today-commitment-copy">
-                    <strong>{c.title}</strong>
-                    <span>{commitmentWindow(c)}</span>
+        {/* Depth panel: structure & pressure only — does not repeat the chip */}
+        {capacityOpen ? (
+          <div className="desk-today-depth">
+            {isWorkDay ? (
+              <div className="desk-today-depth-rail">
+                <div className="desk-today-depth-rail-head">
+                  <span>Workday shape</span>
+                  <span className="mono">
+                    {fmtClock(workStart)} → {fmtClock(workEnd)}
                   </span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+                <div className="desk-today-rail">
+                  <div
+                    className="desk-today-rail-elapsed"
+                    style={{ width: `${nowPercent * 100}%` }}
+                  />
+                  <div
+                    className={[
+                      'desk-today-rail-load',
+                      overloaded ? 'is-over' : '',
+                    ].join(' ')}
+                    style={{
+                      left: `${nowPercent * 100}%`,
+                      width: `${planWidthPercent * 100}%`,
+                    }}
+                  />
+                  <div
+                    className="desk-today-rail-now"
+                    style={{ left: `${nowPercent * 100}%` }}
+                  />
+                </div>
+                <div className="desk-today-depth-rail-foot">
+                  <span>Now</span>
+                  <span className="mono">{fmtMins(minutesLeftToday)} until end</span>
+                  {overloaded ? (
+                    <span className="desk-today-rail-warning">
+                      Load extends past the day
+                    </span>
+                  ) : (
+                    <span className="mono">{fmtMins(remainingCapacity)} still unallocated</span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="desk-today-depth-off">
+                Outside your normal working days
+                {remainingWorkMins > 0
+                  ? ` · ${fmtMins(remainingWorkMins)} still on the plate`
+                  : ''}
+              </div>
+            )}
 
-        {(geoAware || showRealityCheck) && (
-          <div className="desk-today-secondary-row">
-            {geoAware && (
-              <div className="desk-today-route-summary">
-                <span className="desk-today-secondary-kicker">
-                  Travel
-                </span>
+            {commitments.length > 0 ? (
+              <div className="desk-today-depth-commitments">
+                <div className="desk-today-depth-section-label">
+                  Fixed time
+                  <span className="mono">{commitments.length}</span>
+                </div>
+                <div className="desk-today-commitment-list">
+                  {commitments.map((c) => (
+                    <div key={c.id} className="desk-today-commitment-item">
+                      <span className="desk-today-commitment-title">{c.title}</span>
+                      <span className="desk-today-commitment-when mono">
+                        {commitmentWindow(c)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
-                {recalculatingRoute ? (
-                  <span>Updating drive time…</span>
-                ) : hasRoute && routeDriveMins > 0 ? (
-                  <span>
-                    About {fmtMins(routeDriveMins)} driving
-                    {currentBaseLabel
-                      ? ` · from ${
-                          currentBaseLabel === 'work'
-                            ? 'office'
-                            : 'home'
-                        }`
-                      : ''}
-                  </span>
-                ) : hasRoute ? (
-                  <span>Order set by location</span>
-                ) : (
-                  <span>
-                    Add places to tasks to include driving.
-                  </span>
-                )}
-
-                <div className="desk-today-route-actions">
-                  {hasRoute && (
+            {geoAware ? (
+              <div className="desk-today-depth-travel">
+                <div className="desk-today-depth-section-label">Travel</div>
+                <div className="desk-today-depth-travel-body">
+                  {recalculatingRoute ? (
+                    <span>Updating drive time…</span>
+                  ) : hasRoute && routeDriveMins > 0 ? (
+                    <span>
+                      About {fmtMins(routeDriveMins)} driving
+                      {currentBaseLabel
+                        ? ` · from ${currentBaseLabel === 'work' ? 'office' : 'home'}`
+                        : ''}
+                    </span>
+                  ) : hasRoute ? (
+                    <span>Stops ordered by place</span>
+                  ) : (
+                    <span>Add places on tasks to include driving</span>
+                  )}
+                  <div className="desk-today-route-actions">
+                    {hasRoute ? (
+                      <button
+                        type="button"
+                        className="desk-today-inline-action"
+                        onClick={onViewMap}
+                      >
+                        Map
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="desk-today-inline-action"
-                      onClick={onViewMap}
+                      onClick={onRecalcRoute}
+                      disabled={recalculatingRoute}
                     >
-                      Map
+                      Refresh
                     </button>
-                  )}
-
-                  <button
-                    type="button"
-                    className="desk-today-inline-action"
-                    onClick={onRecalcRoute}
-                    disabled={recalculatingRoute}
-                  >
-                    Refresh
-                  </button>
+                  </div>
                 </div>
-
-                {routeError && (
-                  <span className="desk-today-route-error">
-                    {routeError}
-                  </span>
-                )}
+                {routeError ? (
+                  <span className="desk-today-route-error">{routeError}</span>
+                ) : null}
               </div>
-            )}
+            ) : null}
 
-            {showRealityCheck && onRealityCheck && (
-              <div className="desk-today-reality">
-                <button
-                  type="button"
-                  className="btn-text"
-                  onClick={onRealityCheck}
-                >
+            {showRealityCheck && onRealityCheck ? (
+              <div className="desk-today-depth-reality">
+                <button type="button" className="btn-text" onClick={onRealityCheck}>
                   Reality check
                 </button>
-
-                {realityCheckMessage && (
-                  <span>{realityCheckMessage}</span>
-                )}
+                {realityCheckMessage ? <span>{realityCheckMessage}</span> : null}
               </div>
-            )}
+            ) : null}
           </div>
-        )}
-
-        <button
-          type="button"
-          className="desk-today-details-toggle"
-          onClick={() => setCapacityOpen((v) => !v)}
-          aria-expanded={capacityOpen}
-        >
-          <span>
-            {capacityOpen
-              ? 'Hide capacity details'
-              : 'View capacity details'}
-          </span>
-
-          <span
-            className={
-              capacityOpen
-                ? 'today-capacity-chevron open'
-                : 'today-capacity-chevron'
-            }
-            aria-hidden="true"
-          >
-            <ChevronIcon size={14} />
-          </span>
-        </button>
-
-        {capacityOpen && (
-          <div className="desk-today-detail-panel">
-            <div>
-              <span>Workday</span>
-              <strong>
-                {fmtClock(workStart)} – {fmtClock(workEnd)}
-              </strong>
-            </div>
-
-            <div>
-              <span>Current time</span>
-              <strong>
-                {fmtMins(minutesLeftToday)} remaining
-              </strong>
-            </div>
-
-            <div>
-              <span>Current load</span>
-              <strong>
-                {fmtMins(remainingWorkMins)}
-              </strong>
-            </div>
-
-            {overloaded ? (
-              <div>
-                <span>Capacity gap</span>
-                <strong className="is-over">
-                  {fmtMins(overBy)} over
-                </strong>
-              </div>
-            ) : (
-              <div>
-                <span>Available buffer</span>
-                <strong className="is-positive">
-                  {fmtMins(remainingCapacity)}
-                </strong>
-              </div>
-            )}
-          </div>
-        )}
+        ) : null}
       </div>
     );
   }
