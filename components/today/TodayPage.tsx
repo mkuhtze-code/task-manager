@@ -2294,6 +2294,67 @@ export function TodayPage() {
     }
   }
 
+  const openVisible = visibleTasks.filter((x) => x.status !== 'done');
+  const timedOpen = openVisible.filter((x) => x.estimate_mins > 0).length;
+  const jobIdsWithOpen = new Set(
+    openVisible.map((x) => x.job_id).filter(Boolean) as string[]
+  );
+  const nextCommitment = (() => {
+    const nowMs = Date.now();
+    const upcoming = activeCommitments
+      .filter((c) => !c.all_day && new Date(c.end_at).getTime() > nowMs)
+      .sort(
+        (a, b) =>
+          new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+      );
+    const c = upcoming[0];
+    if (!c) return null;
+    const start = new Date(c.start_at);
+    const when = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+    return { title: c.title, when };
+  })();
+  const travelSummary =
+    geoAware && hasRoute && routeDriveMins > 0
+      ? `~${fmtMins(routeDriveMins)} driving`
+      : geoAware && hasRoute
+        ? 'Route set'
+        : null;
+  const sortModeLabel =
+    sortMode === 'capacity_first'
+      ? 'Ordered by fit'
+      : sortMode === 'geo_aware'
+        ? 'Route-aware'
+        : null;
+  const openTaskSubs = openTask
+    ? subtasksByTask[openTask.id] || []
+    : [];
+  const deskContext = isDesktop
+    ? openTask
+      ? {
+          mode: 'task' as const,
+          openCount: openVisible.length,
+          timedCount: timedOpen,
+          taskRemainingMins: openTaskRemaining,
+          taskEstimateMins: openTask.estimate_mins,
+          taskJobName:
+            jobs.find((j) => j.id === openTask.job_id)?.name ?? null,
+          taskPlace: openTask.location_text || null,
+          taskActive: openTask.status === 'active',
+          taskSubsDone: openTaskSubs.filter((s) => s.done).length,
+          taskSubsTotal: openTaskSubs.length,
+        }
+      : {
+          mode: 'day' as const,
+          openCount: openVisible.length,
+          timedCount: timedOpen,
+          nextCommitment,
+          jobsWithOpen: jobIdsWithOpen.size,
+          meetingsToday: todayMeetings.length,
+          travelSummary,
+          sortModeLabel,
+        }
+    : null;
+
   return (
     <div
       className={`app-shell${isDesktop && openTask ? " has-desk-detail" : ""}`}
@@ -2330,13 +2391,14 @@ export function TodayPage() {
         showRealityCheck={showRealityCheck}
         realityCheckMessage={realityCheckMessage}
         isDesktop={isDesktop}
-                onDockIt={isDesktop ? () => setCaptureOpen(true) : undefined}
+        onDockIt={isDesktop ? () => setCaptureOpen(true) : undefined}
         orderHint={dayOrderHint({
           sortMode,
           personalEvidenceCount: history.filter(
             (h) => typeof h.actual_mins === 'number' && h.actual_mins > 0
           ).length,
         })}
+        deskContext={deskContext}
       />
 
 
