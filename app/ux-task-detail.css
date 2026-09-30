@@ -1,4 +1,84 @@
-/* Task detail — mobile primary + desktop dashboard */
+/* Task detail — pill actions + project-management desktop */
+
+/* ── Shared pills (mobile + desktop) ─────────────────────────── */
+.detail-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong, var(--border-strong, #cbd5e1));
+  background: var(--paper, var(--surface, #fff));
+  color: var(--ink, var(--text-primary));
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.detail-pill:hover:not(:disabled) {
+  background: var(--surface-hover, #f8fafc);
+  border-color: var(--ink-faint, #94a3b8);
+}
+
+.detail-pill:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.detail-pill.is-on {
+  background: var(--steel-wash, rgba(30, 107, 230, 0.12));
+  border-color: var(--steel, #1e6be6);
+  color: var(--steel-dark, var(--steel, #1e6be6));
+}
+
+.detail-pill-primary {
+  background: var(--steel, #1e6be6);
+  border-color: var(--steel, #1e6be6);
+  color: #fff;
+}
+
+.detail-pill-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+  background: var(--steel, #1e6be6);
+  color: #fff;
+}
+
+.detail-pill-done {
+  background: var(--paper, #fff);
+}
+
+.detail-pill-more {
+  width: 100%;
+  justify-content: center;
+  color: var(--ink-soft, var(--text-secondary));
+  font-weight: 600;
+}
+
+.detail-pill-more.is-on {
+  color: var(--ink, var(--text-primary));
+}
+
+.task-detail-action-pills,
+.desk-detail-action-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-detail-action-pills .detail-pill-primary,
+.task-detail-action-pills .detail-pill-done {
+  flex: 1 1 auto;
+  min-width: 5.5rem;
+}
 
 /* Mobile sheet */
 .task-detail-sheet-refined {
@@ -47,6 +127,22 @@
   line-height: 1.4;
 }
 
+.detail-more {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-more-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-md, 14px);
+  border: 1px solid var(--line, var(--border-subtle));
+  background: var(--paper-raised, var(--surface-inset, #f8fafc));
+}
+
 .detail-primary-block {
   display: flex;
   flex-direction: column;
@@ -64,48 +160,40 @@
   color: var(--ink-faint, var(--text-tertiary));
 }
 
-.detail-more {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--line, var(--border-subtle));
-}
-
-.detail-more-toggle {
-  align-self: flex-start;
-  background: none;
-  border: none;
-  padding: 6px 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-faint, var(--text-tertiary));
-  cursor: pointer;
-}
-
-.detail-more-toggle.open,
-.detail-more-toggle:hover {
-  color: var(--ink-soft, var(--text-secondary));
-}
-
-.detail-more-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-bottom: 8px;
-}
-
 .detail-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-/* Desktop dashboard */
-.desk-detail-dashboard {
+/* ── Desktop: broader project workspace ─────────────────────── */
+.desk-pane-detail {
+  width: 100%;
+  max-width: none;
+}
+
+.desk-detail-pm {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
+  padding: 8px 4px 24px;
+  max-width: 960px;
+}
+
+.desk-detail-pm .desk-detail-title {
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+  padding: 4px 0 2px;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+}
+
+.desk-detail-pm .desk-detail-title:focus {
+  border-bottom-color: var(--line-strong, #cbd5e1);
+  outline: none;
 }
 
 .desk-detail-insight-strip {
@@ -117,7 +205,7 @@
 .desk-insight-pill {
   display: inline-flex;
   align-items: center;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
@@ -131,15 +219,60 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--ink-soft, var(--text-secondary));
-  line-height: 1.4;
+  line-height: 1.45;
+  max-width: 40rem;
 }
 
-.desk-detail-grid-primary {
-  align-items: start;
+.desk-detail-pm .desk-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 20px;
 }
 
-.desk-detail-panel-primary {
-  min-height: 120px;
+.desk-detail-pm .desk-detail-grid-primary {
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .desk-detail-pm .desk-detail-grid,
+  .desk-detail-pm .desk-detail-grid-primary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.desk-detail-pm .desk-detail-panel {
+  padding: 16px 18px;
+  border-radius: var(--radius-md, 14px);
+  border: 1px solid var(--line, var(--border-subtle));
+  background: var(--paper, var(--surface, #fff));
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(15, 23, 42, 0.04));
+  min-height: 140px;
+}
+
+.desk-detail-pm .desk-detail-panel-title {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint, var(--text-tertiary));
+}
+
+.desk-detail-pm .desk-detail-panel-primary {
+  min-height: 180px;
+}
+
+.desk-detail-pm .desk-detail-field {
+  margin-bottom: 12px;
+}
+
+.desk-detail-pm .desk-detail-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-soft, var(--text-secondary));
 }
 
 .desk-detail-badge.live {
@@ -148,10 +281,23 @@
 }
 
 .desk-detail-footer {
-  padding-top: 8px;
+  padding-top: 12px;
   border-top: 1px solid var(--line, var(--border-subtle));
 }
 
 .danger-text {
   color: var(--hazard, #b91c1c);
+}
+
+/* Wider desktop detail column when layout allows */
+html[data-surface='desktop'] .desk-pane-detail,
+html[data-surface='desktop'] .has-desk-detail .desk-pane-detail {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+html[data-surface='desktop'] .desk-detail-pm {
+  width: 100%;
+  max-width: min(960px, 100%);
+  margin: 0 auto;
 }
