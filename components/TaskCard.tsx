@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Subtask, Task } from '@/lib/taskTypes';
 import { fmtMins } from '@/lib/timeFormat';
 import {
@@ -93,10 +93,36 @@ export function TaskCard(props: {
   const doneSubs = subs.filter((s) => s.done).length;
 
   const [subsOpen, setSubsOpen] = useState(false);
+  const [travelOpen, setTravelOpen] = useState(false);
+  const travelWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!expanded) setSubsOpen(false);
+    if (!expanded) {
+      setSubsOpen(false);
+      setTravelOpen(false);
+    }
   }, [expanded]);
+
+  useEffect(() => {
+    if (!travelOpen) return;
+    function onDoc(e: MouseEvent) {
+      const el = travelWrapRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        setTravelOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [travelOpen]);
+
+  const travelLabel =
+    t.requires_visit === true
+      ? 'On route'
+      : t.requires_visit === false
+        ? 'Not travel'
+        : onRoute
+          ? 'On route'
+          : 'Auto';
 
   const progressPct = timed
     ? Math.min(
@@ -407,53 +433,88 @@ export function TaskCard(props: {
             )}
 
             {geoAware && onSetRouteIntent ? (
-              <div
-                className="task-route-intent"
-                role="group"
-                aria-label="Travel for this task"
-              >
-                <span className="task-route-intent-label">Travel</span>
-                <div className="task-route-intent-seg">
-                  <button
-                    type="button"
-                    className={
-                      t.requires_visit == null
-                        ? 'task-route-intent-btn current'
-                        : 'task-route-intent-btn'
-                    }
-                    onClick={isolate(() => onSetRouteIntent(t.id, null))}
+              <div className="task-pill-wrap" ref={travelWrapRef}>
+                <button
+                  type="button"
+                  className={
+                    travelOpen
+                      ? 'task-pill task-pill-travel open'
+                      : 'task-pill task-pill-travel'
+                  }
+                  aria-expanded={travelOpen}
+                  aria-haspopup="listbox"
+                  onClick={isolate(() => setTravelOpen((v) => !v))}
+                >
+                  <span className="task-pill-text">Travel · {travelLabel}</span>
+                  <span className="task-pill-chevron" aria-hidden="true">
+                    <ChevronIcon />
+                  </span>
+                </button>
+                {travelOpen ? (
+                  <div
+                    className="task-pill-menu"
+                    role="listbox"
+                    aria-label="Travel for this task"
                   >
-                    Auto
-                  </button>
-                  <button
-                    type="button"
-                    className={
-                      t.requires_visit === true ||
-                      (t.requires_visit == null && onRoute)
-                        ? 'task-route-intent-btn current'
-                        : 'task-route-intent-btn'
-                    }
-                    onClick={isolate(() => onSetRouteIntent(t.id, true))}
-                  >
-                    On route
-                  </button>
-                  <button
-                    type="button"
-                    className={
-                      t.requires_visit === false
-                        ? 'task-route-intent-btn current'
-                        : 'task-route-intent-btn'
-                    }
-                    onClick={isolate(() => onSetRouteIntent(t.id, false))}
-                  >
-                    Not travel
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      role="option"
+                      className={
+                        t.requires_visit == null
+                          ? 'task-pill-option current'
+                          : 'task-pill-option'
+                      }
+                      aria-selected={t.requires_visit == null}
+                      onClick={isolate(() => {
+                        onSetRouteIntent(t.id, null);
+                        setTravelOpen(false);
+                      })}
+                    >
+                      Auto
+                      <span className="task-pill-option-hint">Dokkit decides</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="option"
+                      className={
+                        t.requires_visit === true
+                          ? 'task-pill-option current'
+                          : 'task-pill-option'
+                      }
+                      aria-selected={t.requires_visit === true}
+                      onClick={isolate(() => {
+                        onSetRouteIntent(t.id, true);
+                        setTravelOpen(false);
+                      })}
+                    >
+                      On route
+                      <span className="task-pill-option-hint">Include drive time</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="option"
+                      className={
+                        t.requires_visit === false
+                          ? 'task-pill-option current'
+                          : 'task-pill-option'
+                      }
+                      aria-selected={t.requires_visit === false}
+                      onClick={isolate(() => {
+                        onSetRouteIntent(t.id, false);
+                        setTravelOpen(false);
+                      })}
+                    >
+                      Not travel
+                      <span className="task-pill-option-hint">Place is context only</span>
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
             <button
-              className="task-action-link"
+              type="button"
+              className="task-pill task-pill-details"
               onClick={isolate(onOpenDetails)}
             >
               Details
