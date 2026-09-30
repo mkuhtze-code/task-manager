@@ -528,7 +528,9 @@ export function TodayHeader(props: {
                   <span className="today-header-summary-title">
                     {overloaded
                       ? `Over by ${fmtMins(overBy)}`
-                      : `On track · ${fmtMins(remainingWorkMins)} to go`}
+                      : remainingWorkMins > 0
+                        ? `${fmtMins(remainingWorkMins)} planned`
+                        : 'Nothing timed'}
                   </span>
                   <span className="today-header-summary-meta">
                     {fmtMins(minutesLeftToday)} time left
