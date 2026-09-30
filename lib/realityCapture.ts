@@ -229,9 +229,7 @@ export function consumeMorningPlanMessage(todayStr: string): string | null {
     parts.push('Yesterday’s plan was closed out.');
   }
   if (parts.length === 0) {
-    parts.push('Plan is ready for today.');
-  } else {
-    parts.push('Capacity uses what this work usually takes.');
+    return null; // nothing useful — stay quiet
   }
   return parts.join(' ');
 }
