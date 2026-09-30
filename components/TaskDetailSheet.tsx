@@ -133,6 +133,7 @@ export function TaskDetailSheet(props: {
     task.requires_visit ?? null
   );
 
+  const [detailsMoreOpen, setDetailsMoreOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
 
@@ -256,6 +257,26 @@ export function TaskDetailSheet(props: {
     anyActive && task.status !== 'active';
 
   const isPane = presentation === 'pane';
+
+  const taskCreatedLabel = (() => {
+    const raw = task.created_at;
+    if (!raw) return null;
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return null;
+    const now = Date.now();
+    const days = Math.floor((now - d.getTime()) / 86400000);
+    if (days <= 0) return 'Added today';
+    if (days === 1) return 'Added yesterday';
+    if (days < 14) return `Added ${days} days ago`;
+    return `Added ${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
+  })();
+
+  const fitNote = (() => {
+    if (estimateExplain) return estimateExplain;
+    if (task.estimate_mins <= 0) return 'Untimed — counts as presence, not capacity.';
+    return null;
+  })();
+
 
   const linkedJob = task.job_id
     ? jobs.find((j) => j.id === task.job_id) ?? null
@@ -1032,6 +1053,48 @@ export function TaskDetailSheet(props: {
     </div>
   );
 
+
+  const travelBlock = showTravelPref ? (
+    <div className="detail-field">
+      <span className="settings-label">Travel</span>
+      <div className="day-toggle-row" role="group" aria-label="Travel">
+        <button
+          type="button"
+          className={requiresVisit === null ? 'day-toggle-btn pill active' : 'day-toggle-btn pill'}
+          aria-pressed={requiresVisit === null}
+          onClick={() => {
+            setRequiresVisit(null);
+            commit(null);
+          }}
+        >
+          Auto
+        </button>
+        <button
+          type="button"
+          className={requiresVisit === true ? 'day-toggle-btn pill active' : 'day-toggle-btn pill'}
+          aria-pressed={requiresVisit === true}
+          onClick={() => {
+            setRequiresVisit(true);
+            commit(true);
+          }}
+        >
+          On route
+        </button>
+        <button
+          type="button"
+          className={requiresVisit === false ? 'day-toggle-btn pill active' : 'day-toggle-btn pill'}
+          aria-pressed={requiresVisit === false}
+          onClick={() => {
+            setRequiresVisit(false);
+            commit(false);
+          }}
+        >
+          Not travel
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   if (isPane) {
     return (
       <div
@@ -1040,26 +1103,20 @@ export function TaskDetailSheet(props: {
         role="region"
         aria-label="Task detail"
       >
-        <div className="desk-detail">
+        <div className="desk-detail desk-detail-dashboard">
           <header className="desk-detail-toolbar">
             <div className="desk-detail-toolbar-left">
-              <span className="desk-detail-kicker">
-                Task
-              </span>
-
-              {task.due_today && (
-                <span className="desk-detail-badge due">
-                  Due today
-                </span>
-              )}
-
-              {jobName && (
-                <span className="desk-detail-badge">
-                  {jobName}
-                </span>
-              )}
+              <span className="desk-detail-kicker">Task</span>
+              {task.due_today ? (
+                <span className="desk-detail-badge due">Due today</span>
+              ) : null}
+              {jobName ? (
+                <span className="desk-detail-badge">{jobName}</span>
+              ) : null}
+              {task.status === 'active' ? (
+                <span className="desk-detail-badge live">In progress</span>
+              ) : null}
             </div>
-
             <button
               type="button"
               className="gear-btn"
@@ -1074,83 +1131,58 @@ export function TaskDetailSheet(props: {
             type="text"
             className="desk-detail-title"
             value={text}
-            onChange={(e) =>
-              setText(e.target.value)
-            }
+            onChange={(e) => setText(e.target.value)}
             onBlur={() => commit()}
             placeholder="Task name"
           />
 
-          {task.estimate_mins > 0 && (
+          <div className="desk-detail-insight-strip" aria-label="Task signal">
+            {taskCreatedLabel ? (
+              <span className="desk-insight-pill">{taskCreatedLabel}</span>
+            ) : null}
+            {task.estimate_mins > 0 ? (
+              <span className="desk-insight-pill mono">
+                {fmtMins(remainingForThis)} left
+                {task.status === 'active' ? ` · ${fmtMins(liveLogged)} on the clock` : ''}
+              </span>
+            ) : (
+              <span className="desk-insight-pill">Untimed</span>
+            )}
+            {localSubs.length > 0 ? (
+              <span className="desk-insight-pill mono">
+                {completedSubtasks}/{localSubs.length} steps
+              </span>
+            ) : null}
+          </div>
+
+          {fitNote ? (
+            <p className="desk-detail-fit-note">{fitNote}</p>
+          ) : null}
+
+          {task.estimate_mins > 0 ? (
             <div className="desk-detail-progress">
               <div className="task-progress-track">
                 <div
                   className="task-progress-fill"
-                  style={{
-                    width: `${progressPct}%`,
-                  }}
+                  style={{ width: `${progressPct}%` }}
                 />
               </div>
-
-              <div className="desk-detail-progress-meta mono">
-                <span>
-                  {fmtMins(remainingForThis)} left
-                </span>
-
-                {task.status === 'active' && (
-                  <span className="desk-detail-live">
-                    · {fmtMins(liveLogged)} logged
-                  </span>
-                )}
-              </div>
             </div>
-          )}
+          ) : null}
 
-          {error && (
-            <p className="desk-detail-error">
-              {error}
-            </p>
-          )}
-
-          <TaskConnections
-            task={task}
-            job={linkedJob}
-            meetings={meetings}
-            siblingTasks={siblingTasks}
-            onOpenSibling={onOpenSibling}
-          />
-
-          {estimateExplain && (
-            <p
-              className="desk-detail-muted"
-              style={{
-                margin: '4px 0 8px',
-              }}
-            >
-              {estimateExplain}
-            </p>
-          )}
+          {error ? <p className="desk-detail-error">{error}</p> : null}
 
           <div className="desk-detail-actions">
-            {task.estimate_mins > 0 &&
-              (task.status === 'active' ? (
+            {task.estimate_mins > 0 ? (
+              task.status === 'active' ? (
                 <button
                   type="button"
                   className="btn btn-ghost"
-                  onClick={() =>
-                    onStop(task.id)
-                  }
+                  onClick={() => onStop(task.id)}
                 >
                   <StopIcon />
-
                   Stop
-
-                  <span
-                    className="mono"
-                    style={{
-                      fontWeight: 600,
-                    }}
-                  >
+                  <span className="mono" style={{ fontWeight: 600 }}>
                     {fmtMins(liveLogged)}
                   </span>
                 </button>
@@ -1159,15 +1191,13 @@ export function TaskDetailSheet(props: {
                   type="button"
                   className="btn btn-steel"
                   disabled={startDisabled}
-                  onClick={() =>
-                    onStart(task.id)
-                  }
+                  onClick={() => onStart(task.id)}
                 >
                   <PlayIcon />
                   Start
                 </button>
-              ))}
-
+              )
+            ) : null}
             <button
               type="button"
               className="btn btn-steel"
@@ -1179,71 +1209,65 @@ export function TaskDetailSheet(props: {
               <CheckIcon done />
               Done
             </button>
-
             <button
               type="button"
               className={
-                task.due_today
-                  ? 'btn btn-ghost active-due'
-                  : 'btn btn-ghost'
+                task.due_today ? 'btn btn-ghost active-due' : 'btn btn-ghost'
               }
-              onClick={() =>
-                onToggleDue(
-                  task.id,
-                  !!task.due_today
-                )
-              }
+              onClick={() => onToggleDue(task.id, !!task.due_today)}
             >
-              {task.due_today
-                ? 'Due today'
-                : 'Mark due today'}
+              {task.due_today ? 'Due today' : 'Mark due today'}
             </button>
+          </div>
+
+          <TaskConnections
+            task={task}
+            job={linkedJob}
+            meetings={meetings}
+            siblingTasks={siblingTasks}
+            onOpenSibling={onOpenSibling}
+          />
+
+          <div className="desk-detail-grid desk-detail-grid-primary">
+            <section className="desk-detail-panel desk-detail-panel-primary">
+              <h3 className="desk-detail-panel-title">Notes</h3>
+              <TaskInfo
+                value={task.info || ''}
+                onSave={(info) => onSaveInfo(task.id, info)}
+                surface="edit"
+              />
+            </section>
+
+            {subtasksBlock}
           </div>
 
           <div className="desk-detail-grid">
             <section className="desk-detail-panel">
-              <h3 className="desk-detail-panel-title">
-                Schedule
-              </h3>
-
+              <h3 className="desk-detail-panel-title">Schedule</h3>
               <label className="desk-detail-field">
-                <span className="desk-detail-label">
-                  Estimate
-                </span>
-
+                <span className="desk-detail-label">Estimate</span>
                 <input
                   type="text"
                   className="time-input desk-detail-input"
                   value={timeStr}
-                  onChange={(e) =>
-                    setTimeStr(e.target.value)
-                  }
+                  onChange={(e) => setTimeStr(e.target.value)}
                   onBlur={() => commit()}
                   placeholder="15m"
                 />
               </label>
-
               <label className="desk-detail-field">
                 <span className="desk-detail-label">
-                  {context === 'job'
-                    ? 'When'
-                    : 'Reminder'}
+                  {context === 'job' ? 'When' : 'Reminder'}
                 </span>
-
                 <div className="reminder-date-row">
                   <input
                     type="date"
                     className="desk-detail-input"
                     value={surfaceDate}
-                    onChange={(e) =>
-                      setSurfaceDate(
-                        e.target.value
-                      )
-                    }
+                    onChange={(e) => setSurfaceDate(e.target.value)}
                     onBlur={() => commit()}
                   />
-
-                  {surfaceDate.length > 0 && (
+                  {surfaceDate.length > 0 ? (
                     <button
                       type="button"
                       className="btn-text"
@@ -1254,157 +1278,48 @@ export function TaskDetailSheet(props: {
                     >
                       Clear
                     </button>
-                  )}
+                  ) : null}
                 </div>
-
-                {surfaceDate.length > 0 && (
-                  <p className="desk-detail-muted">
-                    Hidden until{' '}
-                    {fmtSurfaceDate(
-                      surfaceDate
-                    )}
-                    .
-                  </p>
-                )}
               </label>
             </section>
 
             <section className="desk-detail-panel">
-              <h3 className="desk-detail-panel-title">
-                Context
-              </h3>
-
+              <h3 className="desk-detail-panel-title">Context</h3>
               <label className="desk-detail-field">
-                <span className="desk-detail-label">
-                  Location
-                </span>
-
+                <span className="desk-detail-label">Location</span>
                 <LocationAutocomplete
                   value={locationText}
                   placeholder="Where does this happen?"
                   onChange={setLocationText}
                   onPlaceSelected={(result) => {
-                    setLocationText(
-                      result.formattedAddress
-                    );
-
-                    setLocationCoords({
-                      lat: result.lat,
-                      lng: result.lng,
-                    });
+                    setLocationText(result.formattedAddress);
+                    setLocationCoords({ lat: result.lat, lng: result.lng });
                   }}
                 />
-
-                {locationText.length > 0 &&
-                  !locationCoords && (
-                    <p className="desk-detail-muted">
-                      Pick a suggestion for route-aware
-                      capacity.
-                    </p>
-                  )}
+                {locationText.length > 0 && !locationCoords ? (
+                  <p className="desk-detail-muted">
+                    Pick a suggestion for route-aware capacity.
+                  </p>
+                ) : null}
               </label>
-
-              {showTravelPref ? (
-                <div className="desk-detail-field">
-                  <span className="desk-detail-label">Travel</span>
-                  <div className="day-toggle-row" role="group" aria-label="Travel">
-                    <button
-                      type="button"
-                      className={
-                        requiresVisit === null
-                          ? 'day-toggle-btn pill active'
-                          : 'day-toggle-btn pill'
-                      }
-                      aria-pressed={requiresVisit === null}
-                      onClick={() => {
-                        setRequiresVisit(null);
-                        commit(null);
-                      }}
-                    >
-                      Auto
-                    </button>
-                    <button
-                      type="button"
-                      className={
-                        requiresVisit === true
-                          ? 'day-toggle-btn pill active'
-                          : 'day-toggle-btn pill'
-                      }
-                      aria-pressed={requiresVisit === true}
-                      onClick={() => {
-                        setRequiresVisit(true);
-                        commit(true);
-                      }}
-                    >
-                      On route
-                    </button>
-                    <button
-                      type="button"
-                      className={
-                        requiresVisit === false
-                          ? 'day-toggle-btn pill active'
-                          : 'day-toggle-btn pill'
-                      }
-                      aria-pressed={requiresVisit === false}
-                      onClick={() => {
-                        setRequiresVisit(false);
-                        commit(false);
-                      }}
-                    >
-                      Not travel
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
+              {travelBlock}
               <div className="desk-detail-field">
-                <span className="desk-detail-label">
-                  Job
-                </span>
-
+                <span className="desk-detail-label">Job</span>
                 <TaskJobField
                   jobs={jobs}
                   jobId={task.job_id}
-                  onMoveToJob={(jobId) => {
-                    onMoveToJob(
-                      task.id,
-                      jobId
-                    );
-                  }}
+                  onMoveToJob={(jobId) => onMoveToJob(task.id, jobId)}
                 />
               </div>
             </section>
           </div>
 
-          <section className="desk-detail-panel desk-detail-panel-wide">
-            <h3 className="desk-detail-panel-title">
-              Notes
-            </h3>
-
-            <TaskInfo
-              value={task.info || ''}
-              onSave={(info) =>
-                onSaveInfo(
-                  task.id,
-                  info
-                )
-              }
-              surface="edit"
-            />
-          </section>
-
-          {subtasksBlock}
-
-          <footer className="desk-detail-footer">
+          <div className="desk-detail-footer">
             <button
               type="button"
-              className="btn-text destructive"
+              className="btn-text danger-text"
               onClick={() => {
-                if (
-                  confirm(
-                    `Delete "${task.text}"?`
-                  )
-                ) {
+                if (confirm(`Delete "${task.text}"?`)) {
                   onDelete(task.id);
                   onClose();
                 }
@@ -1412,33 +1327,32 @@ export function TaskDetailSheet(props: {
             >
               Delete task
             </button>
-          </footer>
+          </div>
         </div>
       </div>
     );
   }
 
+  /* ── Mobile sheet ─────────────────────────────────────────────── */
   return (
-    <div
-      className="sheet-backdrop"
-      onClick={handleClose}
-    >
+    <div className="sheet-backdrop" onClick={handleClose}>
       <div
         ref={dialogRef}
-        className="capture-sheet task-detail-sheet"
-        onClick={(e) =>
-          e.stopPropagation()
-        }
+        className="capture-sheet task-detail-sheet task-detail-sheet-refined"
+        onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Task"
       >
-        <div
-          className="task-detail-header"
-          style={{
-            justifyContent: 'flex-end',
-          }}
-        >
+        <div className="task-detail-header">
+          <div className="task-detail-header-meta">
+            {taskCreatedLabel ? (
+              <span className="task-detail-age">{taskCreatedLabel}</span>
+            ) : null}
+            {jobName ? (
+              <span className="task-detail-job-chip">{jobName}</span>
+            ) : null}
+          </div>
           <button
             type="button"
             className="gear-btn"
@@ -1453,255 +1367,52 @@ export function TaskDetailSheet(props: {
           type="text"
           className="task-detail-name"
           value={text}
-          onChange={(e) =>
-            setText(e.target.value)
-          }
+          onChange={(e) => setText(e.target.value)}
           onBlur={() => commit()}
+          placeholder="Task name"
         />
 
-        {task.estimate_mins > 0 && (
-          <div
-            className="task-progress-row"
-            style={{
-              marginTop: 0,
-            }}
-          >
+        {task.estimate_mins > 0 ? (
+          <div className="task-progress-row" style={{ marginTop: 0 }}>
             <div className="task-progress-track">
               <div
                 className="task-progress-fill"
-                style={{
-                  width: `${progressPct}%`,
-                }}
+                style={{ width: `${progressPct}%` }}
               />
             </div>
-
             <span className="task-progress-label mono">
               {fmtMins(remainingForThis)} left
             </span>
           </div>
-        )}
-
-        <div className="capture-row">
-          <button
-            type="button"
-            className={
-              task.due_today
-                ? 'btn-quiet active'
-                : 'btn-quiet'
-            }
-            onClick={() =>
-              onToggleDue(
-                task.id,
-                !!task.due_today
-              )
-            }
-          >
-            {task.due_today
-              ? 'Due today'
-              : 'Mark due today'}
-          </button>
-
-          <input
-            type="text"
-            className="time-input"
-            value={timeStr}
-            onChange={(e) =>
-              setTimeStr(e.target.value)
-            }
-            onBlur={() => commit()}
-            placeholder="15m"
-            aria-label="Estimate"
-          />
-        </div>
-
-        {error && (
-          <p
-            style={{
-              color: 'var(--hazard)',
-              fontSize: 12,
-              margin: 0,
-            }}
-          >
-            {error}
-          </p>
-        )}
-
-        {estimateExplain && (
-          <p
-            className="settings-help"
-            style={{
-              margin: '2px 0 6px',
-            }}
-          >
-            {estimateExplain}
-          </p>
-        )}
-
-        <span className="settings-label">
-          Location (optional)
-        </span>
-
-        <LocationAutocomplete
-          value={locationText}
-          placeholder="Where does this happen?"
-          onChange={setLocationText}
-          onPlaceSelected={(result) => {
-            setLocationText(
-              result.formattedAddress
-            );
-
-            setLocationCoords({
-              lat: result.lat,
-              lng: result.lng,
-            });
-          }}
-        />
-
-        {showTravelPref ? (
-          <div>
-            <span className="settings-label">Travel</span>
-            <div className="day-toggle-row" role="group" aria-label="Travel">
-              <button
-                type="button"
-                className={
-                  requiresVisit === null
-                    ? 'day-toggle-btn pill active'
-                    : 'day-toggle-btn pill'
-                }
-                aria-pressed={requiresVisit === null}
-                onClick={() => {
-                  setRequiresVisit(null);
-                  commit(null);
-                }}
-              >
-                Auto
-              </button>
-              <button
-                type="button"
-                className={
-                  requiresVisit === true
-                    ? 'day-toggle-btn pill active'
-                    : 'day-toggle-btn pill'
-                }
-                aria-pressed={requiresVisit === true}
-                onClick={() => {
-                  setRequiresVisit(true);
-                  commit(true);
-                }}
-              >
-                On route
-              </button>
-              <button
-                type="button"
-                className={
-                  requiresVisit === false
-                    ? 'day-toggle-btn pill active'
-                    : 'day-toggle-btn pill'
-                }
-                aria-pressed={requiresVisit === false}
-                onClick={() => {
-                  setRequiresVisit(false);
-                  commit(false);
-                }}
-              >
-                Not travel
-              </button>
-            </div>
-          </div>
         ) : null}
 
+        {fitNote ? <p className="task-detail-fit-note">{fitNote}</p> : null}
 
-        <span className="settings-label">
-          {context === 'job'
-            ? 'When'
-            : 'Reminder'}
-        </span>
-
-        <div className="reminder-date-row">
-          <input
-            type="date"
-            value={surfaceDate}
-            onChange={(e) =>
-              setSurfaceDate(
-                e.target.value
-              )
-            }
-            onBlur={() => commit()}
-          />
-
-          {surfaceDate.length > 0 && (
-            <button
-              type="button"
-              className="btn-text"
-              onClick={() => {
-                setSurfaceDate('');
-                commit();
-              }}
-            >
-              Clear
-            </button>
-          )}
-        </div>
-
-        <span className="settings-label">
-          Information
-        </span>
-
-        <TaskInfo
-          value={task.info || ''}
-          onSave={(info) =>
-            onSaveInfo(
-              task.id,
-              info
-            )
-          }
-          surface="edit"
-        />
-
-        <div className="task-detail-job-section">
-          <div className="task-detail-job-section-head">
-            <span className="settings-label">
-              Job
-            </span>
-
-            <span className="task-detail-job-section-hint">
-              Optional
-            </span>
-          </div>
-
-          <TaskJobField
-            jobs={jobs}
-            jobId={task.job_id}
-            onMoveToJob={(jobId) => {
-              onMoveToJob(
-                task.id,
-                jobId
-              );
-            }}
-          />
-        </div>
+        {error ? (
+          <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>
+            {error}
+          </p>
+        ) : null}
 
         <div className="task-detail-actions">
-          {task.estimate_mins > 0 &&
-            (task.status === 'active' ? (
+          <button
+            type="button"
+            className={task.due_today ? 'btn-quiet active' : 'btn-quiet'}
+            onClick={() => onToggleDue(task.id, !!task.due_today)}
+          >
+            {task.due_today ? 'Due today' : 'Due today?'}
+          </button>
+          {task.estimate_mins > 0 ? (
+            task.status === 'active' ? (
               <button
                 type="button"
                 className="btn btn-ghost start-stop-btn"
                 style={{ flex: 1 }}
-                onClick={() =>
-                  onStop(task.id)
-                }
+                onClick={() => onStop(task.id)}
               >
                 <StopIcon />
-
                 Stop
-
-                <span
-                  className="mono"
-                  style={{
-                    fontWeight: 600,
-                  }}
-                >
+                <span className="mono" style={{ fontWeight: 600 }}>
                   {fmtMins(liveLogged)}
                 </span>
               </button>
@@ -1711,15 +1422,13 @@ export function TaskDetailSheet(props: {
                 className="btn btn-steel start-stop-btn"
                 style={{ flex: 1 }}
                 disabled={startDisabled}
-                onClick={() =>
-                  onStart(task.id)
-                }
+                onClick={() => onStart(task.id)}
               >
                 <PlayIcon />
                 Start
               </button>
-            ))}
-
+            )
+          ) : null}
           <button
             type="button"
             className="btn btn-ghost"
@@ -1734,24 +1443,117 @@ export function TaskDetailSheet(props: {
           </button>
         </div>
 
+        {/* Primary interactive areas */}
+        <section className="detail-primary-block">
+          <h3 className="detail-primary-title">Notes</h3>
+          <TaskInfo
+            value={task.info || ''}
+            onSave={(info) => onSaveInfo(task.id, info)}
+            surface="edit"
+          />
+        </section>
+
         {subtasksBlock}
 
-        <button
-          type="button"
-          className="btn btn-ghost danger-btn task-detail-delete"
-          onClick={() => {
-            if (
-              confirm(
-                `Delete "${task.text}"?`
-              )
-            ) {
-              onDelete(task.id);
-              onClose();
+        {/* Secondary: collapsed by default */}
+        <div className="detail-more">
+          <button
+            type="button"
+            className={
+              detailsMoreOpen
+                ? 'detail-more-toggle open'
+                : 'detail-more-toggle'
             }
-          }}
-        >
-          Delete task
-        </button>
+            aria-expanded={detailsMoreOpen}
+            onClick={() => setDetailsMoreOpen((v) => !v)}
+          >
+            {detailsMoreOpen ? 'Less' : 'Time, place, job…'}
+          </button>
+
+          {detailsMoreOpen ? (
+            <div className="detail-more-body">
+              <span className="settings-label">Estimate</span>
+              <div className="capture-row">
+                <input
+                  type="text"
+                  className="time-input"
+                  value={timeStr}
+                  onChange={(e) => setTimeStr(e.target.value)}
+                  onBlur={() => commit()}
+                  placeholder="15m"
+                  aria-label="Estimate"
+                />
+              </div>
+
+              <span className="settings-label">Place</span>
+              <LocationAutocomplete
+                value={locationText}
+                placeholder="Where?"
+                onChange={setLocationText}
+                onPlaceSelected={(result) => {
+                  setLocationText(result.formattedAddress);
+                  setLocationCoords({ lat: result.lat, lng: result.lng });
+                }}
+              />
+
+              {travelBlock}
+
+              <span className="settings-label">
+                {context === 'job' ? 'When' : 'Later day'}
+              </span>
+              <div className="reminder-date-row">
+                <input
+                  type="date"
+                  value={surfaceDate}
+                  onChange={(e) => setSurfaceDate(e.target.value)}
+                  onBlur={() => commit()}
+                />
+                {surfaceDate.length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setSurfaceDate('');
+                      commit();
+                    }}
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="task-detail-job-section">
+                <span className="settings-label">Job</span>
+                <TaskJobField
+                  jobs={jobs}
+                  jobId={task.job_id}
+                  onMoveToJob={(jobId) => onMoveToJob(task.id, jobId)}
+                />
+              </div>
+
+              <TaskConnections
+                task={task}
+                job={linkedJob}
+                meetings={meetings}
+                siblingTasks={siblingTasks}
+                onOpenSibling={onOpenSibling}
+              />
+
+              <button
+                type="button"
+                className="btn btn-ghost danger-btn task-detail-delete"
+                onClick={() => {
+                  if (confirm(`Delete "${task.text}"?`)) {
+                    onDelete(task.id);
+                    onClose();
+                  }
+                }}
+              >
+                Delete task
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );
