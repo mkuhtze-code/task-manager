@@ -1,0 +1,143 @@
+/* Capture — pen to paper. Progressive disclosure. */
+
+.capture-sheet-paper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.capture-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.capture-sheet-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--ink, var(--text-primary));
+}
+
+.capture-sheet-close {
+  flex-shrink: 0;
+}
+
+.capture-sheet-paper .capture-text-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.capture-sheet-paper .capture-text-row input[type='text'] {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  min-height: 48px;
+  padding: 12px 14px;
+}
+
+.capture-facet-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.capture-facet-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft, var(--text-secondary));
+  background: var(--paper-raised, var(--surface-inset, #f1f5f9));
+  border: 1px solid var(--line, var(--border-subtle));
+}
+
+.capture-dock-btn {
+  width: 100%;
+  min-height: 48px;
+  font-size: 1rem;
+  font-weight: 650;
+  margin-top: 4px;
+}
+
+.capture-error-line {
+  margin: 0;
+  font-size: 12px;
+  color: var(--hazard, #b91c1c);
+}
+
+.capture-more {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line, var(--border-subtle));
+}
+
+.capture-more-toggle {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 6px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-faint, var(--text-tertiary));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.capture-more-toggle:hover,
+.capture-more-toggle.open {
+  color: var(--ink-soft, var(--text-secondary));
+}
+
+.capture-more-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 4px;
+}
+
+.capture-duration-explain {
+  margin: 0;
+  font-size: 12px;
+}
+
+.capture-entity-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--line, var(--border-subtle));
+  background: var(--paper, var(--surface));
+}
+
+.capture-entity-chip-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft, var(--text-secondary));
+  min-width: 0;
+}
+
+.capture-entity-chip-text strong {
+  color: var(--ink, var(--text-primary));
+  font-weight: 650;
+}
+
+.capture-entity-chip-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
