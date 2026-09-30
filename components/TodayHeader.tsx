@@ -3,7 +3,24 @@
 import { useState } from 'react';
 import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import GearMenu from '@/components/GearMenu';
-import { ChevronIcon, FitCheckIcon, FitWarnIcon } from '@/components/icons';
+import { FitCheckIcon, FitWarnIcon } from '@/components/icons';
+
+export type DeskDayDepth = {
+  /** Clock time left until work end. */
+  clockRemainingMins: number;
+  /** Usable work capacity after fixed commitments (may be 0). */
+  usableMins: number;
+  /** Fixed pressure still overlapping the remainder (meetings/events). */
+  fixedMins: number;
+  /** Open timed task work still on the plate. */
+  plannedTaskMins: number;
+  /** Drive time in current route-aware plan (0 if not geo). */
+  travelMins: number;
+  /** Up to 3 task titles that define the shape of what fits next. */
+  fitsNow: string[];
+  /** Quiet day read — derived, not scored. */
+  dayRead: string | null;
+};
 
 export function TodayHeader(props: {
   overloaded: boolean;
@@ -37,12 +54,8 @@ export function TodayHeader(props: {
   realityCheckMessage?: string | null;
   isDesktop?: boolean;
   onDockIt?: () => void;
-  /** Plain-language list order (e.g. capacity_first). */
+  /** Plain-language list order — only when it helps the user. */
   orderHint?: string | null;
-  /**
-   * Desktop middle rail — day pressure or selected-task context.
-   * Fills the empty command-bar centre without enlarging chrome.
-   */
   deskContext?: {
     mode: 'day' | 'task';
     openCount: number;
@@ -60,6 +73,8 @@ export function TodayHeader(props: {
     taskSubsDone?: number;
     taskSubsTotal?: number;
   } | null;
+  /** Authoritative depth numbers from Today capacity math. */
+  dayDepth?: DeskDayDepth | null;
 }) {
   const {
     overloaded,
@@ -89,6 +104,7 @@ export function TodayHeader(props: {
     onDockIt,
     orderHint = null,
     deskContext = null,
+    dayDepth = null,
   } = props;
 
   const [capacityOpen, setCapacityOpen] = useState(false);
@@ -102,33 +118,17 @@ export function TodayHeader(props: {
     all_day: boolean;
   }): string {
     if (c.all_day) return 'All day';
-
     const start = new Date(c.start_at);
     const end = new Date(c.end_at);
-
     const startLabel = fmtClock(
-      `${String(start.getHours()).padStart(2, '0')}:${String(
-        start.getMinutes()
-      ).padStart(2, '0')}`
+      `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
     );
-
     const endLabel = fmtClock(
-      `${String(end.getHours()).padStart(2, '0')}:${String(
-        end.getMinutes()
-      ).padStart(2, '0')}`
+      `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
     );
-
     return `${startLabel} – ${endLabel}`;
   }
 
-  /*
-   * Desktop is intentionally a different composition from mobile.
-   *
-   * Today is the capacity surface:
-   *   reality → available time → current load → fit
-   *
-   * The underlying calculations remain owned by TodayPage.
-   */
 
   if (isDesktop) {
     const fitChipLabel = !isWorkDay
@@ -136,15 +136,34 @@ export function TodayHeader(props: {
       : overloaded
         ? `Over by ${fmtMins(overBy)}`
         : remainingWorkMins > 0
-          ? `${fmtMins(remainingWorkMins)} planned`
-          : 'Nothing timed';
+          ? `${fmtMins(remainingWorkMins)} on the plate`
+          : 'Clear';
 
     const freeLabel =
       isWorkDay && !overloaded
         ? `${fmtMins(remainingCapacity)} free`
         : isWorkDay
-          ? `${fmtMins(minutesLeftToday)} left in day`
+          ? `${fmtMins(minutesLeftToday)} left`
           : null;
+
+    const depth = dayDepth;
+    const usable = depth?.usableMins ?? remainingCapacity;
+    const planned = depth?.plannedTaskMins ?? Math.max(remainingWorkMins - (depth?.fixedMins ?? 0) - (depth?.travelMins ?? 0), 0);
+    const fixed = depth?.fixedMins ?? 0;
+    const travel = depth?.travelMins ?? (geoAware ? routeDriveMins : 0);
+    const dayRead =
+      depth?.dayRead ??
+      (!isWorkDay
+        ? 'Outside your usual working days.'
+        : overloaded
+          ? 'Remaining work no longer fits today.'
+          : remainingWorkMins <= 0
+            ? "You're clear for the rest of today."
+            : usable > remainingWorkMins + 30
+              ? 'You have room for another task.'
+              : usable < remainingWorkMins
+                ? 'Your afternoon is getting tighter.'
+                : 'Your day is on track.');
 
     return (
       <div
@@ -157,7 +176,6 @@ export function TodayHeader(props: {
           .filter(Boolean)
           .join(' ')}
       >
-        {/* Compact command bar — no GearMenu (product nav owns account) */}
         <div className="desk-today-bar">
           <div className="desk-today-bar-left">
             <div className="desk-today-identity">
@@ -171,23 +189,24 @@ export function TodayHeader(props: {
                 'desk-today-fit-chip',
                 overloaded ? 'is-over' : 'is-fit',
               ].join(' ')}
-              title="How the open work sits against time left today"
+              title="How open work sits against time left today"
             >
               <span className="desk-today-fit-chip-icon" aria-hidden="true">
                 {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
               </span>
               <span className="desk-today-fit-chip-copy">
                 <strong>{fitChipLabel}</strong>
-                {freeLabel ? <span className="desk-today-fit-chip-meta">{freeLabel}</span> : null}
+                {freeLabel ? (
+                  <span className="desk-today-fit-chip-meta">{freeLabel}</span>
+                ) : null}
               </span>
             </div>
-
           </div>
 
           <div className="desk-today-context" aria-label="Day context">
             {deskContext?.mode === 'task' ? (
               <>
-                <span className="desk-ctx-item desk-ctx-emphasis">
+                <span className="desk-ctx-cluster desk-ctx-emphasis">
                   {deskContext.taskActive ? 'Running' : 'Selected'}
                   {typeof deskContext.taskRemainingMins === 'number' &&
                   deskContext.taskEstimateMins &&
@@ -200,79 +219,55 @@ export function TodayHeader(props: {
                   )}
                 </span>
                 {deskContext.taskJobName ? (
-                  <span className="desk-ctx-item" title={deskContext.taskJobName}>
-                    Job <strong>{deskContext.taskJobName}</strong>
+                  <span className="desk-ctx-cluster" title={deskContext.taskJobName}>
+                    <span className="desk-ctx-k">Job</span>
+                    <strong>{deskContext.taskJobName}</strong>
                   </span>
                 ) : null}
                 {deskContext.taskPlace ? (
-                  <span className="desk-ctx-item" title={deskContext.taskPlace}>
-                    Place <strong>{deskContext.taskPlace}</strong>
+                  <span className="desk-ctx-cluster" title={deskContext.taskPlace}>
+                    <span className="desk-ctx-k">Place</span>
+                    <strong>{deskContext.taskPlace}</strong>
                   </span>
                 ) : null}
                 {typeof deskContext.taskSubsTotal === 'number' &&
                 deskContext.taskSubsTotal > 0 ? (
-                  <span className="desk-ctx-item mono">
+                  <span className="desk-ctx-cluster mono">
                     {(deskContext.taskSubsDone ?? 0)}/{deskContext.taskSubsTotal} steps
                   </span>
                 ) : null}
               </>
             ) : (
-              <>
-                <span className="desk-ctx-item">
-                  Open{' '}
-                  <strong className="mono">
-                    {deskContext?.openCount ?? 0}
-                  </strong>
+              <span className="desk-ctx-line">
+                <span className="desk-ctx-cluster">
+                  <strong className="mono">{deskContext?.openCount ?? 0}</strong> open
                   {typeof deskContext?.timedCount === 'number' &&
                   deskContext.timedCount > 0 ? (
                     <span className="desk-ctx-quiet">
-                      · {deskContext.timedCount} timed
+                      · <strong className="mono">{deskContext.timedCount}</strong> timed
                     </span>
                   ) : null}
                 </span>
                 {deskContext?.nextCommitment ? (
-                  <span
-                    className="desk-ctx-item desk-ctx-next"
-                    title={deskContext.nextCommitment.title}
-                  >
-                    Next{' '}
-                    <strong>{deskContext.nextCommitment.when}</strong>
-                    <span className="desk-ctx-quiet">
-                      {deskContext.nextCommitment.title}
-                    </span>
-                  </span>
-                ) : commitments.length > 0 ? (
-                  <span className="desk-ctx-item">
-                    Fixed time{' '}
-                    <strong className="mono">{commitments.length}</strong>
+                  <span className="desk-ctx-cluster desk-ctx-next" title={deskContext.nextCommitment.title}>
+                    <span className="desk-ctx-k">Next</span>
+                    <strong className="mono">{deskContext.nextCommitment.when}</strong>
+                    <span className="desk-ctx-quiet">{deskContext.nextCommitment.title}</span>
                   </span>
                 ) : null}
                 {typeof deskContext?.jobsWithOpen === 'number' &&
                 deskContext.jobsWithOpen > 0 ? (
-                  <span className="desk-ctx-item">
-                    Jobs{' '}
+                  <span className="desk-ctx-cluster">
                     <strong className="mono">{deskContext.jobsWithOpen}</strong>
-                    <span className="desk-ctx-quiet">with open work</span>
-                  </span>
-                ) : null}
-                {typeof deskContext?.meetingsToday === 'number' &&
-                deskContext.meetingsToday > 0 ? (
-                  <span className="desk-ctx-item">
-                    Meetings{' '}
-                    <strong className="mono">{deskContext.meetingsToday}</strong>
+                    <span className="desk-ctx-quiet">
+                      {deskContext.jobsWithOpen === 1 ? 'job' : 'jobs'}
+                    </span>
                   </span>
                 ) : null}
                 {deskContext?.travelSummary ? (
-                  <span className="desk-ctx-item">{deskContext.travelSummary}</span>
+                  <span className="desk-ctx-cluster">{deskContext.travelSummary}</span>
                 ) : null}
-                {orderHint ? (
-                  <span className="desk-ctx-item desk-ctx-quiet">{orderHint}</span>
-                ) : deskContext?.sortModeLabel ? (
-                  <span className="desk-ctx-item desk-ctx-quiet">
-                    {deskContext.sortModeLabel}
-                  </span>
-                ) : null}
-              </>
+              </span>
             )}
           </div>
 
@@ -286,7 +281,6 @@ export function TodayHeader(props: {
                 + Dock it
               </button>
             ) : null}
-
             <button
               type="button"
               className={
@@ -302,18 +296,18 @@ export function TodayHeader(props: {
           </div>
         </div>
 
-        {/* Depth panel: structure & pressure only — does not repeat the chip */}
         {capacityOpen ? (
-          <div className="desk-today-depth">
+          <div className="desk-today-depth" aria-label="Day depth">
+            <p className="desk-depth-read">{dayRead}</p>
+
             {isWorkDay ? (
-              <div className="desk-today-depth-rail">
-                <div className="desk-today-depth-rail-head">
-                  <span>Workday shape</span>
-                  <span className="mono">
-                    {fmtClock(workStart)} → {fmtClock(workEnd)}
-                  </span>
+              <div className="desk-depth-day">
+                <div className="desk-depth-day-head">
+                  <span className="mono">{fmtClock(workStart)}</span>
+                  <span className="desk-depth-day-label">Now</span>
+                  <span className="mono">{fmtClock(workEnd)}</span>
                 </div>
-                <div className="desk-today-rail">
+                <div className="desk-today-rail desk-depth-rail-track">
                   <div
                     className="desk-today-rail-elapsed"
                     style={{ width: `${nowPercent * 100}%` }}
@@ -333,35 +327,194 @@ export function TodayHeader(props: {
                     style={{ left: `${nowPercent * 100}%` }}
                   />
                 </div>
-                <div className="desk-today-depth-rail-foot">
-                  <span>Now</span>
-                  <span className="mono">{fmtMins(minutesLeftToday)} until end</span>
-                  {overloaded ? (
-                    <span className="desk-today-rail-warning">
-                      Load extends past the day
-                    </span>
-                  ) : (
-                    <span className="mono">{fmtMins(remainingCapacity)} still unallocated</span>
-                  )}
+                <div className="desk-depth-day-foot">
+                  <span>
+                    <strong className="mono">{fmtMins(minutesLeftToday)}</strong>{' '}
+                    remaining on the clock
+                  </span>
+                  <span>
+                    <strong className="mono">{fmtMins(Math.max(usable, 0))}</strong>{' '}
+                    usable
+                  </span>
                 </div>
               </div>
             ) : (
-              <div className="desk-today-depth-off">
+              <p className="desk-depth-off">
                 Outside your normal working days
                 {remainingWorkMins > 0
                   ? ` · ${fmtMins(remainingWorkMins)} still on the plate`
                   : ''}
-              </div>
+              </p>
             )}
 
+            <div className="desk-depth-columns">
+              <section className="desk-depth-col">
+                <h3 className="desk-depth-col-title">Capacity</h3>
+                <ul className="desk-depth-facts">
+                  {planned > 0 ? (
+                    <li>
+                      <span>Planned work</span>
+                      <strong className="mono">{fmtMins(planned)}</strong>
+                    </li>
+                  ) : (
+                    <li>
+                      <span>Planned work</span>
+                      <strong>None timed</strong>
+                    </li>
+                  )}
+                  {fixed > 0 ? (
+                    <li>
+                      <span>Fixed time</span>
+                      <strong className="mono">{fmtMins(fixed)}</strong>
+                    </li>
+                  ) : null}
+                  {travel > 0 ? (
+                    <li>
+                      <span>Travel</span>
+                      <strong className="mono">~{fmtMins(travel)}</strong>
+                    </li>
+                  ) : null}
+                  <li>
+                    <span>Usable from here</span>
+                    <strong className="mono">{fmtMins(Math.max(usable, 0))}</strong>
+                  </li>
+                </ul>
+              </section>
+
+              <section className="desk-depth-col">
+                <h3 className="desk-depth-col-title">Reality</h3>
+                <ul className="desk-depth-facts">
+                  {overloaded ? (
+                    <li>
+                      <span>Fit</span>
+                      <strong className="desk-depth-warn">
+                        Over by {fmtMins(overBy)}
+                      </strong>
+                    </li>
+                  ) : remainingWorkMins > 0 ? (
+                    <li>
+                      <span>Fit</span>
+                      <strong>Work fits the remainder</strong>
+                    </li>
+                  ) : (
+                    <li>
+                      <span>Fit</span>
+                      <strong>Clear</strong>
+                    </li>
+                  )}
+                  {showRealityCheck && onRealityCheck ? (
+                    <li className="desk-depth-action-row">
+                      <button
+                        type="button"
+                        className="btn-text"
+                        onClick={onRealityCheck}
+                      >
+                        Reality check
+                      </button>
+                      {realityCheckMessage ? (
+                        <span className="desk-ctx-quiet">{realityCheckMessage}</span>
+                      ) : null}
+                    </li>
+                  ) : (
+                    <li>
+                      <span className="desk-ctx-quiet">
+                        Log finishes as you go — Dokkit learns from what actually happened.
+                      </span>
+                    </li>
+                  )}
+                </ul>
+              </section>
+
+              <section className="desk-depth-col">
+                <h3 className="desk-depth-col-title">Context</h3>
+                <ul className="desk-depth-facts">
+                  {deskContext?.nextCommitment ? (
+                    <li>
+                      <span>Next</span>
+                      <strong title={deskContext.nextCommitment.title}>
+                        {deskContext.nextCommitment.when}{' '}
+                        {deskContext.nextCommitment.title}
+                      </strong>
+                    </li>
+                  ) : commitments.length > 0 ? (
+                    <li>
+                      <span>Fixed items</span>
+                      <strong className="mono">{commitments.length}</strong>
+                    </li>
+                  ) : (
+                    <li>
+                      <span>Fixed items</span>
+                      <strong>None ahead</strong>
+                    </li>
+                  )}
+                  {typeof deskContext?.jobsWithOpen === 'number' &&
+                  deskContext.jobsWithOpen > 0 ? (
+                    <li>
+                      <span>Jobs with open work</span>
+                      <strong className="mono">{deskContext.jobsWithOpen}</strong>
+                    </li>
+                  ) : null}
+                  {geoAware ? (
+                    <li>
+                      <span>Travel</span>
+                      <strong>
+                        {recalculatingRoute
+                          ? 'Updating…'
+                          : travel > 0
+                            ? `~${fmtMins(travel)} estimated`
+                            : hasRoute
+                              ? 'Stops ordered'
+                              : 'No stops yet'}
+                      </strong>
+                      <span className="desk-depth-inline-actions">
+                        {hasRoute ? (
+                          <button
+                            type="button"
+                            className="desk-today-inline-action"
+                            onClick={onViewMap}
+                          >
+                            Map
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="desk-today-inline-action"
+                          onClick={onRecalcRoute}
+                          disabled={recalculatingRoute}
+                        >
+                          Refresh
+                        </button>
+                      </span>
+                      {routeError ? (
+                        <span className="desk-today-route-error">{routeError}</span>
+                      ) : null}
+                    </li>
+                  ) : null}
+                </ul>
+              </section>
+            </div>
+
+            {depth && depth.fitsNow.length > 0 ? (
+              <div className="desk-depth-fits">
+                <h3 className="desk-depth-col-title">What fits from here</h3>
+                <ol className="desk-depth-fits-list">
+                  {depth.fitsNow.map((title, i) => (
+                    <li key={`${i}-${title}`}>
+                      <span className="desk-depth-fits-step">
+                        {i === 0 ? 'Now' : i === 1 ? 'Then' : 'If time'}
+                      </span>
+                      <span className="desk-depth-fits-title">{title}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
+
             {commitments.length > 0 ? (
-              <div className="desk-today-depth-commitments">
-                <div className="desk-today-depth-section-label">
-                  Fixed time
-                  <span className="mono">{commitments.length}</span>
-                </div>
+              <div className="desk-depth-commitments">
+                <h3 className="desk-depth-col-title">Fixed time</h3>
                 <div className="desk-today-commitment-list">
-                  {commitments.map((c) => (
+                  {commitments.slice(0, 5).map((c) => (
                     <div key={c.id} className="desk-today-commitment-item">
                       <span className="desk-today-commitment-title">{c.title}</span>
                       <span className="desk-today-commitment-when mono">
@@ -370,59 +523,6 @@ export function TodayHeader(props: {
                     </div>
                   ))}
                 </div>
-              </div>
-            ) : null}
-
-            {geoAware ? (
-              <div className="desk-today-depth-travel">
-                <div className="desk-today-depth-section-label">Travel</div>
-                <div className="desk-today-depth-travel-body">
-                  {recalculatingRoute ? (
-                    <span>Updating drive time…</span>
-                  ) : hasRoute && routeDriveMins > 0 ? (
-                    <span>
-                      About {fmtMins(routeDriveMins)} driving
-                      {currentBaseLabel
-                        ? ` · from ${currentBaseLabel === 'work' ? 'office' : 'home'}`
-                        : ''}
-                    </span>
-                  ) : hasRoute ? (
-                    <span>Stops ordered by place</span>
-                  ) : (
-                    <span>Add places on tasks to include driving</span>
-                  )}
-                  <div className="desk-today-route-actions">
-                    {hasRoute ? (
-                      <button
-                        type="button"
-                        className="desk-today-inline-action"
-                        onClick={onViewMap}
-                      >
-                        Map
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="desk-today-inline-action"
-                      onClick={onRecalcRoute}
-                      disabled={recalculatingRoute}
-                    >
-                      Refresh
-                    </button>
-                  </div>
-                </div>
-                {routeError ? (
-                  <span className="desk-today-route-error">{routeError}</span>
-                ) : null}
-              </div>
-            ) : null}
-
-            {showRealityCheck && onRealityCheck ? (
-              <div className="desk-today-depth-reality">
-                <button type="button" className="btn-text" onClick={onRealityCheck}>
-                  Reality check
-                </button>
-                {realityCheckMessage ? <span>{realityCheckMessage}</span> : null}
               </div>
             ) : null}
           </div>
