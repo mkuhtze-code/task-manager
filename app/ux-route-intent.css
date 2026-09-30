@@ -1,0 +1,43 @@
+
+/* Explicit travel / route membership control */
+.task-route-intent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin: 4px 0 8px;
+  padding: 0 2px;
+}
+.task-route-intent-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+.task-route-intent-seg {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.task-route-intent-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--line, #e2e8f0);
+  background: var(--paper, #fff);
+  color: var(--ink-soft, #64748b);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.task-route-intent-btn.current {
+  border-color: var(--ink, #0f172a);
+  color: var(--ink, #0f172a);
+  background: var(--paper-raised, #f8fafc);
+}
+.task-route-intent-detail {
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
