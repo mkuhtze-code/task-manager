@@ -2313,21 +2313,24 @@ export function TodayPage() {
               <div className="empty-state-sub">
                 {todayEmptyCopy(userProfile).sub}
               </div>
-              <button
-                className="btn btn-steel"
-                onClick={() => setCaptureOpen(true)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              >
-                <PlusIcon size={16} /> Add a task
-              </button>
-              <button
-                type="button"
-                className="btn-text"
-                onClick={() => setRealityCheckOpen(true)}
-                style={{ marginLeft: 8 }}
-              >
-                Reality check
-              </button>
+              <div className="empty-state-actions">
+                <button
+                  type="button"
+                  className="btn btn-steel"
+                  onClick={() => setCaptureOpen(true)}
+                >
+                  <PlusIcon size={16} /> Add
+                </button>
+                {showRealityCheck ? (
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => setRealityCheckOpen(true)}
+                  >
+                    Reality check
+                  </button>
+                ) : null}
+              </div>
             </div>
           )
         )}
