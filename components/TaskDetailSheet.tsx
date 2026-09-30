@@ -206,7 +206,7 @@ export function TaskDetailSheet(props: {
     setLocalSubs(subs);
   }, [subs]);
 
-  function commit() {
+  function commit(visitOverride?: boolean | null) {
     const trimmed = text.trim();
 
     if (trimmed.length === 0) {
@@ -225,6 +225,9 @@ export function TaskDetailSheet(props: {
 
     setError('');
 
+    const visit =
+      visitOverride !== undefined ? visitOverride : requiresVisit;
+
     onSave(
       task.id,
       trimmed,
@@ -235,7 +238,7 @@ export function TaskDetailSheet(props: {
         : null,
       locationCoords?.lat ?? null,
       locationCoords?.lng ?? null,
-      requiresVisit
+      visit
     );
   }
 
@@ -1298,6 +1301,50 @@ export function TaskDetailSheet(props: {
                   )}
               </label>
 
+              <div className="desk-detail-field task-travel-pref">
+                <span className="desk-detail-label">
+                  Travel
+                </span>
+                <p className="desk-detail-muted" style={{ marginBottom: 8 }}>
+                  Route-aware only. Auto lets Dokkit decide.
+                </p>
+                <div className="task-travel-seg">
+                  <button
+                    type="button"
+                    className={requiresVisit === null ? 'task-travel-seg-btn is-on' : 'task-travel-seg-btn'}
+                    aria-pressed={requiresVisit === null}
+                    onClick={() => {
+                      setRequiresVisit(null);
+                      commit(null);
+                    }}
+                  >
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    className={requiresVisit === true ? 'task-travel-seg-btn is-on' : 'task-travel-seg-btn'}
+                    aria-pressed={requiresVisit === true}
+                    onClick={() => {
+                      setRequiresVisit(true);
+                      commit(true);
+                    }}
+                  >
+                    On route
+                  </button>
+                  <button
+                    type="button"
+                    className={requiresVisit === false ? 'task-travel-seg-btn is-on' : 'task-travel-seg-btn'}
+                    aria-pressed={requiresVisit === false}
+                    onClick={() => {
+                      setRequiresVisit(false);
+                      commit(false);
+                    }}
+                  >
+                    Not travel
+                  </button>
+                </div>
+              </div>
+
               <div className="desk-detail-field">
                 <span className="desk-detail-label">
                   Job
@@ -1498,19 +1545,43 @@ export function TaskDetailSheet(props: {
           }}
         />
 
-        <div className="task-route-intent-detail" role="group" aria-label="Travel for this task">
-          <span className="task-route-intent-label">Travel</span>
+        <div className="task-travel-pref" role="group" aria-label="Travel preference">
+          <span className="settings-label">Travel</span>
           <p className="settings-help" style={{ margin: '0 0 8px' }}>
-            When route-aware is on, choose whether this place needs a trip today.
+            Only used in route-aware mode. Auto lets Dokkit decide; you can override anytime.
           </p>
-          <div className="task-pill-seg">
-            <button type="button" className={requiresVisit == null ? 'task-pill task-pill-seg-btn current' : 'task-pill task-pill-seg-btn'} onClick={() => setRequiresVisit(null)}>
+          <div className="task-travel-seg">
+            <button
+              type="button"
+              className={requiresVisit === null ? 'task-travel-seg-btn is-on' : 'task-travel-seg-btn'}
+              aria-pressed={requiresVisit === null}
+              onClick={() => {
+                setRequiresVisit(null);
+                commit(null);
+              }}
+            >
               Auto
             </button>
-            <button type="button" className={requiresVisit === true ? 'task-pill task-pill-seg-btn current' : 'task-pill task-pill-seg-btn'} onClick={() => setRequiresVisit(true)}>
+            <button
+              type="button"
+              className={requiresVisit === true ? 'task-travel-seg-btn is-on' : 'task-travel-seg-btn'}
+              aria-pressed={requiresVisit === true}
+              onClick={() => {
+                setRequiresVisit(true);
+                commit(true);
+              }}
+            >
               On route
             </button>
-            <button type="button" className={requiresVisit === false ? 'task-pill task-pill-seg-btn current' : 'task-pill task-pill-seg-btn'} onClick={() => setRequiresVisit(false)}>
+            <button
+              type="button"
+              className={requiresVisit === false ? 'task-travel-seg-btn is-on' : 'task-travel-seg-btn'}
+              aria-pressed={requiresVisit === false}
+              onClick={() => {
+                setRequiresVisit(false);
+                commit(false);
+              }}
+            >
               Not travel
             </button>
           </div>
