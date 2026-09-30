@@ -135,24 +135,24 @@ export function surfaceEmptyPurpose(key: Exclude<SurfaceKey, 'today'>): {
 }
 
 /**
- * List order framing — plain language, cold-start honest.
- * Never invent certainty.
+ * List order framing — plain language, evidence-mature.
+ * Never invent certainty. Stronger evidence → shorter, calmer line.
  */
 export function dayOrderHint(opts: {
   sortMode: string;
+  /** Clean completions / measured samples for this person. */
   personalEvidenceCount?: number | null;
 }): string | null {
   const n = opts.personalEvidenceCount ?? 0;
-  const cold = n < 5;
   if (opts.sortMode === 'capacity_first') {
-    return cold
-      ? 'Order improves as you work'
-      : 'Likely to fit, first';
+    if (n < 3) return 'Order improves as you work';
+    if (n < 15) return 'Ordered by what tends to fit';
+    return 'Likely to fit, first';
   }
   if (opts.sortMode === 'geo_aware') {
-    return cold
-      ? 'Travel-aware · still learning durations'
-      : 'Travel-aware order';
+    if (n < 3) return 'Travel-aware · still learning';
+    if (n < 15) return 'Travel-aware order';
+    return 'Route and fit';
   }
   return null;
 }
