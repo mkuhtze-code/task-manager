@@ -1498,19 +1498,19 @@ export function TaskDetailSheet(props: {
           }}
         />
 
-        <div className="task-route-intent task-route-intent-detail" role="group" aria-label="Travel for this task">
+        <div className="task-route-intent-detail" role="group" aria-label="Travel for this task">
           <span className="task-route-intent-label">Travel</span>
-          <p className="settings-help" style={{ margin: '0 0 6px' }}>
+          <p className="settings-help" style={{ margin: '0 0 8px' }}>
             When route-aware is on, choose whether this place needs a trip today.
           </p>
-          <div className="task-route-intent-seg">
-            <button type="button" className={requiresVisit == null ? 'task-route-intent-btn current' : 'task-route-intent-btn'} onClick={() => { setRequiresVisit(null); }}>
+          <div className="task-pill-seg">
+            <button type="button" className={requiresVisit == null ? 'task-pill task-pill-seg-btn current' : 'task-pill task-pill-seg-btn'} onClick={() => setRequiresVisit(null)}>
               Auto
             </button>
-            <button type="button" className={requiresVisit === true ? 'task-route-intent-btn current' : 'task-route-intent-btn'} onClick={() => { setRequiresVisit(true); }}>
+            <button type="button" className={requiresVisit === true ? 'task-pill task-pill-seg-btn current' : 'task-pill task-pill-seg-btn'} onClick={() => setRequiresVisit(true)}>
               On route
             </button>
-            <button type="button" className={requiresVisit === false ? 'task-route-intent-btn current' : 'task-route-intent-btn'} onClick={() => { setRequiresVisit(false); }}>
+            <button type="button" className={requiresVisit === false ? 'task-pill task-pill-seg-btn current' : 'task-pill task-pill-seg-btn'} onClick={() => setRequiresVisit(false)}>
               Not travel
             </button>
           </div>
