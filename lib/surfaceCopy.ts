@@ -1,6 +1,5 @@
 /**
- * Quiet first-session / empty-state copy from onboarding profile.
- * Not marketing — just less generic language.
+ * Quiet surface language — profile-aware, never marketing.
  */
 
 import type { UserProfile } from '@/lib/userProfile';
@@ -13,31 +12,31 @@ export function todayEmptyCopy(profile: UserProfile): {
 } {
   if (profile.role === 'student') {
     return {
-      title: 'Nothing on the plate.',
-      sub: 'Add study or admin when it lands. Capacity will keep it honest.',
+      title: 'Clear day.',
+      sub: 'Add study or admin when it shows up.',
     };
   }
   if (profile.role === 'personal') {
     return {
-      title: 'Nothing waiting.',
-      sub: 'Capture when something needs remembering. No need to fill the day.',
+      title: 'Clear day.',
+      sub: 'Capture only what needs remembering.',
     };
   }
   if (profile.travelEmphasis) {
     return {
-      title: 'Nothing waiting.',
-      sub: 'Add work as it comes up. Locations and travel will count when you set them.',
+      title: 'Clear day.',
+      sub: 'Add work as it lands. Places count when you set them.',
     };
   }
   if (profile.jobsEmphasis === 'heavy' || profile.jobsEmphasis === 'medium') {
     return {
-      title: 'Nothing waiting.',
-      sub: 'Capture a task or open a job. What fits today stays clear.',
+      title: 'Clear day.',
+      sub: 'Capture a task, or open a job when a project needs a home.',
     };
   }
   return {
-    title: 'Nothing waiting.',
-    sub: "Capture when something lands. You're good to go.",
+    title: 'Clear day.',
+    sub: 'Add what needs doing when it lands.',
   };
 }
 
@@ -47,23 +46,22 @@ export function jobsEmptyCopy(profile: UserProfile): {
 } {
   if (profile.jobsEmphasis === 'off') {
     return {
-      title: 'Jobs are optional.',
-      sub: 'You can keep everything on Today. Open a job only if a project needs a home.',
+      title: 'Jobs stay optional.',
+      sub: 'Keep everything on Today if that is simpler.',
     };
   }
   if (profile.jobsEmphasis === 'heavy') {
     return {
       title: 'No jobs yet.',
-      sub: 'Sites and projects live here. Tasks still show on Today when they are due.',
+      sub: 'Projects live here. Due work still appears on Today.',
     };
   }
   return {
     title: 'No jobs yet.',
-    sub: 'Group related work when it helps — not required.',
+    sub: 'Group related work only when it helps.',
   };
 }
 
-/** Order nav surfaces so emphasized products sit earlier (still all available). */
 export function orderedNavSurfaces(profile: UserProfile): SurfaceKey[] {
   const base: SurfaceKey[] = ['today', 'jobs', 'travel', 'meetings'];
   const weight: Record<SurfaceKey, number> = {
@@ -83,45 +81,36 @@ export function orderedNavSurfaces(profile: UserProfile): SurfaceKey[] {
 }
 
 export function firstSessionLine(profile: UserProfile): string | null {
-  // UX-2: always give a calm first-session cue when profile is known
-  if (profile.role === 'professional' && profile.travelEmphasis) {
-    return 'Add what needs doing — locations and capacity matter more on field-style days.';
-  }
-  if (profile.role === 'professional' && profile.jobsEmphasis === 'heavy') {
-    return 'Add a task for today. Jobs can wait until a project needs a home.';
-  }
-  if (profile.role === 'student') {
-    return 'Add what is on your plate — lists first, light structure.';
+  if (profile.role === 'trades' || profile.workType === 'trades_field') {
+    return 'Add the next job or stop. Lists first; structure only if you need it.';
   }
   if (profile.role === 'personal') {
-    return 'Add anything you need to remember. One calm place is enough.';
+    return 'Add anything you need to remember. One place is enough.';
   }
   if (profile.meetingsEmphasis) {
-    return 'Add work for the gaps around meetings — they already count against the day.';
+    return 'Add work for the gaps around meetings — they already count.';
   }
   if (profile.role === 'knowledge_worker') {
-    return 'Add what should fit today. Dokkit learns from what you finish and carry.';
+    return 'Add what should fit today. Dokkit learns from finish and carry.';
   }
-  return 'Add what needs doing. Reality Check later is how Dokkit learns — no extra homework.';
+  return 'Add what needs doing. Ordinary use is enough — no setup homework.';
 }
 
-/** One-line purpose for nav menu / empty states — why this surface exists. */
 export function surfacePurpose(key: SurfaceKey): string {
   switch (key) {
     case 'today':
       return 'What can fit today';
     case 'jobs':
-      return 'Work that spans days, in one place';
+      return 'Work that spans days';
     case 'meetings':
-      return 'Capture the moment; structure it later';
+      return 'Capture the moment';
     case 'travel':
-      return 'Trips that reshape what fits';
+      return 'Trips that reshape the day';
     default:
       return '';
   }
 }
 
-/** Short empty-state purpose (Pro surfaces, when list is empty). */
 export function surfaceEmptyPurpose(key: Exclude<SurfaceKey, 'today'>): {
   title: string;
   sub: string;
@@ -130,43 +119,40 @@ export function surfaceEmptyPurpose(key: Exclude<SurfaceKey, 'today'>): {
     case 'jobs':
       return {
         title: 'No jobs yet.',
-        sub: 'A job is a home for work that spans days — tasks, places, and evidence stay together. Optional until a project needs one.',
+        sub: 'A home for work that spans days — optional until a project needs one.',
       };
     case 'meetings':
       return {
         title: 'No meetings recorded.',
-        sub: 'Capture who met, when, and around which job — while it is still fresh. Structure can wait.',
+        sub: 'Capture who, when, and which job — while it is still fresh.',
       };
     case 'travel':
       return {
-        title: 'Where to next?',
-        sub: 'Block the days you are away. Dokkit uses the trip so Today reflects what can still fit.',
+        title: 'No trips yet.',
+        sub: 'Block the days you are away so Today stays honest.',
       };
   }
 }
 
 /**
- * UX-4 — list order framing.
- * Prefer cold-start honesty until personal evidence exists.
+ * List order framing — plain language, cold-start honest.
+ * Never invent certainty.
  */
 export function dayOrderHint(opts: {
   sortMode: string;
-  /** Clean completions or measured samples available for this user. */
   personalEvidenceCount?: number | null;
 }): string | null {
   const n = opts.personalEvidenceCount ?? 0;
   const cold = n < 5;
   if (opts.sortMode === 'capacity_first') {
-    if (cold) {
-      return 'Using what we know so far — order improves as you work';
-    }
-    return 'Ordered by what is likely to fit today';
+    return cold
+      ? 'Order improves as you work'
+      : 'Likely to fit, first';
   }
   if (opts.sortMode === 'geo_aware') {
-    if (cold) {
-      return 'Travel-aware order · still learning how long things take';
-    }
-    return 'Ordered with travel in mind';
+    return cold
+      ? 'Travel-aware · still learning durations'
+      : 'Travel-aware order';
   }
   return null;
 }
