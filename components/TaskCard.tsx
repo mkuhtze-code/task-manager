@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * Task row on Today — collapsed instrument line, expand for secondary truth.
+ * Complete / start / details only; route preference lives in Details.
+ */
+
 import { useEffect, useState } from 'react';
 import type { Subtask, Task } from '@/lib/taskTypes';
 import { fmtMins } from '@/lib/timeFormat';
@@ -39,6 +44,7 @@ export function TaskCard(props: {
     onPointerMove: (e: React.PointerEvent) => void;
     onPointerUp: (e: React.PointerEvent) => void;
   };
+  /** Kept for call-site compatibility; route intent is edited in Details only. */
   geoAware?: boolean;
   onRoute?: boolean;
   onSetRouteIntent?: (id: string, requiresVisit: boolean | null) => void;
@@ -61,7 +67,6 @@ export function TaskCard(props: {
     onSaveInfo,
     dragHandleProps,
     jobLabel,
-    // Route preference lives in the Details sheet only (geoAware / onSetRouteIntent unused here).
   } = props;
 
   const timed = t.estimate_mins > 0;
@@ -70,13 +75,11 @@ export function TaskCard(props: {
   const running = timed && active;
   const startDisabled = anyActive && t.status !== 'active';
 
-  let taskColorClass = '';
-
-  if (overCap) {
-    taskColorClass = 'task-overtime';
-  } else if (t.due_today) {
-    taskColorClass = 'task-due-today';
-  }
+  const taskColorClass = overCap
+    ? 'task-overtime'
+    : t.due_today
+      ? 'task-due-today'
+      : '';
 
   const rowClass = [
     'task-card',
@@ -85,12 +88,12 @@ export function TaskCard(props: {
     isListItem ? 'task-list-item' : '',
     expanded ? 'expanded' : '',
   ]
-    .join(' ')
-    .trim();
+    .filter(Boolean)
+    .join(' ');
 
   const doneSubs = subs.filter((s) => s.done).length;
-
   const [subsOpen, setSubsOpen] = useState(false);
+
   useEffect(() => {
     if (!expanded) setSubsOpen(false);
   }, [expanded]);
@@ -125,18 +128,23 @@ export function TaskCard(props: {
     };
   }
 
-  const stopPointer = (e: React.PointerEvent) =>
+  function stopPointer(e: React.PointerEvent) {
     e.stopPropagation();
+  }
+
+  const hasMeta = !!(t.due_today || t.location_text || learnedHint);
 
   return (
     <div className={rowClass}>
+      {/* ── Collapsed instrument line ─────────────────────────── */}
       <div className="task-main">
         <button
+          type="button"
           className="check-btn"
           onPointerDown={stopPointer}
           onPointerUp={stopPointer}
           onClick={isolate(() => onComplete(t.id))}
-          aria-label="Complete task"
+          aria-label={`Complete ${t.text}`}
         >
           <CheckIcon done={false} />
         </button>
@@ -145,62 +153,59 @@ export function TaskCard(props: {
           className="task-body"
           onClick={onToggleExpand}
           role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onToggleExpand();
+            }
+          }}
           aria-expanded={expanded}
-          aria-label={`${t.text} — ${
-            expanded ? 'collapse' : 'expand'
-          }`}
+          aria-label={`${t.text} — ${expanded ? 'collapse' : 'expand'}`}
         >
-          <div className="task-text">
-            {t.text}
-          </div>
-
-          {jobLabel && (
-            <div className="task-card-job">
-              <span className="task-card-job-kicker">
-                Job
-              </span>
-
-              <span className="task-card-job-name">
-                {jobLabel}
-              </span>
+          <div className="task-text">{t.text}</div>
+          {jobLabel ? (
+            <div className="task-card-job" title={jobLabel}>
+              {jobLabel}
             </div>
-          )}
+          ) : null}
         </div>
 
         <div
           className="task-card-glance"
           onClick={onToggleExpand}
+          role="presentation"
         >
-          {running && (
-            <span className="task-card-active-dot" />
-          )}
-
-          {glanceRight && (
+          {running ? <span className="task-card-active-dot" aria-hidden /> : null}
+          {glanceRight ? (
             <span
               className={
                 glanceKind === 'elapsed'
                   ? 'task-card-elapsed mono'
                   : 'task-card-time mono'
               }
+              title={
+                glanceKind === 'elapsed'
+                  ? 'Elapsed'
+                  : glanceKind === 'time'
+                    ? 'Remaining'
+                    : 'Sub-tasks'
+              }
             >
               {glanceRight}
             </span>
-          )}
-
+          ) : null}
           <span
-            className={
-              expanded
-                ? 'task-card-chevron open'
-                : 'task-card-chevron'
-            }
-            aria-hidden="true"
+            className={expanded ? 'task-card-chevron open' : 'task-card-chevron'}
+            aria-hidden
           >
             <ChevronIcon size={14} />
           </span>
         </div>
 
-        {dragHandleProps && (
+        {dragHandleProps ? (
           <button
+            type="button"
             className="drag-handle-btn"
             onPointerDown={(e) => {
               e.stopPropagation();
@@ -222,191 +227,113 @@ export function TaskCard(props: {
           >
             <DragHandleIcon />
           </button>
-        )}
+        ) : null}
       </div>
 
-      {expanded && (
+      {/* ── Expand: secondary truth only ───────────────────────── */}
+      {expanded ? (
         <div className="task-reveal">
-          {jobLabel && (
-            <div className="task-reveal-job">
-              <div className="task-reveal-job-copy">
-                <span className="task-reveal-job-kicker">
-                  Job
-                </span>
-
-                <span className="task-reveal-job-name">
-                  {jobLabel}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                className="task-reveal-job-action"
-                onClick={isolate(onOpenDetails)}
-              >
-                Open
-              </button>
-            </div>
-          )}
-
-          {showProgress && (
-            <div className="task-progress-row">
+          {showProgress ? (
+            <div className="task-progress-row" aria-hidden>
               <div className="task-progress-track">
                 <div
                   className="task-progress-fill"
-                  style={{
-                    width: `${Math.max(
-                      progressPct,
-                      0
-                    )}%`,
-                  }}
+                  style={{ width: `${Math.max(progressPct, 0)}%` }}
                 />
               </div>
             </div>
-          )}
+          ) : null}
 
-          {(t.due_today ||
-            t.location_text ||
-            learnedHint) && (
+          {hasMeta ? (
             <div className="task-reveal-meta">
-              {t.due_today && (
-                <span className="task-reveal-line due">
-                  Due today
-                </span>
-              )}
-
-              {learnedHint && (
-                <span className="task-reveal-line">
-                  usually ~{learnedHint}
-                </span>
-              )}
-
-              {t.location_text && (
-                <span
-                  className="task-reveal-line location"
-                  title={t.location_text}
-                >
+              {t.due_today ? (
+                <span className="task-reveal-line due">Due today</span>
+              ) : null}
+              {learnedHint ? (
+                <span className="task-reveal-line">Usually ~{learnedHint}</span>
+              ) : null}
+              {t.location_text ? (
+                <span className="task-reveal-line location" title={t.location_text}>
                   <MapPinIcon size={13} />
-
-                  <span className="task-reveal-location-text">
-                    {t.location_text}
-                  </span>
+                  <span className="task-reveal-location-text">{t.location_text}</span>
                 </span>
-              )}
+              ) : null}
             </div>
-          )}
+          ) : null}
 
           <TaskInfo
             value={t.info || ''}
-            onSave={(info) =>
-              onSaveInfo(t.id, info)
-            }
+            onSave={(info) => onSaveInfo(t.id, info)}
             surface="paper"
           />
 
-          {subs.length > 0 && (
+          {subs.length > 0 ? (
             <div className="task-reveal-subtasks">
               <button
+                type="button"
                 className={
                   subsOpen
                     ? 'task-reveal-subtasks-head open'
                     : 'task-reveal-subtasks-head'
                 }
-                onClick={() =>
-                  setSubsOpen((o) => !o)
-                }
+                onClick={() => setSubsOpen((o) => !o)}
                 aria-expanded={subsOpen}
                 aria-label="Toggle sub-tasks"
               >
-                Subtasks{' '}
-                <span className="mono">
-                  {doneSubs}/{subs.length}
+                <span>
+                  {doneSubs}/{subs.length} steps
                 </span>
-
-                <span
-                  className="subs-head-chev"
-                  aria-hidden="true"
-                >
-                  <ChevronIcon size={12} />
+                <span className="subs-head-chev mono" aria-hidden>
+                  {subsOpen ? '−' : '+'}
                 </span>
               </button>
 
-              {subsOpen &&
-                subs.map((s) => (
-                  <div
-                    key={s.id}
-                    className="task-reveal-subtask"
-                  >
-                    <button
-                      className={
-                        s.done
-                          ? 'subtask-check done'
-                          : 'subtask-check'
-                      }
-                      onPointerDown={stopPointer}
-                      onPointerUp={stopPointer}
-                      onClick={isolate(() =>
-                        onToggleSubtaskDone(
-                          s.id,
-                          t.id,
-                          s.done
-                        )
-                      )}
-                      aria-label="Toggle sub-task"
-                    />
-
-                    <span
-                      className={
-                        s.done
-                          ? 'subtask-text done'
-                          : 'subtask-text'
-                      }
-                    >
-                      {s.text}
-                    </span>
-                  </div>
-                ))}
+              {subsOpen
+                ? subs.map((s) => (
+                    <div key={s.id} className="task-reveal-subtask">
+                      <button
+                        type="button"
+                        className={s.done ? 'subtask-check done' : 'subtask-check'}
+                        onPointerDown={stopPointer}
+                        onPointerUp={stopPointer}
+                        onClick={isolate(() =>
+                          onToggleSubtaskDone(s.id, t.id, s.done)
+                        )}
+                        aria-label={
+                          s.done ? `Undo ${s.text}` : `Complete ${s.text}`
+                        }
+                      />
+                      <span className={s.done ? 'subtask-text done' : 'subtask-text'}>
+                        {s.text}
+                      </span>
+                    </div>
+                  ))
+                : null}
             </div>
-          )}
+          ) : null}
 
           <div className="task-actions">
-            {timed && (
+            {timed ? (
               <button
+                type="button"
                 className="task-action-link"
-                disabled={
-                  !active && startDisabled
-                }
+                disabled={!active && startDisabled}
                 onPointerDown={stopPointer}
                 onPointerUp={stopPointer}
                 onClick={isolate(() => {
-                  if (active) {
-                    onStop(t.id);
-                  } else if (!startDisabled) {
-                    onStart(t.id);
-                  }
+                  if (active) onStop(t.id);
+                  else if (!startDisabled) onStart(t.id);
                 })}
-                aria-label={
-                  active
-                    ? 'Stop timer'
-                    : 'Start timer'
-                }
+                aria-label={active ? 'Stop timer' : 'Start timer'}
               >
-                {active ? (
-                  <StopIcon />
-                ) : (
-                  <PlayIcon />
-                )}
-
-                <span>
-                  {active ? 'Stop' : 'Start'}
-                </span>
+                {active ? <StopIcon /> : <PlayIcon />}
+                <span>{active ? 'Stop' : 'Start'}</span>
               </button>
-            )}
-
+            ) : null}
 
             <button
               type="button"
-              className="task-action-link"
+              className="task-action-link task-action-details"
               onPointerDown={stopPointer}
               onPointerUp={stopPointer}
               onClick={isolate(onOpenDetails)}
@@ -415,7 +342,7 @@ export function TaskCard(props: {
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
