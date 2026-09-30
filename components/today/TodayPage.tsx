@@ -2377,6 +2377,27 @@ export function TodayPage() {
             : remainingWorkMins > usableMins
               ? 'Your afternoon is getting tighter.'
               : 'Your day is on track.';
+  const workSpan = Math.max(workEndMinutes - workStartMinutes, 1);
+  const commitmentMarkers = activeCommitments
+    .filter((c) => !c.all_day)
+    .map((c) => {
+      const start = new Date(c.start_at);
+      const end = new Date(c.end_at);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+      const sMins = start.getHours() * 60 + start.getMinutes();
+      const eMins = end.getHours() * 60 + end.getMinutes();
+      const clampedStart = Math.max(sMins, workStartMinutes);
+      const clampedEnd = Math.min(eMins, workEndMinutes);
+      if (clampedEnd <= clampedStart) return null;
+      return {
+        startPct: (clampedStart - workStartMinutes) / workSpan,
+        endPct: (clampedEnd - workStartMinutes) / workSpan,
+        label: c.title || 'Fixed',
+      };
+    })
+    .filter((x): x is { startPct: number; endPct: number; label: string } => x != null)
+    .slice(0, 8);
+
   const dayDepth = isDesktop
     ? {
         clockRemainingMins: minutesLeftToday,
@@ -2386,6 +2407,7 @@ export function TodayPage() {
         travelMins: routeDriveMins,
         fitsNow,
         dayRead,
+        commitmentMarkers,
       }
     : null;
 
