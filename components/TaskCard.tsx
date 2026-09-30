@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Subtask, Task } from '@/lib/taskTypes';
 import { fmtMins } from '@/lib/timeFormat';
 import {
@@ -61,9 +61,7 @@ export function TaskCard(props: {
     onSaveInfo,
     dragHandleProps,
     jobLabel,
-    geoAware = false,
-    onRoute = false,
-    onSetRouteIntent,
+    // Route preference lives in the Details sheet only (geoAware / onSetRouteIntent unused here).
   } = props;
 
   const timed = t.estimate_mins > 0;
@@ -93,36 +91,9 @@ export function TaskCard(props: {
   const doneSubs = subs.filter((s) => s.done).length;
 
   const [subsOpen, setSubsOpen] = useState(false);
-  const [travelOpen, setTravelOpen] = useState(false);
-  const travelWrapRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    if (!expanded) {
-      setSubsOpen(false);
-      setTravelOpen(false);
-    }
+    if (!expanded) setSubsOpen(false);
   }, [expanded]);
-
-  useEffect(() => {
-    if (!travelOpen) return;
-    function onDoc(e: MouseEvent) {
-      const el = travelWrapRef.current;
-      if (el && !el.contains(e.target as Node)) {
-        setTravelOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [travelOpen]);
-
-  const travelLabel =
-    t.requires_visit === true
-      ? 'On route'
-      : t.requires_visit === false
-        ? 'Not travel'
-        : onRoute
-          ? 'On route'
-          : 'Auto';
 
   const progressPct = timed
     ? Math.min(
@@ -432,101 +403,16 @@ export function TaskCard(props: {
               </button>
             )}
 
-            <div className="task-actions-pills">
-            {geoAware && onSetRouteIntent ? (
-              <div className="task-travel-dd" ref={travelWrapRef}>
-                <button
-                  type="button"
-                  className={
-                    travelOpen
-                      ? 'task-travel-trigger open'
-                      : 'task-travel-trigger'
-                  }
-                  aria-expanded={travelOpen}
-                  aria-haspopup="listbox"
-                  onPointerDown={stopPointer}
-                  onClick={isolate(() => setTravelOpen((v) => !v))}
-                >
-                  <span className="task-travel-trigger-label">
-                    Travel
-                  </span>
-                  <span className="task-travel-trigger-value">
-                    {travelLabel}
-                  </span>
-                  <span className="task-travel-trigger-chevron" aria-hidden="true">
-                    <ChevronIcon size={14} />
-                  </span>
-                </button>
-                {travelOpen ? (
-                  <div
-                    className="task-travel-menu"
-                    role="listbox"
-                    aria-label="Travel preference"
-                    onPointerDown={stopPointer}
-                  >
-                    {(
-                      [
-                        {
-                          value: null as boolean | null,
-                          label: 'Auto',
-                          hint: 'Dokkit decides from place and pattern',
-                        },
-                        {
-                          value: true,
-                          label: 'On route',
-                          hint: 'Count drive time for this task',
-                        },
-                        {
-                          value: false,
-                          label: 'Not travel',
-                          hint: 'Place is context only',
-                        },
-                      ] as const
-                    ).map((opt) => {
-                      const selected =
-                        opt.value === null
-                          ? t.requires_visit == null
-                          : t.requires_visit === opt.value;
-                      return (
-                        <button
-                          key={String(opt.value)}
-                          type="button"
-                          role="option"
-                          aria-selected={selected}
-                          className={
-                            selected
-                              ? 'task-travel-option selected'
-                              : 'task-travel-option'
-                          }
-                          onPointerDown={stopPointer}
-                          onClick={isolate(() => {
-                            onSetRouteIntent(t.id, opt.value);
-                            setTravelOpen(false);
-                          })}
-                        >
-                          <span className="task-travel-option-label">
-                            {opt.label}
-                          </span>
-                          <span className="task-travel-option-hint">
-                            {opt.hint}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
 
             <button
               type="button"
-              className="task-details-pill"
+              className="task-action-link task-action-details"
               onPointerDown={stopPointer}
+              onPointerUp={stopPointer}
               onClick={isolate(onOpenDetails)}
             >
               Details
             </button>
-            </div>
           </div>
         </div>
       )}
