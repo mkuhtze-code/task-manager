@@ -229,7 +229,7 @@ export function CaptureSheet(props: {
             aria-describedby={error ? 'capture-error' : undefined}
           />
           <MicButton
-            onTranscript={(t) =>
+            onResult={(t) =>
               setTaskText((prev) => (prev ? `${prev.trim()} ${t}` : t))
             }
           />
