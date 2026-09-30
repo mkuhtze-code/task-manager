@@ -84,10 +84,10 @@ export function CaptureSheet(props: {
   const [showJobField, setShowJobField] = useState(false);
   const chosenJob = jobs.find((j) => j.id === captureJobId);
 
+  // `known` is silent — parent attaches job/place; no chip in the sheet.
   const resolutionFocused = !!locationResolution &&
     (locationResolution.state === 'proposed' ||
-      locationResolution.state === 'choose' ||
-      locationResolution.state === 'known');
+      locationResolution.state === 'choose');
 
   useEffect(() => {
     if (captureJobId) return;
@@ -161,7 +161,6 @@ export function CaptureSheet(props: {
             {!declinedResolution && locationResolution && locationResolution.state === 'proposed' && (
               <div className="capture-entity-chip capture-entity-chip-ask" role="group" aria-label="Possible job match">
                 <span className="capture-entity-chip-text">
-                  Link to{' '}
                   <strong>
                     {locationResolution.candidate.matchedField === 'location' &&
                     locationResolution.candidate.locationText
@@ -169,9 +168,8 @@ export function CaptureSheet(props: {
                       : locationResolution.candidate.jobName}
                   </strong>
                   {locationResolution.candidate.matchedField === 'location'
-                    ? ` (${locationResolution.candidate.jobName})`
+                    ? ` · ${locationResolution.candidate.jobName}`
                     : ''}
-                  ?
                 </span>
                 <span className="capture-entity-chip-actions">
                   <button
@@ -179,10 +177,10 @@ export function CaptureSheet(props: {
                     className="btn-text capture-entity-chip-yes"
                     onClick={() => onConfirmResolution(locationResolution.candidate)}
                   >
-                    Link
+                    Yes
                   </button>
                   <button type="button" className="btn-text" onClick={onDeclineResolution}>
-                    No
+                    Skip
                   </button>
                 </span>
               </div>
@@ -190,7 +188,7 @@ export function CaptureSheet(props: {
 
             {!declinedResolution && locationResolution && locationResolution.state === 'choose' && (
               <div className="unified-thought-choose">
-                <span className="unified-thought-prompt">Which one?</span>
+                <span className="unified-thought-prompt">Job</span>
                 <div className="sheet-inline-options">
                   {locationResolution.candidates.map((c) => (
                     <button type="button" key={c.jobId} className="move-day-option" onClick={() => onConfirmResolution(c)}>
@@ -202,24 +200,7 @@ export function CaptureSheet(props: {
               </div>
             )}
 
-            {!declinedResolution && locationResolution && locationResolution.state === 'known' && (
-              <div className="capture-entity-chip capture-entity-chip-known" role="status">
-                <span className="capture-entity-chip-text">
-                  <strong>
-                    {locationResolution.candidate.matchedField === 'location' &&
-                    locationResolution.candidate.locationText
-                      ? locationResolution.candidate.locationText
-                      : locationResolution.candidate.jobName}
-                  </strong>
-                  {locationResolution.candidate.matchedField === 'location'
-                    ? ` · ${locationResolution.candidate.jobName}`
-                    : ''}
-                </span>
-                <button type="button" className="btn-text" onClick={onDeclineResolution}>
-                  Clear
-                </button>
-              </div>
-            )}
+            {/* known = silent attach in parent; no chip */}
           </div>
         )}
 
