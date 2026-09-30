@@ -17,6 +17,7 @@ import './ux-nav.css';
 import './ux-surface-tabs.css';
 import './ux-task-card.css';
 import './ux-task-detail.css';
+import './ux-desk-today.css';
 import './pill-reveal.css';
 import './travel-aware.css';
 import './ux-world-class-instrument.css';
