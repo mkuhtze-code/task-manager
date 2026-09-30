@@ -143,7 +143,7 @@ export function CaptureSheet(props: {
   const dialogRef = useDialogA11y(onClose);
 
   const gate = oneShotGate({
-    text: taskText,
+    rawText: taskText,
     thought,
     locationResolution,
     declinedResolution,
