@@ -1,125 +1,166 @@
-
-/* Task action pills — Details + Travel dropdown */
+/* Travel preference + Details pills (Today expanded task) */
 
 .task-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
 }
 
-.task-pill {
+.task-actions-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.task-details-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  height: 32px;
-  padding: 0 14px;
+  height: 34px;
+  padding: 0 16px;
   border-radius: 999px;
-  border: 1px solid var(--line, #e2e8f0);
+  border: 1px solid var(--line-strong, var(--line, #cbd5e1));
   background: var(--paper, #fff);
-  color: var(--ink-soft, #475569);
+  color: var(--ink, #0f172a);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.01em;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
-}
-
-.task-pill:hover {
-  border-color: var(--line-strong, #cbd5e1);
-  color: var(--ink, #0f172a);
-}
-
-.task-pill-details {
   flex-shrink: 0;
 }
 
-.task-pill-wrap {
-  position: relative;
-  flex: 0 1 auto;
-  max-width: 100%;
-}
-
-.task-pill-travel {
-  max-width: 100%;
-}
-
-.task-pill-travel.open {
-  border-color: var(--ink, #0f172a);
-  color: var(--ink, #0f172a);
+.task-details-pill:hover {
   background: var(--paper-raised, #f8fafc);
 }
 
-.task-pill-text {
+.task-details-pill:active {
+  transform: scale(0.98);
+}
+
+.task-travel-dd {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 220px;
+}
+
+.task-travel-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong, var(--line, #cbd5e1));
+  background: var(--paper, #fff);
+  color: var(--ink, #0f172a);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+}
+
+.task-travel-trigger:hover {
+  background: var(--paper-raised, #f8fafc);
+}
+
+.task-travel-trigger.open {
+  border-color: var(--ink, #0f172a);
+  background: var(--paper-raised, #f8fafc);
+}
+
+.task-travel-trigger-label {
+  color: var(--ink-faint, #94a3b8);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.task-travel-trigger-value {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--ink, #0f172a);
 }
 
-.task-pill-chevron {
+.task-travel-trigger-chevron {
   display: inline-flex;
   align-items: center;
   color: var(--ink-faint, #94a3b8);
-  margin-right: -2px;
+  flex-shrink: 0;
   transition: transform 0.15s ease;
 }
 
-.task-pill-travel.open .task-pill-chevron {
+.task-travel-trigger.open .task-travel-trigger-chevron {
   transform: rotate(180deg);
-  color: var(--ink-soft, #64748b);
 }
 
-.task-pill-menu {
+.task-travel-menu {
   position: absolute;
   left: 0;
-  bottom: calc(100% + 6px);
-  min-width: 180px;
-  max-width: min(260px, 80vw);
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 80;
   padding: 4px;
-  border-radius: 12px;
-  border: 1px solid var(--line, #e2e8f0);
-  background: var(--paper-raised, #fff);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
-  z-index: 30;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong, var(--line, #cbd5e1));
+  background: var(--paper, #fff);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.task-pill-option {
+.task-travel-option {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 1px;
   width: 100%;
-  text-align: left;
   border: none;
   background: transparent;
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink, #0f172a);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
   cursor: pointer;
+  color: var(--ink, #0f172a);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.task-pill-option:hover {
-  background: var(--paper, #f1f5f9);
+.task-travel-option:hover,
+.task-travel-option:focus-visible {
+  background: var(--paper-raised, #f1f5f9);
+  outline: none;
 }
 
-.task-pill-option.current {
-  background: var(--paper, #f1f5f9);
+.task-travel-option.selected {
+  background: var(--steel-bg, #e8f0fe);
 }
 
-.task-pill-option-hint {
+.task-travel-option-label {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.task-travel-option-hint {
   font-size: 11px;
   font-weight: 500;
   color: var(--ink-faint, #94a3b8);
+  line-height: 1.3;
 }
 
-/* Detail sheet segmented pills */
 .task-route-intent-detail {
   margin-top: 10px;
   margin-bottom: 12px;
@@ -132,7 +173,7 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-faint, #94a3b8);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .task-pill-seg {
@@ -142,12 +183,24 @@
 }
 
 .task-pill-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 1 1 auto;
   min-width: 72px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong, var(--line, #cbd5e1));
+  background: var(--paper, #fff);
+  color: var(--ink-soft, #64748b);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .task-pill-seg-btn.current {
   border-color: var(--ink, #0f172a);
   color: var(--ink, #0f172a);
-  background: var(--paper-raised, #f8fafc);
+  background: var(--steel-bg, #e8f0fe);
 }
