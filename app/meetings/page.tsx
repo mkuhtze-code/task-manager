@@ -255,6 +255,22 @@ export default function MeetingsHome() {
     );
   }
 
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const meetingsToday = upcoming.filter((m) => {
+    if (!m.start_time) return false;
+    return String(m.start_time).slice(0, 10) === todayKey;
+  });
+  const nextMeeting = upcoming[0] ?? null;
+  let nextLabel: string | null = null;
+  if (nextMeeting?.start_time) {
+    const d = new Date(nextMeeting.start_time);
+    if (!Number.isNaN(d.getTime())) {
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      nextLabel = `${hh}:${mm} ${(nextMeeting as any).title || (nextMeeting as any).text || 'Meeting'}`;
+    }
+  }
+
   return (
     <div className="app-shell">
       {!isDesktop && (
@@ -285,6 +301,8 @@ export default function MeetingsHome() {
           upcomingCount={upcoming.length}
           pastCount={past.length}
           allCount={meetings.length}
+          todayCount={meetingsToday.length}
+          nextLabel={nextLabel}
           filter={listFilter}
           onFilterChange={setListFilter}
           search={search}
