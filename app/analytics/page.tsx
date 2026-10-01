@@ -1,23 +1,21 @@
 'use client';
 
 import './patterns.css';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
 import { BackIcon } from '@/components/icons';
 import {
-  buildUserPatterns,
-  summarizeAccuracy,
   runObservationPipeline,
   topActionableObservations,
-  formatObservationLine,
   type CompletedTaskFacts,
-  type EstimateAccuracyObservation,
-  type Confidence,
-  type UserPatterns,
   type StructuredObservation,
 } from '@/lib/thinking';
+import {
+  buildPatternSurfaceModel,
+  type PatternCard,
+} from '@/lib/thinking/patternSurface';
 
 type CompletedTask = {
   id: string;
@@ -45,22 +43,6 @@ type SubtaskItem = {
   done: boolean;
 };
 
-type PredictionEntry = {
-  task_text: string;
-  estimated_mins: number;
-  actual_mins: number | null;
-  confidence: string;
-  completed_at: string | null;
-};
-
-type PatternInsight = {
-  label: string;
-  count: number;
-  avgMins: number;
-  placeAssoc?: string;
-  confidence: Confidence;
-};
-
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
   if (mins < 60) return `${mins}m`;
@@ -69,30 +51,102 @@ function fmtMins(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-function ratePct(rate: number): number {
-  return Math.round(Math.min(1, Math.max(0, rate)) * 100);
-}
-
-function calibrationLabel(medianRatio: number): { short: string; detail: string } {
-  if (medianRatio >= 0.9 && medianRatio <= 1.15) {
-    return { short: 'On track', detail: 'Estimates land close to actual time' };
-  }
-  if (medianRatio > 1.15) {
-    return { short: 'Runs long', detail: 'Work often takes longer than estimated' };
-  }
-  return { short: 'Runs short', detail: 'Work often finishes under estimate' };
-}
-
-function RateBar({ label, rate }: { label: string; rate: number }) {
-  const pct = ratePct(rate);
+function PatternCardView({
+  card,
+  expanded,
+  onToggle,
+}: {
+  card: PatternCard;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <div className="patterns-rate-row">
-      <div className="patterns-rate-label">{label}</div>
-      <div className="patterns-rate-track" aria-hidden>
-        <div className="patterns-rate-fill" style={{ width: `${pct}%` }} />
+    <article
+      className={[
+        'patterns-card',
+        card.bucket === 'emerging' ? 'is-emerging' : 'is-established',
+        expanded ? 'is-expanded' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <div className="patterns-card-main">
+        <h3 className="patterns-card-statement">{card.statement}</h3>
+        <p className="patterns-card-meta">
+          {card.sampleSize > 0 ? (
+            <span>
+              {card.sampleSize} example{card.sampleSize === 1 ? '' : 's'}
+            </span>
+          ) : null}
+          {card.sampleSize > 0 ? <span className="patterns-dot">·</span> : null}
+          <span>{card.confidenceLabel}</span>
+          {card.medianMins != null && card.medianMins > 0 ? (
+            <>
+              <span className="patterns-dot">·</span>
+              <span className="mono">~{fmtMins(card.medianMins)}</span>
+            </>
+          ) : null}
+        </p>
+        <p className="patterns-card-consequence">{card.consequence}</p>
       </div>
-      <div className="patterns-rate-pct mono">{pct}%</div>
-    </div>
+
+      <button
+        type="button"
+        className="patterns-card-why"
+        aria-expanded={expanded}
+        onClick={onToggle}
+      >
+        {expanded ? 'Hide evidence' : 'Why I think this'}
+      </button>
+
+      {expanded ? (
+        <div className="patterns-card-evidence" id={`pattern-ev-${card.id}`}>
+          <h4 className="patterns-evidence-title">Why I think this</h4>
+          <p className="patterns-evidence-detail">{card.confidenceDetail}</p>
+          {card.detail ? (
+            <p className="patterns-evidence-detail">{card.detail}</p>
+          ) : null}
+          <dl className="patterns-evidence-dl">
+            {card.sampleSize > 0 ? (
+              <div>
+                <dt>Observed examples</dt>
+                <dd className="mono">{card.sampleSize}</dd>
+              </div>
+            ) : null}
+            {card.medianMins != null && card.medianMins > 0 ? (
+              <div>
+                <dt>Typical actual time</dt>
+                <dd className="mono">~{fmtMins(card.medianMins)}</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt>Pattern</dt>
+              <dd>
+                {card.staleness === 'stale'
+                  ? 'May be out of date'
+                  : card.bucket === 'established'
+                    ? 'Stable enough to rely on'
+                    : 'Still developing'}
+              </dd>
+            </div>
+            {card.clusterLabel ? (
+              <div>
+                <dt>Related work</dt>
+                <dd>{card.clusterLabel}</dd>
+              </div>
+            ) : null}
+            {card.location ? (
+              <div>
+                <dt>Place</dt>
+                <dd>{card.location}</dd>
+              </div>
+            ) : null}
+          </dl>
+          <h4 className="patterns-evidence-title">What Dokkit does with it</h4>
+          <p className="patterns-evidence-detail">{card.consequence}</p>
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -100,34 +154,42 @@ export default function Analytics() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [allTasks, setAllTasks] = useState<CompletedTask[]>([]);
   const [allSubtasks, setAllSubtasks] = useState<SubtaskItem[]>([]);
-  const [predictions, setPredictions] = useState<PredictionEntry[]>([]);
-  const [timePeriod, setTimePeriod] = useState<'today' | 'week' | 'month'>('week');
   const [userTimezone, setUserTimezone] = useState<string | null>(null);
+  /** 'recent' = last 60 days for ranking context; 'all' = full history */
+  const [evidenceScope, setEvidenceScope] = useState<'recent' | 'all'>('all');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
   }, []);
 
   useEffect(() => {
-    if (session) {
-      loadData();
-    }
+    if (session) void loadData();
   }, [session]);
 
   async function loadData() {
     setLoading(true);
+    setError(null);
     const userId = session.user.id;
 
-    const { data: taskData } = await supabase
+    const { data: taskData, error: taskErr } = await supabase
       .from('tasks')
       .select('*')
       .eq('user_id', userId)
       .eq('status', 'done')
       .order('completed_at', { ascending: false });
 
-    const loadedTasks: CompletedTask[] = taskData || [];
+    if (taskErr) {
+      console.error(taskErr);
+      setError("Patterns couldn't load — tap to retry");
+      setLoading(false);
+      return;
+    }
+
+    const loadedTasks: CompletedTask[] = (taskData as CompletedTask[]) || [];
     const taskIds = loadedTasks.map((t) => t.id);
 
     let loadedSubtasks: SubtaskItem[] = [];
@@ -136,15 +198,8 @@ export default function Analytics() {
         .from('subtasks')
         .select('id, task_id, mins, done')
         .in('task_id', taskIds);
-      loadedSubtasks = subtaskData || [];
+      loadedSubtasks = (subtaskData as SubtaskItem[]) || [];
     }
-
-    const { data: predictionData } = await supabase
-      .from('prediction_log')
-      .select('task_text, estimated_mins, actual_mins, confidence, completed_at')
-      .eq('user_id', userId)
-      .order('logged_at', { ascending: false })
-      .limit(200);
 
     let timezone: string | null = null;
     try {
@@ -153,346 +208,351 @@ export default function Analytics() {
         .select('timezone')
         .eq('user_id', userId)
         .maybeSingle();
-      timezone = settings?.timezone || null;
+      timezone = settings?.timezone ?? null;
     } catch {
-      timezone = null;
+      /* optional */
     }
-    setUserTimezone(timezone);
 
     setAllTasks(loadedTasks);
     setAllSubtasks(loadedSubtasks);
-    setPredictions(predictionData || []);
+    setUserTimezone(timezone);
     setLoading(false);
   }
 
   const subtasksByTaskId = useMemo(() => {
-    const map = new Map<string, SubtaskItem[]>();
-    for (const sub of allSubtasks) {
-      const existing = map.get(sub.task_id) || [];
-      existing.push(sub);
-      map.set(sub.task_id, existing);
+    const map: Record<string, SubtaskItem[]> = {};
+    for (const s of allSubtasks) {
+      (map[s.task_id] ||= []).push(s);
     }
     return map;
   }, [allSubtasks]);
 
-  const createFact = (t: CompletedTask): CompletedTaskFacts => {
-    const subs = subtasksByTaskId.get(t.id) || [];
-    const subtaskDone = subs.filter((s) => s.done);
-    const totalSubMins = subs.reduce((sum, s) => sum + (s.mins || 0), 0);
+  const createFact = useCallback(
+    (t: CompletedTask): CompletedTaskFacts => {
+      const subs = subtasksByTaskId[t.id] || [];
+      const subtaskDone = subs.filter((s) => s.done);
+      return {
+        text: t.text,
+        status: 'done',
+        source: t.source || 'planned',
+        estimate_mins: t.estimate_mins || 0,
+        actual_mins: t.actual_mins ?? null,
+        logged_mins: t.logged_mins || 0,
+        created_at: t.created_at || new Date().toISOString(),
+        completed_at: t.completed_at,
+        started_at: t.started_at,
+        surface_date: t.surface_date,
+        location_text: t.location_text,
+        lat: t.lat,
+        lng: t.lng,
+        job_id: t.job_id,
+        info: t.info,
+        subtaskCount: subs.length,
+        subtaskDoneCount: subtaskDone.length,
+        subtaskTotalMins: subs.reduce((sum, s) => sum + (s.mins || 0), 0),
+      };
+    },
+    [subtasksByTaskId]
+  );
 
-    return {
-      text: t.text,
-      status: 'done',
-      source: t.source || 'planned',
-      estimate_mins: t.estimate_mins || 0,
-      actual_mins: t.actual_mins ?? null,
-      logged_mins: t.logged_mins || 0,
-      created_at: t.created_at || new Date().toISOString(),
-      completed_at: t.completed_at,
-      started_at: t.started_at,
-      surface_date: t.surface_date,
-      location_text: t.location_text,
-      lat: t.lat,
-      lng: t.lng,
-      job_id: t.job_id,
-      info: t.info,
-      subtaskCount: subs.length,
-      subtaskDoneCount: subtaskDone.length,
-      subtaskTotalMins: totalSubMins,
-    };
-  };
-
-  const allFacts = useMemo(() => allTasks.map(createFact), [allTasks, subtasksByTaskId]);
-
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const filteredTasks = useMemo(() => {
+  const scopeTasks = useMemo(() => {
+    if (evidenceScope === 'all') return allTasks;
+    const cutoff = Date.now() - 60 * 24 * 60 * 60 * 1000;
     return allTasks.filter((t) => {
       if (!t.completed_at) return false;
-      const compDate = new Date(t.completed_at);
-      if (timePeriod === 'today') return compDate >= todayStart;
-      if (timePeriod === 'week') return compDate >= weekStart;
-      return compDate >= monthStart;
+      return new Date(t.completed_at).getTime() >= cutoff;
     });
-  }, [allTasks, timePeriod]);
+  }, [allTasks, evidenceScope]);
 
-  const filteredFacts = useMemo(
-    () => filteredTasks.map(createFact),
-    [filteredTasks, subtasksByTaskId]
+  const scopeFacts = useMemo(
+    () => scopeTasks.map(createFact),
+    [scopeTasks, createFact]
   );
 
-  const periodUserPatterns: UserPatterns | null = useMemo(
-    () => buildUserPatterns(filteredFacts),
-    [filteredFacts]
+  const allFacts = useMemo(
+    () => allTasks.map(createFact),
+    [allTasks, createFact]
   );
 
-  const completedPredictions = useMemo(
-    () => predictions.filter((p) => p.actual_mins !== null),
-    [predictions]
+  const actionable: StructuredObservation[] = useMemo(
+    () =>
+      topActionableObservations(scopeFacts, {
+        timezone: userTimezone || 'UTC',
+        limit: 8,
+      }),
+    [scopeFacts, userTimezone]
   );
 
-  const accuracySummary = useMemo(() => {
-    const accuracyObs: EstimateAccuracyObservation[] = completedPredictions.map((p) => ({
-      kind: 'estimate_accuracy' as const,
-      taskText: p.task_text,
-      clusterLabel: null,
-      clusterCount: 0,
-      estimatedMins: p.estimated_mins,
-      actualMins: p.actual_mins!,
-      ratio: p.actual_mins! / Math.max(p.estimated_mins, 1),
-      confidence: (p.confidence as Confidence) || 'low',
-      observedAt: p.completed_at || new Date().toISOString(),
-    }));
-    return summarizeAccuracy(accuracyObs);
-  }, [completedPredictions]);
-
-  const v2Observations: StructuredObservation[] = useMemo(
-    () => runObservationPipeline(allFacts, { timezone: userTimezone || 'UTC' }),
-    [allFacts, userTimezone]
+  const clusterObs: StructuredObservation[] = useMemo(
+    () =>
+      runObservationPipeline(scopeFacts, {
+        timezone: userTimezone || 'UTC',
+      }).filter(
+        (o) => o.type === 'cluster' || (o.type || '').includes('cluster')
+      ),
+    [scopeFacts, userTimezone]
   );
 
-  const clusterInsights: PatternInsight[] = useMemo(() => {
-    const byCluster = new Map<string, PatternInsight>();
-    for (const obs of v2Observations) {
-      if (obs.type !== 'cluster') continue;
-      const label = obs.affectedContext.clusterLabel ?? 'Pattern';
-      const current = byCluster.get(label) ?? {
-        label,
-        count: 0,
-        avgMins: 0,
-        placeAssoc: undefined,
-        confidence: obs.confidence,
-      };
-      current.count = Math.max(current.count, obs.evidence.sampleSize);
-      current.confidence = obs.confidence;
-      if (obs.affectedContext.location) {
-        current.placeAssoc = obs.affectedContext.location;
-      }
-      for (const m of obs.evidence.measurements) {
-        const rec = m as { medianMins?: number };
-        if (typeof rec.medianMins === 'number') {
-          current.avgMins = rec.medianMins;
-        }
-      }
-      byCluster.set(label, current);
-    }
-    return [...byCluster.values()]
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
-  }, [v2Observations]);
+  const model = useMemo(
+    () =>
+      buildPatternSurfaceModel({
+        actionable,
+        clusterObservations: clusterObs,
+        completedTasks: allTasks.length,
+        evidenceWindowDays: evidenceScope === 'recent' ? 60 : null,
+      }),
+    [actionable, clusterObs, allTasks.length, evidenceScope]
+  );
 
-  // Decision-value signals from full history (not the period window).
-  // Rank by what changes capture / capacity / carry — max 5, quiet by default.
-  const actionableSignals = useMemo(() => {
-    return topActionableObservations(allFacts, {
-      timezone: userTimezone || 'UTC',
-      limit: 5,
-    }).filter((o) => o.confidence !== 'low' && o.staleness !== 'stale');
-  }, [allFacts, userTimezone]);
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   if (!session) {
     return (
-      <div className="app-shell">
+      <div className="app-shell patterns-shell">
         <div className="app-header">
           <div className="app-header-left">
-            <button className="back-link" onClick={() => router.push('/')} aria-label="Back">
+            <button
+              className="back-link"
+              onClick={() => router.push('/')}
+              aria-label="Back"
+            >
               <BackIcon />
             </button>
             <h1 className="app-title">Patterns</h1>
           </div>
         </div>
-        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>
-          Sign in to see your patterns.
-        </p>
+        <p className="patterns-sign-in">Sign in to see your patterns.</p>
       </div>
     );
   }
 
-  const totalCompleted = filteredTasks.length;
-  const totalActualMins = filteredTasks.reduce((sum, t) => sum + (t.actual_mins || 0), 0);
-  const hoursLabel =
-    totalActualMins >= 60
-      ? `${Math.round(totalActualMins / 60)}h`
-      : totalActualMins > 0
-        ? fmtMins(totalActualMins)
-        : '—';
-  const cal =
-    completedPredictions.length > 0
-      ? calibrationLabel(accuracySummary.medianRatio)
-      : null;
+  const hasAny =
+    model.established.length > 0 ||
+    model.emerging.length > 0 ||
+    model.recurringWork.length > 0;
 
   return (
-    <div className="app-shell">
-      <div className="app-header">
-        <div className="app-header-left">
-          <button className="back-link" onClick={() => router.push('/')} aria-label="Back">
-            <BackIcon />
-          </button>
-          <h1 className="app-title">Patterns</h1>
-        </div>
-        <div className="app-header-right">
-          <GearMenu userId={session?.user.id ?? null} />
-        </div>
-      </div>
-
-      <div className="segmented" style={{ marginTop: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
-        <button
-          className={`segmented-btn ${timePeriod === 'today' ? 'active' : ''}`}
-          onClick={() => setTimePeriod('today')}
-        >
-          Today
-        </button>
-        <button
-          className={`segmented-btn ${timePeriod === 'week' ? 'active' : ''}`}
-          onClick={() => setTimePeriod('week')}
-        >
-          Week
-        </button>
-        <button
-          className={`segmented-btn ${timePeriod === 'month' ? 'active' : ''}`}
-          onClick={() => setTimePeriod('month')}
-        >
-          Month
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="empty-state">Loading patterns...</div>
-      ) : (
-        <>
-          {/* Glance metrics */}
-          <div className="patterns-glance">
-            <div className="patterns-stat">
-              <div className="patterns-stat-value mono">{totalCompleted}</div>
-              <div className="patterns-stat-label">Done</div>
-            </div>
-            <div className="patterns-stat">
-              <div className="patterns-stat-value mono">{hoursLabel}</div>
-              <div className="patterns-stat-label">Logged</div>
-            </div>
-            <div className="patterns-stat">
-              <div className="patterns-stat-value mono">
-                {cal ? cal.short : '—'}
-              </div>
-              <div className="patterns-stat-label">Estimates</div>
+    <div className="app-shell patterns-shell">
+      <header className="patterns-header surface-header">
+        <div className="patterns-header-bar">
+          <div className="patterns-header-orient">
+            <button
+              type="button"
+              className="back-link patterns-back"
+              onClick={() => router.push('/')}
+              aria-label="Back to Today"
+            >
+              <BackIcon />
+            </button>
+            <div className="surface-identity">
+              <span className="surface-kicker">Understanding</span>
+              <h1 className="surface-title">Patterns</h1>
             </div>
           </div>
-
-          {/* Worth noticing — decision-value only, full history */}
-          {actionableSignals.length > 0 && (
-            <div className="settings-panel patterns-panel">
-              <div className="settings-panel-title">Worth noticing</div>
-              <p className="settings-help" style={{ marginTop: 4, marginBottom: 8 }}>
-                Quiet signals that tend to change how your day fits.
-              </p>
-              <div className="patterns-signals">
-                {actionableSignals.map((obs) => (
-                  <div key={obs.id} className="patterns-signal">
-                    <div className="patterns-signal-top">
-                      <span
-                        className={`patterns-conf patterns-conf-${obs.confidence}`}
-                        title={`${obs.confidence} confidence`}
-                      />
-                      <span className="patterns-signal-title">
-                        {formatObservationLine(obs, 100)}
-                      </span>
-                    </div>
-                    {obs.affectedContext.location && (
-                      <div className="patterns-signal-meta">
-                        {obs.affectedContext.location}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* How you capture */}
-          {periodUserPatterns && periodUserPatterns.totalCompleted > 0 && (
-            <div className="settings-panel patterns-panel">
-              <div className="settings-panel-title">How you capture</div>
-              <div className="patterns-rates">
-                <RateBar label="Came up mid-day" rate={periodUserPatterns.cameUpRate} />
-                <RateBar label="With estimate" rate={periodUserPatterns.estimatedRate} />
-                <RateBar label="With location" rate={periodUserPatterns.locatedRate} />
-                <RateBar label="On a job" rate={periodUserPatterns.jobAttachedRate} />
-                <RateBar label="Broken into subtasks" rate={periodUserPatterns.subtaskUsageRate} />
-                <RateBar label="Timer used" rate={periodUserPatterns.timerUsageRate} />
-              </div>
-            </div>
-          )}
-
-          {totalCompleted === 0 && (
-            <p className="settings-help" style={{ marginTop: 'var(--space-2)' }}>
-              No completed work in this window yet.
+          <div className="patterns-header-lede">
+            <p className="patterns-lede-title">How Dokkit learns from reality</p>
+            <p className="patterns-lede-body">
+              Dokkit looks for repeatable patterns in the work you actually do. It
+              only relies strongly on a pattern when there is enough evidence to
+              make it useful.
             </p>
-          )}
+          </div>
+          <div className="patterns-header-actions">
+            <GearMenu userId={session?.user.id ?? null} />
+          </div>
+        </div>
 
-          {/* Repeating work */}
-          {clusterInsights.length > 0 && (
-            <div className="settings-panel patterns-panel">
-              <div className="settings-panel-title">Repeating work</div>
-              <div className="patterns-chips">
-                {clusterInsights.map((p) => (
-                  <div key={p.label} className="patterns-chip">
-                    <div className="patterns-chip-main">
-                      <span className="patterns-chip-label">{p.label}</span>
-                      {p.avgMins > 0 && (
-                        <span className="patterns-chip-meta mono">~{fmtMins(p.avgMins)}</span>
-                      )}
-                    </div>
-                    <div className="patterns-chip-foot">
-                      <span className="mono">×{p.count}</span>
-                      {p.placeAssoc && (
-                        <span className="patterns-chip-place">{p.placeAssoc}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="patterns-model-strip" aria-label="Dokkit understanding">
+          <span>
+            Based on{' '}
+            <strong className="mono">{model.modelStatus.completedTasks}</strong>{' '}
+            completed task
+            {model.modelStatus.completedTasks === 1 ? '' : 's'}
+          </span>
+          {model.modelStatus.establishedCount + model.modelStatus.emergingCount >
+          0 ? (
+            <>
+              <span className="patterns-dot">·</span>
+              <span>
+                <strong className="mono">
+                  {model.modelStatus.establishedCount}
+                </strong>{' '}
+                established
+              </span>
+              <span className="patterns-dot">·</span>
+              <span>
+                <strong className="mono">
+                  {model.modelStatus.emergingCount}
+                </strong>{' '}
+                emerging
+              </span>
+            </>
+          ) : null}
+          <span className="patterns-scope">
+            <button
+              type="button"
+              className={
+                evidenceScope === 'all'
+                  ? 'patterns-scope-btn active'
+                  : 'patterns-scope-btn'
+              }
+              onClick={() => setEvidenceScope('all')}
+            >
+              All evidence
+            </button>
+            <button
+              type="button"
+              className={
+                evidenceScope === 'recent'
+                  ? 'patterns-scope-btn active'
+                  : 'patterns-scope-btn'
+              }
+              onClick={() => setEvidenceScope('recent')}
+            >
+              Last 60 days
+            </button>
+          </span>
+        </div>
+      </header>
 
-          {/* Calibration strip */}
-          {completedPredictions.length > 0 && cal && (
-            <div className="settings-panel patterns-panel">
-              <div className="settings-panel-title">Estimate feel</div>
-              <div className="patterns-cal-row">
-                <div className="patterns-cal-gauge" aria-hidden>
-                  <div
-                    className="patterns-cal-needle"
-                    style={{
-                      left: `${Math.min(100, Math.max(0, (accuracySummary.medianRatio / 2) * 100))}%`,
-                    }}
-                  />
-                  <div className="patterns-cal-center" />
+      {error ? (
+        <button
+          type="button"
+          className="recalc-error"
+          onClick={() => void loadData()}
+          disabled={loading}
+        >
+          {error}
+        </button>
+      ) : null}
+
+      {loading ? (
+        <div className="patterns-loading" aria-busy="true">
+          <div className="patterns-skeleton" />
+          <div className="patterns-skeleton short" />
+          <div className="patterns-skeleton" />
+        </div>
+      ) : (
+        <div className="patterns-layout">
+          <div className="patterns-primary">
+            {!hasAny ? (
+              <section className="patterns-empty">
+                <h2 className="patterns-section-title">
+                  I&apos;m still learning how your work behaves
+                </h2>
+                <p>
+                  You don&apos;t need to configure anything. Keep using Dokkit
+                  normally — complete work, capture what comes up — and patterns
+                  appear when there is enough evidence.
+                </p>
+              </section>
+            ) : null}
+
+            {model.established.length > 0 ? (
+              <section className="patterns-section" aria-labelledby="noticed-h">
+                <h2 id="noticed-h" className="patterns-section-title">
+                  What Dokkit has noticed
+                </h2>
+                <div className="patterns-card-list">
+                  {model.established.map((card) => (
+                    <PatternCardView
+                      key={card.id}
+                      card={card}
+                      expanded={expandedIds.has(card.id)}
+                      onToggle={() => toggleExpanded(card.id)}
+                    />
+                  ))}
                 </div>
-                <div className="patterns-cal-copy">
-                  <div className="patterns-cal-title">{cal.short}</div>
-                  <div className="patterns-cal-detail">{cal.detail}</div>
-                  <div className="analytics-evidence mono">
-                    {completedPredictions.length} prediction
-                    {completedPredictions.length === 1 ? '' : 's'} · median{' '}
-                    {accuracySummary.medianRatio.toFixed(2)}×
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+              </section>
+            ) : null}
 
-          {!loading &&
-            totalCompleted === 0 &&
-            clusterInsights.length === 0 &&
-            actionableSignals.length === 0 && (
-              <p className="settings-help">
-                Keep completing tasks — patterns show up once there is enough history.
+            {model.emerging.length > 0 ? (
+              <section className="patterns-section" aria-labelledby="emerging-h">
+                <h2 id="emerging-h" className="patterns-section-title">
+                  Still emerging
+                </h2>
+                <p className="patterns-section-note">
+                  Interesting signals — not strong enough to materially change
+                  decisions yet.
+                </p>
+                <div className="patterns-card-list">
+                  {model.emerging.map((card) => (
+                    <PatternCardView
+                      key={card.id}
+                      card={card}
+                      expanded={expandedIds.has(card.id)}
+                      onToggle={() => toggleExpanded(card.id)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {model.recurringWork.length > 0 ? (
+              <section className="patterns-section" aria-labelledby="repeat-h">
+                <h2 id="repeat-h" className="patterns-section-title">
+                  Work that repeats
+                </h2>
+                <ul className="patterns-recurring">
+                  {model.recurringWork.map((item) => (
+                    <li key={item.id} className="patterns-recurring-item">
+                      <span className="patterns-recurring-label">
+                        {item.label}
+                      </span>
+                      <span className="patterns-recurring-meta">
+                        {item.medianMins != null && item.medianMins > 0 ? (
+                          <span className="mono">
+                            Usually ~{fmtMins(item.medianMins)}
+                          </span>
+                        ) : null}
+                        <span className="mono">
+                          {item.sampleSize} example
+                          {item.sampleSize === 1 ? '' : 's'}
+                        </span>
+                        {item.location ? (
+                          <span className="patterns-recurring-place">
+                            {item.location}
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+          </div>
+
+          <aside className="patterns-aside" aria-label="Dokkit's understanding">
+            <div className="patterns-trust-panel">
+              <h2 className="patterns-section-title">Dokkit&apos;s understanding</h2>
+              <dl className="patterns-trust-dl">
+                <div>
+                  <dt>Established patterns</dt>
+                  <dd className="mono">{model.modelStatus.establishedCount}</dd>
+                </div>
+                <div>
+                  <dt>Emerging signals</dt>
+                  <dd className="mono">{model.modelStatus.emergingCount}</dd>
+                </div>
+                <div>
+                  <dt>Completed work</dt>
+                  <dd className="mono">{model.modelStatus.completedTasks}</dd>
+                </div>
+              </dl>
+              <p className="patterns-trust-note">
+                Based on what you&apos;ve completed and changed in Dokkit. Weak
+                evidence stays weak — Dokkit does not invent certainty.
               </p>
-            )}
-        </>
+            </div>
+          </aside>
+        </div>
       )}
     </div>
   );
