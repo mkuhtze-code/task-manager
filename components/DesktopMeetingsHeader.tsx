@@ -1,132 +1,134 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+/**
+ * Desktop Meetings command header — same authority as Today, domain-native.
+ * Pulse = conversation state now. Depth = schedule + what meetings leave behind.
+ */
 
-export type MeetingsListFilter = 'upcoming' | 'past' | 'all';
+import { useState } from 'react';
+import GearMenu from '@/components/GearMenu';
+
+export type MeetingsListFilter = 'all' | 'upcoming' | 'past';
 
 type Props = {
+  pulseTitle: string;
+  pulseMeta: string;
+  pulseAttention?: boolean;
+  depthRead: string;
+  todayCount: number;
   upcomingCount: number;
   pastCount: number;
-  allCount: number;
-  /** Meetings whose start is today (local). */
-  todayCount?: number;
-  /** Next meeting label e.g. "11:30 Site walk". */
-  nextLabel?: string | null;
-  /** Outstanding follow-up count if known. */
-  followUpCount?: number;
-  filter: MeetingsListFilter;
-  onFilterChange: (filter: MeetingsListFilter) => void;
+  todayLoadMins: number;
+  openLoopCount: number;
+  nextLabel: string | null;
+  listFilter: MeetingsListFilter;
+  onListFilter: (f: MeetingsListFilter) => void;
   search: string;
-  onSearchChange: (value: string) => void;
-  onCreate: () => void;
+  onSearchChange: (v: string) => void;
+  onNewMeeting: () => void;
+  filterCounts: { all: number; upcoming: number; past: number };
 };
 
 function SearchGlyph() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-4-4" />
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M10.5 10.5L13.5 13.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 
+function fmtDur(mins: number): string {
+  if (mins <= 0) return '0m';
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
 export default function DesktopMeetingsHeader({
+  pulseTitle,
+  pulseMeta,
+  pulseAttention = false,
+  depthRead,
+  todayCount,
   upcomingCount,
   pastCount,
-  allCount,
-  todayCount = 0,
-  nextLabel = null,
-  followUpCount = 0,
-  filter,
-  onFilterChange,
+  todayLoadMins,
+  openLoopCount,
+  nextLabel,
+  listFilter,
+  onListFilter,
   search,
   onSearchChange,
-  onCreate,
+  onNewMeeting,
+  filterCounts,
 }: Props) {
-  const [searchOpen, setSearchOpen] = useState(search.length > 0);
   const [depthOpen, setDepthOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  const filterItems = useMemo(
-    () => [
-      { key: 'upcoming' as const, label: 'Upcoming', count: upcomingCount },
-      { key: 'past' as const, label: 'Past', count: pastCount },
-      { key: 'all' as const, label: 'All', count: allCount },
-    ],
-    [upcomingCount, pastCount, allCount]
-  );
-
-  const pulseTitle =
-    todayCount > 0
-      ? `${todayCount} today`
-      : nextLabel
-        ? 'Next up'
-        : upcomingCount > 0
-          ? `${upcomingCount} upcoming`
-          : 'No meetings ahead';
-
-  const pulseMeta = [
-    nextLabel,
-    followUpCount > 0 ? `${followUpCount} follow-up` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
-  const contextBits: string[] = [];
-  if (todayCount > 0) contextBits.push(`${todayCount} today`);
-  if (upcomingCount > 0) contextBits.push(`${upcomingCount} upcoming`);
-  if (nextLabel) contextBits.push(nextLabel);
-  if (followUpCount > 0) contextBits.push(`${followUpCount} follow-up`);
-
-  const meetingRead =
-    todayCount > 0
-      ? 'Conversations on the calendar today — capture what they leave behind.'
-      : nextLabel
-        ? 'Something is coming up. Keep the thread connected to the work.'
-        : upcomingCount > 0
-          ? 'Upcoming meetings are set. Follow-ups land back in Jobs and Today.'
-          : 'No meetings ahead — log one when a conversation shapes the work.';
+  const filters: { key: MeetingsListFilter; label: string; count: number }[] = [
+    { key: 'all', label: 'All', count: filterCounts.all },
+    { key: 'upcoming', label: 'Ahead', count: filterCounts.upcoming },
+    { key: 'past', label: 'Past', count: filterCounts.past },
+  ];
 
   return (
     <header className="surface-header desk-meetings-workspace-header">
       <div className="surface-header-bar">
         <div className="surface-header-orient">
           <div className="surface-identity">
-            <span className="surface-kicker">Conversations</span>
-            <h1 className="surface-title">Meetings</h1>
+            <span className="surface-kicker">Meetings</span>
+            <h1 className="surface-title">Conversations</h1>
           </div>
-          <div className="surface-pulse" aria-label="Meetings pulse">
+          <div
+            className={
+              pulseAttention
+                ? 'surface-pulse is-attention'
+                : 'surface-pulse'
+            }
+            aria-label="Meetings pulse"
+          >
             <div className="surface-pulse-body">
               <span className="surface-pulse-title">{pulseTitle}</span>
-              <span className="surface-pulse-meta">
-                {pulseMeta || 'What was said, and what it leaves behind'}
-              </span>
+              <span className="surface-pulse-meta">{pulseMeta}</span>
             </div>
           </div>
         </div>
 
         <div className="surface-context" aria-label="Meetings context">
-          {contextBits.map((bit, i) => (
-            <span key={`${i}-${bit}`} className="surface-context-bit">
-              {i > 0 ? <span className="surface-context-dot">·</span> : null}
-              {bit}
+          {todayCount > 0 ? (
+            <span className="surface-context-bit">
+              <span className="surface-context-emphasis">
+                {fmtDur(todayLoadMins)}
+              </span>{' '}
+              today
             </span>
-          ))}
+          ) : (
+            <span className="surface-context-bit surface-context-quiet">
+              Nothing on today
+            </span>
+          )}
+          {nextLabel ? (
+            <span className="surface-context-bit">
+              <span className="surface-context-dot">·</span>
+              <span className="surface-context-next">{nextLabel}</span>
+            </span>
+          ) : null}
+          {openLoopCount > 0 ? (
+            <span className="surface-context-bit">
+              <span className="surface-context-dot">·</span>
+              {openLoopCount} open loop{openLoopCount === 1 ? '' : 's'}
+            </span>
+          ) : null}
         </div>
 
         <div className="surface-header-actions">
-          <button type="button" className="btn btn-steel" onClick={onCreate}>
-            + New meeting
-          </button>
           <button
             type="button"
             className={
@@ -139,26 +141,31 @@ export default function DesktopMeetingsHeader({
           >
             {depthOpen ? 'Hide context' : 'Meeting context'}
           </button>
+          <button
+            type="button"
+            className="btn btn-steel surface-primary-action"
+            onClick={onNewMeeting}
+          >
+            New meeting
+          </button>
+          <GearMenu />
         </div>
       </div>
 
-      <div className="surface-header-controls">
-        <div
-          className="surface-filter"
-          role="group"
-          aria-label="Filter meetings"
-        >
-          {filterItems.map((item) => (
+      <div className="surface-controls">
+        <div className="surface-filters" role="tablist" aria-label="Meeting filters">
+          {filters.map((item) => (
             <button
               key={item.key}
               type="button"
+              role="tab"
+              aria-selected={listFilter === item.key}
               className={
-                filter === item.key
-                  ? 'surface-filter-btn active'
-                  : 'surface-filter-btn'
+                listFilter === item.key
+                  ? 'surface-filter is-active'
+                  : 'surface-filter'
               }
-              aria-pressed={filter === item.key}
-              onClick={() => onFilterChange(item.key)}
+              onClick={() => onListFilter(item.key)}
             >
               {item.label}
               <span className="mono">{item.count}</span>
@@ -193,17 +200,21 @@ export default function DesktopMeetingsHeader({
 
       {depthOpen ? (
         <div className="surface-depth" aria-label="Meeting context">
-          <p className="surface-depth-read">{meetingRead}</p>
+          <p className="surface-depth-read">{depthRead}</p>
           <div className="surface-depth-band">
             <section>
-              <h3 className="surface-depth-col-title">Schedule</h3>
+              <h3 className="surface-depth-col-title">On the clock</h3>
               <dl className="surface-depth-dl">
                 <div>
                   <dt>Today</dt>
                   <dd className="mono">{todayCount}</dd>
                 </div>
                 <div>
-                  <dt>Upcoming</dt>
+                  <dt>Load</dt>
+                  <dd className="mono">{fmtDur(todayLoadMins)}</dd>
+                </div>
+                <div>
+                  <dt>Ahead</dt>
                   <dd className="mono">{upcomingCount}</dd>
                 </div>
                 <div>
@@ -213,23 +224,20 @@ export default function DesktopMeetingsHeader({
               </dl>
             </section>
             <section>
-              <h3 className="surface-depth-col-title">Thread</h3>
+              <h3 className="surface-depth-col-title">What it leaves</h3>
               <dl className="surface-depth-dl">
                 <div>
                   <dt>Next</dt>
                   <dd>{nextLabel || 'Nothing scheduled'}</dd>
                 </div>
-                {followUpCount > 0 ? (
-                  <div>
-                    <dt>Follow-up</dt>
-                    <dd className="mono">{followUpCount}</dd>
-                  </div>
-                ) : (
-                  <div>
-                    <dt>Follow-up</dt>
-                    <dd>None flagged</dd>
-                  </div>
-                )}
+                <div>
+                  <dt>Open loops</dt>
+                  <dd className="mono">
+                    {openLoopCount > 0
+                      ? `${openLoopCount} still open`
+                      : 'None flagged'}
+                  </dd>
+                </div>
               </dl>
             </section>
           </div>
