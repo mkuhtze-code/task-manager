@@ -19,6 +19,7 @@ import './ux-task-card.css';
 import './ux-task-detail.css';
 import './ux-desk-today.css';
 import './ux-meetings.css';
+import './ux-travel.css';
 import './surface-system.css';
 import './pill-reveal.css';
 import './travel-aware.css';
