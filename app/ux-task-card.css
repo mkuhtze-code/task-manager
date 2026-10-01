@@ -174,3 +174,75 @@
   background: var(--steel, #1e6be6);
   transition: width 0.2s ease;
 }
+
+/* Live day fit — calm, not traffic lights */
+.task-fit-line {
+  margin-top: 2px;
+}
+
+.task-fit-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--ink-soft, #64748b);
+}
+
+.task-card.fit-protect .task-fit-badge {
+  color: var(--steel-dark, #1e40af);
+}
+
+.task-card.fit-ok .task-fit-badge {
+  color: var(--ink-soft, #475569);
+}
+
+.task-card.fit-later .task-fit-badge {
+  color: var(--ink-faint, #94a3b8);
+}
+
+.task-card.fit-uncertain .task-fit-badge {
+  color: var(--ink-faint, #94a3b8);
+  font-style: italic;
+}
+
+.task-card.fit-blocked .task-fit-badge {
+  color: var(--hazard, #b91c1c);
+}
+
+.task-card.fit-later {
+  opacity: 0.92;
+}
+
+.live-day-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 8px var(--space-page, 16px) 10px;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink-soft, #64748b);
+  background: var(--paper, #fff);
+}
+
+.live-day-strip-main strong {
+  color: var(--ink, #0f172a);
+  font-weight: 700;
+}
+
+.live-day-sep {
+  margin: 0 6px;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.live-day-strip-note {
+  font-size: 12px;
+  color: var(--ink-faint, #94a3b8);
+}
+
+html[data-surface='desktop'] .live-day-strip {
+  display: none;
+}
