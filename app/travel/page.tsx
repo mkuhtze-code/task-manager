@@ -514,6 +514,8 @@ export default function TravelHome() {
           upcomingCount={upcomingOnly.length}
           pastCount={past.length}
           allCount={trips.length}
+          focusTripName={visibleHero?.name ?? null}
+          focusWhen={leadPill || null}
           filter={listFilter}
           onFilterChange={setListFilter}
           search={search}
