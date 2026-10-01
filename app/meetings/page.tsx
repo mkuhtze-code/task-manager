@@ -507,7 +507,17 @@ export default function MeetingsHome() {
         />
       ) : null}
 
-      {!isDesktop ? <SurfaceNav /> : null}
+      {!isDesktop ? (
+        <SurfaceNav
+          active="meetings"
+          onAdd={
+            !newMeetingOpen && meetings.length > 0
+              ? () => setNewMeetingOpen(true)
+              : undefined
+          }
+          addLabel="New meeting"
+        />
+      ) : null}
     </div>
   );
 }
