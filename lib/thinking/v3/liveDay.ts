@@ -2,8 +2,9 @@
  * Live day model — presentation-facing plan derived from authoritative
  * dayFit + sequence + availability. Pure. Deterministic.
  *
- * Does not replace planCapacitySequence / decideTaskFit; composes them
- * into a single view of "what is realistically possible from now."
+ * Temporal packing: free windows (interval complement) + ordered first-fit.
+ * Does not replace decideTaskFit / planCapacitySequence; composes them and
+ * adds contiguous-window honesty so Σ free ≠ “fits”.
  */
 
 import type { FitState } from '@/lib/thinking/v3/types';
@@ -38,6 +39,30 @@ export type LiveFitLabel =
   | 'Can move'
   | 'Not enough evidence';
 
+/** Free interval on the working horizon (geometry, not just duration). */
+export type FreeWindow = {
+  startMs: number;
+  endMs: number;
+  mins: number;
+};
+
+export type PackedPlacement = {
+  id: string;
+  windowIndex: number;
+  /** Projected start if work ran back-to-back in this window. */
+  startMs: number;
+  endMs: number;
+  costMins: number;
+};
+
+export type PackResult = {
+  placed: PackedPlacement[];
+  placedIds: string[];
+  overflowIds: string[];
+  /** Windows after packing (remaining capacity per slot). */
+  windowsRemaining: FreeWindow[];
+};
+
 export type LiveTaskPlan = {
   id: string;
   fit: FitState;
@@ -49,7 +74,11 @@ export type LiveTaskPlan = {
   reason: string;
   protected: boolean;
   movable: boolean;
+  /** True when ordered first-fit found a contiguous free window. */
   inWindow: boolean;
+  /** Projected start within a free window (ms since epoch), if packed. */
+  projectedStartMs: number | null;
+  projectedEndMs: number | null;
 };
 
 export type LiveDayPlan = {
@@ -66,6 +95,8 @@ export type LiveDayPlan = {
   tasks: LiveTaskPlan[];
   byId: Record<string, LiveTaskPlan>;
   sequence: SequencePlan;
+  pack: PackResult;
+  freeWindows: FreeWindow[];
   dayRead: string;
   minsToNextCommitment: number | null;
 };
@@ -82,22 +113,60 @@ const FIT_LABEL: Record<string, LiveFitLabel> = {
   needs_context: 'Not enough evidence',
 };
 
-function humanReason(profile: DayFitProfile, inWindow: boolean): string {
+function softenEngineReason(raw: string): string {
+  return raw
+    .replace(
+      /^using structure until personal evidence builds$/i,
+      'Using structure until more of your history builds'
+    )
+    .replace(/^would overrun next commitment$/i, 'Would run into the next fixed commitment')
+    .replace(/^exceeds remaining window; often moves forward$/i, 'More than the remaining day; this kind of work often moves')
+    .replace(/^exceeds remaining window$/i, 'More than the remaining workable day')
+    .replace(/^day over capacity/i, 'Day is already full')
+    .trim();
+}
+
+function formatClock(ms: number): string {
+  const d = new Date(ms);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function humanReason(
+  profile: DayFitProfile,
+  inWindow: boolean,
+  packFail: 'none' | 'no_window' | 'fragmented',
+  largestMins: number,
+  cost: number
+): string {
+  if (packFail === 'fragmented' && cost > 0) {
+    if (largestMins <= 0) {
+      return 'No free block left in the working day.';
+    }
+    return `Needs about ${cost}m uninterrupted; largest free block is ${largestMins}m.`;
+  }
+  if (packFail === 'no_window' && cost > 0) {
+    return 'No room left in the remaining free blocks.';
+  }
+
   const fit = profile.fit?.fit ?? 'unknown';
   const fromEngine = profile.fit?.reasons?.[0];
-  if (fromEngine && fromEngine.length < 90) {
-    // Soften engine phrases into calm product language where possible
-    const r = fromEngine
-      .replace(/^using structure until personal evidence builds$/i, 'Using structure until more of your history builds')
-      .replace(/^day over capacity/i, 'Day is already full')
-      .trim();
+  if (fromEngine && fromEngine.length < 100) {
+    const r = softenEngineReason(fromEngine);
     if (r) return r;
   }
   if (fit === 'protect') return 'Protected — stays in place unless you move it.';
-  if (fit === 'strong') return 'Fits comfortably with what you usually need for similar work.';
-  if (fit === 'possible') return inWindow
-    ? 'Fits in the remaining day.'
-    : 'May fit if earlier work finishes on time.';
+  if (fit === 'strong') {
+    return inWindow
+      ? 'Fits comfortably with what you usually need for similar work.'
+      : 'Usually fits this kind of work, but not in today’s free blocks.';
+  }
+  if (fit === 'possible') {
+    return inWindow
+      ? 'Fits in the remaining day.'
+      : 'May fit if earlier work finishes on time.';
+  }
   if (fit === 'uncertain') return 'Not enough evidence yet to be sure.';
   if (fit === 'poor') return 'Likely later — not enough uninterrupted room from here.';
   if (fit === 'blocked') return 'Blocked by fixed time or missing context.';
@@ -106,20 +175,22 @@ function humanReason(profile: DayFitProfile, inWindow: boolean): string {
 }
 
 /**
- * Build free intervals from now → work end minus commitment blocks.
- * Used only to flag contiguous-window pressure (not a full Gantt).
+ * Interval complement of commitments on [now, workEnd].
+ * Merges overlapping busy blocks, then emits free windows with geometry.
  */
-export function freeWindowsMins(
+export function freeWindows(
   now: Date,
   workEndMins: number,
   commitments: Array<{ start: Date; end: Date }>
-): number[] {
-  const nowMins = now.getHours() * 60 + now.getMinutes();
+): FreeWindow[] {
+  const nowMins = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
   if (nowMins >= workEndMins) return [];
-  const horizonStart = now.getTime();
-  const horizonEnd = horizonStart + (workEndMins - nowMins) * 60000;
 
-  const blocks = commitments
+  const horizonStart = now.getTime();
+  const remainingDayMins = workEndMins - nowMins;
+  const horizonEnd = horizonStart + remainingDayMins * 60000;
+
+  const raw = commitments
     .map((c) => ({
       start: Math.max(c.start.getTime(), horizonStart),
       end: Math.min(c.end.getTime(), horizonEnd),
@@ -127,23 +198,109 @@ export function freeWindowsMins(
     .filter((b) => b.end > b.start)
     .sort((a, b) => a.start - b.start);
 
-  const windows: number[] = [];
+  // Merge overlaps / touches
+  const busy: Array<{ start: number; end: number }> = [];
+  for (const b of raw) {
+    const last = busy[busy.length - 1];
+    if (last && b.start <= last.end) {
+      last.end = Math.max(last.end, b.end);
+    } else {
+      busy.push({ start: b.start, end: b.end });
+    }
+  }
+
+  const windows: FreeWindow[] = [];
   let cursor = horizonStart;
-  for (const b of blocks) {
+  for (const b of busy) {
     if (b.start > cursor) {
-      windows.push(Math.round((b.start - cursor) / 60000));
+      const mins = Math.round((b.start - cursor) / 60000);
+      if (mins > 0) {
+        windows.push({ startMs: cursor, endMs: b.start, mins });
+      }
     }
     cursor = Math.max(cursor, b.end);
   }
   if (horizonEnd > cursor) {
-    windows.push(Math.round((horizonEnd - cursor) / 60000));
+    const mins = Math.round((horizonEnd - cursor) / 60000);
+    if (mins > 0) {
+      windows.push({ startMs: cursor, endMs: horizonEnd, mins });
+    }
   }
-  return windows.filter((w) => w > 0);
+  return windows;
 }
 
-export function largestWindowMins(windows: number[]): number {
+/** Length-only view (tests / simple callers). */
+export function freeWindowsMins(
+  now: Date,
+  workEndMins: number,
+  commitments: Array<{ start: Date; end: Date }>
+): number[] {
+  return freeWindows(now, workEndMins, commitments).map((w) => w.mins);
+}
+
+export function largestWindowMins(windows: number[] | FreeWindow[]): number {
   if (windows.length === 0) return 0;
-  return Math.max(...windows);
+  if (typeof windows[0] === 'number') {
+    return Math.max(...(windows as number[]));
+  }
+  return Math.max(...(windows as FreeWindow[]).map((w) => w.mins));
+}
+
+/**
+ * Ordered first-fit into free windows.
+ * Preserves sequence order. Tasks are atomic (one contiguous block).
+ * costMins <= 0 are treated as placed without consuming a window.
+ */
+export function packOrderedIntoWindows(
+  ordered: Array<{ id: string; costMins: number }>,
+  windowsIn: FreeWindow[]
+): PackResult {
+  const windows: FreeWindow[] = windowsIn.map((w) => ({ ...w }));
+  const placed: PackedPlacement[] = [];
+  const overflowIds: string[] = [];
+
+  for (const item of ordered) {
+    const cost = Math.max(0, Math.round(item.costMins));
+    if (cost <= 0) {
+      placed.push({
+        id: item.id,
+        windowIndex: -1,
+        startMs: windows[0]?.startMs ?? 0,
+        endMs: windows[0]?.startMs ?? 0,
+        costMins: 0,
+      });
+      continue;
+    }
+
+    let packed = false;
+    for (let i = 0; i < windows.length; i++) {
+      const w = windows[i];
+      if (w.mins + 0.5 >= cost) {
+        const startMs = w.startMs;
+        const endMs = startMs + cost * 60000;
+        placed.push({
+          id: item.id,
+          windowIndex: i,
+          startMs,
+          endMs,
+          costMins: cost,
+        });
+        // Consume from the front of this window (back-to-back in order)
+        w.startMs = endMs;
+        w.mins = Math.max(0, Math.round((w.endMs - w.startMs) / 60000));
+        packed = true;
+        break;
+      }
+    }
+    if (!packed) overflowIds.push(item.id);
+  }
+
+  return {
+    placed,
+    placedIds: placed.map((p) => p.id),
+    overflowIds,
+    windowsRemaining: windows.filter((w) => w.mins > 0),
+  };
 }
 
 export function buildLiveDayPlan(params: {
@@ -199,23 +356,39 @@ export function buildLiveDayPlan(params: {
     remainingWindowMins: window,
   });
 
-  const fitsSet = new Set(sequence.fitsIds);
   const carrySet = new Set(sequence.carryIds);
 
   const order =
     params.orderedIds && params.orderedIds.length > 0
       ? params.orderedIds.filter((id) => open.some((t) => t.id === id))
-      : sequence.orderedIds;
+      : sequence.orderedIds.slice();
 
-  // Ensure every open task appears
   for (const t of open) {
     if (!order.includes(t.id)) order.push(t.id);
   }
 
-  const windows = params.workEndMins != null
-    ? freeWindowsMins(now, params.workEndMins, commitments)
-    : [];
+  const windows: FreeWindow[] =
+    params.workEndMins != null
+      ? freeWindows(now, params.workEndMins, commitments)
+      : window > 0
+        ? [
+            {
+              startMs: now.getTime(),
+              endMs: now.getTime() + window * 60000,
+              mins: window,
+            },
+          ]
+        : [];
+
   const largest = largestWindowMins(windows);
+
+  const packItems = order.map((id) => ({
+    id,
+    costMins: profiles.get(id)?.capacityMins ?? 0,
+  }));
+  const pack = packOrderedIntoWindows(packItems, windows);
+  const placedById = new Map(pack.placed.map((p) => [p.id, p]));
+  const packOverflow = new Set(pack.overflowIds);
 
   let cumulative = 0;
   const tasks: LiveTaskPlan[] = [];
@@ -226,25 +399,46 @@ export function buildLiveDayPlan(params: {
     if (!profile) continue;
     const cap = Math.max(0, profile.capacityMins);
     const fit = (profile.fit?.fit ?? 'unknown') as FitState;
-    const inWindow = fitsSet.has(id);
+    const placement = placedById.get(id);
+    const inWindow = placement != null && !packOverflow.has(id);
 
-    // Temporal honesty: if the task needs more contiguous time than the
-    // largest free window, demote presentation toward "likely later"
-    // without inventing a new fit engine — only when engine already said
-    // possible/strong and the window is clearly too small.
+    // Pack failure mode for reasons
+    let packFail: 'none' | 'no_window' | 'fragmented' = 'none';
+    if (!inWindow && cap > 0) {
+      packFail =
+        largest > 0 && cap > largest + 5 ? 'fragmented' : 'no_window';
+    }
+
+    // Presentation fit: keep engine protect/blocked; demote strong/possible
+    // when packing failed due to fragmentation.
     let presentFit = fit;
     if (
-      cap > 0 &&
-      largest > 0 &&
-      cap > largest + 5 &&
+      !inWindow &&
       (fit === 'strong' || fit === 'possible') &&
       !profile.protectFromCarry
     ) {
       presentFit = 'poor';
     }
+    if (fit === 'blocked') presentFit = 'blocked';
+    if (fit === 'protect') presentFit = 'protect';
 
     const start = cumulative;
     cumulative += cap;
+
+    const reason = humanReason(profile, inWindow, packFail, largest, cap);
+    // Optional: append projected time when packed and useful
+    let finalReason = reason;
+    if (inWindow && placement && placement.windowIndex >= 0 && placement.costMins > 0) {
+      const clock = formatClock(placement.startMs);
+      if (!reason.includes(clock)) {
+        // Keep primary reason; clock is structural not chatty
+        finalReason =
+          presentFit === 'protect' || presentFit === 'strong' || presentFit === 'possible'
+            ? reason
+            : reason;
+      }
+    }
+
     const plan: LiveTaskPlan = {
       id,
       fit: presentFit,
@@ -253,30 +447,58 @@ export function buildLiveDayPlan(params: {
       estimatedRemainingMins: cap,
       cumulativeStartMins: start,
       cumulativeEndMins: cumulative,
-      reason: humanReason(profile, inWindow),
+      reason: finalReason,
       protected: profile.protectFromCarry || fit === 'protect',
-      movable: carrySet.has(id) || fit === 'carry_safe' || profile.urgency === 'flexible',
-      inWindow: inWindow && presentFit !== 'poor',
+      movable:
+        carrySet.has(id) ||
+        fit === 'carry_safe' ||
+        profile.urgency === 'flexible',
+      inWindow,
+      projectedStartMs: placement && inWindow ? placement.startMs : null,
+      projectedEndMs: placement && inWindow ? placement.endMs : null,
     };
     tasks.push(plan);
     byId[id] = plan;
   }
 
-  const fitsIds = tasks.filter((t) => t.inWindow && t.fit !== 'poor' && t.fit !== 'blocked').map((t) => t.id);
-  const uncertainIds = tasks
-    .filter((t) => t.fit === 'uncertain' || t.fit === 'unknown' || t.fit === 'needs_context')
+  const fitsIds = tasks
+    .filter(
+      (t) =>
+        t.inWindow &&
+        t.fit !== 'poor' &&
+        t.fit !== 'blocked'
+    )
     .map((t) => t.id);
-  const movableIds = tasks.filter((t) => t.movable && !t.protected).map((t) => t.id);
-  const overflowIds = tasks.filter((t) => !t.inWindow || t.fit === 'poor').map((t) => t.id);
+  const uncertainIds = tasks
+    .filter(
+      (t) =>
+        t.fit === 'uncertain' ||
+        t.fit === 'unknown' ||
+        t.fit === 'needs_context'
+    )
+    .map((t) => t.id);
+  const movableIds = tasks
+    .filter((t) => t.movable && !t.protected)
+    .map((t) => t.id);
+  const overflowIds = tasks
+    .filter((t) => !t.inWindow || t.fit === 'poor')
+    .map((t) => t.id);
 
-  const plannedTaskMins = tasks.reduce((s, t) => s + t.estimatedRemainingMins, 0);
+  const plannedTaskMins = tasks.reduce(
+    (s, t) => s + t.estimatedRemainingMins,
+    0
+  );
   const remainingWorkMins = params.remainingWorkMins ?? sequence.totalLoadMins;
 
   let status: LiveDayStatus;
   if (open.length === 0 || plannedTaskMins <= 0) status = 'clear';
-  else if (remainingWorkMins > window + 15 || overflowIds.length > fitsIds.length)
+  else if (
+    remainingWorkMins > window + 15 ||
+    overflowIds.length > fitsIds.length
+  )
     status = 'overloaded';
-  else if (remainingWorkMins > window * 0.85 || overflowIds.length > 0) status = 'tight';
+  else if (remainingWorkMins > window * 0.85 || overflowIds.length > 0)
+    status = 'tight';
   else status = 'comfortable';
 
   const nextTaskId =
@@ -288,10 +510,10 @@ export function buildLiveDayPlan(params: {
     status === 'clear'
       ? "You're clear for the rest of today."
       : status === 'overloaded'
-        ? 'Remaining work no longer fits the day as it stands.'
+        ? 'Remaining work no longer fits the free blocks in the day.'
         : status === 'tight'
-          ? 'The remainder is getting tight.'
-          : 'The remaining work looks workable from here.';
+          ? 'The remainder is getting tight against real free time.'
+          : 'The remaining work looks workable in the free blocks from here.';
 
   return {
     now,
@@ -307,8 +529,9 @@ export function buildLiveDayPlan(params: {
     tasks,
     byId,
     sequence,
+    pack,
+    freeWindows: windows,
     dayRead,
     minsToNextCommitment: minsToNextCommitment(now, commitments),
   };
 }
-
