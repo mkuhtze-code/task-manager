@@ -1,0 +1,238 @@
+/* Meetings Pro surface — domain craft aligned with surface-system + Today tone */
+
+.meetings-shell {
+  min-height: 100%;
+}
+
+.meetings-mobile-header .meetings-mobile-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.meetings-mobile-header .app-title {
+  margin: 0;
+  line-height: 1.15;
+}
+
+.meetings-mobile-pulse {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink-faint, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(70vw, 22rem);
+}
+
+.meetings-mobile-controls {
+  padding: 8px var(--space-page, 16px) 4px;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+}
+
+.meetings-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 12px 0 5rem;
+}
+
+html[data-surface='desktop'] .meetings-workspace {
+  padding: 16px 20px 2.5rem;
+  max-width: 52rem;
+}
+
+.meeting-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 var(--space-page, 16px) 6px;
+}
+
+html[data-surface='desktop'] .meeting-section-header {
+  padding: 0 0 8px;
+}
+
+.meeting-section-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.meeting-section-lede {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.meeting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid var(--line, #e2e8f0);
+  border-bottom: 1px solid var(--line, #e2e8f0);
+  background: var(--paper, #fff);
+}
+
+html[data-surface='desktop'] .meeting-list {
+  border-radius: 12px;
+  border: 1px solid var(--line, #e2e8f0);
+  overflow: hidden;
+}
+
+.meeting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px var(--space-page, 16px);
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+  transition: background 0.12s ease;
+}
+
+.meeting-row:last-child {
+  border-bottom: none;
+}
+
+.meeting-row:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.meeting-row:focus-visible {
+  outline: 2px solid var(--steel, #1e6be6);
+  outline-offset: -2px;
+}
+
+.meeting-row.pressure-now {
+  background: rgba(30, 107, 230, 0.05);
+}
+
+.meeting-row.pressure-soon {
+  box-shadow: inset 3px 0 0 var(--steel, #1e6be6);
+}
+
+.meeting-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.meeting-row-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.meeting-row-name {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ink, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meeting-row-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--ink-soft, #64748b);
+}
+
+.meeting-window {
+  font-variant-numeric: tabular-nums;
+}
+
+.meeting-meta {
+  color: var(--ink-faint, #94a3b8);
+}
+
+.meeting-row-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.meeting-phase {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft, #64748b);
+}
+
+.meeting-phase.phase-live {
+  color: var(--steel-dark, #1e40af);
+}
+
+.meeting-phase.phase-today {
+  color: var(--ink, #0f172a);
+}
+
+.meeting-phase.phase-past {
+  color: var(--ink-faint, #94a3b8);
+}
+
+.meeting-loop-chip {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--steel-dark, #1e40af);
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(30, 107, 230, 0.35);
+  background: rgba(30, 107, 230, 0.06);
+}
+
+.meeting-capture-chip {
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.meeting-dur {
+  font-size: 11px;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.meeting-source-tag {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+  flex-shrink: 0;
+}
+
+.meetings-empty {
+  padding: 2.5rem var(--space-page, 16px);
+}
+
+.meetings-empty .empty-state-sub {
+  max-width: 22rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.live-day-sep {
+  margin: 0 6px;
+  color: var(--ink-faint, #94a3b8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-row {
+    transition: none;
+  }
+}
