@@ -498,13 +498,14 @@ export default function MeetingsHome() {
         </div>
       )}
 
-      <NewMeetingSheet
-        open={newMeetingOpen}
-        onClose={() => setNewMeetingOpen(false)}
-        onSubmit={createMeeting}
-        saving={saving}
-        jobs={jobs}
-      />
+      {newMeetingOpen ? (
+        <NewMeetingSheet
+          saving={saving}
+          jobs={jobs}
+          onClose={() => setNewMeetingOpen(false)}
+          onCreate={createMeeting}
+        />
+      ) : null}
 
       {!isDesktop ? <SurfaceNav /> : null}
     </div>
