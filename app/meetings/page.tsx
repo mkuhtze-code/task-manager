@@ -1,12 +1,19 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+/**
+ * Meetings overview — Pro surface.
+ * Same tone/authority as Today; intelligence is conversation → consequence,
+ * not another day planner.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import type { Meeting } from '@/lib/meetingTypes';
 import type { Job } from '@/lib/jobTypes';
-import { sortMeetingsForOverview, fmtMeetingWindow } from '@/lib/meetingUtils';
+import { fmtMeetingWindow } from '@/lib/meetingUtils';
+import { buildMeetingsSurfaceModel } from '@/lib/meetings/meetingSurface';
 import { NewMeetingSheet, type NewMeetingPayload } from '@/components/MeetingSheets';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
@@ -18,14 +25,27 @@ import { useProRedirect } from '@/hooks/useProRedirect';
 import DesktopMeetingsHeader, {
   type MeetingsListFilter,
 } from '@/components/DesktopMeetingsHeader';
+import { useNow } from '@/hooks/useNow';
+
+function fmtDur(mins: number): string {
+  if (mins <= 0) return '';
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
 
 export default function MeetingsHome() {
   const router = useRouter();
+  const now = useNow(30_000);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [openActionsByMeeting, setOpenActionsByMeeting] = useState<
+    Record<string, number>
+  >({});
   const [newMeetingOpen, setNewMeetingOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [listFilter, setListFilter] =
@@ -44,12 +64,10 @@ export default function MeetingsHome() {
     'meetings'
   );
 
-
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, s) => {
         setSession(s);
-
         if (!s) setLoading(false);
       }
     );
@@ -61,12 +79,7 @@ export default function MeetingsHome() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (session) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id]);
-
-  async function load() {
+  const load = useCallback(async () => {
     if (!session) return;
 
     setLoading(true);
@@ -74,12 +87,11 @@ export default function MeetingsHome() {
 
     const userId = session.user.id;
 
-    const { data: meetingRows, error: meetingErr } =
-      await supabase
-        .from('meetings')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+    const { data: meetingRows, error: meetingErr } = await supabase
+      .from('meetings')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
     if (meetingErr) {
       console.error(meetingErr);
@@ -93,10 +105,37 @@ export default function MeetingsHome() {
       .select('*')
       .eq('user_id', userId);
 
+    // Open loops: actions not yet promoted to a task
+    const openMap: Record<string, number> = {};
+    try {
+      const { data: actionRows } = await supabase
+        .from('meeting_actions')
+        .select('meeting_id, task_id')
+        .eq('user_id', userId)
+        .is('task_id', null);
+
+      if (actionRows) {
+        for (const row of actionRows as {
+          meeting_id: string;
+          task_id: string | null;
+        }[]) {
+          if (!row.meeting_id) continue;
+          openMap[row.meeting_id] = (openMap[row.meeting_id] ?? 0) + 1;
+        }
+      }
+    } catch (e) {
+      console.warn('[Meetings] open actions unavailable', e);
+    }
+
     setMeetings((meetingRows as Meeting[]) || []);
     setJobs((jobRows as Job[]) || []);
+    setOpenActionsByMeeting(openMap);
     setLoading(false);
-  }
+  }, [session]);
+
+  useEffect(() => {
+    if (session) load();
+  }, [session?.user?.id, load]);
 
   async function createMeeting(payload: NewMeetingPayload) {
     if (!canMeetings) return;
@@ -118,13 +157,11 @@ export default function MeetingsHome() {
 
       if (!json.id) {
         console.error('Meeting insert failed', json);
-
         setError(
           json.error === 'Meetings requires a Dokkit plan'
             ? 'Meetings requires a Dokkit plan'
             : "Couldn't record the meeting"
         );
-
         return;
       }
 
@@ -138,112 +175,183 @@ export default function MeetingsHome() {
     }
   }
 
-  const jobName = (id: string | null): string | null =>
-    id
-      ? jobs.find((j) => j.id === id)?.name ?? null
-      : null;
+  const jobName = useCallback(
+    (id: string | null): string | null =>
+      id ? jobs.find((j) => j.id === id)?.name ?? null : null,
+    [jobs]
+  );
 
-  const { upcoming, past } =
-    sortMeetingsForOverview(meetings);
+  const surface = useMemo(
+    () =>
+      buildMeetingsSurfaceModel({
+        meetings,
+        now,
+        openActionsByMeeting,
+      }),
+    [meetings, now, openActionsByMeeting]
+  );
 
   const searchTerm = search.trim().toLowerCase();
 
-  const matchesSearch = (meeting: Meeting) => {
-    if (!searchTerm) return true;
+  const matchesSearch = useCallback(
+    (meeting: Meeting) => {
+      if (!searchTerm) return true;
+      const job = jobName(meeting.job_id);
+      return [meeting.text, meeting.location_text, meeting.source, job]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(searchTerm));
+    },
+    [searchTerm, jobName]
+  );
 
-    const job = jobName(meeting.job_id);
+  const filterBucket = useCallback(
+    (list: Meeting[]) => list.filter(matchesSearch),
+    [matchesSearch]
+  );
 
+  const sections = useMemo(() => {
+    if (listFilter === 'past') {
+      return [
+        {
+          key: 'past',
+          title: 'Earlier',
+          lede: 'What was said stays available',
+          items: filterBucket(surface.past),
+        },
+      ];
+    }
+    if (listFilter === 'upcoming') {
+      return [
+        {
+          key: 'live',
+          title: 'Now',
+          lede: null as string | null,
+          items: filterBucket(surface.live),
+        },
+        {
+          key: 'today',
+          title: 'Today',
+          lede: surface.todayLoadMins
+            ? `${fmtDur(surface.todayLoadMins)} on the clock`
+            : null,
+          items: filterBucket(surface.today),
+        },
+        {
+          key: 'upcoming',
+          title: 'Ahead',
+          lede: null,
+          items: filterBucket(surface.upcoming),
+        },
+        {
+          key: 'flexible',
+          title: 'Unscheduled',
+          lede: 'Captured without a fixed time',
+          items: filterBucket(surface.flexible),
+        },
+      ].filter((s) => s.items.length > 0);
+    }
+    // all
     return [
-      meeting.text,
-      meeting.location_text,
-      meeting.source,
-      job,
-    ]
-      .filter(Boolean)
-      .some((value) =>
-        String(value).toLowerCase().includes(searchTerm)
-      );
+      {
+        key: 'live',
+        title: 'Happening',
+        lede: 'In progress',
+        items: filterBucket(surface.live),
+      },
+      {
+        key: 'today',
+        title: 'Today',
+        lede: surface.todayLoadMins
+          ? `${fmtDur(surface.todayLoadMins)} fixed time`
+          : null,
+        items: filterBucket(surface.today),
+      },
+      {
+        key: 'upcoming',
+        title: 'Ahead',
+        lede: null,
+        items: filterBucket(surface.upcoming),
+      },
+      {
+        key: 'flexible',
+        title: 'Unscheduled',
+        lede: null,
+        items: filterBucket(surface.flexible),
+      },
+      {
+        key: 'past',
+        title: 'Earlier',
+        lede:
+          surface.openLoopCount > 0
+            ? `${surface.openLoopCount} open follow-up${
+                surface.openLoopCount === 1 ? '' : 's'
+              }`
+            : null,
+        items: filterBucket(surface.past),
+      },
+    ].filter((s) => s.items.length > 0);
+  }, [listFilter, surface, filterBucket]);
+
+  const totalVisible = sections.reduce((s, sec) => s + sec.items.length, 0);
+
+  const filterCounts = {
+    all: meetings.length,
+    upcoming:
+      surface.live.length +
+      surface.today.length +
+      surface.upcoming.length +
+      surface.flexible.length,
+    past: surface.past.length,
   };
 
-  const filteredUpcoming = useMemo(
-    () => upcoming.filter(matchesSearch),
-    [upcoming, searchTerm, jobs]
-  );
-
-  const filteredPast = useMemo(
-    () => past.filter(matchesSearch),
-    [past, searchTerm, jobs]
-  );
-
-  const visibleUpcoming =
-    listFilter === 'past' ? [] : filteredUpcoming;
-
-  const visiblePast =
-    listFilter === 'upcoming' ? [] : filteredPast;
-
-  const hasMeetings =
-    upcoming.length > 0 || past.length > 0;
-
-  function MeetingSection({
-    title,
-    items,
-  }: {
-    title: string;
-    items: Meeting[];
-  }) {
-    if (items.length === 0) return null;
+  function renderRow(m: Meeting) {
+    const row = surface.rows[m.id];
+    const job = jobName(m.job_id);
+    const phase = row?.phaseLabel ?? '';
+    const pressure = row?.pressure ?? 'later';
+    const openN = row?.openActionCount ?? 0;
 
     return (
-      <section className="meeting-section">
-        <div className="meeting-section-title">{title}</div>
-
-        <div className="meeting-list">
-          {items.map((m) => {
-            const job = jobName(m.job_id);
-
-            return (
-              <Link
-                key={m.id}
-                href={`/meetings/${m.id}`}
-                className="meeting-row"
-              >
-                <div className="meeting-row-top">
-                  <span className="meeting-row-name">
-                    {m.text}
-                  </span>
-
-                  {m.source === 'outlook' && (
-                    <span className="meeting-source-tag">
-                      outlook
-                    </span>
-                  )}
-                </div>
-
-                <div className="meeting-row-sub">
-                  <span className="meeting-window">
-                    {fmtMeetingWindow(
-                      m.start_time,
-                      m.duration_mins
-                    )}
-                  </span>
-
-                  {job && (
-                    <span className="meeting-meta">
-                      {job}
-                    </span>
-                  )}
-
-                  {m.location_text && job === null && (
-                    <span className="meeting-meta">
-                      {m.location_text}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
+      <Link
+        key={m.id}
+        href={`/meetings/${m.id}`}
+        className={`meeting-row pressure-${pressure}`}
+      >
+        <div className="meeting-row-main">
+          <div className="meeting-row-top">
+            <span className="meeting-row-name">{m.text}</span>
+            {m.source === 'outlook' ? (
+              <span className="meeting-source-tag">outlook</span>
+            ) : null}
+          </div>
+          <div className="meeting-row-sub">
+            <span className="meeting-window mono">
+              {fmtMeetingWindow(m.start_time, m.duration_mins)}
+            </span>
+            {job ? <span className="meeting-meta">{job}</span> : null}
+            {!job && m.location_text ? (
+              <span className="meeting-meta">{m.location_text}</span>
+            ) : null}
+          </div>
         </div>
-      </section>
+        <div className="meeting-row-aside">
+          {phase ? (
+            <span className={`meeting-phase phase-${row?.phase ?? 'upcoming'}`}>
+              {phase}
+            </span>
+          ) : null}
+          {openN > 0 ? (
+            <span className="meeting-loop-chip">
+              {openN} open
+            </span>
+          ) : row?.hasNotes || row?.hasSummary ? (
+            <span className="meeting-capture-chip">Captured</span>
+          ) : null}
+          {row && row.durationMins > 0 ? (
+            <span className="meeting-dur mono">{fmtDur(row.durationMins)}</span>
+          ) : null}
+        </div>
+      </Link>
     );
   }
 
@@ -255,138 +363,150 @@ export default function MeetingsHome() {
     );
   }
 
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const meetingsToday = upcoming.filter((m) => {
-    if (!m.start_time) return false;
-    return String(m.start_time).slice(0, 10) === todayKey;
-  });
-  const nextMeeting = upcoming[0] ?? null;
-  let nextLabel: string | null = null;
-  if (nextMeeting?.start_time) {
-    const d = new Date(nextMeeting.start_time);
-    if (!Number.isNaN(d.getTime())) {
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mm = String(d.getMinutes()).padStart(2, '0');
-      nextLabel = `${hh}:${mm} ${(nextMeeting as any).title || (nextMeeting as any).text || 'Meeting'}`;
-    }
-  }
-
   return (
-    <div className="app-shell">
+    <div className="app-shell meetings-shell">
       {!isDesktop && (
-        <div className="app-header">
+        <div className="app-header meetings-mobile-header">
           <div className="app-header-left">
-            <Link
-              href="/"
-              className="back-link"
-              aria-label="Back to today"
-            >
+            <Link href="/" className="back-link" aria-label="Back to today">
               <BackIcon />
             </Link>
-
-            <h1 className="app-title">Meetings</h1>
+            <div className="meetings-mobile-identity">
+              <h1 className="app-title">Meetings</h1>
+              <p className="meetings-mobile-pulse">
+                {surface.pulseTitle}
+                {surface.pulseMeta ? (
+                  <>
+                    <span className="live-day-sep">·</span>
+                    {surface.pulseMeta}
+                  </>
+                ) : null}
+              </p>
+            </div>
           </div>
-
           <div className="app-header-right">
-            <GearMenu
-              context="work"
-              userId={session?.user.id ?? null}
-            />
+            <button
+              type="button"
+              className="btn btn-steel"
+              onClick={() => setNewMeetingOpen(true)}
+            >
+              New
+            </button>
+            <GearMenu />
           </div>
         </div>
       )}
 
-      {isDesktop && (
+      {isDesktop ? (
         <DesktopMeetingsHeader
-          upcomingCount={upcoming.length}
-          pastCount={past.length}
-          allCount={meetings.length}
-          todayCount={meetingsToday.length}
-          nextLabel={nextLabel}
-          filter={listFilter}
-          onFilterChange={setListFilter}
+          pulseTitle={surface.pulseTitle}
+          pulseMeta={surface.pulseMeta}
+          pulseAttention={surface.pulseAttention}
+          depthRead={surface.depthRead}
+          todayCount={surface.live.length + surface.today.length}
+          upcomingCount={surface.upcoming.length + surface.flexible.length}
+          pastCount={surface.past.length}
+          todayLoadMins={surface.todayLoadMins}
+          openLoopCount={surface.openLoopCount}
+          nextLabel={surface.nextLabel}
+          listFilter={listFilter}
+          onListFilter={setListFilter}
           search={search}
           onSearchChange={setSearch}
-          onCreate={() => setNewMeetingOpen(true)}
+          onNewMeeting={() => setNewMeetingOpen(true)}
+          filterCounts={filterCounts}
         />
-      )}
+      ) : null}
 
-      {error && (
+      {!isDesktop ? (
+        <div className="meetings-mobile-controls">
+          <div className="surface-filters" role="tablist" aria-label="Filters">
+            {(
+              [
+                ['all', 'All', filterCounts.all],
+                ['upcoming', 'Ahead', filterCounts.upcoming],
+                ['past', 'Past', filterCounts.past],
+              ] as const
+            ).map(([key, label, count]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={listFilter === key}
+                className={
+                  listFilter === key
+                    ? 'surface-filter is-active'
+                    : 'surface-filter'
+                }
+                onClick={() => setListFilter(key)}
+              >
+                {label}
+                <span className="mono">{count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {error ? (
         <button
+          type="button"
           className="recalc-error"
-          onClick={load}
-          disabled={loading}
+          onClick={() => load()}
         >
           {error}
         </button>
-      )}
+      ) : null}
 
-      {loading || entLoading ? (
+      {loading ? (
         <div className="empty-state">Loading…</div>
-      ) : !canMeetings ? (
-        <div className="empty-state">Loading…</div>
-      ) : !hasMeetings ? (
-        <div className="empty-state">
-          <div className="empty-state-title">
-            No meetings recorded.
-          </div>
-
+      ) : meetings.length === 0 ? (
+        <div className="empty-state meetings-empty">
+          <div className="empty-state-title">No meetings yet</div>
           <div className="empty-state-sub">
-            Capture who met, when, and around which job — while
-            it is still fresh. Structure can wait.
+            Record a conversation when it matters — time, notes, and what it
+            leaves behind stay with the meeting.
           </div>
-
           <button
+            type="button"
             className="btn btn-steel"
             onClick={() => setNewMeetingOpen(true)}
           >
-            Record a meeting
+            New meeting
           </button>
         </div>
+      ) : totalVisible === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-title">Nothing in this view</div>
+          <div className="empty-state-sub">
+            Try another filter, or clear search.
+          </div>
+        </div>
       ) : (
-        <>
-          <MeetingSection
-            title="Upcoming"
-            items={visibleUpcoming}
-          />
-
-          <MeetingSection
-            title="Past"
-            items={visiblePast}
-          />
-
-          {searchTerm &&
-            visibleUpcoming.length === 0 &&
-            visiblePast.length === 0 && (
-              <div className="empty-state">
-                <div className="empty-state-title">
-                  Nothing matches that search.
-                </div>
-              </div>
-            )}
-        </>
+        <div className="meetings-workspace">
+          {sections.map((sec) => (
+            <section key={sec.key} className="meeting-section">
+              <header className="meeting-section-header">
+                <h2 className="meeting-section-title">{sec.title}</h2>
+                {sec.lede ? (
+                  <p className="meeting-section-lede">{sec.lede}</p>
+                ) : null}
+              </header>
+              <div className="meeting-list">{sec.items.map(renderRow)}</div>
+            </section>
+          ))}
+        </div>
       )}
 
-      {canMeetings && newMeetingOpen && (
-        <NewMeetingSheet
-          saving={saving}
-          jobs={jobs}
-          onClose={() => setNewMeetingOpen(false)}
-          onCreate={createMeeting}
-        />
-      )}
-
-      <SurfaceNav
-        active="meetings"
-        onAdd={
-          canMeetings &&
-          !newMeetingOpen &&
-          hasMeetings
-            ? () => setNewMeetingOpen(true)
-            : undefined
-        }
-        addLabel="Record a meeting"
+      <NewMeetingSheet
+        open={newMeetingOpen}
+        onClose={() => setNewMeetingOpen(false)}
+        onSubmit={createMeeting}
+        saving={saving}
+        jobs={jobs}
       />
+
+      {!isDesktop ? <SurfaceNav /> : null}
     </div>
   );
 }
