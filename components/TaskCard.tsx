@@ -23,6 +23,9 @@ export function TaskCard(props: {
   remainingForThis: number;
   liveLogged: number;
   overCap: boolean;
+  /** Live day fit label from LiveDayPlan (optional). */
+  fitLabel?: string | null;
+  fitReason?: string | null;
   anyActive: boolean;
   subs: Subtask[];
   learnedHint: string | null;
@@ -54,6 +57,8 @@ export function TaskCard(props: {
     remainingForThis,
     liveLogged,
     overCap,
+    fitLabel = null,
+    fitReason = null,
     anyActive,
     subs,
     learnedHint,
@@ -81,10 +86,24 @@ export function TaskCard(props: {
       ? 'task-due-today'
       : '';
 
+  const fitClass =
+    fitLabel === 'Protected'
+      ? 'fit-protect'
+      : fitLabel === 'Fits well' || fitLabel === 'Fits'
+        ? 'fit-ok'
+        : fitLabel === 'Likely later' || fitLabel === 'Can move'
+          ? 'fit-later'
+          : fitLabel === 'Uncertain' || fitLabel === 'Not enough evidence'
+            ? 'fit-uncertain'
+            : fitLabel === 'Blocked'
+              ? 'fit-blocked'
+              : '';
+
   const rowClass = [
     'task-card',
     t.source === 'came_up' ? 'came-up' : '',
     taskColorClass,
+    fitClass,
     isListItem ? 'task-list-item' : '',
     expanded ? 'expanded' : '',
   ]
@@ -132,7 +151,7 @@ export function TaskCard(props: {
     e.stopPropagation();
   }
 
-  const hasMeta = !!(t.due_today || t.location_text || learnedHint);
+  const hasMeta = !!(t.due_today || t.location_text || learnedHint || fitLabel);
 
   return (
     <div className={rowClass}>
@@ -167,6 +186,11 @@ export function TaskCard(props: {
           {jobLabel ? (
             <div className="task-card-job" title={jobLabel}>
               {jobLabel}
+            </div>
+          ) : null}
+          {fitLabel ? (
+            <div className="task-fit-line" title={fitReason ?? undefined}>
+              <span className="task-fit-badge">{fitLabel}</span>
             </div>
           ) : null}
         </div>
@@ -248,6 +272,11 @@ export function TaskCard(props: {
             <div className="task-reveal-meta">
               {t.due_today ? (
                 <span className="task-reveal-line due">Due today</span>
+              ) : null}
+              {fitLabel ? (
+                <span className="task-fit-badge" title={fitReason ?? undefined}>
+                  {fitLabel}
+                </span>
               ) : null}
               {learnedHint ? (
                 <span className="task-reveal-line">Usually ~{learnedHint}</span>
