@@ -448,6 +448,28 @@ export default function JobsHome() {
 
   const doneCount = sorted.length - openCount;
 
+  const todayKey = localDateStr(new Date());
+  let activeTodayCount = 0;
+  let attentionCount = 0;
+  let spotlightJobName: string | null = null;
+  for (const job of sorted) {
+    const jobTasks = tasksByJob[job.id] || [];
+    if (isJobDone(jobTasks)) continue;
+    const openTasks = jobTasks.filter((t) => t.status !== 'done');
+    const onToday = openTasks.some(
+      (t) =>
+        t.due_today ||
+        (t.surface_date != null && String(t.surface_date).slice(0, 10) === todayKey)
+    );
+    if (onToday) {
+      activeTodayCount += 1;
+      if (!spotlightJobName) spotlightJobName = job.name;
+    }
+    if (openTasks.length === 0) {
+      attentionCount += 1;
+    }
+  }
+
   return (
     <div className="app-shell">
       {!isDesktop && (
@@ -478,6 +500,9 @@ export default function JobsHome() {
           openCount={openCount}
           doneCount={doneCount}
           allCount={sorted.length}
+          activeTodayCount={activeTodayCount}
+          attentionCount={attentionCount}
+          spotlightJobName={spotlightJobName}
           filter={listFilter}
           onFilterChange={setListFilter}
           search={search}
