@@ -8,6 +8,12 @@ type Props = {
   openCount: number;
   doneCount: number;
   allCount: number;
+  /** Jobs with open tasks due today or marked active on Today. */
+  activeTodayCount?: number;
+  /** Open jobs with zero recent task progress (optional signal). */
+  attentionCount?: number;
+  /** Spotlight job name when one is clearly active. */
+  spotlightJobName?: string | null;
   filter: JobsListFilter;
   onFilterChange: (filter: JobsListFilter) => void;
   search: string;
@@ -38,6 +44,9 @@ export default function DesktopJobsHeader({
   openCount,
   doneCount,
   allCount,
+  activeTodayCount = 0,
+  attentionCount = 0,
+  spotlightJobName = null,
   filter,
   onFilterChange,
   search,
@@ -45,6 +54,7 @@ export default function DesktopJobsHeader({
   onCreate,
 }: Props) {
   const [searchOpen, setSearchOpen] = useState(search.length > 0);
+  const [depthOpen, setDepthOpen] = useState(false);
 
   const filterItems = useMemo(
     () => [
@@ -55,71 +65,101 @@ export default function DesktopJobsHeader({
     [openCount, doneCount, allCount]
   );
 
+  const pulseTitle =
+    activeTodayCount > 0
+      ? `${activeTodayCount} active today`
+      : openCount > 0
+        ? `${openCount} open`
+        : 'No open work';
+
+  const pulseMeta = [
+    attentionCount > 0 ? `${attentionCount} need attention` : null,
+    spotlightJobName ? spotlightJobName : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const pulseClass =
+    attentionCount > 0
+      ? 'surface-pulse is-attention'
+      : openCount === 0
+        ? 'surface-pulse is-clear'
+        : 'surface-pulse';
+
+  const contextBits: string[] = [];
+  if (openCount > 0) contextBits.push(`${openCount} open`);
+  if (doneCount > 0) contextBits.push(`${doneCount} done`);
+  if (spotlightJobName) contextBits.push(spotlightJobName);
+
+  const workRead =
+    activeTodayCount > 0
+      ? 'Work is moving on live jobs today.'
+      : attentionCount > 0
+        ? 'Some jobs need a look — nothing is moving them.'
+        : openCount > 0
+          ? 'Open work is waiting for the next move.'
+          : 'No open jobs — capture work when it appears.';
+
   return (
-    <header className="desk-jobs-workspace-header">
-      <div className="desk-jobs-header-main">
-        <div className="desk-jobs-header-title">
-          <span className="desk-jobs-header-kicker">Work</span>
-
-          <h1>Jobs</h1>
-
-          <p>
-            Work that spans days, with its tasks, evidence and context gathered
-            together.
-          </p>
-        </div>
-
-        <div
-          className="desk-jobs-header-summary"
-          aria-label="Job summary"
-        >
-          <div className="desk-jobs-stat">
-            <span className="desk-jobs-stat-value mono">
-              {openCount}
-            </span>
-            <span className="desk-jobs-stat-label">open</span>
+    <header className="surface-header desk-jobs-workspace-header">
+      <div className="surface-header-bar">
+        <div className="surface-header-orient">
+          <div className="surface-identity">
+            <span className="surface-kicker">Work</span>
+            <h1 className="surface-title">Jobs</h1>
           </div>
-
-          <div className="desk-jobs-stat">
-            <span className="desk-jobs-stat-value mono">
-              {doneCount}
-            </span>
-            <span className="desk-jobs-stat-label">done</span>
-          </div>
-
-          <div className="desk-jobs-stat">
-            <span className="desk-jobs-stat-value mono">
-              {allCount}
-            </span>
-            <span className="desk-jobs-stat-label">total</span>
+          <div className={pulseClass} aria-label="Jobs pulse">
+            <div className="surface-pulse-body">
+              <span className="surface-pulse-title">{pulseTitle}</span>
+              {pulseMeta ? (
+                <span className="surface-pulse-meta">{pulseMeta}</span>
+              ) : (
+                <span className="surface-pulse-meta">
+                  Work that spans days, gathered in one place
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="desk-jobs-header-actions">
+        <div className="surface-context" aria-label="Jobs context">
+          {contextBits.map((bit, i) => (
+            <span key={bit} className="surface-context-bit">
+              {i > 0 ? <span className="surface-context-dot">·</span> : null}
+              {bit}
+            </span>
+          ))}
+        </div>
+
+        <div className="surface-header-actions">
+          <button type="button" className="btn btn-steel" onClick={onCreate}>
+            + New job
+          </button>
           <button
             type="button"
-            className="btn btn-steel desk-jobs-create"
-            onClick={onCreate}
+            className={
+              depthOpen
+                ? 'detail-pill surface-depth-toggle is-on'
+                : 'detail-pill surface-depth-toggle'
+            }
+            aria-expanded={depthOpen}
+            onClick={() => setDepthOpen((v) => !v)}
           >
-            + New job
+            {depthOpen ? 'Hide context' : 'Work context'}
           </button>
         </div>
       </div>
 
-      <div className="desk-jobs-header-controls">
-        <div
-          className="desk-jobs-filter"
-          role="group"
-          aria-label="Filter jobs"
-        >
+      <div className="surface-header-controls">
+        <div className="surface-filter" role="group" aria-label="Filter jobs">
           {filterItems.map((item) => (
             <button
               key={item.key}
               type="button"
               className={
                 filter === item.key
-                  ? 'desk-jobs-filter-btn active'
-                  : 'desk-jobs-filter-btn'
+                  ? 'surface-filter-btn active'
+                  : 'surface-filter-btn'
               }
               aria-pressed={filter === item.key}
               onClick={() => onFilterChange(item.key)}
@@ -130,37 +170,81 @@ export default function DesktopJobsHeader({
           ))}
         </div>
 
-        <div className="desk-jobs-search">
-          {searchOpen && (
+        <div className="surface-search">
+          {searchOpen ? (
             <input
               type="search"
               value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
+              onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search jobs…"
               aria-label="Search jobs"
               autoFocus
             />
-          )}
-
+          ) : null}
           <button
             type="button"
-            className="desk-jobs-search-button"
-            aria-label={
-              searchOpen ? 'Close job search' : 'Search jobs'
-            }
+            className="surface-search-button"
+            aria-label={searchOpen ? 'Close job search' : 'Search jobs'}
             aria-expanded={searchOpen}
             onClick={() => {
-              if (searchOpen && search.length > 0) {
-                onSearchChange('');
-              }
-
-              setSearchOpen((value) => !value);
+              if (searchOpen && search.length > 0) onSearchChange('');
+              setSearchOpen((v) => !v);
             }}
           >
             <SearchGlyph />
           </button>
         </div>
       </div>
+
+      {depthOpen ? (
+        <div className="surface-depth" aria-label="Work context">
+          <p className="surface-depth-read">{workRead}</p>
+          <div className="surface-depth-band">
+            <section>
+              <h3 className="surface-depth-col-title">Landscape</h3>
+              <dl className="surface-depth-dl">
+                <div>
+                  <dt>Open</dt>
+                  <dd className="mono">{openCount}</dd>
+                </div>
+                <div>
+                  <dt>Active today</dt>
+                  <dd className="mono">{activeTodayCount}</dd>
+                </div>
+                {attentionCount > 0 ? (
+                  <div>
+                    <dt>Need attention</dt>
+                    <dd className="mono">{attentionCount}</dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt>Done</dt>
+                  <dd className="mono">{doneCount}</dd>
+                </div>
+              </dl>
+            </section>
+            <section>
+              <h3 className="surface-depth-col-title">Focus</h3>
+              <dl className="surface-depth-dl">
+                <div>
+                  <dt>Spotlight</dt>
+                  <dd>{spotlightJobName || 'None singled out'}</dd>
+                </div>
+                <div>
+                  <dt>View</dt>
+                  <dd>
+                    {filter === 'open'
+                      ? 'Open jobs'
+                      : filter === 'done'
+                        ? 'Completed jobs'
+                        : 'All jobs'}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 }
