@@ -1,9 +1,8 @@
 'use client';
 
 /**
- * Meetings overview — Pro surface.
- * Same tone/authority as Today; intelligence is conversation → consequence,
- * not another day planner.
+ * Meetings overview — Pro / Maybach surface.
+ * Same tone as Today; intelligence is conversation → consequence.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -14,7 +13,10 @@ import type { Meeting } from '@/lib/meetingTypes';
 import type { Job } from '@/lib/jobTypes';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
 import { buildMeetingsSurfaceModel } from '@/lib/meetings/meetingSurface';
-import { NewMeetingSheet, type NewMeetingPayload } from '@/components/MeetingSheets';
+import {
+  NewMeetingSheet,
+  type NewMeetingPayload,
+} from '@/components/MeetingSheets';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon } from '@/components/icons';
@@ -37,7 +39,8 @@ function fmtDur(mins: number): string {
 
 export default function MeetingsHome() {
   const router = useRouter();
-  const now = useNow(30_000);
+  // 15s — live “ends in” stays honest without thrashing the tree
+  const now = useNow(15_000);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,8 +56,9 @@ export default function MeetingsHome() {
   const [search, setSearch] = useState('');
 
   const { isDesktop } = useSurfaceMode();
-  const { entitlements, loading: entLoading } =
-    useEntitlements(session?.user?.id);
+  const { entitlements, loading: entLoading } = useEntitlements(
+    session?.user?.id
+  );
 
   const canMeetings = entitlements.canUseMeetings;
 
@@ -105,7 +109,6 @@ export default function MeetingsHome() {
       .select('*')
       .eq('user_id', userId);
 
-    // Open loops: actions not yet promoted to a task
     const openMap: Record<string, number> = {};
     try {
       const { data: actionRows } = await supabase
@@ -199,7 +202,9 @@ export default function MeetingsHome() {
       const job = jobName(meeting.job_id);
       return [meeting.text, meeting.location_text, meeting.source, job]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(searchTerm));
+        .some((value) =>
+          String(value).toLowerCase().includes(searchTerm)
+        );
     },
     [searchTerm, jobName]
   );
@@ -211,15 +216,37 @@ export default function MeetingsHome() {
 
   const sections = useMemo(() => {
     if (listFilter === 'past') {
+      const needing = filterBucket(surface.pastNeedingFollowUp);
+      const rest = filterBucket(
+        surface.past.filter(
+          (m) => !surface.pastNeedingFollowUp.some((x) => x.id === m.id)
+        )
+      );
       return [
-        {
-          key: 'past',
-          title: 'Earlier',
-          lede: 'What was said stays available',
-          items: filterBucket(surface.past),
-        },
-      ];
+        needing.length
+          ? {
+              key: 'follow-up',
+              title: 'Needs follow-up',
+              lede: 'Still open from earlier conversations',
+              items: needing,
+            }
+          : null,
+        rest.length
+          ? {
+              key: 'past',
+              title: 'Earlier',
+              lede: 'What was said stays available',
+              items: rest,
+            }
+          : null,
+      ].filter(Boolean) as {
+        key: string;
+        title: string;
+        lede: string | null;
+        items: Meeting[];
+      }[];
     }
+
     if (listFilter === 'upcoming') {
       return [
         {
@@ -250,7 +277,7 @@ export default function MeetingsHome() {
         },
       ].filter((s) => s.items.length > 0);
     }
-    // all
+
     return [
       {
         key: 'live',
@@ -278,18 +305,29 @@ export default function MeetingsHome() {
         lede: null,
         items: filterBucket(surface.flexible),
       },
+      surface.pastNeedingFollowUp.length
+        ? {
+            key: 'follow-up',
+            title: 'Needs follow-up',
+            lede: `${surface.openLoopCount} open`,
+            items: filterBucket(surface.pastNeedingFollowUp),
+          }
+        : null,
       {
         key: 'past',
         title: 'Earlier',
-        lede:
-          surface.openLoopCount > 0
-            ? `${surface.openLoopCount} open follow-up${
-                surface.openLoopCount === 1 ? '' : 's'
-              }`
-            : null,
-        items: filterBucket(surface.past),
+        lede: null,
+        items: filterBucket(
+          surface.past.filter(
+            (m) =>
+              !surface.pastNeedingFollowUp.some((x) => x.id === m.id)
+          )
+        ),
       },
-    ].filter((s) => s.items.length > 0);
+    ].filter(
+      (s): s is { key: string; title: string; lede: string | null; items: Meeting[] } =>
+        Boolean(s && s.items.length > 0)
+    );
   }, [listFilter, surface, filterBucket]);
 
   const totalVisible = sections.reduce((s, sec) => s + sec.items.length, 0);
@@ -303,6 +341,9 @@ export default function MeetingsHome() {
       surface.flexible.length,
     past: surface.past.length,
   };
+
+  const featured = surface.live[0] ?? surface.today[0] ?? null;
+  const featuredRow = featured ? surface.rows[featured.id] : null;
 
   function renderRow(m: Meeting) {
     const row = surface.rows[m.id];
@@ -335,7 +376,17 @@ export default function MeetingsHome() {
           </div>
         </div>
         <div className="meeting-row-aside">
-          {phase ? (
+          {row?.relativeLine ? (
+            <span
+              className={`meeting-relative${
+                pressure === 'now' || pressure === 'soon'
+                  ? ' is-urgent'
+                  : ''
+              }`}
+            >
+              {row.relativeLine}
+            </span>
+          ) : phase ? (
             <span className={`meeting-phase phase-${row?.phase ?? 'upcoming'}`}>
               {phase}
             </span>
@@ -346,9 +397,6 @@ export default function MeetingsHome() {
             </span>
           ) : row?.hasNotes || row?.hasSummary ? (
             <span className="meeting-capture-chip">Captured</span>
-          ) : null}
-          {row && row.durationMins > 0 ? (
-            <span className="meeting-dur mono">{fmtDur(row.durationMins)}</span>
           ) : null}
         </div>
       </Link>
@@ -377,7 +425,7 @@ export default function MeetingsHome() {
                 {surface.pulseTitle}
                 {surface.pulseMeta ? (
                   <>
-                    <span className="live-day-sep">·</span>
+                    <span className="meetings-sep">·</span>
                     {surface.pulseMeta}
                   </>
                 ) : null}
@@ -390,7 +438,7 @@ export default function MeetingsHome() {
               className="btn btn-steel"
               onClick={() => setNewMeetingOpen(true)}
             >
-              New
+              Record
             </button>
             <GearMenu />
           </div>
@@ -403,12 +451,17 @@ export default function MeetingsHome() {
           pulseMeta={surface.pulseMeta}
           pulseAttention={surface.pulseAttention}
           depthRead={surface.depthRead}
+          consequenceLine={surface.consequenceLine}
           todayCount={surface.live.length + surface.today.length}
           upcomingCount={surface.upcoming.length + surface.flexible.length}
           pastCount={surface.past.length}
           todayLoadMins={surface.todayLoadMins}
           openLoopCount={surface.openLoopCount}
           nextLabel={surface.nextLabel}
+          nextRelative={surface.nextRelative}
+          nextMeetingId={featured?.id ?? surface.next?.id ?? null}
+          featuredTitle={featured?.text ?? null}
+          featuredPhase={featuredRow?.phaseLabel ?? null}
           listFilter={listFilter}
           onListFilter={setListFilter}
           search={search}
@@ -420,6 +473,27 @@ export default function MeetingsHome() {
 
       {!isDesktop ? (
         <div className="meetings-mobile-controls">
+          {featured && featuredRow && (featuredRow.pressure === 'now' || featuredRow.pressure === 'soon') ? (
+            <Link
+              href={`/meetings/${featured.id}`}
+              className="meetings-featured meetings-featured-mobile"
+            >
+              <div className="meetings-featured-label">
+                {featuredRow.phase === 'live' ? 'Now' : 'Next'}
+              </div>
+              <div className="meetings-featured-body">
+                <span className="meetings-featured-title">{featured.text}</span>
+                <span className="meetings-featured-meta">
+                  {featuredRow.relativeLine}
+                </span>
+              </div>
+            </Link>
+          ) : null}
+          {surface.consequenceLine ? (
+            <p className="meetings-mobile-consequence">
+              {surface.consequenceLine}
+            </p>
+          ) : null}
           <div className="surface-filters" role="tablist" aria-label="Filters">
             {(
               [
@@ -462,17 +536,17 @@ export default function MeetingsHome() {
         <div className="empty-state">Loading…</div>
       ) : meetings.length === 0 ? (
         <div className="empty-state meetings-empty">
-          <div className="empty-state-title">No meetings yet</div>
+          <div className="empty-state-title">No conversations yet</div>
           <div className="empty-state-sub">
-            Record a conversation when it matters — time, notes, and what it
-            leaves behind stay with the meeting.
+            Record what was said when it matters. Time, notes, and what it
+            leaves behind stay with the meeting — not lost in the day.
           </div>
           <button
             type="button"
             className="btn btn-steel"
             onClick={() => setNewMeetingOpen(true)}
           >
-            New meeting
+            Record a meeting
           </button>
         </div>
       ) : totalVisible === 0 ? (
@@ -515,7 +589,7 @@ export default function MeetingsHome() {
               ? () => setNewMeetingOpen(true)
               : undefined
           }
-          addLabel="New meeting"
+          addLabel="Record"
         />
       ) : null}
     </div>
