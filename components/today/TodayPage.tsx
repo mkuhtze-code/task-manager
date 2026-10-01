@@ -107,6 +107,7 @@ import {
   lookupTaskSignals,
   sequenceOrderIdsForOpenTasks,
 } from '@/lib/dayFit';
+import { buildLiveDayPlan } from '@/lib/thinking/v3/liveDay';
 import { calibrateFromOutcomes } from '@/lib/thinking/calibration';
 import { getBuffer } from '@/lib/thinking/evidence';
 import { getGpsPosition } from '@/lib/today/geolocation';
@@ -2282,6 +2283,19 @@ export function TodayPage() {
   const projectedPercent = (projectedFinishMinutes - workStartMinutes) / trackSpan;
   const planWidthPercent = Math.max(Math.min(projectedPercent, 1) - nowPercent, 0);
 
+
+
+  const liveDayPlan = buildLiveDayPlan({
+    now,
+    openTasks: ordered.filter((x) => x.status !== 'done'),
+    orderedIds: ordered.filter((x) => x.status !== 'done').map((x) => x.id),
+    history,
+    runtime: runtime,
+    remainingWindowMins: Math.max(taskCapacity, 0),
+    commitments: dayCommitments,
+    workEndMins: workEndMinutes,
+    remainingWorkMins,
+  });
   const openTask = openTaskId ? tasks.find((t) => t.id === openTaskId) || null : null;
 
   let openTaskRemaining = 0;
@@ -2459,7 +2473,25 @@ export function TodayPage() {
       />
 
 
-      <div className="task-list">
+      
+      {!isDesktop && (
+        <div className="live-day-strip" aria-label="Remaining day">
+          <span className="live-day-strip-main">
+            <strong className="mono">{fmtMins(Math.max(taskCapacity, 0))}</strong> available
+            <span className="live-day-sep">·</span>
+            <strong className="mono">{fmtMins(liveDayPlan.plannedTaskMins)}</strong> planned
+          </span>
+          {liveDayPlan.overflowIds.length > 0 ? (
+            <span className="live-day-strip-note">
+              {liveDayPlan.overflowIds.length} likely later
+            </span>
+          ) : (
+            <span className="live-day-strip-note">{liveDayPlan.dayRead}</span>
+          )}
+        </div>
+      )}
+
+<div className="task-list">
       {dockSummary && (
         <div
           className="settings-help"
@@ -2565,6 +2597,8 @@ export function TodayPage() {
                   remainingForThis={remainingForThis}
                   liveLogged={liveLogged}
                   overCap={overCap}
+                  fitLabel={liveDayPlan.byId[t.id]?.fitLabel ?? null}
+                  fitReason={liveDayPlan.byId[t.id]?.reason ?? null}
                   anyActive={anyActive}
                   subs={subs}
                   learnedHint={learnedHint}
