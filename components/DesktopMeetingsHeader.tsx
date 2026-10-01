@@ -1,11 +1,13 @@
 'use client';
 
 /**
- * Desktop Meetings command header — same authority as Today, domain-native.
+ * Desktop Meetings command header — Maybach craft.
  * Pulse = conversation state now. Depth = schedule + what meetings leave behind.
+ * Same visual grammar as Today; domain is conversation → consequence.
  */
 
 import { useState } from 'react';
+import Link from 'next/link';
 import GearMenu from '@/components/GearMenu';
 
 export type MeetingsListFilter = 'all' | 'upcoming' | 'past';
@@ -15,12 +17,17 @@ type Props = {
   pulseMeta: string;
   pulseAttention?: boolean;
   depthRead: string;
+  consequenceLine?: string | null;
   todayCount: number;
   upcomingCount: number;
   pastCount: number;
   todayLoadMins: number;
   openLoopCount: number;
   nextLabel: string | null;
+  nextRelative?: string | null;
+  nextMeetingId?: string | null;
+  featuredTitle?: string | null;
+  featuredPhase?: string | null;
   listFilter: MeetingsListFilter;
   onListFilter: (f: MeetingsListFilter) => void;
   search: string;
@@ -56,12 +63,17 @@ export default function DesktopMeetingsHeader({
   pulseMeta,
   pulseAttention = false,
   depthRead,
+  consequenceLine = null,
   todayCount,
   upcomingCount,
   pastCount,
   todayLoadMins,
   openLoopCount,
   nextLabel,
+  nextRelative = null,
+  nextMeetingId = null,
+  featuredTitle = null,
+  featuredPhase = null,
   listFilter,
   onListFilter,
   search,
@@ -72,14 +84,19 @@ export default function DesktopMeetingsHeader({
   const [depthOpen, setDepthOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const filters: { key: MeetingsListFilter; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: filterCounts.all },
-    { key: 'upcoming', label: 'Ahead', count: filterCounts.upcoming },
-    { key: 'past', label: 'Past', count: filterCounts.past },
-  ];
+  const filters: { key: MeetingsListFilter; label: string; count: number }[] =
+    [
+      { key: 'all', label: 'All', count: filterCounts.all },
+      { key: 'upcoming', label: 'Ahead', count: filterCounts.upcoming },
+      { key: 'past', label: 'Past', count: filterCounts.past },
+    ];
+
+  const showFeatured =
+    Boolean(featuredTitle && nextMeetingId) &&
+    (pulseAttention || featuredPhase === 'Happening' || featuredPhase === 'Soon');
 
   return (
-    <header className="surface-header desk-meetings-workspace-header">
+    <header className="surface-header desk-meetings-workspace-header meetings-maybach-header">
       <div className="surface-header-bar">
         <div className="surface-header-orient">
           <div className="surface-identity">
@@ -104,17 +121,22 @@ export default function DesktopMeetingsHeader({
         <div className="surface-context" aria-label="Meetings context">
           {todayCount > 0 ? (
             <span className="surface-context-bit">
-              <span className="surface-context-emphasis">
+              <span className="surface-context-emphasis mono">
                 {fmtDur(todayLoadMins)}
               </span>{' '}
               today
             </span>
           ) : (
             <span className="surface-context-bit surface-context-quiet">
-              Nothing on today
+              Clear today
             </span>
           )}
-          {nextLabel ? (
+          {nextRelative ? (
+            <span className="surface-context-bit">
+              <span className="surface-context-dot">·</span>
+              <span className="surface-context-next">{nextRelative}</span>
+            </span>
+          ) : nextLabel ? (
             <span className="surface-context-bit">
               <span className="surface-context-dot">·</span>
               <span className="surface-context-next">{nextLabel}</span>
@@ -146,14 +168,39 @@ export default function DesktopMeetingsHeader({
             className="btn btn-steel surface-primary-action"
             onClick={onNewMeeting}
           >
-            New meeting
+            Record
           </button>
           <GearMenu />
         </div>
       </div>
 
+      {showFeatured && nextMeetingId ? (
+        <Link
+          href={`/meetings/${nextMeetingId}`}
+          className="meetings-featured"
+          aria-label={`Open ${featuredTitle}`}
+        >
+          <div className="meetings-featured-label">
+            {featuredPhase === 'Happening' ? 'Now' : 'Next'}
+          </div>
+          <div className="meetings-featured-body">
+            <span className="meetings-featured-title">{featuredTitle}</span>
+            <span className="meetings-featured-meta">
+              {[featuredPhase, nextRelative].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+          <span className="meetings-featured-cta" aria-hidden>
+            Open
+          </span>
+        </Link>
+      ) : null}
+
       <div className="surface-controls">
-        <div className="surface-filters" role="tablist" aria-label="Meeting filters">
+        <div
+          className="surface-filters"
+          role="tablist"
+          aria-label="Meeting filters"
+        >
           {filters.map((item) => (
             <button
               key={item.key}
@@ -178,7 +225,7 @@ export default function DesktopMeetingsHeader({
               type="search"
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search meetings…"
+              placeholder="Search conversations…"
               aria-label="Search meetings"
               autoFocus
             />
@@ -186,7 +233,9 @@ export default function DesktopMeetingsHeader({
           <button
             type="button"
             className="surface-search-button"
-            aria-label={searchOpen ? 'Close meeting search' : 'Search meetings'}
+            aria-label={
+              searchOpen ? 'Close meeting search' : 'Search meetings'
+            }
             aria-expanded={searchOpen}
             onClick={() => {
               if (searchOpen && search.length > 0) onSearchChange('');
@@ -199,8 +248,11 @@ export default function DesktopMeetingsHeader({
       </div>
 
       {depthOpen ? (
-        <div className="surface-depth" aria-label="Meeting context">
+        <div className="surface-depth meetings-depth" aria-label="Meeting context">
           <p className="surface-depth-read">{depthRead}</p>
+          {consequenceLine ? (
+            <p className="meetings-consequence">{consequenceLine}</p>
+          ) : null}
           <div className="surface-depth-band">
             <section>
               <h3 className="surface-depth-col-title">On the clock</h3>
