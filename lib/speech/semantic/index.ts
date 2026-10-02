@@ -6,6 +6,10 @@ export type {
   CorrectionStep,
   SemanticAct,
   SemanticUtterance,
+  SemanticCondition,
+  SemanticDependency,
+  ReferenceResolution,
+  SemanticActionOutcome,
 } from './types';
 export { makeActId } from './types';
 
@@ -18,4 +22,8 @@ export {
   applySafetyToUtterance,
 } from './safety';
 export type { SafetyVerdict } from './safety';
-export { composeSemanticUtterance, canProposeTask } from './compose';
+export { composeSemanticUtterance, canProposeTask, positiveActionActs } from './compose';
+export { resolveTemporalOverlaps, temporalForClause } from './temporalSpans';
+export { extractSemanticCorrections, applyCorrectionsToClause } from './correctionsSemantic';
+export { resolveReferencesInActs, entitiesFromActs } from './references';
+export { extractCondition, extractDependency } from './conditions';
