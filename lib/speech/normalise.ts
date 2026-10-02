@@ -124,9 +124,7 @@ export function detectCorrections(text: string): { text: string; corrections: Co
     const c = String(corrected).trim();
     if (!o || !c || o.toLowerCase() === c.toLowerCase()) return full;
     if (/^(?:no|nope|nah)$/i.test(o) || /^(?:no|nope|nah)$/i.test(c)) return full;
-    const oTokens = o.split(/\s+/).length;
-    const cTokens = c.split(/\s+/).length;
-    if (oTokens > 6 || cTokens > 6) return full;
+    if (o.split(/\s+/).length > 6 || c.split(/\s+/).length > 6) return full;
     if (/\b(?:said|say|told|tell|answered)\b/i.test(o)) return full;
     corrections.push({
       marker: 'no',
@@ -313,7 +311,31 @@ export function extractTemporals(text: string, todayIso?: string): TemporalRefer
       confidence: 'high',
     });
   }
-  return refs;
+  return dedupeTemporalRefs(text, refs);
+}
+
+function dedupeTemporalRefs(text: string, refs: TemporalReference[]): TemporalReference[] {
+  if (refs.length <= 1) return refs;
+  const lower = text.toLowerCase();
+  const scored = refs.map((r) => {
+    const start = lower.indexOf(r.raw.toLowerCase());
+    let score = r.raw.length;
+    if (r.kind === 'deadline') score += 20;
+    if (r.kind === 'relative_day' || r.kind === 'relative_week') score += 15;
+    if (r.kind === 'vague') score -= 10;
+    return { r, start: start < 0 ? 9999 : start, end: start < 0 ? 9999 : start + r.raw.length, score };
+  });
+  scored.sort((a, b) => b.score - a.score || b.r.raw.length - a.r.raw.length);
+  const chosen: typeof scored = [];
+  for (const h of scored) {
+    const overlaps = chosen.some(
+      (c) => h.start < 9000 && c.start < 9000 && !(h.end <= c.start || h.start >= c.end)
+    );
+    if (overlaps) continue;
+    chosen.push(h);
+  }
+  chosen.sort((a, b) => a.start - b.start);
+  return chosen.map((c) => c.r);
 }
 
 function nextWeekday(from: Date, targetDow: number, forceNext: boolean): Date {
