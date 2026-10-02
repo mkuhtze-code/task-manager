@@ -105,7 +105,6 @@ export type NormalisationResult = {
   originalText: string;
   normalisedText: string;
   fillersRemoved: string[];
-  /** Adjacent stutter tokens collapsed (e.g. "John John" → "John") */
   repetitionsCollapsed: string[];
   punctuationApplied: SpokenPunctuationHit[];
   corrections: CorrectionSpan[];
@@ -181,10 +180,11 @@ export type SpeechInterpretation = {
   confidence: Confidence;
   reasons: string[];
   requiresConfirmation: boolean;
-  /** Multi-act semantic composition (evidence-preserving). Optional during rollout. */
   semantic?: import('./semantic/types').SemanticUtterance;
-  /** Hard safety: must not become a task without explicit confirmation */
   mustNotCreateTask?: boolean;
+  transcriptionConfidence?: Confidence;
+  interpretationConfidence?: Confidence;
+  actionConfidence?: Confidence;
   createdAt: string;
 };
 
@@ -265,6 +265,7 @@ export type SpeechPipelineResult = {
   session: SpeechSession;
   interpretation: SpeechInterpretation | null;
   communicationProfileHint?: PersonalCommunicationProfile | null;
+  decision?: import('./decision').SpeechDecision;
 };
 
 export function speechCertaintyToComm(c: SpeechCertainty): CommCertainty {
