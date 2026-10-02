@@ -141,3 +141,35 @@
   gap: 8px;
   flex-shrink: 0;
 }
+
+/* Speech intelligence status under capture line */
+.capture-speech-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.35rem 0 0.15rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--text-secondary, #5c6570);
+  background: var(--surface-muted, rgba(0, 0, 0, 0.04));
+}
+.capture-speech-status-safe {
+  background: rgba(46, 125, 90, 0.08);
+  color: var(--text-secondary, #3d5a4c);
+}
+.capture-speech-status-ask {
+  background: rgba(180, 120, 40, 0.1);
+  color: var(--text-secondary, #6a4f1a);
+}
+.capture-speech-status-propose {
+  background: rgba(50, 90, 160, 0.08);
+  color: var(--text-secondary, #2c4570);
+}
+.capture-speech-status-dismiss {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
