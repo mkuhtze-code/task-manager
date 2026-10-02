@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -845,7 +846,10 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           onLinkJob={linkJob}
         />
 
-        <MeetingTripPill meeting={meeting} />
+        <MeetingTripPill
+          userId={session.user.id}
+          meetingStartIso={meeting.start_time}
+        />
 
         <div className="detail-section">
           <div className="detail-section-title-row">
