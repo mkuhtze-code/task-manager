@@ -46,9 +46,6 @@ export function createSpeechLearningEvent(
   };
 }
 
-/**
- * Explicit user correction of interpretation or transcription — high weight.
- */
 export function recordSpeechCorrection(
   model: PersonalLanguageModel,
   profile: PersonalCommunicationProfile,
@@ -129,9 +126,6 @@ function upsertVocabulary(
   );
 }
 
-/**
- * Soft observation from a confirmed interpretation (user accepted surface summary).
- */
 export function observeConfirmedInterpretation(
   model: PersonalLanguageModel,
   interpretation: SpeechInterpretation
@@ -219,7 +213,6 @@ function bumpCommitment(
   return [...list, { phrase: key, mapsTo, evidenceCount: 1 }];
 }
 
-/** Apply learned vocabulary when evidence threshold is met. */
 export function applyVocabulary(
   text: string,
   model: PersonalLanguageModel
@@ -240,7 +233,7 @@ export function applyVocabulary(
 }
 
 function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return s.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
 }
 
 export function emptyModel(userId: string): PersonalLanguageModel {
@@ -252,4 +245,69 @@ export function confidenceForEvidence(count: number, explicit: boolean): Confide
   if (count >= MIN_EVIDENCE_OBSERVATION + 2) return 'high';
   if (count >= MIN_EVIDENCE_OBSERVATION) return 'medium';
   return 'low';
+}
+
+/** Explicit alias: "when I say Hendo I mean Henderson". Evidence-gated; no silent overwrite of strong rivals. */
+export function recordNameAlias(
+  model: PersonalLanguageModel,
+  spoken: string,
+  canonical: string
+): PersonalLanguageModel {
+  const now = new Date().toISOString();
+  const key = spoken.trim().toLowerCase();
+  const existing = model.nameAliases.find((a) => a.spoken.toLowerCase() === key);
+  if (existing) {
+    if (existing.canonical.toLowerCase() !== canonical.trim().toLowerCase()) {
+      if (existing.evidenceCount < 3) {
+        return {
+          ...model,
+          nameAliases: model.nameAliases.map((a) =>
+            a.spoken.toLowerCase() === key
+              ? { ...a, canonical: canonical.trim(), evidenceCount: a.evidenceCount + 1 }
+              : a
+          ),
+          updatedAt: now,
+        };
+      }
+      return {
+        ...model,
+        nameAliases: [
+          ...model.nameAliases,
+          { spoken: spoken.trim(), canonical: canonical.trim(), evidenceCount: 1 },
+        ],
+        updatedAt: now,
+      };
+    }
+    return {
+      ...model,
+      nameAliases: model.nameAliases.map((a) =>
+        a.spoken.toLowerCase() === key ? { ...a, evidenceCount: a.evidenceCount + 1 } : a
+      ),
+      updatedAt: now,
+    };
+  }
+  return {
+    ...model,
+    nameAliases: [
+      ...model.nameAliases,
+      { spoken: spoken.trim(), canonical: canonical.trim(), evidenceCount: 3 },
+    ],
+    updatedAt: now,
+  };
+}
+
+/** Apply aliases only when evidence threshold is met. */
+export function applyNameAliases(
+  text: string,
+  model: PersonalLanguageModel | null | undefined
+): string {
+  if (!model?.nameAliases?.length) return text;
+  let out = text;
+  for (const a of model.nameAliases) {
+    if (a.evidenceCount < MIN_EVIDENCE_EXPLICIT) continue;
+    const escaped = a.spoken.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+    const re = new RegExp('\\b' + escaped + '\\b', 'gi');
+    out = out.replace(re, a.canonical);
+  }
+  return out;
 }
