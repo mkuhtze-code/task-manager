@@ -19,12 +19,16 @@ import MeetingObservationGrid from '@/components/MeetingObservationGrid';
 // it) survive the picker lifecycle.
 //
 // Capture sits ABOVE the carousel/grid so the composer is always in view
-// when + Observation is tapped — never under existing evidence.
+// when + Note is tapped — never under existing evidence.
 export default function MeetingObservations(props: {
   observations: MeetingObservation[];
   mediaByObservation: Map<string, MeetingMedia[]>;
   saving: boolean;
-  onSaveObservation: (draft: { text: string; media: CapturedMedia[] }) => Promise<boolean>;
+  onSaveObservation: (draft: {
+    text: string;
+    media: CapturedMedia[];
+    speaker?: 'customer' | 'us' | 'note';
+  }) => Promise<boolean>;
   onDelete: (id: string) => void;
   onAddMedia: (observationId: string, captured: CapturedMedia) => Promise<boolean>;
   onSaveEdit: (
@@ -81,22 +85,21 @@ export default function MeetingObservations(props: {
     });
   }, [observations]);
 
-  const count = sortedObservations.length;
-
   const [view, setView] = useState<'carousel' | 'grid'>('carousel');
   const [index, setIndex] = useState(0);
-
-  // Keep the active tile valid when observations are deleted or reloaded.
-  useEffect(() => {
-    setIndex((i) => clampIndex(i, count));
-  }, [count]);
+  const count = sortedObservations.length;
 
   const setSafeIndex = (i: number) => setIndex(clampIndex(i, count));
 
-  // A failed save keeps the capture surface open so nothing is lost; a
-  // successful one closes it (the page completes the draft) and shows the
-  // newest tile at index 0 — observations are ordered created_at desc.
-  async function handleSaveObservation(draft: { text: string; media: CapturedMedia[] }) {
+  useEffect(() => {
+    setIndex((cur) => clampIndex(cur, count));
+  }, [count]);
+
+  async function handleSaveObservation(draft: {
+    text: string;
+    media: CapturedMedia[];
+    speaker?: 'customer' | 'us' | 'note';
+  }) {
     const ok = await onSaveObservation(draft);
     if (ok) setIndex(0);
     return ok;
@@ -123,7 +126,7 @@ export default function MeetingObservations(props: {
             onClick={onStartObservation}
             disabled={capturing || saving}
           >
-            + Observation
+            + Note
           </button>
         </div>
       </div>
@@ -144,7 +147,11 @@ export default function MeetingObservations(props: {
         />
       )}
 
-      {count === 0 && !capturing && <p className="meeting-empty">No evidence captured yet.</p>}
+      {count === 0 && !capturing && (
+        <p className="meeting-empty">
+          Capture what was said and seen. Tap + Note to start.
+        </p>
+      )}
 
       {count > 0 && view === 'carousel' && (
         <MeetingObservationCarousel
