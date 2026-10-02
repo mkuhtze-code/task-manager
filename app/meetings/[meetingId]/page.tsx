@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -1573,6 +1572,8 @@ export default function MeetingDetail({
         {linkedJob && (
           <JobFilesPanel
             jobId={linkedJob.id}
+            userId={session.user.id}
+            variant="meeting"
           />
         )}
 
