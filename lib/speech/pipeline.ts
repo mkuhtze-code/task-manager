@@ -1,15 +1,15 @@
 /**
  * Speech pipeline orchestration.
- * Capture → (queue) transcription → normalisation → interpretation.
- * Audio refs stay recoverable via mediaStore; transcription failures do not
- * destroy the session.
+ * Capture → transcription → vocabulary → normalisation → interpretation → decision.
+ * Audio refs stay recoverable via mediaStore; transcription failures do not destroy the session.
  */
 
 import { saveMediaBlob } from '@/lib/mediaStore';
 import { getTranscriptionProvider } from './providers';
 import { normaliseSpeech } from './normalise';
 import { interpretSpeech } from './interpret';
-import { applyVocabulary } from './learning';
+import { decideSpeechActions } from './decision';
+import { applyVocabulary, applyNameAliases } from './learning';
 import { emitSpeechEvent } from './instrument';
 import type { PersonalCommunicationProfile } from '@/lib/communication/types';
 import type {
@@ -46,7 +46,6 @@ export function createSpeechSession(partial?: Partial<SpeechSession>): SpeechSes
   };
 }
 
-/** Persist audio bytes first (same principle as meeting voice notes). */
 export async function persistSpeechAudio(
   blob: Blob,
   meta?: { mime?: string | null; size?: number | null }
@@ -107,7 +106,7 @@ export async function transcribeSession(
 }
 
 /**
- * Run normalisation + interpretation on text (from transcription or typed input).
+ * Production text path: vocabulary → aliases → normalise → interpret → decide.
  */
 export function processSpeechText(
   text: string,
@@ -115,7 +114,6 @@ export function processSpeechText(
     session?: SpeechSession;
     todayIso?: string;
     profile?: PersonalCommunicationProfile | null;
-    /** When present, high-evidence vocabulary is applied before interpretation */
     languageModel?: import('./types').PersonalLanguageModel | null;
   }
 ): SpeechPipelineResult {
@@ -130,6 +128,7 @@ export function processSpeechText(
         textLength: working.length,
       });
     }
+    working = applyNameAliases(working, options.languageModel);
   }
   const normalisation = normaliseSpeech(working, { todayIso: options?.todayIso });
   if (normalisation.corrections.length > 0) {
@@ -156,20 +155,34 @@ export function processSpeechText(
     confidence: interpretation.confidence,
     entityCount: interpretation.entities.length,
   });
+  const decision = decideSpeechActions(interpretation, {
+    transcriptionConfidence:
+      session.transcript?.confidence != null
+        ? session.transcript.confidence >= 0.85
+          ? 'high'
+          : session.transcript.confidence >= 0.55
+            ? 'medium'
+            : 'low'
+        : 'medium',
+  });
+  const enriched = {
+    ...interpretation,
+    transcriptionConfidence: decision.transcriptionConfidence,
+    interpretationConfidence: decision.interpretationConfidence,
+    actionConfidence: decision.actionConfidence,
+    requiresConfirmation: decision.requiresConfirmation,
+    mustNotCreateTask: decision.mustNotCreateTask,
+  };
   const completed: SpeechSession = {
     ...session,
     status: 'interpreted',
     normalisation,
-    interpretation,
+    interpretation: enriched,
     endedAt: session.endedAt ?? new Date().toISOString(),
   };
-  return { session: completed, interpretation };
+  return { session: completed, interpretation: enriched, decision };
 }
 
-/**
- * Full path when audio + optional existing transcript are available.
- * If transcription is not configured, returns queued session without inventing text.
- */
 export async function runSpeechPipeline(
   input: SpeechInput & { text?: string },
   options?: {
