@@ -2,11 +2,13 @@
  * Speech → structured communication signals.
  * Deterministic. Reuses communication.understand where helpful.
  * Never invents high confidence.
+ * Semantic layer composes multi-act meaning and gates false tasks.
  */
 
 import { understand } from '@/lib/communication/understand';
 import type { PersonalCommunicationProfile, StatementType } from '@/lib/communication/types';
 import { normaliseSpeech } from './normalise';
+import { composeSemanticUtterance, canProposeTask } from './semantic';
 import type {
   AmbiguityLevel,
   CommitmentStrength,
@@ -236,10 +238,10 @@ function buildSurfaceSummary(
         ''
       )
       .trim();
-    if (core.length > 80) core = core.slice(0, 77) + '…';
+    if (core.length > 80) core = core.slice(0, 77) + '\u2026';
     parts.push(core.charAt(0).toUpperCase() + core.slice(1));
   } else {
-    parts.push(text.length > 80 ? text.slice(0, 77) + '…' : text);
+    parts.push(text.length > 80 ? text.slice(0, 77) + '\u2026' : text);
   }
 
   if (temporal?.resolvedDate) {
@@ -248,7 +250,7 @@ function buildSurfaceSummary(
     parts.push(temporal.resolvedTime);
   }
 
-  return parts.join(' — ').replace(/\s+—\s+$/, '').trim() || text;
+  return parts.join(' \u2014 ').replace(/\s+\u2014\s+$/, '').trim() || text;
 }
 
 export type InterpretSpeechOptions = {
@@ -306,38 +308,59 @@ export function interpretSpeech(
     reasons.push(`corrections:${normalisation.corrections.length}`);
   }
 
-  const ambiguity = ambiguityFrom(
-    certaintyHit.certainty,
-    temporals,
-    intentHit.intent,
-    confidence
+  const semantic = composeSemanticUtterance(
+    normalisation.originalText || rawOrNormalised,
+    normalisation
   );
+
+  let intent = intentHit.intent;
+  if (
+    semantic.mustNotCreateTask &&
+    (intent === 'create' || intent === 'plan' || intent === 'remember' || intent === 'schedule')
+  ) {
+    if (semantic.acts.some((a) => a.kind === 'question')) {
+      intent = 'ask';
+      reasons.push('safety:intent_downgrade_question');
+    } else if (semantic.acts.some((a) => a.kind === 'observation')) {
+      intent = 'observe';
+      reasons.push('safety:intent_downgrade_observe');
+    } else if (semantic.acts.some((a) => a.kind === 'refusal' || a.polarity === 'negated')) {
+      intent = 'cancel';
+      reasons.push('safety:intent_downgrade_negation');
+    } else {
+      intent = 'unknown';
+      reasons.push('safety:intent_blocked');
+    }
+  }
+
+  const ambiguity = ambiguityFrom(certaintyHit.certainty, temporals, intent, confidence);
   if (ambiguity !== 'none') reasons.push(`ambiguity:${ambiguity}`);
 
   const statementType: StatementType =
     derived.statementType !== 'UNKNOWN'
       ? derived.statementType
-      : intentHit.intent === 'ask'
+      : intent === 'ask'
         ? 'QUESTION'
-        : intentHit.intent === 'complete'
+        : intent === 'complete'
           ? 'STATUS_CHANGE'
-          : intentHit.intent === 'observe'
+          : intent === 'observe'
             ? 'OBSERVATION'
-            : intentHit.intent === 'create' ||
-                intentHit.intent === 'remember' ||
-                intentHit.intent === 'plan'
+            : intent === 'create' || intent === 'remember' || intent === 'plan'
               ? 'TASK'
               : 'UNKNOWN';
 
-  const surfaceSummary = buildSurfaceSummary(text, intentHit.intent, temporals, entities);
+  const surfaceSummary = buildSurfaceSummary(text, intent, temporals, entities);
 
   const requiresConfirmation =
     ambiguity === 'high' ||
     confidence === 'low' ||
-    intentHit.intent === 'unknown' ||
+    intent === 'unknown' ||
     certaintyHit.certainty === 'uncertain' ||
     certaintyHit.certainty === 'speculative' ||
-    derived.requiresConfirmation;
+    derived.requiresConfirmation ||
+    semantic.requiresConfirmation ||
+    semantic.mustNotCreateTask ||
+    !canProposeTask(semantic);
 
   return {
     id: makeId(),
@@ -345,7 +368,7 @@ export function interpretSpeech(
     sessionId: options.sessionId,
     originalTranscript: normalisation.originalText || rawOrNormalised,
     normalisedText: text,
-    intent: intentHit.intent,
+    intent,
     statementType,
     certainty: certaintyHit.certainty,
     commitmentStrength: commitmentHit.strength,
@@ -359,6 +382,8 @@ export function interpretSpeech(
     confidence,
     reasons,
     requiresConfirmation,
+    semantic,
+    mustNotCreateTask: semantic.mustNotCreateTask,
     createdAt: new Date().toISOString(),
   };
 }
