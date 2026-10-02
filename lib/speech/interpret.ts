@@ -1,8 +1,8 @@
 /**
  * Speech → structured communication signals.
  * Deterministic. Reuses communication.understand where helpful.
- * Never invents high confidence.
  * Semantic layer composes multi-act meaning and gates false tasks.
+ * Optional understandingContext links entities from Dokkit state.
  */
 
 import { understand } from '@/lib/communication/understand';
@@ -65,10 +65,7 @@ const URGENCY_PATTERNS: { re: RegExp; urgency: UrgencySignal }[] = [
 
 const CONSTRAINT_PATTERNS: { re: RegExp; constraint: ConstraintSignal }[] = [
   { re: /\b(?:after\s+(?:the\s+)?meeting|once\s+i\s+(?:finish|get)|first\s+i\s+need)\b/i, constraint: 'dependency' },
-  {
-    re: /\b(?:couple\s+of\s+other\s+things|other\s+things\s+i\s+need|busy\s+with|competing)\b/i,
-    constraint: 'competing_work',
-  },
+  { re: /\b(?:couple\s+of\s+other\s+things|other\s+things\s+i\s+need|busy\s+with|competing)\b/i, constraint: 'competing_work' },
   { re: /\b(?:waiting\s+(?:on|for)|need\s+(?:him|her|them)\s+to|from\s+(?:him|her))\b/i, constraint: 'person_dependency' },
   { re: /\b(?:at\s+the\s+site|on\s+site|when\s+i(?:'m|\s+am)\s+there)\b/i, constraint: 'location' },
   { re: /\b(?:if\s+i\s+have\s+time|depending\s+on|not\s+sure\s+if)\b/i, constraint: 'uncertainty' },
@@ -82,11 +79,7 @@ function detectIntent(text: string): { intent: SpeechIntent; reasons: string[] }
       return { intent, reasons };
     }
   }
-  if (
-    /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday)/i.test(
-      text
-    )
-  ) {
+  if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday)/i.test(text)) {
     reasons.push('intent:remember(short_fragment)');
     return { intent: 'remember', reasons };
   }
@@ -160,26 +153,15 @@ function extractEntities(
   const seen = new Set<string>();
   while ((m = nameRe.exec(text)) !== null) {
     const raw = m[1];
-    if (
-      /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Today|Tomorrow|I|I'll)$/i.test(raw)
-    ) {
-      continue;
-    }
+    if (/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Today|Tomorrow|I|I'll)$/i.test(raw)) continue;
     if (seen.has(raw)) continue;
     seen.add(raw);
     const wasCorrected = corrections.some(
       (c) => c.facet === 'entity' && (c.correctedRaw.includes(raw) || c.originalRaw.includes(raw))
     );
-    entities.push({
-      raw,
-      kind: 'person',
-      resolvedId: null,
-      confidence: wasCorrected ? 'medium' : 'low',
-      wasCorrected,
-    });
+    entities.push({ raw, kind: 'person', resolvedId: null, confidence: wasCorrected ? 'medium' : 'low', wasCorrected });
   }
-  const jobRe =
-    /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(roof|extension|job|site|build|kitchen|bathroom)\b/gi;
+  const jobRe = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(roof|extension|job|site|build|kitchen|bathroom)\b/gi;
   while ((m = jobRe.exec(text)) !== null) {
     const raw = `${m[1]} ${m[2]}`;
     if (seen.has(raw)) continue;
@@ -224,13 +206,10 @@ function buildSurfaceSummary(
     temporals.find((t) => t.confidence === 'high') ||
     temporals[0];
 
-  if (/\bcall\b/i.test(text) && person) {
-    parts.push(`Call ${person.raw}`);
-  } else if (/\bmeet\b/i.test(text) && person) {
-    parts.push(`Meet ${person.raw}`);
-  } else if (intent === 'create' && job) {
-    parts.push(`Job: ${job.raw}`);
-  } else if (intent === 'remember' || intent === 'plan' || intent === 'create') {
+  if (/\bcall\b/i.test(text) && person) parts.push(`Call ${person.raw}`);
+  else if (/\bmeet\b/i.test(text) && person) parts.push(`Meet ${person.raw}`);
+  else if (intent === 'create' && job) parts.push(`Job: ${job.raw}`);
+  else if (intent === 'remember' || intent === 'plan' || intent === 'create') {
     let core = text
       .replace(/^(?:um|uh|so|okay|ok|right)[,.\s]+/i, '')
       .replace(
@@ -238,19 +217,14 @@ function buildSurfaceSummary(
         ''
       )
       .trim();
-    if (core.length > 80) core = core.slice(0, 77) + '\u2026';
+    if (core.length > 80) core = core.slice(0, 77) + '…';
     parts.push(core.charAt(0).toUpperCase() + core.slice(1));
   } else {
-    parts.push(text.length > 80 ? text.slice(0, 77) + '\u2026' : text);
+    parts.push(text.length > 80 ? text.slice(0, 77) + '…' : text);
   }
-
-  if (temporal?.resolvedDate) {
-    parts.push(temporal.raw);
-  } else if (temporal?.resolvedTime) {
-    parts.push(temporal.resolvedTime);
-  }
-
-  return parts.join(' \u2014 ').replace(/\s+\u2014\s+$/, '').trim() || text;
+  if (temporal?.resolvedDate) parts.push(temporal.raw);
+  else if (temporal?.resolvedTime) parts.push(temporal.resolvedTime);
+  return parts.join(' — ').replace(/\s+—\s+$/, '').trim() || text;
 }
 
 export type InterpretSpeechOptions = {
@@ -259,6 +233,8 @@ export type InterpretSpeechOptions = {
   sessionId?: string;
   transcriptId?: string;
   normalisation?: ReturnType<typeof normaliseSpeech>;
+  /** Optional Dokkit entities for resolution */
+  understandingContext?: import('./semantic/context').SpeechUnderstandingContext | null;
 };
 
 export function interpretSpeech(
@@ -272,16 +248,12 @@ export function interpretSpeech(
 
   const intentHit = detectIntent(text);
   reasons.push(...intentHit.reasons);
-
   const certaintyHit = detectCertainty(text);
   reasons.push(...certaintyHit.reasons);
-
   const commitmentHit = detectCommitment(text);
   reasons.push(...commitmentHit.reasons);
-
   const urgencyHit = detectUrgency(text);
   reasons.push(...urgencyHit.reasons);
-
   const constraintHit = detectConstraints(text);
   reasons.push(...constraintHit.reasons);
 
@@ -289,28 +261,23 @@ export function interpretSpeech(
     today: options.todayIso,
     profile: options.profile ?? null,
   });
-  if (derived.statementType !== 'UNKNOWN') {
-    reasons.push(`statementType:${derived.statementType}`);
-  }
+  if (derived.statementType !== 'UNKNOWN') reasons.push(`statementType:${derived.statementType}`);
   if (derived.action) reasons.push(`action:${derived.action}`);
 
   const temporals = normalisation.temporals;
   const entities = extractEntities(text, normalisation.corrections);
 
   let confidence: Confidence = normalisation.confidence;
-  if (intentHit.intent === 'unknown') {
-    confidence = confidence === 'high' ? 'medium' : 'low';
-  }
+  if (intentHit.intent === 'unknown') confidence = confidence === 'high' ? 'medium' : 'low';
   if (certaintyHit.certainty === 'definite' && commitmentHit.strength === 'strong') {
     confidence = confidence === 'low' ? 'medium' : confidence;
   }
-  if (normalisation.corrections.length > 0) {
-    reasons.push(`corrections:${normalisation.corrections.length}`);
-  }
+  if (normalisation.corrections.length > 0) reasons.push(`corrections:${normalisation.corrections.length}`);
 
   const semantic = composeSemanticUtterance(
     normalisation.originalText || rawOrNormalised,
-    normalisation
+    normalisation,
+    options.understandingContext
   );
 
   let intent = intentHit.intent;
