@@ -85,11 +85,13 @@ export type SemanticAct = {
   condition?: SemanticCondition;
   dependency?: SemanticDependency;
   references?: ReferenceResolution[];
+  entityLinks?: import('./context').EntityLink[];
   corrections?: CorrectionStep[];
   evidence: SemanticEvidence[];
   confidence: Confidence;
   blocksTaskCreation: boolean;
   requiresClarification?: boolean;
+  targetsExistingContext?: boolean;
 };
 
 export type SemanticUtterance = {
