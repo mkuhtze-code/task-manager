@@ -30,11 +30,36 @@ const PUNCTUATION_MAP: { pattern: RegExp; replacement: string }[] = [
 ];
 
 const NUMBER_WORDS: Record<string, number> = {
-  zero: 0, oh: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
-  eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
-  fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
-  twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70,
-  eighty: 80, ninety: 90, hundred: 100,
+  zero: 0,
+  oh: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+  hundred: 100,
 };
 
 function confFromScore(score: number): Confidence {
@@ -47,6 +72,7 @@ function collapseWhitespace(s: string): string {
   return s.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+/** Remove hard fillers; keep soft fillers unless isolated. */
 export function stripFillers(text: string): { text: string; removed: string[] } {
   const removed: string[] = [];
   const tokens = text.split(/(\s+)/);
@@ -61,10 +87,10 @@ export function stripFillers(text: string): { text: string; removed: string[] } 
   }
   let result = out.join('');
   for (const soft of SOFT_FILLERS) {
-    const re = new RegExp(`(?:^|\\s)(${soft.replace(/\s+/g, '\\s+')})(?=\\s|$|[,.])`, 'gi');
+    const re = new RegExp(`(?:^|\\s)(${soft.replace(/\\s+/g, '\\s+')})(?=\\s|$|[,.])`, 'gi');
     result = result.replace(re, (match, g1, offset) => {
       const before = result.slice(0, offset).trim().toLowerCase();
-      if (/\b(i|we|they|you|he|she|really|don't|do not)\s*$/.test(before) && soft === 'like') {
+      if (/\\b(i|we|they|you|he|she|really|don't|do not)\\s*$/.test(before) && soft === 'like') {
         return match;
       }
       removed.push(g1);
@@ -91,6 +117,10 @@ export function applySpokenPunctuation(text: string): {
   return { text: collapseWhitespace(result), hits };
 }
 
+/**
+ * Detect self-corrections / backtracking.
+ * Patterns: "X, actually Y", "X — no, Y", "X, sorry, Y", "not X, Y"
+ */
 export function detectCorrections(text: string): { text: string; corrections: CorrectionSpan[] } {
   const corrections: CorrectionSpan[] = [];
   let working = text;
@@ -133,6 +163,11 @@ export function detectCorrections(text: string): { text: string; corrections: Co
     const c = String(corrected).trim();
     if (!o || !c || o.toLowerCase() === c.toLowerCase()) return full;
     if (/^(?:no|nope|nah)$/i.test(o) || /^(?:no|nope|nah)$/i.test(c)) return full;
+    // Avoid eating "I said no to that job" style refusals — require short parallel alternatives.
+    const oTokens = o.split(/\s+/).length;
+    const cTokens = c.split(/\s+/).length;
+    if (oTokens > 6 || cTokens > 6) return full;
+    if (/\b(?:said|say|told|tell|answered)\b/i.test(o)) return full;
     corrections.push({
       marker: 'no',
       originalRaw: o,
@@ -180,6 +215,36 @@ function classifyCorrectionFacet(
   return 'generic';
 }
 
+/**
+ * Collapse adjacent identical content words that look like speech stutters.
+ * Conservative: only exact adjacent duplicates of the same token (length > 1),
+ * not function words like "that that" in careful speech, and not across punctuation.
+ */
+export function collapseRepetitions(text: string): { text: string; collapsed: string[] } {
+  const collapsed: string[] = [];
+  const parts = text.split(/(\s+|[,.!?;:—-]+)/);
+  const out: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const cur = parts[i];
+    const prev = out.length > 0 ? out[out.length - 1] : '';
+    const curWord = cur.trim();
+    const prevWord = prev.trim();
+    if (
+      curWord.length > 1 &&
+      prevWord.length > 1 &&
+      curWord.toLowerCase() === prevWord.toLowerCase() &&
+      /^[A-Za-z']+$/.test(curWord) &&
+      !/^(that|this|then|than|to|for|and|or|but|the|a|an)$/i.test(curWord)
+    ) {
+      collapsed.push(curWord);
+      continue;
+    }
+    out.push(cur);
+  }
+  return { text: collapseWhitespace(out.join('')), collapsed };
+}
+
+/** Expand common spoken numbers; preserve job numbers etc. */
 export function expandSpokenNumbers(text: string): {
   text: string;
   expansions: { raw: string; value: string }[];
@@ -236,6 +301,9 @@ function wordsToNumber(phrase: string): number | null {
   return current;
 }
 
+/**
+ * Extract temporal language without silently forcing a single interpretation.
+ */
 export function extractTemporals(text: string, todayIso?: string): TemporalReference[] {
   const today = todayIso ? new Date(todayIso + 'T12:00:00') : new Date();
   const refs: TemporalReference[] = [];
@@ -295,7 +363,13 @@ export function extractTemporals(text: string, todayIso?: string): TemporalRefer
   }
 
   const weekdays = [
-    'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
   ];
   for (let i = 0; i < weekdays.length; i++) {
     const name = weekdays[i];
@@ -341,6 +415,7 @@ function toIsoDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** Full normalisation pipeline. */
 export function normaliseSpeech(
   rawText: string,
   options?: { todayIso?: string }
@@ -351,6 +426,7 @@ export function normaliseSpeech(
       originalText,
       normalisedText: '',
       fillersRemoved: [],
+      repetitionsCollapsed: [],
       punctuationApplied: [],
       corrections: [],
       temporals: [],
@@ -361,17 +437,22 @@ export function normaliseSpeech(
 
   let text = originalText.replace(/\s+/g, ' ').trim();
 
+  // Order matters: corrections before number expansion so
+  // "three thirty, no, four" still has spoken forms to match.
   const fillers = stripFillers(text);
   text = fillers.text;
+
+  const reps = collapseRepetitions(text);
+  text = reps.text;
+
+  const corr = detectCorrections(text);
+  text = corr.text;
 
   const numbers = expandSpokenNumbers(text);
   text = numbers.text;
 
   const punct = applySpokenPunctuation(text);
   text = punct.text;
-
-  const corr = detectCorrections(text);
-  text = corr.text;
 
   const temporals = extractTemporals(text, options?.todayIso);
   for (const c of corr.corrections) {
@@ -397,6 +478,7 @@ export function normaliseSpeech(
     originalText,
     normalisedText: collapseWhitespace(text),
     fillersRemoved: fillers.removed,
+    repetitionsCollapsed: reps.collapsed,
     punctuationApplied: punct.hits,
     corrections: corr.corrections,
     temporals,
