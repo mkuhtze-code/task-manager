@@ -25,6 +25,9 @@ const NEGATION_PATTERNS: { re: RegExp; marker: string }[] = [
   { re: /\bno\s+need\s+to\b/i, marker: 'no need to' },
   { re: /\bthere(?:'s|\s+is)\s+no\s+need\b/i, marker: "there's no need" },
   { re: /\bnever\s+/i, marker: 'never' },
+  { re: /\bno\s+(?:call|email|send|meet|order|book|chase|create|schedule|message|text|remind)\b/i, marker: 'no action' },
+  { re: /\bwait[,.]?\s+(?:wait[,.]?\s+)?no\b/i, marker: 'wait no' },
+  { re: /\b(?:nah|nope)\b/i, marker: 'nah' },
   { re: /\bwithout\s+/i, marker: 'without' },
 ];
 
