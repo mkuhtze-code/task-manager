@@ -33,6 +33,12 @@ export {
 } from './speaker';
 export type { CaptureSpeaker, ParsedObservationText } from './speaker';
 
+export { understand } from './understand';
+export type { UnderstandOptions } from './understand';
+
+export { processMeetingConversation } from './meeting';
+export type { ProcessMeetingOptions } from './meeting';
+
 export {
   createProfile,
   applyEvidence,
@@ -46,10 +52,27 @@ export {
 } from './learning';
 
 export {
+  feedbackFromReviewSession,
+  feedbackFromMeetingCorrection,
+  feedbackFromTaskOutcome,
+  processLearningFeedback,
+} from './feedback';
+export type { FeedbackBatchResult } from './feedback';
+
+export {
+  createReviewSession,
+  acceptItem,
+  rejectItem,
+  acceptAll,
+  rejectAll,
+  finaliseReview,
+  reviewSummary,
+} from './review';
+export type { CreateReviewSessionOptions } from './review';
+
+export {
   buildClientMeetingSummary,
   formatClientSummaryPlainText,
   validateClientSummary,
 } from './export';
 export type { BuildClientSummaryOptions } from './export';
-
-// Remaining modules (understand, meeting, feedback, review) are added in follow-up commits.
