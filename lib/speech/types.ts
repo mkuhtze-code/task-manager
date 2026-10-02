@@ -105,6 +105,8 @@ export type NormalisationResult = {
   originalText: string;
   normalisedText: string;
   fillersRemoved: string[];
+  /** Adjacent stutter tokens collapsed (e.g. "John John" → "John") */
+  repetitionsCollapsed: string[];
   punctuationApplied: SpokenPunctuationHit[];
   corrections: CorrectionSpan[];
   temporals: TemporalReference[];
