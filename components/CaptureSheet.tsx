@@ -3,6 +3,7 @@
 /**
  * Capture — pen to paper.
  * Primary path: type (or speak) → Dock.
+ * Speech goes through processCaptureSpeech before filling the line.
  * Time, place, job, and day are optional and stay collapsed until asked for.
  */
 
@@ -25,6 +26,8 @@ import {
 import { oneShotGate } from '@/lib/unifiedInput/oneShot';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
+import { useCaptureSpeech, textForCaptureField } from '@/hooks/useCaptureSpeech';
+import type { SpeechUnderstandingContext } from '@/lib/speech';
 import { MapPinIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
@@ -106,12 +109,49 @@ export function CaptureSheet(props: {
   const [showTimeField, setShowTimeField] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [estimateHintVisible, setEstimateHintVisible] = useState(false);
+  const { speechStatus, processSpokenText, clearSpeechStatus } = useCaptureSpeech();
+
+  function buildSpeechContext(): SpeechUnderstandingContext {
+    const jobEntities =
+      jobs?.map((j) => ({
+        id: j.id,
+        label: j.name,
+        kind: 'job' as const,
+        aliases: j.name ? [j.name.split(' ')[0]].filter(Boolean) : [],
+      })) ?? [];
+    const focus =
+      captureJobId != null
+        ? [captureJobId]
+        : jobEntities.length === 1
+          ? [jobEntities[0].id]
+          : undefined;
+    return {
+      jobs: jobEntities,
+      people: [],
+      focusEntityIds: focus,
+    };
+  }
+
+  function onSpeechResult(spoken: string) {
+    const result = processSpokenText(spoken, {
+      understandingContext: buildSpeechContext(),
+    });
+    if (!result) {
+      setTaskText((prev) => (prev ? `${prev.trim()} ${spoken}` : spoken));
+      return;
+    }
+    const next = textForCaptureField(result);
+    setTaskText((prev) => {
+      if (!prev.trim()) return next;
+      if (next.toLowerCase().includes(prev.trim().toLowerCase())) return next;
+      return `${prev.trim()} ${next}`;
+    });
+  }
 
   useEffect(() => {
     setEstimateHintVisible(shouldShowEstimateHint());
   }, []);
 
-  // Context may seed a job quietly — never opens the job picker.
   useEffect(() => {
     if (captureJobId) return;
     if (
@@ -124,7 +164,6 @@ export function CaptureSheet(props: {
     }
   }, [captureContext, captureJobId, jobs, setCaptureJobId]);
 
-  // Parent may open location from a seed; keep more panel in sync.
   useEffect(() => {
     if (locationFieldVisible || manualLocationToggle || captureLocation.trim()) {
       setMoreOpen(true);
@@ -160,8 +199,7 @@ export function CaptureSheet(props: {
 
   const showEstimateChip =
     !!captureSuggestion &&
-    (captureSuggestion.confidence !== 'low' ||
-      captureSuggestion.source === 'measured');
+    (captureSuggestion.confidence !== 'low' || captureSuggestion.source === 'measured');
 
   const hasOptionalActive =
     !!taskTime.trim() ||
@@ -175,6 +213,7 @@ export function CaptureSheet(props: {
 
   function tryDock() {
     if (!gate.ready) return;
+    clearSpeechStatus();
     addTask();
   }
 
@@ -209,13 +248,15 @@ export function CaptureSheet(props: {
           </button>
         </div>
 
-        {/* ── The paper line ─────────────────────────────────────── */}
         <div className="capture-text-row">
           <input
             id="capture-task-text"
             type="text"
             value={taskText}
-            onChange={(e) => setTaskText(e.target.value)}
+            onChange={(e) => {
+              setTaskText(e.target.value);
+              if (speechStatus) clearSpeechStatus();
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -228,14 +269,27 @@ export function CaptureSheet(props: {
             aria-invalid={!!error}
             aria-describedby={error ? 'capture-error' : undefined}
           />
-          <MicButton
-            onResult={(t) =>
-              setTaskText((prev) => (prev ? `${prev.trim()} ${t}` : t))
-            }
-          />
+          <MicButton onResult={onSpeechResult} />
         </div>
 
-        {/* Quiet interpretation — only when the thought actually parsed facets */}
+        {speechStatus && speechStatus.message ? (
+          <div
+            className={`capture-speech-status capture-speech-status-${speechStatus.tone}`}
+            role="status"
+            aria-live="polite"
+          >
+            <span>{speechStatus.message}</span>
+            <button
+              type="button"
+              className="btn-text capture-speech-status-dismiss"
+              onClick={clearSpeechStatus}
+              aria-label="Dismiss"
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+
         {thought && thought.hadFacets && (
           <div className="capture-facet-strip" aria-live="polite">
             {thought.date && (
@@ -254,7 +308,6 @@ export function CaptureSheet(props: {
           </div>
         )}
 
-        {/* Ambiguous job/place only — known is silent */}
         {resolutionNeedsAttention && locationResolution?.state === 'proposed' && (
           <div
             className="capture-entity-chip capture-entity-chip-ask"
@@ -310,13 +363,8 @@ export function CaptureSheet(props: {
           </div>
         )}
 
-        {/* Strong estimate only — one tap to adopt, never a form field up front */}
         {showEstimateChip && captureSuggestion && (
-          <button
-            type="button"
-            className="estimate-suggestion-chip"
-            onClick={applySuggestedMins}
-          >
+          <button type="button" className="estimate-suggestion-chip" onClick={applySuggestedMins}>
             Usually {fmtMins(captureSuggestion.suggestedMins)}
             {estimateHintVisible ? ' · tap to use' : ''}
           </button>
@@ -326,7 +374,6 @@ export function CaptureSheet(props: {
           <p className="settings-help capture-duration-explain">{durationExplain}</p>
         )}
 
-        {/* ── Primary action first ───────────────────────────────── */}
         <button
           type="button"
           className="btn btn-steel capture-dock-btn"
@@ -337,22 +384,15 @@ export function CaptureSheet(props: {
         </button>
 
         {error && (
-          <p
-            id="capture-error"
-            role="alert"
-            className="capture-error-line"
-          >
+          <p id="capture-error" role="alert" className="capture-error-line">
             {error}
           </p>
         )}
 
-        {/* ── Optional details — collapsed by default ───────────── */}
         <div className="capture-more">
           <button
             type="button"
-            className={
-              moreOpen ? 'capture-more-toggle open' : 'capture-more-toggle'
-            }
+            className={moreOpen ? 'capture-more-toggle open' : 'capture-more-toggle'}
             aria-expanded={moreOpen}
             onClick={() => setMoreOpen((v) => !v)}
           >
@@ -361,7 +401,6 @@ export function CaptureSheet(props: {
 
           {moreOpen && (
             <div className="capture-more-body">
-              {/* Time */}
               {!showTimeField && !taskTime.trim() ? (
                 <button
                   type="button"
@@ -394,7 +433,6 @@ export function CaptureSheet(props: {
                 </div>
               )}
 
-              {/* Location */}
               {!manualLocationToggle && !captureLocation.trim() ? (
                 <button
                   type="button"
@@ -411,10 +449,7 @@ export function CaptureSheet(props: {
                     onChange={setCaptureLocation}
                     onPlaceSelected={(result) => {
                       setCaptureLocation(result.formattedAddress);
-                      setCaptureLocationCoords({
-                        lat: result.lat,
-                        lng: result.lng,
-                      });
+                      setCaptureLocationCoords({ lat: result.lat, lng: result.lng });
                     }}
                   />
                   {captureLocationMemorySuggestion && !captureLocation.trim() && (
@@ -440,9 +475,7 @@ export function CaptureSheet(props: {
                         type="button"
                         className="estimate-suggestion-chip"
                         onClick={() => {
-                          setCaptureLocation(
-                            captureLocationSuggestion.location.text
-                          );
+                          setCaptureLocation(captureLocationSuggestion.location.text);
                           setCaptureLocationCoords({
                             lat: captureLocationSuggestion.location.lat,
                             lng: captureLocationSuggestion.location.lng,
@@ -450,9 +483,7 @@ export function CaptureSheet(props: {
                         }}
                       >
                         <MapPinIcon size={13} />
-                        <span>
-                          {captureLocationSuggestion.location.text}
-                        </span>
+                        <span>{captureLocationSuggestion.location.text}</span>
                       </button>
                     )}
                   <button
@@ -469,7 +500,6 @@ export function CaptureSheet(props: {
                 </>
               )}
 
-              {/* Job */}
               {!showJobField && !captureJobId ? (
                 <button
                   type="button"
@@ -509,17 +539,12 @@ export function CaptureSheet(props: {
                       {j.name}
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    className="btn-text"
-                    onClick={() => setShowJobField(false)}
-                  >
+                  <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>
                     Cancel
                   </button>
                 </div>
               )}
 
-              {/* Surface day */}
               {!showReminderField && !captureSurfaceDate ? (
                 <button
                   type="button"
