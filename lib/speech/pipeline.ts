@@ -1,0 +1,188 @@
+/**
+ * Speech pipeline orchestration.
+ * Capture → (queue) transcription → normalisation → interpretation.
+ * Audio refs stay recoverable via mediaStore; transcription failures do not
+ * destroy the session.
+ */
+
+import { saveMediaBlob } from '@/lib/mediaStore';
+import { getTranscriptionProvider } from './providers';
+import { normaliseSpeech } from './normalise';
+import { interpretSpeech } from './interpret';
+import type { PersonalCommunicationProfile } from '@/lib/communication/types';
+import type {
+  SpeechInput,
+  SpeechPipelineResult,
+  SpeechSession,
+  TranscriptionResult,
+} from './types';
+
+function makeId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `ss-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+export function createSpeechSession(partial?: Partial<SpeechSession>): SpeechSession {
+  const now = new Date().toISOString();
+  return {
+    id: partial?.id ?? makeId(),
+    userId: partial?.userId,
+    status: partial?.status ?? 'capturing',
+    startedAt: partial?.startedAt ?? now,
+    endedAt: partial?.endedAt,
+    durationMs: partial?.durationMs,
+    language: partial?.language,
+    audioRef: partial?.audioRef,
+    mimeType: partial?.mimeType,
+    transcript: partial?.transcript,
+    normalisation: partial?.normalisation,
+    interpretation: partial?.interpretation,
+    error: partial?.error,
+    transcriptionAttempts: partial?.transcriptionAttempts ?? 0,
+  };
+}
+
+/** Persist audio bytes first (same principle as meeting voice notes). */
+export async function persistSpeechAudio(
+  blob: Blob,
+  meta?: { mime?: string | null; size?: number | null }
+): Promise<string> {
+  return saveMediaBlob(blob, meta);
+}
+
+export async function transcribeSession(
+  session: SpeechSession,
+  input?: SpeechInput
+): Promise<SpeechSession> {
+  const provider = getTranscriptionProvider();
+  const next: SpeechSession = {
+    ...session,
+    status: 'transcribing',
+    transcriptionAttempts: session.transcriptionAttempts + 1,
+  };
+  try {
+    const result: TranscriptionResult = await provider.transcribe(
+      input ?? {
+        audioRef: session.audioRef,
+        mimeType: session.mimeType,
+        durationMs: session.durationMs,
+        sessionId: session.id,
+        languageHint: session.language,
+      }
+    );
+    return {
+      ...next,
+      status: 'transcribed',
+      transcript: result,
+      language: result.language ?? session.language,
+      error: undefined,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Transcription failed';
+    return {
+      ...next,
+      status: 'queued_transcription',
+      error: message,
+    };
+  }
+}
+
+/**
+ * Run normalisation + interpretation on text (from transcription or typed input).
+ */
+export function processSpeechText(
+  text: string,
+  options?: {
+    session?: SpeechSession;
+    todayIso?: string;
+    profile?: PersonalCommunicationProfile | null;
+  }
+): SpeechPipelineResult {
+  const session = options?.session ?? createSpeechSession({ status: 'transcribed' });
+  const normalisation = normaliseSpeech(text, { todayIso: options?.todayIso });
+  const interpretation = interpretSpeech(text, {
+    todayIso: options?.todayIso,
+    profile: options?.profile,
+    sessionId: session.id,
+    normalisation,
+  });
+  const completed: SpeechSession = {
+    ...session,
+    status: 'interpreted',
+    normalisation,
+    interpretation,
+    endedAt: session.endedAt ?? new Date().toISOString(),
+  };
+  return { session: completed, interpretation };
+}
+
+/**
+ * Full path when audio + optional existing transcript are available.
+ * If transcription is not configured, returns queued session without inventing text.
+ */
+export async function runSpeechPipeline(
+  input: SpeechInput & { text?: string },
+  options?: {
+    userId?: string;
+    todayIso?: string;
+    profile?: PersonalCommunicationProfile | null;
+    existingSession?: SpeechSession;
+  }
+): Promise<SpeechPipelineResult> {
+  let session =
+    options?.existingSession ??
+    createSpeechSession({
+      userId: options?.userId,
+      status: 'captured',
+      audioRef: input.audioRef,
+      mimeType: input.mimeType,
+      durationMs: input.durationMs,
+      language: input.languageHint,
+    });
+
+  if (input.blob && !session.audioRef) {
+    try {
+      const ref = await persistSpeechAudio(input.blob, {
+        mime: input.mimeType ?? input.blob.type,
+        size: input.blob.size,
+      });
+      session = { ...session, audioRef: ref, mimeType: input.mimeType ?? input.blob.type };
+    } catch {
+      session = {
+        ...session,
+        status: 'failed',
+        error: "Couldn't store audio on this device — try again.",
+      };
+      return { session, interpretation: null };
+    }
+  }
+
+  if (input.text && input.text.trim()) {
+    return processSpeechText(input.text, {
+      session: { ...session, status: 'transcribed' },
+      todayIso: options?.todayIso,
+      profile: options?.profile,
+    });
+  }
+
+  if (session.transcript?.text) {
+    return processSpeechText(session.transcript.text, {
+      session,
+      todayIso: options?.todayIso,
+      profile: options?.profile,
+    });
+  }
+
+  session = await transcribeSession(session, input);
+  if (session.status !== 'transcribed' || !session.transcript?.text) {
+    return { session, interpretation: null };
+  }
+
+  return processSpeechText(session.transcript.text, {
+    session,
+    todayIso: options?.todayIso,
+    profile: options?.profile,
+  });
+}
