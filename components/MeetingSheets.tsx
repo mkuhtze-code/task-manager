@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import type { Job } from '@/lib/jobTypes';
 import type { CapturedMedia } from '@/lib/meetingCapture';
 import { parseMins, localDateStr } from '@/lib/timeFormat';
@@ -52,8 +53,6 @@ export function NewMeetingSheet(props: {
 
   const preview = useMemo(() => parseMeetingInput(text, jobs, today), [text, jobs, today]);
 
-  // Prefill the date/time fields from the thought the first time facets
-  // appear, but never override what the user typed by hand.
   const prefilled = useRef({ date: false, time: false });
   useEffect(() => {
     if (!preview.date || prefilled.current.date) return;
@@ -205,26 +204,9 @@ export function NewMeetingSheet(props: {
         )}
 
         <div className="reminder-date-row" style={{ flexWrap: 'wrap', gap: 8 }}>
-          <input
-            type="date"
-            value={dateInput}
-            onChange={(e) => setDateInput(e.target.value)}
-            aria-label="Meeting date"
-          />
-          <input
-            type="time"
-            value={timeInput}
-            onChange={(e) => { setTimeInput(e.target.value); prefilled.current.time = true; }}
-            aria-label="Meeting time"
-          />
-          <input
-            type="text"
-            value={durationInput}
-            onChange={(e) => setDurationInput(e.target.value)}
-            placeholder="30m"
-            style={{ width: 70 }}
-            aria-label="Duration"
-          />
+          <input type="date" value={dateInput} onChange={(e) => setDateInput(e.target.value)} aria-label="Meeting date" />
+          <input type="time" value={timeInput} onChange={(e) => { setTimeInput(e.target.value); prefilled.current.time = true; }} aria-label="Meeting time" />
+          <input type="text" value={durationInput} onChange={(e) => setDurationInput(e.target.value)} placeholder="30m" style={{ width: 70 }} aria-label="Duration" />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -243,14 +225,10 @@ export function NewMeetingSheet(props: {
         {job ? (
           <div className="reminder-date-row">
             <span className="settings-help">About <strong>{job.name}</strong></span>
-            <button type="button" className="btn-text" onClick={() => { setJobId(null); setShowJobField(false); }}>
-              Remove
-            </button>
+            <button type="button" className="btn-text" onClick={() => { setJobId(null); setShowJobField(false); }}>Remove</button>
           </div>
         ) : !showJobField ? (
-          <button type="button" className="reveal-reminder-link" onClick={() => setShowJobField(true)}>
-            + About a job
-          </button>
+          <button type="button" className="reveal-reminder-link" onClick={() => setShowJobField(true)}>+ About a job</button>
         ) : jobs.length === 0 ? (
           <div className="reminder-date-row">
             <span className="settings-help">No jobs yet — create one from the Jobs tab</span>
@@ -259,14 +237,7 @@ export function NewMeetingSheet(props: {
         ) : (
           <div className="job-picker">
             {jobs.map((j) => (
-              <button
-                type="button"
-                key={j.id}
-                className="move-day-option"
-                onClick={() => { setJobId(j.id); setShowJobField(false); }}
-              >
-                {j.name}
-              </button>
+              <button type="button" key={j.id} className="move-day-option" onClick={() => { setJobId(j.id); setShowJobField(false); }}>{j.name}</button>
             ))}
             <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
           </div>
@@ -274,13 +245,7 @@ export function NewMeetingSheet(props: {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span className="settings-label">Notes (optional — raw capture)</span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Anything jotted down before or during the meeting"
-            rows={3}
-            style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }}
-          />
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything jotted down before or during the meeting" rows={3} style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
         </div>
 
         {(dateInput || job || text.trim()) && (
@@ -299,15 +264,11 @@ export function NewMeetingSheet(props: {
         )}
 
         {error && (
-          <p id="new-meeting-error" role="alert" style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>
-            {error}
-          </p>
+          <p id="new-meeting-error" role="alert" style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>
         )}
 
         <div className="capture-row">
-          <button className="btn btn-steel" style={{ flex: 1 }} onClick={submit} disabled={saving}>
-            {saving ? 'Saving…' : 'Add meeting'}
-          </button>
+          <button className="btn btn-steel" style={{ flex: 1 }} onClick={submit} disabled={saving}>{saving ? 'Saving…' : 'Add meeting'}</button>
           <button className="btn-text" onClick={onClose}>Cancel</button>
         </div>
       </div>
@@ -317,14 +278,17 @@ export function NewMeetingSheet(props: {
 
 export type { CapturedMedia };
 
-// The observation capture area: ONE continuous surface. The draft — text
-// plus the captured media — and the capture lifecycle are owned ABOVE this
-// component (the meeting page, mirrored to sessionStorage) so that the OS
-// camera/file picker, which can unmount or even reload this surface, can
-// never cancel the draft. Returning from the picker, blur, focus or a
-// remount simply resume the same open draft; only an explicit Cancel (or a
-// successful Save) closes it. Every evidence type is optional; nothing is
-// grouped or re-navigated until Save.
+// Discussion note capture: one continuous surface for what was said and seen.
+// Speaker chips (Customer / Us / Note) are soft attribution for the
+// Communication Engine — stored as a quiet text prefix, no schema change.
+export type CaptureSpeaker = 'customer' | 'us' | 'note';
+
+export type ObservationCaptureDraft = {
+  text: string;
+  media: CapturedMedia[];
+  speaker?: CaptureSpeaker;
+};
+
 export function ObservationCapture(props: {
   saving: boolean;
   text: string;
@@ -335,8 +299,9 @@ export function ObservationCapture(props: {
   onAddPhoto: () => void;
   onToggleVoice: () => void;
   onRemoveMedia: (index: number) => void;
-  onSave: (draft: { text: string; media: CapturedMedia[] }) => void;
+  onSave: (draft: ObservationCaptureDraft) => void;
   onCancel: () => void;
+  defaultSpeaker?: CaptureSpeaker;
 }) {
   const {
     saving,
@@ -350,72 +315,129 @@ export function ObservationCapture(props: {
     onRemoveMedia,
     onSave,
     onCancel,
+    defaultSpeaker = 'customer',
   } = props;
+
+  const [speaker, setSpeaker] = useState<CaptureSpeaker>(defaultSpeaker);
+  const textRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const next = Math.min(Math.max(el.scrollHeight, 72), 240);
+    el.style.height = `${next}px`;
+  }, [text]);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    const t = window.setTimeout(() => {
+      try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const canSave = !saving && !recording && (text.trim().length > 0 || media.length > 0);
 
-  return (
-    <div className="observation-capture">
-      <textarea
-        value={text}
-        onChange={(e) => onTextChange(e.target.value)}
-        placeholder="What did you see, hear or notice?"
-        rows={2}
-        className="observation-capture-text"
-      />
+  function submit() {
+    if (!canSave) return;
+    onSave({ text, media, speaker });
+  }
 
-      <div className="meeting-observation-actions">
-        <button type="button" className="meeting-pill" onClick={onAddPhoto} disabled={saving}>
-          + Photo
-        </button>
-        <button
-          type="button"
-          className={recording ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
-          onClick={onToggleVoice}
-          disabled={saving}
-        >
-          {recording ? 'Recording…' : '+ Voice'}
-        </button>
+  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      submit();
+    }
+  }
+
+  const placeholder =
+    speaker === 'customer'
+      ? 'What did the customer say or want?'
+      : speaker === 'us'
+        ? 'What did you say, commit to, or need to check?'
+        : 'What did you see, hear, or notice?';
+
+  return (
+    <div className="observation-capture" role="region" aria-label="Capture meeting note">
+      <div className="observation-capture-speaker" role="group" aria-label="Who said this">
+        {(
+          [
+            { id: 'customer' as const, label: 'Customer' },
+            { id: 'us' as const, label: 'Us' },
+            { id: 'note' as const, label: 'Note' },
+          ] as const
+        ).map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            className={
+              speaker === opt.id
+                ? 'meeting-pill meeting-pill--primary observation-speaker-chip'
+                : 'meeting-pill observation-speaker-chip'
+            }
+            aria-pressed={speaker === opt.id}
+            disabled={saving}
+            onClick={() => setSpeaker(opt.id)}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
-      {captureError && <p className="meeting-capture-error" role="alert" id="meeting-capture-error">{captureError}</p>}
+      <textarea
+        ref={textRef}
+        value={text}
+        onChange={(e) => onTextChange(e.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        rows={3}
+        className="observation-capture-text"
+        aria-label="Meeting note"
+        enterKeyHint="done"
+      />
+
+      <div className="observation-capture-toolbar">
+        <div className="observation-capture-tools">
+          <button type="button" className="meeting-pill" onClick={onAddPhoto} disabled={saving}>+ Photo</button>
+          <button
+            type="button"
+            className={recording ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+            onClick={onToggleVoice}
+            disabled={saving}
+            aria-pressed={recording}
+          >
+            {recording ? 'Stop recording' : '+ Voice'}
+          </button>
+        </div>
+        <p className="observation-capture-hint">
+          {recording ? 'Recording… tap Stop when finished' : '⌘/Ctrl+Enter to save'}
+        </p>
+      </div>
+
+      {captureError && (
+        <p className="meeting-capture-error" role="alert" id="meeting-capture-error">{captureError}</p>
+      )}
 
       {media.length > 0 && (
-        <div className="meeting-observation-actions">
-          <div className="pending-media">
-            {media.map((m, i) => (
-              <div key={m.uri} className="pending-media-item">
-                {m.mediaType === 'audio' ? (
-                  <AudioNote uri={m.uri} />
-                ) : (
-                  <PhotoImage uri={m.uri} alt="Captured photo" />
-                )}
-                <button
-                  type="button"
-                  aria-label="Remove"
-                  className="pending-media-remove"
-                  onClick={() => onRemoveMedia(i)}
-                >
-                  <CloseIcon size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
+        <div className="pending-media" aria-label="Attached media">
+          {media.map((m, i) => (
+            <div key={m.uri} className="pending-media-item">
+              {m.mediaType === 'audio' ? <AudioNote uri={m.uri} /> : <PhotoImage uri={m.uri} alt="Captured photo" />}
+              <button type="button" aria-label="Remove" className="pending-media-remove" onClick={() => onRemoveMedia(i)}>
+                <CloseIcon size={14} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
-      <div className="meeting-observation-actions">
-        <button
-          type="button"
-          className="meeting-pill meeting-pill--primary"
-          onClick={() => onSave({ text, media })}
-          disabled={!canSave}
-        >
-          {saving ? 'Saving…' : 'Save observation'}
+      <div className="observation-capture-footer">
+        <button type="button" className="meeting-pill meeting-pill--primary" onClick={submit} disabled={!canSave}>
+          {saving ? 'Saving…' : 'Save'}
         </button>
-        <button type="button" className="meeting-pill" onClick={onCancel} disabled={saving}>
-          Cancel
-        </button>
+        <button type="button" className="meeting-pill" onClick={onCancel} disabled={saving}>Cancel</button>
       </div>
     </div>
   );
