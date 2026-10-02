@@ -1,0 +1,84 @@
+/* Discussion note capture — speaker chips, quiet tools, one primary Save. */
+
+.observation-capture {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--paper-raised);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  border: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+
+.observation-capture-speaker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.observation-speaker-chip {
+  min-height: 34px;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.01em;
+}
+
+.observation-capture-text {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: var(--text-base, 1rem);
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  resize: none;
+  min-height: 72px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.observation-capture-text:focus {
+  border-color: var(--line-strong);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(30, 107, 230, 0.12);
+}
+
+.observation-capture-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.observation-capture-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.observation-capture-hint {
+  margin: 0;
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  line-height: 1.3;
+}
+
+.observation-capture-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding-top: 2px;
+}
+
+.meeting-capture-error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--hazard);
+}

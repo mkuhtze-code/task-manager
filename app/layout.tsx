@@ -9,6 +9,7 @@ import './desktop-settings.css';
 import './error-boundary.css';
 import './dokkit-splash.css';
 import './observation-layout-fix.css';
+import './observation-capture.css';
 import './dokkit-player.css';
 import './job-mobile.css';
 import './today-header.css';
