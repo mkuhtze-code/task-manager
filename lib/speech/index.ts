@@ -113,6 +113,8 @@ export {
   isActionNegated,
   textLevelSafety,
   buildCorrectionChain,
+  linkEntitiesInText,
+  emptySpeechContext,
 } from './semantic';
 export type {
   SemanticUtterance,
@@ -122,6 +124,9 @@ export type {
   CorrectionStep,
   SafetyVerdict,
   SemanticActionOutcome,
+  SpeechUnderstandingContext,
+  ContextEntity,
+  EntityLink,
 } from './semantic';
 
 export { decideSpeechActions, decisionWouldCreateTask, semanticOutcome } from './decision';

@@ -27,3 +27,15 @@ export { resolveTemporalOverlaps, temporalForClause } from './temporalSpans';
 export { extractSemanticCorrections, applyCorrectionsToClause } from './correctionsSemantic';
 export { resolveReferencesInActs, entitiesFromActs } from './references';
 export { extractCondition, extractDependency } from './conditions';
+export type {
+  SpeechUnderstandingContext,
+  ContextEntity,
+  ContextEntityKind,
+  EntityLink,
+} from './context';
+export {
+  linkEntitiesInText,
+  resolveFocusReference,
+  scoreEntityMatch,
+  emptySpeechContext,
+} from './context';
