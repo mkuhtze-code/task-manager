@@ -8,18 +8,9 @@ import { ObservationCapture } from '@/components/MeetingSheets';
 import MeetingObservationCarousel from '@/components/MeetingObservationCarousel';
 import MeetingObservationGrid from '@/components/MeetingObservationGrid';
 
-// The Observations section: an observation carousel (default) with a grid
-// view toggle, the capture surface, and the "N of M" position. The active
-// observation draft and the open/closed capture state are owned by the
-// meeting PAGE (mirrored to sessionStorage) and passed in as props, so this
-// section can unmount and remount — the on-page loading gate does this on
-// every load, and the OS camera/file picker path can even reload the whole
-// page — without cancelling the draft. The hidden photo input is rendered
-// below UNGATED by capture state, so it (and the handshake callback behind
-// it) survive the picker lifecycle.
-//
-// Capture sits ABOVE the carousel/grid so the composer is always in view
-// when + Note is tapped — never under existing evidence.
+// Notes section: carousel (default) with grid toggle, capture surface, and
+// position. Draft state is owned by the meeting PAGE so picker lifecycles
+// never cancel the draft. Capture sits ABOVE the carousel/grid.
 export default function MeetingObservations(props: {
   observations: MeetingObservation[];
   mediaByObservation: Map<string, MeetingMedia[]>;
@@ -108,7 +99,7 @@ export default function MeetingObservations(props: {
   return (
     <section className="detail-section">
       <div className="detail-section-title-row">
-        <div className="detail-section-title">Observations</div>
+        <div className="detail-section-title">Notes</div>
         <div className="observation-header-actions">
           {count > 0 && (
             <button
@@ -149,7 +140,7 @@ export default function MeetingObservations(props: {
 
       {count === 0 && !capturing && (
         <p className="meeting-empty">
-          Capture what was said and seen. Tap + Note to start.
+          Notes, photos, and what was said. Use the capture bar above, or + Note here.
         </p>
       )}
 
