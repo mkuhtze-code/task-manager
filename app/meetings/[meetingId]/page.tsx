@@ -593,7 +593,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         <div className="detail-section">
           <div className="detail-section-title">{meeting.text}</div>
           <p className="settings-help" style={{ margin: '4px 0 0' }}>
-            {fmtMeetingWindow(meeting)}
+            {fmtMeetingWindow(meeting.start_time, meeting.duration_mins)}
             {jobName ? ` · ${jobName}` : ''}
           </p>
         </div>
