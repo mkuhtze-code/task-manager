@@ -1,11 +1,6 @@
 /**
  * Dokkit Speech Intelligence Engine
- *
- * Capture is intentional only (no ambient listening).
- * Transcription is provider-abstracted.
- * Understanding is deterministic and layered.
- * Semantic layer composes multi-act meaning and gates false tasks.
- * Decision layer: understanding ≠ permission to act.
+ * Capture intentional only. Understanding deterministic. Decision: understanding ≠ act.
  */
 
 export type {
@@ -113,6 +108,7 @@ export type { ActionClause } from './multiClause';
 export {
   composeSemanticUtterance,
   canProposeTask,
+  positiveActionActs,
   detectPolarity,
   isActionNegated,
   textLevelSafety,
@@ -125,7 +121,8 @@ export type {
   Polarity,
   CorrectionStep,
   SafetyVerdict,
+  SemanticActionOutcome,
 } from './semantic';
 
-export { decideSpeechActions, decisionWouldCreateTask } from './decision';
+export { decideSpeechActions, decisionWouldCreateTask, semanticOutcome } from './decision';
 export type { SpeechDecision, ActDecision, ActionKind } from './decision';
