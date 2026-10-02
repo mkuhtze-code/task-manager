@@ -181,6 +181,10 @@ export type SpeechInterpretation = {
   confidence: Confidence;
   reasons: string[];
   requiresConfirmation: boolean;
+  /** Multi-act semantic composition (evidence-preserving). Optional during rollout. */
+  semantic?: import('./semantic/types').SemanticUtterance;
+  /** Hard safety: must not become a task without explicit confirmation */
+  mustNotCreateTask?: boolean;
   createdAt: string;
 };
 
