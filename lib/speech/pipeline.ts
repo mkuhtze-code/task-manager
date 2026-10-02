@@ -1,7 +1,6 @@
 /**
  * Speech pipeline orchestration.
  * Capture → transcription → vocabulary → normalisation → interpretation → decision.
- * Audio refs stay recoverable via mediaStore; transcription failures do not destroy the session.
  */
 
 import { saveMediaBlob } from '@/lib/mediaStore';
@@ -105,9 +104,6 @@ export async function transcribeSession(
   }
 }
 
-/**
- * Production text path: vocabulary → aliases → normalise → interpret → decide.
- */
 export function processSpeechText(
   text: string,
   options?: {
@@ -115,6 +111,7 @@ export function processSpeechText(
     todayIso?: string;
     profile?: PersonalCommunicationProfile | null;
     languageModel?: import('./types').PersonalLanguageModel | null;
+    understandingContext?: import('./semantic/context').SpeechUnderstandingContext | null;
   }
 ): SpeechPipelineResult {
   const session = options?.session ?? createSpeechSession({ status: 'transcribed' });
@@ -148,6 +145,7 @@ export function processSpeechText(
     profile: options?.profile,
     sessionId: session.id,
     normalisation,
+    understandingContext: options?.understandingContext,
   });
   emitSpeechEvent('intent_detected', {
     sessionId: session.id,
@@ -191,6 +189,7 @@ export async function runSpeechPipeline(
     profile?: PersonalCommunicationProfile | null;
     languageModel?: import('./types').PersonalLanguageModel | null;
     existingSession?: SpeechSession;
+    understandingContext?: import('./semantic/context').SpeechUnderstandingContext | null;
   }
 ): Promise<SpeechPipelineResult> {
   let session =
@@ -227,6 +226,7 @@ export async function runSpeechPipeline(
       todayIso: options?.todayIso,
       profile: options?.profile,
       languageModel: options?.languageModel,
+      understandingContext: options?.understandingContext,
     });
   }
 
@@ -236,6 +236,7 @@ export async function runSpeechPipeline(
       todayIso: options?.todayIso,
       profile: options?.profile,
       languageModel: options?.languageModel,
+      understandingContext: options?.understandingContext,
     });
   }
 
@@ -249,5 +250,6 @@ export async function runSpeechPipeline(
     todayIso: options?.todayIso,
     profile: options?.profile,
     languageModel: options?.languageModel,
+    understandingContext: options?.understandingContext,
   });
 }
