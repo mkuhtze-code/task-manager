@@ -113,8 +113,9 @@ function classifyClause(span: string): SemanticAct {
     evidence.push({ signal: 'discourse_actually', source: 'compose' });
   }
 
-  if (kind === 'unknown') confidence = 'low';
-  if (blocksTaskCreation) confidence = confidence === 'high' ? 'medium' : confidence;
+  if (kind === 'unknown' || blocksTaskCreation) {
+    confidence = 'low';
+  }
 
   return {
     id: makeActId(),
