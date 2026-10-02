@@ -1,7 +1,7 @@
 /**
  * Compose SemanticUtterance from normalised text + detector evidence.
  * Acts are the primary unit; modifiers attach per-act.
- * Understanding ≠ permission to act.
+ * Optional Dokkit context enables entity linking without inventing entities.
  */
 
 import type { NormalisationResult, TemporalReference } from '../types';
@@ -11,6 +11,7 @@ import { buildCorrectionChain, isDiscourseActually } from './correctionChain';
 import { applyCorrectionsToClause } from './correctionsSemantic';
 import { extractCondition, extractDependency, isActionWithCondition } from './conditions';
 import { resolveReferencesInActs } from './references';
+import type { SpeechUnderstandingContext } from './context';
 import {
   resolveTemporalOverlaps,
   temporalForClause,
@@ -152,12 +153,8 @@ function classifyClause(span: string, temporals: TemporalReference[]): SemanticA
     });
   }
 
-  if (kind === 'unknown' || blocksTaskCreation) {
-    confidence = 'low';
-  }
-  if (localCorrections.length > 0 && kind === 'action' && !blocksTaskCreation) {
-    confidence = 'medium';
-  }
+  if (kind === 'unknown' || blocksTaskCreation) confidence = 'low';
+  if (localCorrections.length > 0 && kind === 'action' && !blocksTaskCreation) confidence = 'medium';
 
   return {
     id: makeActId(),
@@ -181,7 +178,8 @@ function classifyClause(span: string, temporals: TemporalReference[]): SemanticA
 
 export function composeSemanticUtterance(
   rawText: string,
-  normalisation?: NormalisationResult
+  normalisation?: NormalisationResult,
+  context?: SpeechUnderstandingContext | null
 ): SemanticUtterance {
   const normalisedText = normalisation?.normalisedText ?? rawText.trim();
   const rawTemporals = normalisation?.temporals ?? [];
@@ -198,16 +196,13 @@ export function composeSemanticUtterance(
         ? {
             ...a,
             blocksTaskCreation: true,
-            evidence: [
-              ...a.evidence,
-              { signal: 'retracted_by_later_clause', source: 'compose' },
-            ],
+            evidence: [...a.evidence, { signal: 'retracted_by_later_clause', source: 'compose' }],
           }
         : a
     );
   }
 
-  acts = resolveReferencesInActs(acts);
+  acts = resolveReferencesInActs(acts, context);
 
   const fromNorm = buildCorrectionChain(normalisation?.corrections ?? []);
   const fromActs = acts.flatMap((a) => a.corrections ?? []);
