@@ -601,15 +601,18 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
         <MeetingConnections
           meeting={meeting}
-          linkedJob={linkedJob}
+          job={linkedJob}
           allJobs={allJobs}
           jobTasks={jobTasks}
           siblingMeetings={siblingMeetings}
-          linkingJob={linkingJob}
+          linking={linkingJob}
           onLinkJob={linkJob}
         />
 
-        <MeetingTripPill meeting={meeting} />
+        <MeetingTripPill
+          userId={session.user.id}
+          meetingStartIso={meeting.start_time}
+        />
 
         <MeetingCaptureDock
           meetingId={meetingId}
