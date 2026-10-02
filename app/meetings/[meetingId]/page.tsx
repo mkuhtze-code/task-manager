@@ -30,7 +30,11 @@ import MeetingExport from '@/components/MeetingExport';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, TrashIcon } from '@/components/icons';
-import { checkStorageQuota, STORAGE_FULL_MESSAGE, isQuotaErrorMessage } from '@/lib/assertStorageQuota';
+import {
+  checkStorageQuota,
+  STORAGE_FULL_MESSAGE,
+  isQuotaErrorMessage,
+} from '@/lib/assertStorageQuota';
 import { MeetingConnections } from '@/components/MeetingConnections';
 import PillReveal from '@/components/PillReveal';
 import MeetingTripPill from '@/components/MeetingTripPill';
@@ -50,7 +54,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   const [session, setSession] = useState<any>(null);
   const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
   const canMeetings = entitlements.canUseMeetings;
+
   useProRedirect(!entLoading && Boolean(session), canMeetings, 'meetings');
+
   const [history, setHistory] = useState<HistoricalTask[]>([]);
   const clusters = useMemo(() => buildClusters(history), [history]);
   const [loading, setLoading] = useState(true);
@@ -60,10 +66,13 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [jobName, setJobName] = useState<string | null>(null);
   const [linkedJob, setLinkedJob] = useState<Job | null>(null);
-  const [jobTasks, setJobTasks] = useState<{ id: string; text: string; status: string }[]>([]);
+  const [jobTasks, setJobTasks] = useState<
+    { id: string; text: string; status: string }[]
+  >([]);
   const [siblingMeetings, setSiblingMeetings] = useState<Meeting[]>([]);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [linkingJob, setLinkingJob] = useState(false);
+
   const [participants, setParticipants] = useState<MeetingParticipant[]>([]);
   const [observations, setObservations] = useState<MeetingObservation[]>([]);
   const [decisions, setDecisions] = useState<MeetingDecision[]>([]);
@@ -91,7 +100,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     for (const m of draft.state.media) {
       if (isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
     }
+
     if (cap.recording) cap.stopRecording();
+
     draft.discard();
     setError(null);
   }
@@ -105,13 +116,19 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       cap.stopRecording();
       return;
     }
+
     const m = await cap.captureVoice();
+
     if (m) draft.addMedia(m);
   }
 
   function removeDraftMedia(index: number) {
     const m = draft.state.media[index];
-    if (m && isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
+
+    if (m && isMediaRef(m.uri)) {
+      void deleteMediaBlob(m.uri);
+    }
+
     draft.removeMedia(index);
   }
 
@@ -121,23 +138,32 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     speaker?: CaptureSpeaker;
   }) {
     const ok = await addObservation(draftPayload);
+
     if (ok) draft.complete();
+
     return ok;
   }
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
+
       if (!s) setLoading(false);
     });
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
     return () => listener.subscription.unsubscribe();
   }, []);
 
   const load = useCallback(async () => {
     if (!session) return;
+
     setLoading(true);
     setError(null);
+
     const userId = session.user.id;
 
     const { data: m, error: mErr } = await supabase
@@ -146,12 +172,14 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       .eq('user_id', userId)
       .eq('id', meetingId)
       .maybeSingle();
+
     if (mErr || !m) {
       console.error(mErr);
       setError(mErr ? "Couldn't load the meeting" : 'Meeting not found');
       setLoading(false);
       return;
     }
+
     setMeeting(m as Meeting);
     setNotes(m.notes || '');
 
@@ -161,6 +189,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         .select('*')
         .eq('meeting_id', meetingId)
         .order('created_at', { ascending: false });
+
       return (data as any[]) || [];
     };
 
@@ -182,6 +211,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     setDecisions(dec as MeetingDecision[]);
     setActions(act as MeetingAction[]);
     setMedia(med);
+
     setLoading(false);
 
     const { data: jobRows } = await supabase
@@ -189,11 +219,14 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
+
     const jobsList = (jobRows as Job[]) || [];
+
     setAllJobs(jobsList);
 
     if (m.job_id) {
       const job = jobsList.find((j) => j.id === m.job_id) ?? null;
+
       setLinkedJob(job);
       setJobName(job?.name ?? null);
 
@@ -205,6 +238,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           .neq('status', 'done')
           .order('order_index', { ascending: true })
           .limit(20),
+
         supabase
           .from('meetings')
           .select('*')
@@ -213,7 +247,11 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           .order('start_time', { ascending: false })
           .limit(10),
       ]);
-      setJobTasks((taskRows as { id: string; text: string; status: string }[]) || []);
+
+      setJobTasks(
+        (taskRows as { id: string; text: string; status: string }[]) || []
+      );
+
       setSiblingMeetings((sibRows as Meeting[]) || []);
     } else {
       setLinkedJob(null);
@@ -225,19 +263,25 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
   async function linkJob(jobId: string | null) {
     if (!meeting || !session) return;
+
     setLinkingJob(true);
     setError(null);
+
     const { error: updErr } = await supabase
       .from('meetings')
       .update({ job_id: jobId })
       .eq('id', meeting.id);
+
     setLinkingJob(false);
+
     if (updErr) {
       console.error(updErr);
       setError("Couldn't update job link");
       return;
     }
+
     setMeeting({ ...meeting, job_id: jobId });
+
     await load();
   }
 
@@ -247,10 +291,13 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
   useEffect(() => {
     if (!session?.user?.id) return;
+
     let cancelled = false;
+
     fetchDurationHistory(supabase, session.user.id).then((rows) => {
       if (!cancelled) setHistory(rows);
     });
+
     return () => {
       cancelled = true;
     };
@@ -258,18 +305,37 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
   useEffect(() => {
     if (!meeting || !session?.user?.id) return;
-    const start = meeting.start_time ? new Date(meeting.start_time).getTime() : NaN;
-    const dur = typeof meeting.duration_mins === 'number' ? meeting.duration_mins : 0;
+
+    const start = meeting.start_time
+      ? new Date(meeting.start_time).getTime()
+      : NaN;
+
+    const dur =
+      typeof meeting.duration_mins === 'number'
+        ? meeting.duration_mins
+        : 0;
+
     if (!Number.isFinite(start) || dur < 1) return;
+
     if (Date.now() < start + dur * 60_000) return;
+
     const key = `dokkit-meeting-outcome:${meeting.id}`;
+
     try {
-      if (typeof window !== 'undefined' && window.localStorage.getItem(key) === '1') return;
+      if (
+        typeof window !== 'undefined' &&
+        window.localStorage.getItem(key) === '1'
+      ) {
+        return;
+      }
+
       window.localStorage.setItem(key, '1');
     } catch {
       return;
     }
+
     const title = (meeting.text || 'Meeting').trim() || 'Meeting';
+
     closeCompletionLoop({
       userId: session.user.id,
       taskText: title,
@@ -287,65 +353,91 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
   async function saveNotes() {
     if (!meeting) return;
+
     await supabase
       .from('meetings')
       .update({ notes: notes.trim() || null })
       .eq('id', meeting.id);
-    setMeeting((prev) => (prev ? { ...prev, notes: notes.trim() || null } : prev));
+
+    setMeeting((prev) =>
+      prev
+        ? {
+            ...prev,
+            notes: notes.trim() || null,
+          }
+        : prev
+    );
   }
 
   async function addRow(table: string, text: string, textKey = 'text') {
     if (!session || !text.trim()) return;
+
     const { error: e } = await supabase.from(table).insert({
       user_id: session.user.id,
       meeting_id: meetingId,
       [textKey]: text.trim(),
     });
+
     if (e) {
       console.error(e);
       setError("Couldn't save that — try again");
       return;
     }
+
     setError(null);
+
     await load();
   }
 
   async function addParticipant() {
     if (!session) return;
+
     const name = normalizePersonName(participantInput);
+
     if (!name) return;
+
     if (personAlreadyAdded(participants, name)) {
       setParticipantInput('');
       setAddingPerson(false);
       setError(null);
       return;
     }
-    const { error: e } = await supabase.from('meeting_participants').insert({
-      user_id: session.user.id,
-      meeting_id: meetingId,
-      name,
-    });
+
+    const { error: e } = await supabase
+      .from('meeting_participants')
+      .insert({
+        user_id: session.user.id,
+        meeting_id: meetingId,
+        name,
+      });
+
     if (e) {
       console.error(e);
       setError("Couldn't add that person — try again");
       return;
     }
+
     setError(null);
     setParticipantInput('');
     setAddingPerson(false);
+
     await load();
   }
 
   async function addDecision() {
     if (!decisionInput.trim()) return;
+
     await addRow('meeting_decisions', decisionInput);
+
     setDecisionInput('');
     setAddingDecision(false);
   }
 
   async function addAction() {
     if (!actionInput.trim()) return;
+
     await addRow('meeting_actions', actionInput);
+
     setActionInput('');
     setAddingAction(false);
   }
@@ -356,17 +448,32 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     speaker?: CaptureSpeaker;
   }): Promise<boolean> {
     if (!session) return false;
-    const attributed = formatObservationText(draft.text, draft.speaker ?? 'note');
-    const prepared = buildObservationDraft(attributed || draft.text, draft.media);
+
+    const attributed = formatObservationText(
+      draft.text,
+      draft.speaker ?? 'note'
+    );
+
+    const prepared = buildObservationDraft(
+      attributed || draft.text,
+      draft.media
+    );
+
     if (!prepared) return false;
+
     setSaving(true);
     setError(null);
 
     const { data: obs, error: obsErr } = await supabase
       .from('meeting_observations')
-      .insert({ user_id: session.user.id, meeting_id: meetingId, text: prepared.text })
+      .insert({
+        user_id: session.user.id,
+        meeting_id: meetingId,
+        text: prepared.text,
+      })
       .select('id')
       .single();
+
     if (obsErr || !obs) {
       console.error(obsErr);
       setError("Couldn't save the observation");
@@ -375,41 +482,71 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     }
 
     const ok = await insertMediaRows(obs.id, prepared.media);
-    if (!ok) setError("Couldn't save part of the observation");
+
+    if (!ok) {
+      setError("Couldn't save part of the observation");
+    }
 
     setSaving(false);
+
     await load();
+
     return true;
   }
 
-  async function insertMediaRows(observationId: string | null, list: CapturedMedia[]): Promise<boolean> {
+  async function insertMediaRows(
+    observationId: string | null,
+    list: CapturedMedia[]
+  ): Promise<boolean> {
     if (!session) return false;
-    const addBytes = list.reduce((sum, m) => sum + (m.size || 0), 0);
+
+    const addBytes = list.reduce(
+      (sum, m) => sum + (m.size || 0),
+      0
+    );
+
     if (addBytes > 0) {
-      const quotaErr = await checkStorageQuota(session.user.id, addBytes);
+      const quotaErr = await checkStorageQuota(
+        session.user.id,
+        addBytes
+      );
+
       if (quotaErr) {
         setError(quotaErr);
         return false;
       }
     }
+
     let ok = true;
+
     for (const m of list) {
       let ref = m.uri;
+
       if (!isMediaRef(ref)) {
-        const blob = m.blob ?? (ref.startsWith('blob:') ? await fetch(ref).then((r) => r.blob()) : null);
+        const blob =
+          m.blob ??
+          (ref.startsWith('blob:')
+            ? await fetch(ref).then((r) => r.blob())
+            : null);
+
         if (!blob) {
           console.error('Media bytes unavailable to persist');
           ok = false;
           continue;
         }
+
         try {
-          ref = await saveMediaBlob(blob, { mime: m.mime, size: m.size });
+          ref = await saveMediaBlob(blob, {
+            mime: m.mime,
+            size: m.size,
+          });
         } catch {
           console.error('Failed to persist local media');
           ok = false;
           continue;
         }
       }
+
       const { data: mediaRow, error } = await supabase
         .from('meeting_media')
         .insert({
@@ -425,11 +562,14 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         })
         .select('id')
         .single();
+
       if (error || !mediaRow) {
         console.error(error);
+
         if (isQuotaErrorMessage(error?.message)) {
           setError(STORAGE_FULL_MESSAGE);
         }
+
         ok = false;
       } else {
         void syncMeetingMediaToCloud({
@@ -441,13 +581,20 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         });
       }
     }
+
     return ok;
   }
 
-  async function addMediaToObservation(observationId: string, captured: CapturedMedia): Promise<boolean> {
+  async function addMediaToObservation(
+    observationId: string,
+    captured: CapturedMedia
+  ): Promise<boolean> {
     const ok = await insertMediaRows(observationId, [captured]);
+
     setError(ok ? null : "Couldn't save the media");
+
     await load();
+
     return ok;
   }
 
@@ -458,39 +605,59 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     newMedia: CapturedMedia[]
   ): Promise<boolean> {
     if (!session) return false;
+
     setSaving(true);
     setError(null);
+
     const { error: e } = await supabase
       .from('meeting_observations')
       .update({ text })
       .eq('id', observationId)
       .eq('user_id', session.user.id);
+
     if (e) {
       console.error(e);
       setError("Couldn't save the observation");
       setSaving(false);
       return false;
     }
+
     await removeMediaByIds(removeMediaIds);
+
     const ok = await insertMediaRows(observationId, newMedia);
-    if (!ok) setError("Couldn't save some of the new media");
+
+    if (!ok) {
+      setError("Couldn't save some of the new media");
+    }
+
     setSaving(false);
+
     await load();
+
     return true;
   }
 
   async function removeMediaByIds(ids: string[]) {
     if (ids.length === 0) return;
+
     for (const id of ids) {
       const row = media.find((m) => m.id === id);
-      if (row?.local_uri) void deleteMediaBlob(row.local_uri);
-      if (row?.storage_path) void deleteCloudMedia(row.storage_path);
+
+      if (row?.local_uri) {
+        void deleteMediaBlob(row.local_uri);
+      }
+
+      if (row?.storage_path) {
+        void deleteCloudMedia(row.storage_path);
+      }
     }
+
     const { error } = await supabase
       .from('meeting_media')
       .delete()
       .in('id', ids)
       .eq('user_id', session.user.id);
+
     if (error) {
       console.error(error);
       setError("Couldn't remove some media");
@@ -499,35 +666,68 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
   async function removeRow(table: string, id: string) {
     if (table === 'meeting_observations') {
-      const obsMedia = media.filter((m) => m.observation_id === id);
+      const obsMedia = media.filter(
+        (m) => m.observation_id === id
+      );
+
       for (const m of obsMedia) {
-        if (m.local_uri) void deleteMediaBlob(m.local_uri);
-        if (m.storage_path) void deleteCloudMedia(m.storage_path);
+        if (m.local_uri) {
+          void deleteMediaBlob(m.local_uri);
+        }
+
+        if (m.storage_path) {
+          void deleteCloudMedia(m.storage_path);
+        }
       }
     }
-    const { error } = await supabase.from(table).delete().eq('id', id);
+
+    const { error } = await supabase
+      .from(table)
+      .delete()
+      .eq('id', id);
+
     if (error) {
       console.error(error);
       setError("Couldn't delete that");
       return;
     }
+
     await load();
   }
 
   async function deleteMeeting() {
-    if (!meeting || !confirm('Delete this meeting and all its notes?')) return;
-    setSaving(true);
-    for (const m of media) {
-      if (m.local_uri) void deleteMediaBlob(m.local_uri);
-      if (m.storage_path) void deleteCloudMedia(m.storage_path);
+    if (
+      !meeting ||
+      !confirm('Delete this meeting and all its notes?')
+    ) {
+      return;
     }
-    const { error } = await supabase.from('meetings').delete().eq('id', meeting.id);
+
+    setSaving(true);
+
+    for (const m of media) {
+      if (m.local_uri) {
+        void deleteMediaBlob(m.local_uri);
+      }
+
+      if (m.storage_path) {
+        void deleteCloudMedia(m.storage_path);
+      }
+    }
+
+    const { error } = await supabase
+      .from('meetings')
+      .delete()
+      .eq('id', meeting.id);
+
     setSaving(false);
+
     if (error) {
       console.error(error);
       setError("Couldn't delete the meeting");
       return;
     }
+
     router.push('/meetings');
   }
 
@@ -535,15 +735,23 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     return (
       <div className="app-shell">
         <div className="app-header">
-          <Link href="/meetings" className="gear-btn" aria-label="Back">
+          <Link
+            href="/meetings"
+            className="gear-btn"
+            aria-label="Back"
+          >
             <BackIcon />
           </Link>
+
           <div className="app-title">Meeting</div>
+
           <GearMenu />
         </div>
+
         <div className="content">
           <p className="empty">Loading…</p>
         </div>
+
         <SurfaceNav active="meetings" />
       </div>
     );
@@ -557,54 +765,83 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     return (
       <div className="app-shell">
         <div className="app-header">
-          <Link href="/meetings" className="gear-btn" aria-label="Back">
+          <Link
+            href="/meetings"
+            className="gear-btn"
+            aria-label="Back"
+          >
             <BackIcon />
           </Link>
+
           <div className="app-title">Meeting</div>
+
           <GearMenu />
         </div>
+
         <div className="content">
-          <p className="empty">{error || 'Meeting not found'}</p>
+          <p className="empty">
+            {error || 'Meeting not found'}
+          </p>
         </div>
+
         <SurfaceNav active="meetings" />
       </div>
     );
   }
 
-  const mediaByObservation = groupMediaByObservation(media);
+  const mediaByObservation =
+    groupMediaByObservation(media);
 
   return (
     <div className="app-shell">
       <div className="app-header">
-        <Link href="/meetings" className="gear-btn" aria-label="Back">
+        <Link
+          href="/meetings"
+          className="gear-btn"
+          aria-label="Back"
+        >
           <BackIcon />
         </Link>
+
         <div className="app-title">Meeting</div>
+
         <GearMenu />
       </div>
 
       <div className="content">
         {error && (
-          <p className="meeting-capture-error" role="alert">
+          <p
+            className="meeting-capture-error"
+            role="alert"
+          >
             {error}
           </p>
         )}
 
         <div className="detail-section">
-          <div className="detail-section-title">{meeting.text}</div>
-          <p className="settings-help" style={{ margin: '4px 0 0' }}>
-            {fmtMeetingWindow(meeting.start_time, meeting.duration_mins)}
+          <div className="detail-section-title">
+            {meeting.text}
+          </div>
+
+          <p
+            className="settings-help"
+            style={{ margin: '4px 0 0' }}
+          >
+            {fmtMeetingWindow(
+              meeting.start_time,
+              meeting.duration_mins
+            )}
             {jobName ? ` · ${jobName}` : ''}
           </p>
         </div>
 
         <MeetingConnections
           meeting={meeting}
-          linkedJob={linkedJob}
+          job={linkedJob}
           allJobs={allJobs}
           jobTasks={jobTasks}
           siblingMeetings={siblingMeetings}
-          linkingJob={linkingJob}
+          linking={linkingJob}
           onLinkJob={linkJob}
         />
 
@@ -612,44 +849,78 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
         <div className="detail-section">
           <div className="detail-section-title-row">
-            <div className="detail-section-title">People</div>
+            <div className="detail-section-title">
+              People
+            </div>
+
             <button
               type="button"
               className="meeting-pill"
-              onClick={() => setAddingPerson((v) => !v)}
+              onClick={() =>
+                setAddingPerson((v) => !v)
+              }
               disabled={saving}
             >
               {addingPerson ? 'Cancel' : '+ Person'}
             </button>
           </div>
+
           {addingPerson && (
-            <div className="capture-row" style={{ marginBottom: 8 }}>
+            <div
+              className="capture-row"
+              style={{ marginBottom: 8 }}
+            >
               <input
                 type="text"
                 value={participantInput}
-                onChange={(e) => setParticipantInput(e.target.value)}
+                onChange={(e) =>
+                  setParticipantInput(e.target.value)
+                }
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') void addParticipant();
+                  if (e.key === 'Enter') {
+                    void addParticipant();
+                  }
                 }}
                 placeholder="Name"
                 autoFocus
               />
-              <button type="button" className="meeting-pill meeting-pill--primary" onClick={() => void addParticipant()}>
+
+              <button
+                type="button"
+                className="meeting-pill meeting-pill--primary"
+                onClick={() =>
+                  void addParticipant()
+                }
+              >
                 Add
               </button>
             </div>
           )}
-          {participants.length === 0 && !addingPerson && (
-            <p className="meeting-empty">No one listed yet.</p>
-          )}
+
+          {participants.length === 0 &&
+            !addingPerson && (
+              <p className="meeting-empty">
+                No one listed yet.
+              </p>
+            )}
+
           {participants.map((p) => (
-            <div key={p.id} className="reminder-date-row">
+            <div
+              key={p.id}
+              className="reminder-date-row"
+            >
               <span>{p.name}</span>
+
               <button
                 type="button"
                 className="btn-text"
                 aria-label="Remove"
-                onClick={() => void removeRow('meeting_participants', p.id)}
+                onClick={() =>
+                  void removeRow(
+                    'meeting_participants',
+                    p.id
+                  )
+                }
               >
                 <TrashIcon size={14} />
               </button>
@@ -662,7 +933,12 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           mediaByObservation={mediaByObservation}
           saving={saving}
           onSaveObservation={saveObservation}
-          onDelete={(id) => void removeRow('meeting_observations', id)}
+          onDelete={(id) =>
+            void removeRow(
+              'meeting_observations',
+              id
+            )
+          }
           onAddMedia={addMediaToObservation}
           onSaveEdit={saveObservationEdit}
           capturing={capturingObservation}
@@ -673,7 +949,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           captureError={cap.error}
           onTextChange={draft.setText}
           onAddPhoto={addObservationPhoto}
-          onToggleVoice={() => void toggleObservationVoice()}
+          onToggleVoice={() =>
+            void toggleObservationVoice()
+          }
           onRemoveDraftMedia={removeDraftMedia}
           onCancelObservation={cancelObservation}
           photoInputRef={cap.photoInputRef}
@@ -682,44 +960,80 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
         <div className="detail-section">
           <div className="detail-section-title-row">
-            <div className="detail-section-title">Decisions</div>
+            <div className="detail-section-title">
+              Decisions
+            </div>
+
             <button
               type="button"
               className="meeting-pill"
-              onClick={() => setAddingDecision((v) => !v)}
+              onClick={() =>
+                setAddingDecision((v) => !v)
+              }
               disabled={saving}
             >
-              {addingDecision ? 'Cancel' : '+ Decision'}
+              {addingDecision
+                ? 'Cancel'
+                : '+ Decision'}
             </button>
           </div>
+
           {addingDecision && (
-            <div className="capture-row" style={{ marginBottom: 8 }}>
+            <div
+              className="capture-row"
+              style={{ marginBottom: 8 }}
+            >
               <input
                 type="text"
                 value={decisionInput}
-                onChange={(e) => setDecisionInput(e.target.value)}
+                onChange={(e) =>
+                  setDecisionInput(e.target.value)
+                }
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') void addDecision();
+                  if (e.key === 'Enter') {
+                    void addDecision();
+                  }
                 }}
                 placeholder="What was agreed?"
                 autoFocus
               />
-              <button type="button" className="meeting-pill meeting-pill--primary" onClick={() => void addDecision()}>
+
+              <button
+                type="button"
+                className="meeting-pill meeting-pill--primary"
+                onClick={() =>
+                  void addDecision()
+                }
+              >
                 Add
               </button>
             </div>
           )}
-          {decisions.length === 0 && !addingDecision && (
-            <p className="meeting-empty">No decisions recorded.</p>
-          )}
+
+          {decisions.length === 0 &&
+            !addingDecision && (
+              <p className="meeting-empty">
+                No decisions recorded.
+              </p>
+            )}
+
           {decisions.map((d) => (
-            <div key={d.id} className="reminder-date-row">
+            <div
+              key={d.id}
+              className="reminder-date-row"
+            >
               <span>{d.text}</span>
+
               <button
                 type="button"
                 className="btn-text"
                 aria-label="Remove"
-                onClick={() => void removeRow('meeting_decisions', d.id)}
+                onClick={() =>
+                  void removeRow(
+                    'meeting_decisions',
+                    d.id
+                  )
+                }
               >
                 <TrashIcon size={14} />
               </button>
@@ -729,44 +1043,78 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
         <div className="detail-section">
           <div className="detail-section-title-row">
-            <div className="detail-section-title">Actions</div>
+            <div className="detail-section-title">
+              Actions
+            </div>
+
             <button
               type="button"
               className="meeting-pill"
-              onClick={() => setAddingAction((v) => !v)}
+              onClick={() =>
+                setAddingAction((v) => !v)
+              }
               disabled={saving}
             >
               {addingAction ? 'Cancel' : '+ Action'}
             </button>
           </div>
+
           {addingAction && (
-            <div className="capture-row" style={{ marginBottom: 8 }}>
+            <div
+              className="capture-row"
+              style={{ marginBottom: 8 }}
+            >
               <input
                 type="text"
                 value={actionInput}
-                onChange={(e) => setActionInput(e.target.value)}
+                onChange={(e) =>
+                  setActionInput(e.target.value)
+                }
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') void addAction();
+                  if (e.key === 'Enter') {
+                    void addAction();
+                  }
                 }}
                 placeholder="What needs to happen next?"
                 autoFocus
               />
-              <button type="button" className="meeting-pill meeting-pill--primary" onClick={() => void addAction()}>
+
+              <button
+                type="button"
+                className="meeting-pill meeting-pill--primary"
+                onClick={() =>
+                  void addAction()
+                }
+              >
                 Add
               </button>
             </div>
           )}
-          {actions.length === 0 && !addingAction && (
-            <p className="meeting-empty">No actions yet.</p>
-          )}
+
+          {actions.length === 0 &&
+            !addingAction && (
+              <p className="meeting-empty">
+                No actions yet.
+              </p>
+            )}
+
           {actions.map((a) => (
-            <div key={a.id} className="reminder-date-row">
+            <div
+              key={a.id}
+              className="reminder-date-row"
+            >
               <span>{a.text}</span>
+
               <button
                 type="button"
                 className="btn-text"
                 aria-label="Remove"
-                onClick={() => void removeRow('meeting_actions', a.id)}
+                onClick={() =>
+                  void removeRow(
+                    'meeting_actions',
+                    a.id
+                  )
+                }
               >
                 <TrashIcon size={14} />
               </button>
@@ -777,15 +1125,22 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         <PillReveal label="Notes">
           <textarea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) =>
+              setNotes(e.target.value)
+            }
             onBlur={() => void saveNotes()}
             placeholder="Free-form notes for this meeting"
             rows={4}
-            style={{ width: '100%', boxSizing: 'border-box' }}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
           />
         </PillReveal>
 
-        {linkedJob && <JobFilesPanel jobId={linkedJob.id} />}
+        {linkedJob && (
+          <JobFilesPanel jobId={linkedJob.id} />
+        )}
 
         <MeetingExport
           meeting={meeting}
@@ -799,7 +1154,10 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         <button
           type="button"
           className="btn-text"
-          style={{ color: 'var(--hazard)', marginTop: 16 }}
+          style={{
+            color: 'var(--hazard)',
+            marginTop: 16,
+          }}
           onClick={() => void deleteMeeting()}
           disabled={saving}
         >
