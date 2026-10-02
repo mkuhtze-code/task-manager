@@ -5,6 +5,7 @@
  * Transcription is provider-abstracted.
  * Understanding is deterministic and layered.
  * Semantic layer composes multi-act meaning and gates false tasks.
+ * Decision layer: understanding ≠ permission to act.
  */
 
 export type {
@@ -78,6 +79,8 @@ export {
   confidenceForEvidence,
   MIN_EVIDENCE_EXPLICIT,
   MIN_EVIDENCE_OBSERVATION,
+  recordNameAlias,
+  applyNameAliases,
 } from './learning';
 
 export {
@@ -123,3 +126,6 @@ export type {
   CorrectionStep,
   SafetyVerdict,
 } from './semantic';
+
+export { decideSpeechActions, decisionWouldCreateTask } from './decision';
+export type { SpeechDecision, ActDecision, ActionKind } from './decision';
