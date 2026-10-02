@@ -20,9 +20,19 @@ import {
   groupMediaByObservation,
   type CapturedMedia,
 } from '@/lib/meetingCapture';
-import { formatObservationText, type CaptureSpeaker } from '@/lib/communication/speaker';
-import { saveMediaBlob, deleteMediaBlob, isMediaRef } from '@/lib/mediaStore';
-import { syncMeetingMediaToCloud, deleteCloudMedia } from '@/lib/mediaCloud';
+import {
+  formatObservationText,
+  type CaptureSpeaker,
+} from '@/lib/communication/speaker';
+import {
+  saveMediaBlob,
+  deleteMediaBlob,
+  isMediaRef,
+} from '@/lib/mediaStore';
+import {
+  syncMeetingMediaToCloud,
+  deleteCloudMedia,
+} from '@/lib/mediaCloud';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
 import { useMeetingMediaCapture } from '@/hooks/useMeetingMediaCapture';
 import { useObservationDrafting } from '@/hooks/useObservationDrafting';
@@ -43,23 +53,39 @@ import JobFilesPanel from '@/components/JobFilesPanel';
 import type { Job } from '@/lib/jobTypes';
 import { closeCompletionLoop } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { fetchDurationHistory } from '@/lib/thinking/loadDurationHistory';
-import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
+import {
+  buildClusters,
+  type HistoricalTask,
+} from '@/lib/taskIntelligence';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
 import MeetingsPlanGate from '@/components/MeetingsPlanGate';
 
-export default function MeetingDetail({ params }: { params: { meetingId: string } }) {
+export default function MeetingDetail({
+  params,
+}: {
+  params: { meetingId: string };
+}) {
   const meetingId = params.meetingId;
   const router = useRouter();
 
   const [session, setSession] = useState<any>(null);
-  const { entitlements, loading: entLoading } = useEntitlements(session?.user?.id);
+  const { entitlements, loading: entLoading } =
+    useEntitlements(session?.user?.id);
   const canMeetings = entitlements.canUseMeetings;
 
-  useProRedirect(!entLoading && Boolean(session), canMeetings, 'meetings');
+  useProRedirect(
+    !entLoading && Boolean(session),
+    canMeetings,
+    'meetings'
+  );
 
   const [history, setHistory] = useState<HistoricalTask[]>([]);
-  const clusters = useMemo(() => buildClusters(history), [history]);
+  const clusters = useMemo(
+    () => buildClusters(history),
+    [history]
+  );
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,30 +93,48 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [jobName, setJobName] = useState<string | null>(null);
   const [linkedJob, setLinkedJob] = useState<Job | null>(null);
+
   const [jobTasks, setJobTasks] = useState<
     { id: string; text: string; status: string }[]
   >([]);
-  const [siblingMeetings, setSiblingMeetings] = useState<Meeting[]>([]);
+
+  const [siblingMeetings, setSiblingMeetings] = useState<
+    Meeting[]
+  >([]);
+
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [linkingJob, setLinkingJob] = useState(false);
 
-  const [participants, setParticipants] = useState<MeetingParticipant[]>([]);
-  const [observations, setObservations] = useState<MeetingObservation[]>([]);
-  const [decisions, setDecisions] = useState<MeetingDecision[]>([]);
+  const [participants, setParticipants] = useState<
+    MeetingParticipant[]
+  >([]);
+
+  const [observations, setObservations] = useState<
+    MeetingObservation[]
+  >([]);
+
+  const [decisions, setDecisions] = useState<
+    MeetingDecision[]
+  >([]);
+
   const [actions, setActions] = useState<MeetingAction[]>([]);
   const [media, setMedia] = useState<MeetingMedia[]>([]);
   const [notes, setNotes] = useState('');
 
   const [addingPerson, setAddingPerson] = useState(false);
-  const [addingDecision, setAddingDecision] = useState(false);
+  const [addingDecision, setAddingDecision] =
+    useState(false);
   const [addingAction, setAddingAction] = useState(false);
-  const [participantInput, setParticipantInput] = useState('');
+
+  const [participantInput, setParticipantInput] =
+    useState('');
   const [decisionInput, setDecisionInput] = useState('');
   const [actionInput, setActionInput] = useState('');
 
   const cap = useMeetingMediaCapture();
   const draft = useObservationDrafting(meetingId);
-  const capturingObservation = draft.state.phase === 'open';
+  const capturingObservation =
+    draft.state.phase === 'open';
 
   function startObservation() {
     draft.begin();
@@ -99,10 +143,14 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
   function cancelObservation() {
     for (const m of draft.state.media) {
-      if (isMediaRef(m.uri)) void deleteMediaBlob(m.uri);
+      if (isMediaRef(m.uri)) {
+        void deleteMediaBlob(m.uri);
+      }
     }
 
-    if (cap.recording) cap.stopRecording();
+    if (cap.recording) {
+      cap.stopRecording();
+    }
 
     draft.discard();
     setError(null);
@@ -120,7 +168,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
     const m = await cap.captureVoice();
 
-    if (m) draft.addMedia(m);
+    if (m) {
+      draft.addMedia(m);
+    }
   }
 
   function removeDraftMedia(index: number) {
@@ -140,23 +190,31 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   }) {
     const ok = await addObservation(draftPayload);
 
-    if (ok) draft.complete();
+    if (ok) {
+      draft.complete();
+    }
 
     return ok;
   }
 
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
+    const { data: listener } =
+      supabase.auth.onAuthStateChange(
+        (_event, s) => {
+          setSession(s);
 
-      if (!s) setLoading(false);
-    });
+          if (!s) {
+            setLoading(false);
+          }
+        }
+      );
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
     });
 
-    return () => listener.subscription.unsubscribe();
+    return () =>
+      listener.subscription.unsubscribe();
   }, []);
 
   const load = useCallback(async () => {
@@ -167,16 +225,23 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
     const userId = session.user.id;
 
-    const { data: m, error: mErr } = await supabase
-      .from('meetings')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('id', meetingId)
-      .maybeSingle();
+    const { data: m, error: mErr } =
+      await supabase
+        .from('meetings')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('id', meetingId)
+        .maybeSingle();
 
     if (mErr || !m) {
       console.error(mErr);
-      setError(mErr ? "Couldn't load the meeting" : 'Meeting not found');
+
+      setError(
+        mErr
+          ? "Couldn't load the meeting"
+          : 'Meeting not found'
+      );
+
       setLoading(false);
       return;
     }
@@ -189,12 +254,20 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         .from(table)
         .select('*')
         .eq('meeting_id', meetingId)
-        .order('created_at', { ascending: false });
+        .order('created_at', {
+          ascending: false,
+        });
 
       return (data as any[]) || [];
     };
 
-    const [people, obs, dec, act, med] = await Promise.all([
+    const [
+      people,
+      obs,
+      dec,
+      act,
+      med,
+    ] = await Promise.all([
       run('meeting_participants'),
       run('meeting_observations'),
       run('meeting_decisions'),
@@ -203,13 +276,27 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         .from('meeting_media')
         .select('*')
         .eq('meeting_id', meetingId)
-        .order('captured_at', { ascending: true })
-        .then(({ data }) => (data as MeetingMedia[]) || []),
+        .order('captured_at', {
+          ascending: true,
+        })
+        .then(
+          ({ data }) =>
+            (data as MeetingMedia[]) || []
+        ),
     ]);
 
-    setParticipants(people as MeetingParticipant[]);
-    setObservations(obs as MeetingObservation[]);
-    setDecisions(dec as MeetingDecision[]);
+    setParticipants(
+      people as MeetingParticipant[]
+    );
+
+    setObservations(
+      obs as MeetingObservation[]
+    );
+
+    setDecisions(
+      dec as MeetingDecision[]
+    );
+
     setActions(act as MeetingAction[]);
     setMedia(med);
 
@@ -219,25 +306,35 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       .from('jobs')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', {
+        ascending: false,
+      });
 
     const jobsList = (jobRows as Job[]) || [];
 
     setAllJobs(jobsList);
 
     if (m.job_id) {
-      const job = jobsList.find((j) => j.id === m.job_id) ?? null;
+      const job =
+        jobsList.find(
+          (j) => j.id === m.job_id
+        ) ?? null;
 
       setLinkedJob(job);
       setJobName(job?.name ?? null);
 
-      const [{ data: taskRows }, { data: sibRows }] = await Promise.all([
+      const [
+        { data: taskRows },
+        { data: sibRows },
+      ] = await Promise.all([
         supabase
           .from('tasks')
           .select('id, text, status')
           .eq('job_id', m.job_id)
           .neq('status', 'done')
-          .order('order_index', { ascending: true })
+          .order('order_index', {
+            ascending: true,
+          })
           .limit(20),
 
         supabase
@@ -245,15 +342,23 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           .select('*')
           .eq('job_id', m.job_id)
           .neq('id', meetingId)
-          .order('start_time', { ascending: false })
+          .order('start_time', {
+            ascending: false,
+          })
           .limit(10),
       ]);
 
       setJobTasks(
-        (taskRows as { id: string; text: string; status: string }[]) || []
+        (taskRows as {
+          id: string;
+          text: string;
+          status: string;
+        }[]) || []
       );
 
-      setSiblingMeetings((sibRows as Meeting[]) || []);
+      setSiblingMeetings(
+        (sibRows as Meeting[]) || []
+      );
     } else {
       setLinkedJob(null);
       setJobName(null);
@@ -262,16 +367,19 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     }
   }, [session, meetingId]);
 
-  async function linkJob(jobId: string | null) {
+  async function linkJob(
+    jobId: string | null
+  ) {
     if (!meeting || !session) return;
 
     setLinkingJob(true);
     setError(null);
 
-    const { error: updErr } = await supabase
-      .from('meetings')
-      .update({ job_id: jobId })
-      .eq('id', meeting.id);
+    const { error: updErr } =
+      await supabase
+        .from('meetings')
+        .update({ job_id: jobId })
+        .eq('id', meeting.id);
 
     setLinkingJob(false);
 
@@ -281,13 +389,18 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       return;
     }
 
-    setMeeting({ ...meeting, job_id: jobId });
+    setMeeting({
+      ...meeting,
+      job_id: jobId,
+    });
 
     await load();
   }
 
   useEffect(() => {
-    if (session) load();
+    if (session) {
+      load();
+    }
   }, [session, load]);
 
   useEffect(() => {
@@ -295,8 +408,13 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
     let cancelled = false;
 
-    fetchDurationHistory(supabase, session.user.id).then((rows) => {
-      if (!cancelled) setHistory(rows);
+    fetchDurationHistory(
+      supabase,
+      session.user.id
+    ).then((rows) => {
+      if (!cancelled) {
+        setHistory(rows);
+      }
     });
 
     return () => {
@@ -305,10 +423,17 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   }, [session?.user?.id]);
 
   useEffect(() => {
-    if (!meeting || !session?.user?.id) return;
+    if (
+      !meeting ||
+      !session?.user?.id
+    ) {
+      return;
+    }
 
     const start = meeting.start_time
-      ? new Date(meeting.start_time).getTime()
+      ? new Date(
+          meeting.start_time
+        ).getTime()
       : NaN;
 
     const dur =
@@ -316,26 +441,44 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         ? meeting.duration_mins
         : 0;
 
-    if (!Number.isFinite(start) || dur < 1) return;
+    if (
+      !Number.isFinite(start) ||
+      dur < 1
+    ) {
+      return;
+    }
 
-    if (Date.now() < start + dur * 60_000) return;
+    if (
+      Date.now() <
+      start + dur * 60_000
+    ) {
+      return;
+    }
 
-    const key = `dokkit-meeting-outcome:${meeting.id}`;
+    const key =
+      `dokkit-meeting-outcome:${meeting.id}`;
 
     try {
       if (
         typeof window !== 'undefined' &&
-        window.localStorage.getItem(key) === '1'
+        window.localStorage.getItem(
+          key
+        ) === '1'
       ) {
         return;
       }
 
-      window.localStorage.setItem(key, '1');
+      window.localStorage.setItem(
+        key,
+        '1'
+      );
     } catch {
       return;
     }
 
-    const title = (meeting.text || 'Meeting').trim() || 'Meeting';
+    const title =
+      (meeting.text || 'Meeting')
+        .trim() || 'Meeting';
 
     closeCompletionLoop({
       userId: session.user.id,
@@ -347,41 +490,65 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       hints: {
         estimateMins: dur,
         loggedMins: dur,
-        jobId: meeting.job_id ?? null,
+        jobId:
+          meeting.job_id ?? null,
       },
     });
-  }, [meeting, session?.user?.id, history, clusters]);
+  }, [
+    meeting,
+    session?.user?.id,
+    history,
+    clusters,
+  ]);
 
   async function saveNotes() {
     if (!meeting) return;
 
     await supabase
       .from('meetings')
-      .update({ notes: notes.trim() || null })
+      .update({
+        notes:
+          notes.trim() || null,
+      })
       .eq('id', meeting.id);
 
     setMeeting((prev) =>
       prev
         ? {
             ...prev,
-            notes: notes.trim() || null,
+            notes:
+              notes.trim() || null,
           }
         : prev
     );
   }
 
-  async function addRow(table: string, text: string, textKey = 'text') {
-    if (!session || !text.trim()) return;
+  async function addRow(
+    table: string,
+    text: string,
+    textKey = 'text'
+  ) {
+    if (
+      !session ||
+      !text.trim()
+    ) {
+      return;
+    }
 
-    const { error: e } = await supabase.from(table).insert({
-      user_id: session.user.id,
-      meeting_id: meetingId,
-      [textKey]: text.trim(),
-    });
+    const { error: e } =
+      await supabase
+        .from(table)
+        .insert({
+          user_id: session.user.id,
+          meeting_id: meetingId,
+          [textKey]: text.trim(),
+        });
 
     if (e) {
       console.error(e);
-      setError("Couldn't save that — try again");
+      setError(
+        "Couldn't save that — try again"
+      );
       return;
     }
 
@@ -393,28 +560,39 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   async function addParticipant() {
     if (!session) return;
 
-    const name = normalizePersonName(participantInput);
+    const name =
+      normalizePersonName(
+        participantInput
+      );
 
     if (!name) return;
 
-    if (personAlreadyAdded(participants, name)) {
+    if (
+      personAlreadyAdded(
+        participants,
+        name
+      )
+    ) {
       setParticipantInput('');
       setAddingPerson(false);
       setError(null);
       return;
     }
 
-    const { error: e } = await supabase
-      .from('meeting_participants')
-      .insert({
-        user_id: session.user.id,
-        meeting_id: meetingId,
-        name,
-      });
+    const { error: e } =
+      await supabase
+        .from('meeting_participants')
+        .insert({
+          user_id: session.user.id,
+          meeting_id: meetingId,
+          name,
+        });
 
     if (e) {
       console.error(e);
-      setError("Couldn't add that person — try again");
+      setError(
+        "Couldn't add that person — try again"
+      );
       return;
     }
 
@@ -426,46 +604,63 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   }
 
   async function addDecision() {
-    if (!decisionInput.trim()) return;
+    if (!decisionInput.trim()) {
+      return;
+    }
 
-    await addRow('meeting_decisions', decisionInput);
+    await addRow(
+      'meeting_decisions',
+      decisionInput
+    );
 
     setDecisionInput('');
     setAddingDecision(false);
   }
 
   async function addAction() {
-    if (!actionInput.trim()) return;
+    if (!actionInput.trim()) {
+      return;
+    }
 
-    await addRow('meeting_actions', actionInput);
+    await addRow(
+      'meeting_actions',
+      actionInput
+    );
 
     setActionInput('');
     setAddingAction(false);
   }
 
-  async function addObservation(draft: {
-    text: string;
-    media: CapturedMedia[];
-    speaker?: CaptureSpeaker;
-  }): Promise<boolean> {
+  async function addObservation(
+    draft: {
+      text: string;
+      media: CapturedMedia[];
+      speaker?: CaptureSpeaker;
+    }
+  ): Promise<boolean> {
     if (!session) return false;
 
-    const attributed = formatObservationText(
-      draft.text,
-      draft.speaker ?? 'note'
-    );
+    const attributed =
+      formatObservationText(
+        draft.text,
+        draft.speaker ?? 'note'
+      );
 
-    const prepared = buildObservationDraft(
-      attributed || draft.text,
-      draft.media
-    );
+    const prepared =
+      buildObservationDraft(
+        attributed || draft.text,
+        draft.media
+      );
 
     if (!prepared) return false;
 
     setSaving(true);
     setError(null);
 
-    const { data: obs, error: obsErr } = await supabase
+    const {
+      data: obs,
+      error: obsErr,
+    } = await supabase
       .from('meeting_observations')
       .insert({
         user_id: session.user.id,
@@ -477,15 +672,25 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
     if (obsErr || !obs) {
       console.error(obsErr);
-      setError("Couldn't save the observation");
+
+      setError(
+        "Couldn't save the observation"
+      );
+
       setSaving(false);
       return false;
     }
 
-    const ok = await insertMediaRows(obs.id, prepared.media);
+    const ok =
+      await insertMediaRows(
+        obs.id,
+        prepared.media
+      );
 
     if (!ok) {
-      setError("Couldn't save part of the observation");
+      setError(
+        "Couldn't save part of the observation"
+      );
     }
 
     setSaving(false);
@@ -501,16 +706,19 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   ): Promise<boolean> {
     if (!session) return false;
 
-    const addBytes = list.reduce(
-      (sum, m) => sum + (m.size || 0),
-      0
-    );
+    const addBytes =
+      list.reduce(
+        (sum, m) =>
+          sum + (m.size || 0),
+        0
+      );
 
     if (addBytes > 0) {
-      const quotaErr = await checkStorageQuota(
-        session.user.id,
-        addBytes
-      );
+      const quotaErr =
+        await checkStorageQuota(
+          session.user.id,
+          addBytes
+        );
 
       if (quotaErr) {
         setError(quotaErr);
@@ -527,39 +735,60 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
         const blob =
           m.blob ??
           (ref.startsWith('blob:')
-            ? await fetch(ref).then((r) => r.blob())
+            ? await fetch(ref).then(
+                (r) => r.blob()
+              )
             : null);
 
         if (!blob) {
-          console.error('Media bytes unavailable to persist');
+          console.error(
+            'Media bytes unavailable to persist'
+          );
+
           ok = false;
           continue;
         }
 
         try {
-          ref = await saveMediaBlob(blob, {
-            mime: m.mime,
-            size: m.size,
-          });
+          ref =
+            await saveMediaBlob(
+              blob,
+              {
+                mime: m.mime,
+                size: m.size,
+              }
+            );
         } catch {
-          console.error('Failed to persist local media');
+          console.error(
+            'Failed to persist local media'
+          );
+
           ok = false;
           continue;
         }
       }
 
-      const { data: mediaRow, error } = await supabase
+      const {
+        data: mediaRow,
+        error,
+      } = await supabase
         .from('meeting_media')
         .insert({
-          user_id: session.user.id,
-          meeting_id: meetingId,
-          observation_id: observationId,
-          media_type: m.mediaType,
+          user_id:
+            session.user.id,
+          meeting_id:
+            meetingId,
+          observation_id:
+            observationId,
+          media_type:
+            m.mediaType,
           local_uri: ref,
           mime_type: m.mime,
           size_bytes: m.size,
-          captured_at: m.capturedAt,
-          sync_status: 'local_only',
+          captured_at:
+            m.capturedAt,
+          sync_status:
+            'local_only',
         })
         .select('id')
         .single();
@@ -567,18 +796,27 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
       if (error || !mediaRow) {
         console.error(error);
 
-        if (isQuotaErrorMessage(error?.message)) {
-          setError(STORAGE_FULL_MESSAGE);
+        if (
+          isQuotaErrorMessage(
+            error?.message
+          )
+        ) {
+          setError(
+            STORAGE_FULL_MESSAGE
+          );
         }
 
         ok = false;
       } else {
         void syncMeetingMediaToCloud({
-          userId: session.user.id,
+          userId:
+            session.user.id,
           meetingId,
-          mediaId: mediaRow.id,
+          mediaId:
+            mediaRow.id,
           localUri: ref,
-          mimeType: m.mime,
+          mimeType:
+            m.mime,
         });
       }
     }
@@ -590,9 +828,17 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     observationId: string,
     captured: CapturedMedia
   ): Promise<boolean> {
-    const ok = await insertMediaRows(observationId, [captured]);
+    const ok =
+      await insertMediaRows(
+        observationId,
+        [captured]
+      );
 
-    setError(ok ? null : "Couldn't save the media");
+    setError(
+      ok
+        ? null
+        : "Couldn't save the media"
+    );
 
     await load();
 
@@ -610,25 +856,44 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     setSaving(true);
     setError(null);
 
-    const { error: e } = await supabase
-      .from('meeting_observations')
-      .update({ text })
-      .eq('id', observationId)
-      .eq('user_id', session.user.id);
+    const { error: e } =
+      await supabase
+        .from('meeting_observations')
+        .update({ text })
+        .eq(
+          'id',
+          observationId
+        )
+        .eq(
+          'user_id',
+          session.user.id
+        );
 
     if (e) {
       console.error(e);
-      setError("Couldn't save the observation");
+
+      setError(
+        "Couldn't save the observation"
+      );
+
       setSaving(false);
       return false;
     }
 
-    await removeMediaByIds(removeMediaIds);
+    await removeMediaByIds(
+      removeMediaIds
+    );
 
-    const ok = await insertMediaRows(observationId, newMedia);
+    const ok =
+      await insertMediaRows(
+        observationId,
+        newMedia
+      );
 
     if (!ok) {
-      setError("Couldn't save some of the new media");
+      setError(
+        "Couldn't save some of the new media"
+      );
     }
 
     setSaving(false);
@@ -638,58 +903,90 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     return true;
   }
 
-  async function removeMediaByIds(ids: string[]) {
+  async function removeMediaByIds(
+    ids: string[]
+  ) {
     if (ids.length === 0) return;
 
     for (const id of ids) {
-      const row = media.find((m) => m.id === id);
+      const row = media.find(
+        (m) => m.id === id
+      );
 
       if (row?.local_uri) {
-        void deleteMediaBlob(row.local_uri);
+        void deleteMediaBlob(
+          row.local_uri
+        );
       }
 
       if (row?.storage_path) {
-        void deleteCloudMedia(row.storage_path);
+        void deleteCloudMedia(
+          row.storage_path
+        );
       }
     }
 
-    const { error } = await supabase
-      .from('meeting_media')
-      .delete()
-      .in('id', ids)
-      .eq('user_id', session.user.id);
+    const { error } =
+      await supabase
+        .from('meeting_media')
+        .delete()
+        .in('id', ids)
+        .eq(
+          'user_id',
+          session.user.id
+        );
 
     if (error) {
       console.error(error);
-      setError("Couldn't remove some media");
+
+      setError(
+        "Couldn't remove some media"
+      );
     }
   }
 
-  async function removeRow(table: string, id: string) {
-    if (table === 'meeting_observations') {
-      const obsMedia = media.filter(
-        (m) => m.observation_id === id
-      );
+  async function removeRow(
+    table: string,
+    id: string
+  ) {
+    if (
+      table ===
+      'meeting_observations'
+    ) {
+      const obsMedia =
+        media.filter(
+          (m) =>
+            m.observation_id === id
+        );
 
       for (const m of obsMedia) {
         if (m.local_uri) {
-          void deleteMediaBlob(m.local_uri);
+          void deleteMediaBlob(
+            m.local_uri
+          );
         }
 
         if (m.storage_path) {
-          void deleteCloudMedia(m.storage_path);
+          void deleteCloudMedia(
+            m.storage_path
+          );
         }
       }
     }
 
-    const { error } = await supabase
-      .from(table)
-      .delete()
-      .eq('id', id);
+    const { error } =
+      await supabase
+        .from(table)
+        .delete()
+        .eq('id', id);
 
     if (error) {
       console.error(error);
-      setError("Couldn't delete that");
+
+      setError(
+        "Couldn't delete that"
+      );
+
       return;
     }
 
@@ -699,7 +996,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   async function deleteMeeting() {
     if (
       !meeting ||
-      !confirm('Delete this meeting and all its notes?')
+      !confirm(
+        'Delete this meeting and all its notes?'
+      )
     ) {
       return;
     }
@@ -708,24 +1007,36 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
     for (const m of media) {
       if (m.local_uri) {
-        void deleteMediaBlob(m.local_uri);
+        void deleteMediaBlob(
+          m.local_uri
+        );
       }
 
       if (m.storage_path) {
-        void deleteCloudMedia(m.storage_path);
+        void deleteCloudMedia(
+          m.storage_path
+        );
       }
     }
 
-    const { error } = await supabase
-      .from('meetings')
-      .delete()
-      .eq('id', meeting.id);
+    const { error } =
+      await supabase
+        .from('meetings')
+        .delete()
+        .eq(
+          'id',
+          meeting.id
+        );
 
     setSaving(false);
 
     if (error) {
       console.error(error);
-      setError("Couldn't delete the meeting");
+
+      setError(
+        "Couldn't delete the meeting"
+      );
+
       return;
     }
 
@@ -744,16 +1055,22 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             <BackIcon />
           </Link>
 
-          <div className="app-title">Meeting</div>
+          <div className="app-title">
+            Meeting
+          </div>
 
           <GearMenu />
         </div>
 
         <div className="content">
-          <p className="empty">Loading…</p>
+          <p className="empty">
+            Loading…
+          </p>
         </div>
 
-        <SurfaceNav active="meetings" />
+        <SurfaceNav
+          active="meetings"
+        />
       </div>
     );
   }
@@ -774,24 +1091,31 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             <BackIcon />
           </Link>
 
-          <div className="app-title">Meeting</div>
+          <div className="app-title">
+            Meeting
+          </div>
 
           <GearMenu />
         </div>
 
         <div className="content">
           <p className="empty">
-            {error || 'Meeting not found'}
+            {error ||
+              'Meeting not found'}
           </p>
         </div>
 
-        <SurfaceNav active="meetings" />
+        <SurfaceNav
+          active="meetings"
+        />
       </div>
     );
   }
 
   const mediaByObservation =
-    groupMediaByObservation(media);
+    groupMediaByObservation(
+      media
+    );
 
   return (
     <div className="app-shell">
@@ -804,7 +1128,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           <BackIcon />
         </Link>
 
-        <div className="app-title">Meeting</div>
+        <div className="app-title">
+          Meeting
+        </div>
 
         <GearMenu />
       </div>
@@ -826,13 +1152,17 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
           <p
             className="settings-help"
-            style={{ margin: '4px 0 0' }}
+            style={{
+              margin: '4px 0 0',
+            }}
           >
             {fmtMeetingWindow(
               meeting.start_time,
               meeting.duration_mins
             )}
-            {jobName ? ` · ${jobName}` : ''}
+            {jobName
+              ? ` · ${jobName}`
+              : ''}
           </p>
         </div>
 
@@ -841,14 +1171,18 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           job={linkedJob}
           allJobs={allJobs}
           jobTasks={jobTasks}
-          siblingMeetings={siblingMeetings}
+          siblingMeetings={
+            siblingMeetings
+          }
           linking={linkingJob}
           onLinkJob={linkJob}
         />
 
         <MeetingTripPill
           userId={session.user.id}
-          meetingStartIso={meeting.start_time}
+          meetingStartIso={
+            meeting.start_time
+          }
         />
 
         <div className="detail-section">
@@ -861,27 +1195,39 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
               type="button"
               className="meeting-pill"
               onClick={() =>
-                setAddingPerson((v) => !v)
+                setAddingPerson(
+                  (v) => !v
+                )
               }
               disabled={saving}
             >
-              {addingPerson ? 'Cancel' : '+ Person'}
+              {addingPerson
+                ? 'Cancel'
+                : '+ Person'}
             </button>
           </div>
 
           {addingPerson && (
             <div
               className="capture-row"
-              style={{ marginBottom: 8 }}
+              style={{
+                marginBottom: 8,
+              }}
             >
               <input
                 type="text"
-                value={participantInput}
+                value={
+                  participantInput
+                }
                 onChange={(e) =>
-                  setParticipantInput(e.target.value)
+                  setParticipantInput(
+                    e.target.value
+                  )
                 }
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (
+                    e.key === 'Enter'
+                  ) {
                     void addParticipant();
                   }
                 }}
@@ -901,65 +1247,106 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             </div>
           )}
 
-          {participants.length === 0 &&
+          {participants.length ===
+            0 &&
             !addingPerson && (
               <p className="meeting-empty">
                 No one listed yet.
               </p>
             )}
 
-          {participants.map((p) => (
-            <div
-              key={p.id}
-              className="reminder-date-row"
-            >
-              <span>{p.name}</span>
-
-              <button
-                type="button"
-                className="btn-text"
-                aria-label="Remove"
-                onClick={() =>
-                  void removeRow(
-                    'meeting_participants',
-                    p.id
-                  )
-                }
+          {participants.map(
+            (p) => (
+              <div
+                key={p.id}
+                className="reminder-date-row"
               >
-                <TrashIcon size={14} />
-              </button>
-            </div>
-          ))}
+                <span>
+                  {p.name}
+                </span>
+
+                <button
+                  type="button"
+                  className="btn-text"
+                  aria-label="Remove"
+                  onClick={() =>
+                    void removeRow(
+                      'meeting_participants',
+                      p.id
+                    )
+                  }
+                >
+                  <TrashIcon
+                    size={14}
+                  />
+                </button>
+              </div>
+            )
+          )}
         </div>
 
         <MeetingObservations
-          observations={observations}
-          mediaByObservation={mediaByObservation}
+          observations={
+            observations
+          }
+          mediaByObservation={
+            mediaByObservation
+          }
           saving={saving}
-          onSaveObservation={saveObservation}
+          onSaveObservation={
+            saveObservation
+          }
           onDelete={(id) =>
             void removeRow(
               'meeting_observations',
               id
             )
           }
-          onAddMedia={addMediaToObservation}
-          onSaveEdit={saveObservationEdit}
-          capturing={capturingObservation}
-          onStartObservation={startObservation}
-          draftText={draft.state.text}
-          draftMedia={draft.state.media}
-          recording={cap.recording}
-          captureError={cap.error}
-          onTextChange={draft.setText}
-          onAddPhoto={addObservationPhoto}
+          onAddMedia={
+            addMediaToObservation
+          }
+          onSaveEdit={
+            saveObservationEdit
+          }
+          capturing={
+            capturingObservation
+          }
+          onStartObservation={
+            startObservation
+          }
+          draftText={
+            draft.state.text
+          }
+          draftMedia={
+            draft.state.media
+          }
+          recording={
+            cap.recording
+          }
+          captureError={
+            cap.captureError
+          }
+          onTextChange={
+            draft.setText
+          }
+          onAddPhoto={
+            addObservationPhoto
+          }
           onToggleVoice={() =>
             void toggleObservationVoice()
           }
-          onRemoveDraftMedia={removeDraftMedia}
-          onCancelObservation={cancelObservation}
-          photoInputRef={cap.photoInputRef}
-          onPhotoInputChange={cap.onPhotoInputChange}
+          onRemoveDraftMedia={
+            removeDraftMedia
+          }
+          onCancelObservation={
+            cancelObservation
+          }
+          photoInputRef={
+            cap.photoRef
+          }
+          onPhotoInputChange={
+            cap.onPhotoInputChange
+          }
         />
 
         <div className="detail-section">
@@ -972,7 +1359,9 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
               type="button"
               className="meeting-pill"
               onClick={() =>
-                setAddingDecision((v) => !v)
+                setAddingDecision(
+                  (v) => !v
+                )
               }
               disabled={saving}
             >
@@ -985,16 +1374,24 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           {addingDecision && (
             <div
               className="capture-row"
-              style={{ marginBottom: 8 }}
+              style={{
+                marginBottom: 8,
+              }}
             >
               <input
                 type="text"
-                value={decisionInput}
+                value={
+                  decisionInput
+                }
                 onChange={(e) =>
-                  setDecisionInput(e.target.value)
+                  setDecisionInput(
+                    e.target.value
+                  )
                 }
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (
+                    e.key === 'Enter'
+                  ) {
                     void addDecision();
                   }
                 }}
@@ -1014,35 +1411,42 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             </div>
           )}
 
-          {decisions.length === 0 &&
+          {decisions.length ===
+            0 &&
             !addingDecision && (
               <p className="meeting-empty">
                 No decisions recorded.
               </p>
             )}
 
-          {decisions.map((d) => (
-            <div
-              key={d.id}
-              className="reminder-date-row"
-            >
-              <span>{d.text}</span>
-
-              <button
-                type="button"
-                className="btn-text"
-                aria-label="Remove"
-                onClick={() =>
-                  void removeRow(
-                    'meeting_decisions',
-                    d.id
-                  )
-                }
+          {decisions.map(
+            (d) => (
+              <div
+                key={d.id}
+                className="reminder-date-row"
               >
-                <TrashIcon size={14} />
-              </button>
-            </div>
-          ))}
+                <span>
+                  {d.text}
+                </span>
+
+                <button
+                  type="button"
+                  className="btn-text"
+                  aria-label="Remove"
+                  onClick={() =>
+                    void removeRow(
+                      'meeting_decisions',
+                      d.id
+                    )
+                  }
+                >
+                  <TrashIcon
+                    size={14}
+                  />
+                </button>
+              </div>
+            )
+          )}
         </div>
 
         <div className="detail-section">
@@ -1055,27 +1459,39 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
               type="button"
               className="meeting-pill"
               onClick={() =>
-                setAddingAction((v) => !v)
+                setAddingAction(
+                  (v) => !v
+                )
               }
               disabled={saving}
             >
-              {addingAction ? 'Cancel' : '+ Action'}
+              {addingAction
+                ? 'Cancel'
+                : '+ Action'}
             </button>
           </div>
 
           {addingAction && (
             <div
               className="capture-row"
-              style={{ marginBottom: 8 }}
+              style={{
+                marginBottom: 8,
+              }}
             >
               <input
                 type="text"
-                value={actionInput}
+                value={
+                  actionInput
+                }
                 onChange={(e) =>
-                  setActionInput(e.target.value)
+                  setActionInput(
+                    e.target.value
+                  )
                 }
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (
+                    e.key === 'Enter'
+                  ) {
                     void addAction();
                   }
                 }}
@@ -1095,61 +1511,79 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             </div>
           )}
 
-          {actions.length === 0 &&
+          {actions.length ===
+            0 &&
             !addingAction && (
               <p className="meeting-empty">
                 No actions yet.
               </p>
             )}
 
-          {actions.map((a) => (
-            <div
-              key={a.id}
-              className="reminder-date-row"
-            >
-              <span>{a.text}</span>
-
-              <button
-                type="button"
-                className="btn-text"
-                aria-label="Remove"
-                onClick={() =>
-                  void removeRow(
-                    'meeting_actions',
-                    a.id
-                  )
-                }
+          {actions.map(
+            (a) => (
+              <div
+                key={a.id}
+                className="reminder-date-row"
               >
-                <TrashIcon size={14} />
-              </button>
-            </div>
-          ))}
+                <span>
+                  {a.text}
+                </span>
+
+                <button
+                  type="button"
+                  className="btn-text"
+                  aria-label="Remove"
+                  onClick={() =>
+                    void removeRow(
+                      'meeting_actions',
+                      a.id
+                    )
+                  }
+                >
+                  <TrashIcon
+                    size={14}
+                  />
+                </button>
+              </div>
+            )
+          )}
         </div>
 
         <PillReveal label="Notes">
           <textarea
             value={notes}
             onChange={(e) =>
-              setNotes(e.target.value)
+              setNotes(
+                e.target.value
+              )
             }
-            onBlur={() => void saveNotes()}
+            onBlur={() =>
+              void saveNotes()
+            }
             placeholder="Free-form notes for this meeting"
             rows={4}
             style={{
               width: '100%',
-              boxSizing: 'border-box',
+              boxSizing:
+                'border-box',
             }}
           />
         </PillReveal>
 
         {linkedJob && (
-          <JobFilesPanel jobId={linkedJob.id} />
+          <JobFilesPanel
+            jobId={linkedJob.id}
+          />
         )}
 
         <MeetingExport
           meeting={meeting}
-          participants={participants}
-          observations={observations}
+          participants={
+            participants
+          }
+          observations={
+            observations
+          }
           decisions={decisions}
           actions={actions}
           jobName={jobName}
@@ -1162,14 +1596,18 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             color: 'var(--hazard)',
             marginTop: 16,
           }}
-          onClick={() => void deleteMeeting()}
+          onClick={() =>
+            void deleteMeeting()
+          }
           disabled={saving}
         >
           Delete meeting
         </button>
       </div>
 
-      <SurfaceNav active="meetings" />
+      <SurfaceNav
+        active="meetings"
+      />
     </div>
   );
 }
