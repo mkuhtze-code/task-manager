@@ -1,0 +1,36 @@
+/**
+ * Permanent safety golden set: must NEVER become a committed task.
+ */
+
+export const MUST_NOT_CREATE_TASK: readonly string[] = [
+  "The supplier hasn't replied.",
+  'The client was happy.',
+  "John said he'd call.",
+  'Do I need to call John?',
+  "I don't need to call John.",
+  "Don't call John.",
+  "Don't call John tomorrow.",
+  'I said no to the job.',
+  'I said no to the Henderson job yesterday.',
+  "Maybe I'll call John.",
+  "I'm not sure about Friday.",
+  'John might send the quote.',
+  'The client wants it.',
+  'Sarah thinks we should wait.',
+  "That's probably fine.",
+  "Actually, that's not what happened.",
+  'Wait, what did I just say?',
+  'Yep, Friday works.',
+  'Nah, leave it.',
+  "I haven't done it yet.",
+  "I can't do it until Friday.",
+  "There's no need to order the materials yet.",
+  "I don't need to chase the supplier yet.",
+  'The supplier still has not sent the pricing.',
+  'John said he will send the quote Friday.',
+  'Should I call John tomorrow?',
+  'Can you remind me whether I called John?',
+  'No, I do not want to book it.',
+  'No, John has not called.',
+  'Actually John called me yesterday.',
+];
