@@ -12,8 +12,6 @@ import type {
 } from './types';
 
 const FILLER_WORDS = new Set(['um', 'uh', 'erm', 'er', 'hmm', 'mm', 'ah', 'eh']);
-
-/** Often fillers but can be meaningful — only strip when isolated */
 const SOFT_FILLERS = new Set(['like', 'you know', 'sort of', 'kind of']);
 
 const PUNCTUATION_MAP: { pattern: RegExp; replacement: string }[] = [
@@ -30,36 +28,10 @@ const PUNCTUATION_MAP: { pattern: RegExp; replacement: string }[] = [
 ];
 
 const NUMBER_WORDS: Record<string, number> = {
-  zero: 0,
-  oh: 0,
-  one: 1,
-  two: 2,
-  three: 3,
-  four: 4,
-  five: 5,
-  six: 6,
-  seven: 7,
-  eight: 8,
-  nine: 9,
-  ten: 10,
-  eleven: 11,
-  twelve: 12,
-  thirteen: 13,
-  fourteen: 14,
-  fifteen: 15,
-  sixteen: 16,
-  seventeen: 17,
-  eighteen: 18,
-  nineteen: 19,
-  twenty: 20,
-  thirty: 30,
-  forty: 40,
-  fifty: 50,
-  sixty: 60,
-  seventy: 70,
-  eighty: 80,
-  ninety: 90,
-  hundred: 100,
+  zero: 0, oh: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16,
+  seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50,
+  sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100,
 };
 
 function confFromScore(score: number): Confidence {
@@ -72,7 +44,6 @@ function collapseWhitespace(s: string): string {
   return s.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-/** Remove hard fillers; keep soft fillers unless isolated. */
 export function stripFillers(text: string): { text: string; removed: string[] } {
   const removed: string[] = [];
   const tokens = text.split(/(\s+)/);
@@ -100,10 +71,7 @@ export function stripFillers(text: string): { text: string; removed: string[] } 
   return { text: collapseWhitespace(result), removed };
 }
 
-export function applySpokenPunctuation(text: string): {
-  text: string;
-  hits: SpokenPunctuationHit[];
-} {
+export function applySpokenPunctuation(text: string): { text: string; hits: SpokenPunctuationHit[] } {
   const hits: SpokenPunctuationHit[] = [];
   let result = text;
   for (const { pattern, replacement } of PUNCTUATION_MAP) {
@@ -117,21 +85,16 @@ export function applySpokenPunctuation(text: string): {
   return { text: collapseWhitespace(result), hits };
 }
 
-/**
- * Detect self-corrections / backtracking.
- * Patterns: "X, actually Y", "X — no, Y", "X, sorry, Y", "not X, Y"
- */
 export function detectCorrections(text: string): { text: string; corrections: CorrectionSpan[] } {
   const corrections: CorrectionSpan[] = [];
   let working = text;
-
   const midCorrection =
     /\b(.{2,40}?)\s*[,—-]?\s*(?:actually|sorry|i\s+mean|rather|instead|wait|make\s+that|change\s+that)\s+[,—-]?\s*(.{2,40}?)(?=[.!?]|$)/gi;
-
   working = working.replace(midCorrection, (full, original, corrected) => {
     const o = String(original).trim();
     const c = String(corrected).trim();
     if (!o || !c || o.toLowerCase() === c.toLowerCase()) return full;
+    if (/^actually\b/i.test(full.trim()) && o.split(/\s+/).length <= 1) return full;
     corrections.push({
       marker: 'actually',
       originalRaw: o,
@@ -141,7 +104,6 @@ export function detectCorrections(text: string): { text: string; corrections: Co
     });
     return c;
   });
-
   const notBut = /\bnot\s+(.{1,30}?)\s*[,—-]?\s*(?:but\s+)?(.{1,30}?)(?=[.!?]|$)/gi;
   working = working.replace(notBut, (full, original, corrected) => {
     const o = String(original).trim();
@@ -156,14 +118,12 @@ export function detectCorrections(text: string): { text: string; corrections: Co
     });
     return c;
   });
-
   const noSwap = /\b(.{1,25}?)\s*[,—-]?\s+no[,—-]?\s+(.{1,25}?)(?=[.!?]|$)/gi;
   working = working.replace(noSwap, (full, original, corrected) => {
     const o = String(original).trim();
     const c = String(corrected).trim();
     if (!o || !c || o.toLowerCase() === c.toLowerCase()) return full;
     if (/^(?:no|nope|nah)$/i.test(o) || /^(?:no|nope|nah)$/i.test(c)) return full;
-    // Avoid eating "I said no to that job" style refusals — require short parallel alternatives.
     const oTokens = o.split(/\s+/).length;
     const cTokens = c.split(/\s+/).length;
     if (oTokens > 6 || cTokens > 6) return full;
@@ -177,49 +137,18 @@ export function detectCorrections(text: string): { text: string; corrections: Co
     });
     return c;
   });
-
   return { text: collapseWhitespace(working), corrections };
 }
 
-function classifyCorrectionFacet(
-  original: string,
-  corrected: string
-): CorrectionSpan['facet'] {
+function classifyCorrectionFacet(original: string, corrected: string): CorrectionSpan['facet'] {
   const both = `${original} ${corrected}`.toLowerCase();
-  if (
-    /\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|yesterday|week|month)\b/.test(
-      both
-    )
-  ) {
-    return 'date';
-  }
-  if (
-    /\b(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)?|noon|midnight|morning|afternoon|evening|o'?clock)\b/.test(
-      both
-    ) ||
-    /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:thirty|fifteen|o'?clock)?\b/.test(
-      both
-    )
-  ) {
-    return 'time';
-  }
-  if (
-    /^(?:call|meet|email|send|create|job|task)\b/i.test(original) ||
-    /^(?:call|meet)/i.test(corrected)
-  ) {
-    return 'action';
-  }
-  if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/.test(original) || /^[A-Z]/.test(corrected)) {
-    return 'entity';
-  }
+  if (/\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|yesterday|week|month)\b/.test(both)) return 'date';
+  if (/\b(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)?|noon|midnight|morning|afternoon|evening|o'?clock)\b/.test(both)) return 'time';
+  if (/^(?:call|meet|email|send|create|job|task)\b/i.test(original) || /^(?:call|meet)/i.test(corrected)) return 'action';
+  if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/.test(original) || /^[A-Z]/.test(corrected)) return 'entity';
   return 'generic';
 }
 
-/**
- * Collapse adjacent identical content words that look like speech stutters.
- * Conservative: only exact adjacent duplicates of the same token (length > 1),
- * not function words like "that that" in careful speech, and not across punctuation.
- */
 export function collapseRepetitions(text: string): { text: string; collapsed: string[] } {
   const collapsed: string[] = [];
   const parts = text.split(/(\s+|[,.!?;:—-]+)/);
@@ -230,8 +159,7 @@ export function collapseRepetitions(text: string): { text: string; collapsed: st
     const curWord = cur.trim();
     const prevWord = prev.trim();
     if (
-      curWord.length > 1 &&
-      prevWord.length > 1 &&
+      curWord.length > 1 && prevWord.length > 1 &&
       curWord.toLowerCase() === prevWord.toLowerCase() &&
       /^[A-Za-z']+$/.test(curWord) &&
       !/^(that|this|then|than|to|for|and|or|but|the|a|an)$/i.test(curWord)
@@ -244,24 +172,17 @@ export function collapseRepetitions(text: string): { text: string; collapsed: st
   return { text: collapseWhitespace(out.join('')), collapsed };
 }
 
-/** Expand common spoken numbers; preserve job numbers etc. */
-export function expandSpokenNumbers(text: string): {
-  text: string;
-  expansions: { raw: string; value: string }[];
-} {
+export function expandSpokenNumbers(text: string): { text: string; expansions: { raw: string; value: string }[] } {
   const expansions: { raw: string; value: string }[] = [];
   let result = text;
-
   const compound =
     /\b((?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[\s-](?:one|two|three|four|five|six|seven|eight|nine))?|(?:one|two|three|four|five|six|seven|eight|nine)\s+hundred(?:\s+and)?(?:\s+(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety))?(?:[\s-](?:one|two|three|four|five|six|seven|eight|nine))?|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)\b/gi;
-
   result = result.replace(compound, (match) => {
     const n = wordsToNumber(match);
     if (n === null) return match;
     expansions.push({ raw: match, value: String(n) });
     return String(n);
   });
-
   result = result.replace(
     /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(thirty|fifteen|forty[\s-]?five|o'?clock)\b/gi,
     (match, h, m) => {
@@ -277,44 +198,26 @@ export function expandSpokenNumbers(text: string): {
       return value;
     }
   );
-
   return { text: result, expansions };
 }
 
 function wordsToNumber(phrase: string): number | null {
-  const parts = phrase
-    .toLowerCase()
-    .replace(/-/g, ' ')
-    .replace(/\band\b/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts = phrase.toLowerCase().replace(/-/g, ' ').replace(/\band\b/g, ' ').split(/\s+/).filter(Boolean);
   let current = 0;
   for (const p of parts) {
     const v = NUMBER_WORDS[p];
     if (v === undefined) return null;
-    if (v === 100) {
-      current = (current || 1) * 100;
-    } else {
-      current += v;
-    }
+    if (v === 100) current = (current || 1) * 100;
+    else current += v;
   }
   return current;
 }
 
-/**
- * Extract temporal language without silently forcing a single interpretation.
- */
 export function extractTemporals(text: string, todayIso?: string): TemporalReference[] {
   const today = todayIso ? new Date(todayIso + 'T12:00:00') : new Date();
   const refs: TemporalReference[] = [];
   const lower = text.toLowerCase();
-
-  const push = (
-    raw: string,
-    kind: TemporalReference['kind'],
-    date: Date | null,
-    conf: Confidence
-  ) => {
+  const push = (raw: string, kind: TemporalReference['kind'], date: Date | null, conf: Confidence) => {
     refs.push({
       raw,
       kind,
@@ -355,22 +258,39 @@ export function extractTemporals(text: string, todayIso?: string): TemporalRefer
     const d = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     push('end of month', 'deadline', d, 'medium');
   }
-  if (/\bthis\s+afternoon\b/.test(lower)) {
-    push('this afternoon', 'time_of_day', today, 'medium');
+
+  const dayIndex: Record<string, number> = {
+    sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
+  };
+  const thisDay = lower.match(/\bthis\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+  if (thisDay) {
+    push(thisDay[0], 'weekday', nextWeekday(today, dayIndex[thisDay[1]], false), 'medium');
   }
-  if (/\bsometime\s+next\s+week\b/.test(lower)) {
-    push('sometime next week', 'vague', null, 'low');
+  const nextDay = lower.match(/\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+  if (nextDay) {
+    push(nextDay[0], 'relative_week', nextWeekday(today, dayIndex[nextDay[1]], true), 'medium');
+  }
+  if (/\bfriday\s+week\b/.test(lower)) {
+    push('friday week', 'relative_week', nextWeekday(today, 5, true), 'medium');
+  }
+  if (/\bafter\s+lunch\b/.test(lower)) push('after lunch', 'time_of_day', null, 'medium');
+  if (/\bbefore\s+lunch\b/.test(lower)) push('before lunch', 'time_of_day', null, 'medium');
+  if (/\bfirst\s+thing\b/.test(lower)) push('first thing', 'time_of_day', null, 'medium');
+  const byDay = lower.match(/\bby\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow)\b/);
+  if (byDay) {
+    if (byDay[1] === 'tomorrow') {
+      const d = new Date(today);
+      d.setDate(d.getDate() + 1);
+      push(byDay[0], 'deadline', d, 'high');
+    } else {
+      push(byDay[0], 'deadline', nextWeekday(today, dayIndex[byDay[1]], false), 'high');
+    }
   }
 
-  const weekdays = [
-    'sunday',
-    'monday',
-    'tuesday',
-    'wednesday',
-    'thursday',
-    'friday',
-    'saturday',
-  ];
+  if (/\bthis\s+afternoon\b/.test(lower)) push('this afternoon', 'time_of_day', today, 'medium');
+  if (/\bsometime\s+next\s+week\b/.test(lower)) push('sometime next week', 'vague', null, 'low');
+
+  const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   for (let i = 0; i < weekdays.length; i++) {
     const name = weekdays[i];
     const nextRe = new RegExp(`\\bnext\\s+${name}\\b`);
@@ -393,7 +313,6 @@ export function extractTemporals(text: string, todayIso?: string): TemporalRefer
       confidence: 'high',
     });
   }
-
   return refs;
 }
 
@@ -401,25 +320,16 @@ function nextWeekday(from: Date, targetDow: number, forceNext: boolean): Date {
   const d = new Date(from);
   const current = d.getDay();
   let delta = (targetDow - current + 7) % 7;
-  if (delta === 0) {
-    delta = forceNext ? 7 : 0;
-  }
+  if (delta === 0) delta = forceNext ? 7 : 0;
   d.setDate(d.getDate() + delta);
   return d;
 }
 
 function toIsoDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** Full normalisation pipeline. */
-export function normaliseSpeech(
-  rawText: string,
-  options?: { todayIso?: string }
-): NormalisationResult {
+export function normaliseSpeech(rawText: string, options?: { todayIso?: string }): NormalisationResult {
   const originalText = rawText ?? '';
   if (!originalText.trim()) {
     return {
@@ -434,46 +344,32 @@ export function normaliseSpeech(
       confidence: 'low',
     };
   }
-
   let text = originalText.replace(/\s+/g, ' ').trim();
-
-  // Order matters: corrections before number expansion so
-  // "three thirty, no, four" still has spoken forms to match.
   const fillers = stripFillers(text);
   text = fillers.text;
-
   const reps = collapseRepetitions(text);
   text = reps.text;
-
   const corr = detectCorrections(text);
   text = corr.text;
-
   const numbers = expandSpokenNumbers(text);
   text = numbers.text;
-
   const punct = applySpokenPunctuation(text);
   text = punct.text;
-
   const temporals = extractTemporals(text, options?.todayIso);
   for (const c of corr.corrections) {
     if (c.facet === 'date' || c.facet === 'time') {
       for (const t of temporals) {
-        if (
-          t.raw.toLowerCase().includes(c.correctedRaw.toLowerCase()) ||
-          c.correctedRaw.toLowerCase().includes(t.raw.toLowerCase())
-        ) {
+        if (t.raw.toLowerCase().includes(c.correctedRaw.toLowerCase()) || c.correctedRaw.toLowerCase().includes(t.raw.toLowerCase())) {
           t.isCorrection = true;
         }
       }
     }
   }
-
   let score = 0.55;
   if (fillers.removed.length > 0) score += 0.05;
   if (punct.hits.length > 0) score += 0.05;
   if (corr.corrections.length > 0) score += 0.1;
   if (temporals.some((t) => t.confidence === 'high')) score += 0.1;
-
   return {
     originalText,
     normalisedText: collapseWhitespace(text),
