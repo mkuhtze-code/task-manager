@@ -842,14 +842,19 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           />
         )}
 
-        <MeetingExport
-          meeting={meeting}
-          participants={participants}
-          observations={observations}
-          decisions={decisions}
-          actions={actions}
-          jobName={jobName}
-        />
+        {session?.user?.id && (
+          <MeetingExport
+            userId={session.user.id}
+            meetingId={meetingId}
+            meeting={meeting}
+            participants={participants}
+            observations={observations}
+            decisions={decisions}
+            actions={actions}
+            jobName={jobName}
+            media={media}
+          />
+        )}
 
         <button
           type="button"
