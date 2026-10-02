@@ -39,6 +39,7 @@ export { emptyPersonalLanguageModel, speechCertaintyToComm } from './types';
 export {
   normaliseSpeech,
   stripFillers,
+  collapseRepetitions,
   applySpokenPunctuation,
   detectCorrections,
   expandSpokenNumbers,
@@ -60,7 +61,11 @@ export {
   getTranscriptionProvider,
   setTranscriptionProvider,
   resetTranscriptionProvider,
+  useDefaultBrowserProvider,
   nullTranscriptionProvider,
+  webSpeechProvider,
+  isWebSpeechAvailable,
+  recognizeLive,
 } from './providers';
 
 export {
@@ -73,3 +78,29 @@ export {
   MIN_EVIDENCE_EXPLICIT,
   MIN_EVIDENCE_OBSERVATION,
 } from './learning';
+
+export {
+  emitSpeechEvent,
+  setSpeechInstrumentSink,
+} from './instrument';
+export type {
+  SpeechInstrumentEvent,
+  SpeechInstrumentPayload,
+  SpeechInstrumentSink,
+} from './instrument';
+
+export {
+  runSpeechBenchmark,
+  formatBenchmarkReport,
+  runMustNotCorrectAudit,
+  DEFAULT_BENCHMARK_CASES,
+} from './benchmark';
+export type { BenchmarkCase, BenchmarkReport, LayerScore } from './benchmark';
+
+export { MUST_NOT_CORRECT } from './golden/mustNotCorrect';
+
+export {
+  extractActionClauses,
+  hasMultiActionCandidate,
+} from './multiClause';
+export type { ActionClause } from './multiClause';
