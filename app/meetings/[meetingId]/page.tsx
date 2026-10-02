@@ -590,5 +590,3 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             {error}
           </p>
         )}
-
-        {/* rest of JSX continues - PLACEHOLDER will be replaced */}
