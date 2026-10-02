@@ -4,6 +4,7 @@
  * Capture is intentional only (no ambient listening).
  * Transcription is provider-abstracted.
  * Understanding is deterministic and layered.
+ * Semantic layer composes multi-act meaning and gates false tasks.
  */
 
 export type {
@@ -98,9 +99,27 @@ export {
 export type { BenchmarkCase, BenchmarkReport, LayerScore } from './benchmark';
 
 export { MUST_NOT_CORRECT } from './golden/mustNotCorrect';
+export { MUST_NOT_CREATE_TASK } from './golden/mustNotCreateTask';
 
 export {
   extractActionClauses,
   hasMultiActionCandidate,
 } from './multiClause';
 export type { ActionClause } from './multiClause';
+
+export {
+  composeSemanticUtterance,
+  canProposeTask,
+  detectPolarity,
+  isActionNegated,
+  textLevelSafety,
+  buildCorrectionChain,
+} from './semantic';
+export type {
+  SemanticUtterance,
+  SemanticAct,
+  ActKind,
+  Polarity,
+  CorrectionStep,
+  SafetyVerdict,
+} from './semantic';
