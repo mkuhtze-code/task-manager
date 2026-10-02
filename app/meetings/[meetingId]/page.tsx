@@ -618,7 +618,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           meetingId={meetingId}
           saving={saving}
           recording={cap.recording}
-          captureError={cap.error}
+          captureError={cap.captureError}
           draftText={draft.state.text}
           draftMedia={draft.state.media}
           onTextChange={draft.setText}
@@ -719,7 +719,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
           draftText={draft.state.text}
           draftMedia={draft.state.media}
           recording={cap.recording}
-          captureError={cap.error}
+          captureError={cap.captureError}
           onTextChange={draft.setText}
           onAddPhoto={addObservationPhoto}
           onToggleVoice={() => void toggleObservationVoice()}
