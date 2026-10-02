@@ -9,6 +9,8 @@ import { saveMediaBlob } from '@/lib/mediaStore';
 import { getTranscriptionProvider } from './providers';
 import { normaliseSpeech } from './normalise';
 import { interpretSpeech } from './interpret';
+import { applyVocabulary } from './learning';
+import { emitSpeechEvent } from './instrument';
 import type { PersonalCommunicationProfile } from '@/lib/communication/types';
 import type {
   SpeechInput,
@@ -62,6 +64,10 @@ export async function transcribeSession(
     status: 'transcribing',
     transcriptionAttempts: session.transcriptionAttempts + 1,
   };
+  emitSpeechEvent('transcription_started', {
+    sessionId: session.id,
+    provider: provider.id,
+  });
   try {
     const result: TranscriptionResult = await provider.transcribe(
       input ?? {
@@ -72,6 +78,12 @@ export async function transcribeSession(
         languageHint: session.language,
       }
     );
+    emitSpeechEvent('transcription_completed', {
+      sessionId: session.id,
+      provider: provider.id,
+      confidence: result.confidence != null ? String(result.confidence) : undefined,
+      textLength: result.text?.length,
+    });
     return {
       ...next,
       status: 'transcribed',
@@ -81,6 +93,11 @@ export async function transcribeSession(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Transcription failed';
+    emitSpeechEvent('transcription_failed', {
+      sessionId: session.id,
+      provider: provider.id,
+      errorCode: 'transcription_failed',
+    });
     return {
       ...next,
       status: 'queued_transcription',
@@ -98,15 +115,46 @@ export function processSpeechText(
     session?: SpeechSession;
     todayIso?: string;
     profile?: PersonalCommunicationProfile | null;
+    /** When present, high-evidence vocabulary is applied before interpretation */
+    languageModel?: import('./types').PersonalLanguageModel | null;
   }
 ): SpeechPipelineResult {
   const session = options?.session ?? createSpeechSession({ status: 'transcribed' });
-  const normalisation = normaliseSpeech(text, { todayIso: options?.todayIso });
-  const interpretation = interpretSpeech(text, {
+  let working = text;
+  if (options?.languageModel) {
+    const applied = applyVocabulary(working, options.languageModel);
+    if (applied.applied.length > 0) {
+      working = applied.text;
+      emitSpeechEvent('vocabulary_applied', {
+        sessionId: session.id,
+        textLength: working.length,
+      });
+    }
+  }
+  const normalisation = normaliseSpeech(working, { todayIso: options?.todayIso });
+  if (normalisation.corrections.length > 0) {
+    emitSpeechEvent('correction_detected', {
+      sessionId: session.id,
+      correctionCount: normalisation.corrections.length,
+      textLength: normalisation.normalisedText.length,
+    });
+  }
+  emitSpeechEvent('normalisation_completed', {
+    sessionId: session.id,
+    confidence: normalisation.confidence,
+    textLength: normalisation.normalisedText.length,
+  });
+  const interpretation = interpretSpeech(working, {
     todayIso: options?.todayIso,
     profile: options?.profile,
     sessionId: session.id,
     normalisation,
+  });
+  emitSpeechEvent('intent_detected', {
+    sessionId: session.id,
+    intent: interpretation.intent,
+    confidence: interpretation.confidence,
+    entityCount: interpretation.entities.length,
   });
   const completed: SpeechSession = {
     ...session,
@@ -128,6 +176,7 @@ export async function runSpeechPipeline(
     userId?: string;
     todayIso?: string;
     profile?: PersonalCommunicationProfile | null;
+    languageModel?: import('./types').PersonalLanguageModel | null;
     existingSession?: SpeechSession;
   }
 ): Promise<SpeechPipelineResult> {
@@ -164,6 +213,7 @@ export async function runSpeechPipeline(
       session: { ...session, status: 'transcribed' },
       todayIso: options?.todayIso,
       profile: options?.profile,
+      languageModel: options?.languageModel,
     });
   }
 
@@ -172,6 +222,7 @@ export async function runSpeechPipeline(
       session,
       todayIso: options?.todayIso,
       profile: options?.profile,
+      languageModel: options?.languageModel,
     });
   }
 
@@ -184,5 +235,6 @@ export async function runSpeechPipeline(
     session,
     todayIso: options?.todayIso,
     profile: options?.profile,
+    languageModel: options?.languageModel,
   });
 }
