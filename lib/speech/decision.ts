@@ -88,6 +88,16 @@ function decideAct(act: SemanticAct): ActDecision {
     return { ...base, action: 'ask_user', actionConfidence: 'low', reason: 'ambiguous_reference', blocked: true };
   }
 
+  if (act.targetsExistingContext) {
+    return {
+      ...base,
+      action: 'update_task',
+      actionConfidence: act.confidence === 'high' ? 'medium' : 'low',
+      reason: 'targets_existing_context',
+      blocked: false,
+    };
+  }
+
   if (act.kind === 'action') {
     const conf: Confidence =
       act.confidence === 'high' ? 'medium' : act.confidence === 'medium' ? 'medium' : 'low';
@@ -140,10 +150,10 @@ export function decideSpeechActions(
         ];
 
   const positive = actDecisions.filter((d) => !d.blocked && d.action === 'create_task');
+  const updatesOnly = actDecisions.filter((d) => !d.blocked && d.action === 'update_task');
   const mustNot =
     interpretation.mustNotCreateTask === true ||
-    (semantic ? !canProposeTask(semantic) : false) ||
-    positive.length === 0;
+    (positive.length === 0 && updatesOnly.length === 0 && (semantic ? !canProposeTask(semantic) : true));
 
   let primaryAction: ActionKind = 'noop';
   if (mustNot) {
@@ -156,11 +166,17 @@ export function decideSpeechActions(
     primaryAction = 'create_task';
   } else if (positive.length > 1) {
     primaryAction = 'ask_user';
+  } else {
+    if (updatesOnly.length === 1) primaryAction = 'update_task';
+    else if (updatesOnly.length > 1) primaryAction = 'ask_user';
   }
 
   const actionConfidence: Confidence = mustNot
     ? 'high'
-    : positive.reduce((acc, d) => minConfidence(acc, d.actionConfidence), 'high' as Confidence);
+    : [...positive, ...updatesOnly].reduce(
+        (acc, d) => minConfidence(acc, d.actionConfidence),
+        'high' as Confidence
+      );
 
   const requiresConfirmation =
     interpretation.requiresConfirmation ||
@@ -214,7 +230,6 @@ export function decisionWouldCreateTask(d: SpeechDecision): boolean {
   );
 }
 
-/** Map SpeechDecision to a test-friendly outcome label. */
 export function semanticOutcome(d: SpeechDecision): SemanticActionOutcome {
   if (d.mustNotCreateTask || d.primaryAction === 'noop') {
     if (d.primaryAction === 'ask_user') return 'ASK_CLARIFICATION';
@@ -225,6 +240,10 @@ export function semanticOutcome(d: SpeechDecision): SemanticActionOutcome {
   if (d.primaryAction === 'ask_user') return 'ASK_CLARIFICATION';
   const creates = d.actDecisions.filter((a) => a.action === 'create_task' && !a.blocked);
   if (creates.length > 1) return 'CREATE_MULTIPLE_TASKS';
+  const updates = d.actDecisions.filter((a) => a.action === 'update_task' && !a.blocked);
+  if (updates.length >= 1 && creates.length === 0) {
+    return d.requiresConfirmation ? 'ASK_CLARIFICATION' : 'UPDATE_EXISTING_CONTEXT';
+  }
   if (creates.length === 1) {
     return d.requiresConfirmation ? 'ASK_CLARIFICATION' : 'CREATE_TASK';
   }
