@@ -1588,6 +1588,9 @@ export default function MeetingDetail({
           decisions={decisions}
           actions={actions}
           jobName={jobName}
+          userId={session.user.id}
+          meetingId={meetingId}
+          media={media}
         />
 
         <button
