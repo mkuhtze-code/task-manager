@@ -89,7 +89,7 @@ function classifyClause(span: string, temporals: TemporalReference[]): SemanticA
     kind = 'observation';
     blocksTaskCreation = true;
     evidence.push({ signal: 'observation', source: 'compose' });
-  } else if (hasActionVerb || /\b(?:need\s+to|have\s+to|got\s+to)\b/i.test(correctedSpan)) {
+  } else if (hasActionVerb) {
     kind = 'action';
     const vm = correctedSpan.match(ACTION_VERB_RE);
     actionVerb = vm?.[1]?.toLowerCase();
@@ -238,9 +238,9 @@ export function composeSemanticUtterance(
 }
 
 export function canProposeTask(u: SemanticUtterance): boolean {
-  return (
-    !u.mustNotCreateTask &&
-    u.acts.some((a) => a.kind === 'action' && a.polarity !== 'negated' && !a.blocksTaskCreation)
+  // Act-level only: a negated sibling must not suppress an independent positive act.
+  return u.acts.some(
+    (a) => a.kind === 'action' && a.polarity !== 'negated' && !a.blocksTaskCreation
   );
 }
 
