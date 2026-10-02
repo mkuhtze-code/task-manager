@@ -1,15 +1,10 @@
 /**
  * Act-level action decisions.
  * Understanding ≠ permission to act.
- *
- * Layers of confidence are independent:
- * - transcriptionConfidence: how sure we are of the words
- * - interpretationConfidence: how sure we are of the meaning
- * - actionConfidence: how sure we are that Dokkit should do something
  */
 
 import type { Confidence, SpeechInterpretation } from './types';
-import type { SemanticAct, SemanticUtterance } from './semantic/types';
+import type { SemanticAct, SemanticUtterance, SemanticActionOutcome } from './semantic/types';
 import { canProposeTask } from './semantic';
 
 export type ActionKind =
@@ -66,13 +61,7 @@ function decideAct(act: SemanticAct): ActDecision {
 
   if (act.blocksTaskCreation || act.polarity === 'negated') {
     if (act.kind === 'question') {
-      return {
-        ...base,
-        action: 'ask_user',
-        actionConfidence: 'high',
-        reason: 'question_not_task',
-        blocked: true,
-      };
+      return { ...base, action: 'ask_user', actionConfidence: 'high', reason: 'question_not_task', blocked: true };
     }
     if (act.kind === 'observation' || act.kind === 'reported_speech') {
       return {
@@ -84,71 +73,36 @@ function decideAct(act: SemanticAct): ActDecision {
       };
     }
     if (act.kind === 'refusal' || act.kind === 'retraction' || act.polarity === 'negated') {
-      return {
-        ...base,
-        action: 'noop',
-        actionConfidence: 'high',
-        reason: 'negation_or_refusal',
-        blocked: true,
-      };
+      return { ...base, action: 'noop', actionConfidence: 'high', reason: 'negation_or_refusal', blocked: true };
     }
     if (act.kind === 'condition') {
-      return {
-        ...base,
-        action: 'ask_user',
-        actionConfidence: 'medium',
-        reason: 'conditional_requires_confirm',
-        blocked: true,
-      };
+      return { ...base, action: 'ask_user', actionConfidence: 'medium', reason: 'conditional_requires_confirm', blocked: true };
     }
-    return {
-      ...base,
-      action: 'noop',
-      actionConfidence: 'medium',
-      reason: 'blocked_by_safety',
-      blocked: true,
-    };
+    if (act.requiresClarification) {
+      return { ...base, action: 'ask_user', actionConfidence: 'medium', reason: 'ambiguous_reference', blocked: true };
+    }
+    return { ...base, action: 'noop', actionConfidence: 'medium', reason: 'blocked_by_safety', blocked: true };
+  }
+
+  if (act.requiresClarification) {
+    return { ...base, action: 'ask_user', actionConfidence: 'low', reason: 'ambiguous_reference', blocked: true };
   }
 
   if (act.kind === 'action') {
     const conf: Confidence =
       act.confidence === 'high' ? 'medium' : act.confidence === 'medium' ? 'medium' : 'low';
-    return {
-      ...base,
-      action: 'create_task',
-      actionConfidence: conf,
-      reason: 'positive_action',
-      blocked: false,
-    };
+    return { ...base, action: 'create_task', actionConfidence: conf, reason: 'positive_action', blocked: false };
   }
 
   if (act.kind === 'commitment') {
-    return {
-      ...base,
-      action: 'create_task',
-      actionConfidence: 'medium',
-      reason: 'commitment_signal',
-      blocked: false,
-    };
+    return { ...base, action: 'create_task', actionConfidence: 'medium', reason: 'commitment_signal', blocked: false };
   }
 
   if (act.kind === 'confirmation') {
-    return {
-      ...base,
-      action: 'learn_only',
-      actionConfidence: 'high',
-      reason: 'confirmation_phrase',
-      blocked: true,
-    };
+    return { ...base, action: 'learn_only', actionConfidence: 'high', reason: 'confirmation_phrase', blocked: true };
   }
 
-  return {
-    ...base,
-    action: 'ask_user',
-    actionConfidence: 'low',
-    reason: 'unknown_act',
-    blocked: true,
-  };
+  return { ...base, action: 'ask_user', actionConfidence: 'low', reason: 'unknown_act', blocked: true };
 }
 
 export function decideSpeechActions(
@@ -206,10 +160,7 @@ export function decideSpeechActions(
 
   const actionConfidence: Confidence = mustNot
     ? 'high'
-    : positive.reduce(
-        (acc, d) => minConfidence(acc, d.actionConfidence),
-        'high' as Confidence
-      );
+    : positive.reduce((acc, d) => minConfidence(acc, d.actionConfidence), 'high' as Confidence);
 
   const requiresConfirmation =
     interpretation.requiresConfirmation ||
@@ -217,7 +168,8 @@ export function decideSpeechActions(
     primaryAction === 'ask_user' ||
     positive.length > 1 ||
     actionConfidence === 'low' ||
-    interpretationConfidence === 'low';
+    interpretationConfidence === 'low' ||
+    acts.some((a) => a.requiresClarification);
 
   const evidenceTrail: string[] = [
     `raw:${interpretation.originalTranscript.slice(0, 120)}`,
@@ -260,4 +212,21 @@ export function decisionWouldCreateTask(d: SpeechDecision): boolean {
     d.primaryAction === 'create_task' &&
     d.actDecisions.some((a) => a.action === 'create_task' && !a.blocked)
   );
+}
+
+/** Map SpeechDecision to a test-friendly outcome label. */
+export function semanticOutcome(d: SpeechDecision): SemanticActionOutcome {
+  if (d.mustNotCreateTask || d.primaryAction === 'noop') {
+    if (d.primaryAction === 'ask_user') return 'ASK_CLARIFICATION';
+    if (d.primaryAction === 'record_observation') return 'RECORD_OBSERVATION';
+    if (d.primaryAction === 'note_reported') return 'NOTE_REPORTED';
+    return 'DO_NOT_CREATE';
+  }
+  if (d.primaryAction === 'ask_user') return 'ASK_CLARIFICATION';
+  const creates = d.actDecisions.filter((a) => a.action === 'create_task' && !a.blocked);
+  if (creates.length > 1) return 'CREATE_MULTIPLE_TASKS';
+  if (creates.length === 1) {
+    return d.requiresConfirmation ? 'ASK_CLARIFICATION' : 'CREATE_TASK';
+  }
+  return 'DO_NOT_CREATE';
 }
