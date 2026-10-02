@@ -1,6 +1,7 @@
 /**
  * Dokkit Speech Intelligence Engine
  * Capture intentional only. Understanding deterministic. Decision: understanding ≠ act.
+ * UI should prefer processCaptureSpeech over lower layers.
  */
 
 export type {
@@ -131,3 +132,16 @@ export type {
 
 export { decideSpeechActions, decisionWouldCreateTask, semanticOutcome } from './decision';
 export type { SpeechDecision, ActDecision, ActionKind } from './decision';
+
+export {
+  processCaptureSpeech,
+  confirmCaptureSpeech,
+  rejectOrCorrectCaptureSpeech,
+  captureMustNotCreate,
+} from './captureAdapter';
+export type {
+  CaptureSpeechResult,
+  CaptureProposal,
+  CaptureUiMode,
+  ProcessCaptureSpeechInput,
+} from './captureAdapter';
