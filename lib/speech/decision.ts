@@ -151,9 +151,12 @@ export function decideSpeechActions(
 
   const positive = actDecisions.filter((d) => !d.blocked && d.action === 'create_task');
   const updatesOnly = actDecisions.filter((d) => !d.blocked && d.action === 'update_task');
+  // Utterance-level mustNotCreateTask must not suppress independent positive acts.
   const mustNot =
-    interpretation.mustNotCreateTask === true ||
-    (positive.length === 0 && updatesOnly.length === 0 && (semantic ? !canProposeTask(semantic) : true));
+    positive.length === 0 &&
+    updatesOnly.length === 0 &&
+    (interpretation.mustNotCreateTask === true ||
+      (semantic ? !canProposeTask(semantic) : true));
 
   let primaryAction: ActionKind = 'noop';
   if (mustNot) {
