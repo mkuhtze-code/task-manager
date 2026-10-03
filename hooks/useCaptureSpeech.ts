@@ -2,15 +2,26 @@
 
 /**
  * Capture speech intelligence — STT text → processCaptureSpeech.
- * Does not open the mic; pairs with MicButton / useSpeechToText.
+ * On Dock after speech: confirmCaptureSpeech → personal language model (localStorage).
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   processCaptureSpeech,
+  confirmCaptureSpeech,
+  rejectOrCorrectCaptureSpeech,
   type CaptureSpeechResult,
   type ProcessCaptureSpeechInput,
+  type PersonalLanguageModel,
 } from '@/lib/speech';
+import {
+  loadSpeechLanguageModel,
+  saveSpeechLanguageModel,
+} from '@/lib/speech/speechModelStore';
+import {
+  defaultPersonalCommunicationProfile,
+  type PersonalCommunicationProfile,
+} from '@/lib/communication/types';
 
 export type CaptureSpeechStatus = {
   result: CaptureSpeechResult;
@@ -76,19 +87,74 @@ export function textForCaptureField(r: CaptureSpeechResult): string {
   return r.normalisedText || r.rawText;
 }
 
-export function useCaptureSpeech() {
+export type UseCaptureSpeechOptions = {
+  userId?: string | null;
+};
+
+export function useCaptureSpeech(options?: UseCaptureSpeechOptions) {
+  const userId = options?.userId ?? 'anon';
   const [speechStatus, setSpeechStatus] = useState<CaptureSpeechStatus>(null);
+  const lastResultRef = useRef<CaptureSpeechResult | null>(null);
+  const modelRef = useRef<PersonalLanguageModel | null>(null);
+
+  const getModel = useCallback((): PersonalLanguageModel => {
+    if (!modelRef.current) {
+      modelRef.current = loadSpeechLanguageModel(userId);
+    }
+    return modelRef.current;
+  }, [userId]);
 
   const processSpokenText = useCallback(
     (text: string, opts?: Omit<ProcessCaptureSpeechInput, 'text'>) => {
       const trimmed = text.trim();
       if (!trimmed) return null;
-      const result = processCaptureSpeech({ text: trimmed, ...opts });
+      const languageModel = getModel();
+      const result = processCaptureSpeech({
+        text: trimmed,
+        languageModel,
+        ...opts,
+      });
       const { message, tone } = messageFor(result);
+      lastResultRef.current = result;
       setSpeechStatus({ result, message, tone });
       return result;
     },
-    []
+    [getModel]
+  );
+
+  /** Call when the user Docks after speech — learn from confirmed interpretation only. */
+  const confirmSpeechLearning = useCallback(() => {
+    const result = lastResultRef.current;
+    if (!result) return null;
+    if (result.mustNotCreateTask && result.outcome === 'DO_NOT_CREATE') {
+      lastResultRef.current = null;
+      return null;
+    }
+    const model = getModel();
+    const { model: next, event } = confirmCaptureSpeech(model, result);
+    modelRef.current = next;
+    saveSpeechLanguageModel(next);
+    lastResultRef.current = null;
+    return event;
+  }, [getModel]);
+
+  const correctSpeechLearning = useCallback(
+    (correctedSummary: string) => {
+      const result = lastResultRef.current;
+      if (!result) return null;
+      const model = getModel();
+      const profile: PersonalCommunicationProfile =
+        defaultPersonalCommunicationProfile(userId);
+      const { model: next, event } = rejectOrCorrectCaptureSpeech(model, profile, {
+        result,
+        correctedSummary,
+      });
+      modelRef.current = next;
+      saveSpeechLanguageModel(next);
+      lastResultRef.current = null;
+      return event;
+    },
+    [getModel, userId]
   );
 
   const clearSpeechStatus = useCallback(() => setSpeechStatus(null), []);
@@ -97,6 +163,8 @@ export function useCaptureSpeech() {
     speechStatus,
     processSpokenText,
     clearSpeechStatus,
+    confirmSpeechLearning,
+    correctSpeechLearning,
     textForCaptureField,
   };
 }
