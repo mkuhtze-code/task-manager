@@ -19,6 +19,10 @@ import {
 } from './temporalSpans';
 import { applySafetyToUtterance, textLevelSafety } from './safety';
 import {
+  applyDiscourseSupersession,
+  reclassifyPastTenseObservations,
+} from './discourse';
+import {
   makeActId,
   type SemanticAct,
   type SemanticUtterance,
@@ -26,7 +30,7 @@ import {
 } from './types';
 
 const ACTION_VERB_RE =
-  /\b(call|email|send|meet|message|text|create|schedule|order|book|invoice|quote|chase|check|inspect|finish|complete|mark|push|postpone|cancel|delete|update|note|remind)\b/i;
+  /\b(call|email|send|meet|message|text|create|schedule|order|book|invoice|quote|chase|check|inspect|finish|complete|mark|push|postpone|cancel|delete|update|note|remind|tell|ask)\b/i;
 
 const REPORTED_RE = /\b([A-Z][a-z]+)\s+(?:said|says|told|tells)\b/;
 
@@ -36,7 +40,7 @@ function splitClauses(text: string): string[] {
     return multi.map((c) => c.raw.trim());
   }
   const parts = text
-    .split(/(?<=[.!?])\s+|\s+—\s+|\s+;\s+|\s+\bbut\b\s+/i)
+    .split(/(?<=[.!?])\s+|\s+—\s+|\s+;\s+|\s+\bbut\b\s+|\s+\band\s+(?=tell\b|ask\b)/i)
     .map((s) => s.trim())
     .filter(Boolean);
   if (parts.length >= 2) return parts;
@@ -121,11 +125,14 @@ function classifyClause(span: string, temporals: TemporalReference[]): SemanticA
 
   let objectText: string | undefined;
   if (actionVerb) {
-    const after = correctedSpan.split(new RegExp(`\\b${actionVerb}\\b`, 'i'))[1];
+    const parts = correctedSpan.split(new RegExp(`\\b${actionVerb}\\b`, 'i'));
+    const after = parts.slice(1).join(actionVerb);
     if (after) {
       objectText = after
-        .replace(/^(?:\s+me\s+to|\s+to|\s+)/i, '')
+        .replace(/^(?:\s+me\s+to\b|\s+)/i, '')
+        .replace(/^\s*to\s+(?=(?:the|a|an)\b)/i, '')
         .replace(/\b(?:if|unless|when|after|before|once|until)\b[\s\S]*$/i, '')
+        .replace(/^[,.\s]+/, '')
         .trim()
         .slice(0, 80);
     }
@@ -203,6 +210,8 @@ export function composeSemanticUtterance(
   }
 
   acts = resolveReferencesInActs(acts, context);
+  acts = reclassifyPastTenseObservations(acts);
+  acts = applyDiscourseSupersession(acts);
 
   const fromNorm = buildCorrectionChain(normalisation?.corrections ?? []);
   const fromActs = acts.flatMap((a) => a.corrections ?? []);
