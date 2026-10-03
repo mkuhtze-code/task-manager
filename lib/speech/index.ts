@@ -45,7 +45,8 @@ export {
   extractTemporals,
 } from './normalise';
 
-export { repairTranscript } from './sttRepair';
+export { repairTranscript, DOMAIN_PACKS } from './sttRepair';
+export type { DomainPackId } from './sttRepair';
 
 export { interpretSpeech } from './interpret';
 export type { InterpretSpeechOptions } from './interpret';
