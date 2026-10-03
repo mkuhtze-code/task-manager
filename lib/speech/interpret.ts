@@ -1,4 +1,3 @@
-
 /**
  * Speech → structured communication signals.
  *
@@ -43,9 +42,10 @@ import type {
 } from './types';
 
 import type {
-  ContextEntityKind,
   SpeechUnderstandingContext,
 } from './semantic/context';
+
+type SpeechNormalisation = ReturnType<typeof normaliseSpeech>;
 
 function makeId(): string {
   if (
@@ -108,10 +108,22 @@ const INTENT_PATTERNS: {
 
 export type InterpretSpeechOptions = {
   todayIso?: string;
+
   profile?: PersonalCommunicationProfile | null;
+
   languageModel?: PersonalLanguageModel | null;
+
+  /**
+   * Reuse the normalisation already performed by the speech pipeline.
+   * This prevents the transcript from being normalised twice and keeps
+   * pipeline-level corrections/temporal extraction intact.
+   */
+  normalisation?: SpeechNormalisation;
+
   understandingContext?: SpeechUnderstandingContext | null;
+
   transcriptId?: string;
+
   sessionId?: string;
 };
 
@@ -238,7 +250,8 @@ function deriveConstraints(
 
     if (
       act.references?.some(
-        (reference) => reference.requiresClarification
+        (reference) =>
+          reference.requiresClarification
       )
     ) {
       constraints.add('person_dependency');
@@ -254,9 +267,13 @@ function deriveConstraints(
  * public entity type small and stable.
  *
  * task / meeting / quote are represented as "thing" at this layer.
+ *
+ * Deliberately accepts the link kind structurally instead of importing
+ * ContextEntityKind. This keeps this module decoupled from the semantic
+ * context taxonomy and prevents another cross-layer type mismatch.
  */
 function mapEntityKind(
-  kind: ContextEntityKind
+  kind: string
 ): EntityMention['kind'] {
   switch (kind) {
     case 'person':
@@ -311,7 +328,7 @@ function deriveEntities(
 }
 
 function deriveTemporalReferences(
-  normalisation: ReturnType<typeof normaliseSpeech>,
+  normalisation: SpeechNormalisation,
   semantic: SpeechInterpretation['semantic']
 ): TemporalReference[] {
   const refs = [...(normalisation.temporals ?? [])];
@@ -338,6 +355,7 @@ function deriveTemporalReferences(
 
     refs.push({
       raw: act.temporalRaw,
+
       kind: act.temporalRelation
         ? act.temporalRelation === 'by'
           ? 'deadline'
@@ -345,15 +363,19 @@ function deriveTemporalReferences(
             ? 'weekday'
             : 'unknown'
         : 'unknown',
+
       resolvedDate:
         act.temporalResolvedDate ?? null,
+
       resolvedTime: null,
+
       isCorrection:
         act.corrections?.some(
           (correction) =>
             correction.facet === 'date' ||
             correction.facet === 'time'
         ) ?? false,
+
       confidence: act.confidence,
     });
   }
@@ -369,12 +391,20 @@ export function interpretSpeech(
 
   const originalText = rawText ?? '';
 
-  const normalisation = normaliseSpeech(
-    originalText,
-    {
-      todayIso: options.todayIso,
-    }
-  );
+  /*
+   * Reuse pipeline normalisation when supplied.
+   *
+   * This is important because pipeline.ts already performs the
+   * normalisation pass before interpretation.
+   */
+  const normalisation =
+    options.normalisation ??
+    normaliseSpeech(
+      originalText,
+      {
+        todayIso: options.todayIso,
+      }
+    );
 
   const text =
     normalisation.normalisedText ||
@@ -396,21 +426,25 @@ export function interpretSpeech(
   } of INTENT_PATTERNS) {
     if (re.test(text)) {
       intent = detectedIntent;
-      reasons.push(`intent:${detectedIntent}`);
+
+      reasons.push(
+        `intent:${detectedIntent}`
+      );
+
       break;
     }
   }
 
   if (intent === 'unknown') {
-    reasons.push('intent:unknown');
+    reasons.push(
+      'intent:unknown'
+    );
   }
 
   /*
    * -------------------------------------------------------------
    * 2. Personal communication understanding
    * -------------------------------------------------------------
-   *
-   * The canonical default profile lives in communication/types.ts.
    */
 
   const profile =
@@ -526,7 +560,8 @@ export function interpretSpeech(
   ) {
     if (
       semantic.acts.some(
-        (act) => act.kind === 'question'
+        (act) =>
+          act.kind === 'question'
       )
     ) {
       intent = 'ask';
@@ -536,7 +571,8 @@ export function interpretSpeech(
       );
     } else if (
       semantic.acts.some(
-        (act) => act.kind === 'observation'
+        (act) =>
+          act.kind === 'observation'
       )
     ) {
       intent = 'observe';
@@ -643,11 +679,6 @@ export function interpretSpeech(
     medium: 1,
     high: 2,
   };
-
-  /*
-   * Use communication understanding as additional evidence,
-   * without allowing it to override semantic safety.
-   */
 
   if (
     confidenceRank[
