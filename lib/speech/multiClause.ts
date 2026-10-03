@@ -14,12 +14,14 @@ const ACTION_VERBS =
 
 /**
  * Prefer sentence / discourse boundaries; only split on "and" when each side
- * carries its own action verb.
+ * carries its own action verb (avoids "pick up X and drop it" becoming noise
+ * when combined with later sentences).
  */
 export function extractActionClauses(text: string): ActionClause[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
 
+  // 1. Sentence / discourse split first for long-form speech
   const discourseParts = trimmed
     .split(/(?<=[.!?])\s+|\s+—\s+|\s*,\s*wait,?[\s]+|\s+\bOh,?\s+and\b\s+|\s+\bSo\s+(?:let'?s|lets)\b\s+/i)
     .map((p) => p.trim())
@@ -45,6 +47,7 @@ export function extractActionClauses(text: string): ActionClause[] {
     return [{ raw: trimmed, verbs, confidence: verbs.length ? 'medium' : 'low' }];
   }
 
+  // 2. Within a single sentence, split on and/also only if both sides have verbs
   const parts = trimmed.split(/\b(?:and|also)\b/i).map((p) => p.trim()).filter(Boolean);
   if (parts.length < 2) {
     return [{ raw: trimmed, verbs, confidence: 'medium' }];
@@ -61,6 +64,7 @@ export function extractActionClauses(text: string): ActionClause[] {
     };
   });
 
+  // Require at least two verb-bearing parts; otherwise keep whole
   if (mapped.filter((c) => c.verbs.length > 0).length < 2) {
     return [{ raw: trimmed, verbs, confidence: 'medium' }];
   }
