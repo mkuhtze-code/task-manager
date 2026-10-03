@@ -26,6 +26,11 @@ export type NewMeetingPayload = {
   notes: string;
 };
 
+// Record a meeting the way the user thinks: one thought in, facets out.
+// Sits on the SAME deterministic unified-thought parser tasks use — there
+// is no meeting-specific parser. "Meeting with Tim at Belgium Rd tomorrow
+// at 2pm" fills the title, day, time, location and the job/location
+// resolution against real jobs in one pass.
 export function NewMeetingSheet(props: {
   saving: boolean;
   jobs: Job[];
@@ -277,6 +282,9 @@ export function NewMeetingSheet(props: {
 
 export type { CapturedMedia };
 
+// Discussion note capture: one continuous surface for what was said and seen.
+// Speaker chips (Customer / Us / Note) are soft attribution for the
+// Communication Engine — stored as a quiet text prefix, no schema change.
 export type CaptureSpeaker = 'customer' | 'us' | 'note';
 
 export type ObservationCaptureDraft = {
