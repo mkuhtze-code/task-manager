@@ -255,6 +255,7 @@ export function extractTemporals(text: string, todayIso?: string): TemporalRefer
     push('early next week', 'relative_week', d, 'low');
   }
   if (/\bend\s+of\s+(?:the\s+)?week\b/.test(lower)) {
+    // Prefer Friday as practical end-of-week anchor for trades work
     push(lower.includes('the') ? 'end of the week' : 'end of week', 'relative_week', nextWeekday(today, 5, false), 'medium');
   }
   if (/\bend\s+of\s+(?:the\s+)?month\b/.test(lower)) {
