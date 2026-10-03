@@ -47,13 +47,6 @@ export {
 
 export { repairTranscript } from './sttRepair';
 
-export {
-  // ...
-  recordTranscriptionRepair,
-  confirmTranscriptRepairs,
-  learnTranscriptCorrection,
-} from './learning';
-
 export { interpretSpeech } from './interpret';
 export type { InterpretSpeechOptions } from './interpret';
 
