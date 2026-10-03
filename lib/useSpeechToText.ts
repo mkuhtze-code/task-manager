@@ -1,6 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  applySpeechRecognitionEvent,
+  type SpeechRecognitionEventLike,
+} from '@/lib/speechCaptureAssembly';
 
 // Thin wrapper around the browser's native SpeechRecognition API. Chrome
 // (including Chrome for Android) supports this under the webkit-prefixed
@@ -8,9 +12,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // gracefully hides the mic button anywhere it's missing (notably Safari)
 // rather than showing something broken.
 //
-// continuous=true: keep listening until the user taps stop. Non-continuous
-// mode ends after a short pause (~few seconds on Chrome), which felt like
-// a hard 5s cap in Today capture.
+// continuous=true: keep listening until the user taps stop.
+// Final transcripts are assembled with *replacement* semantics for progressive
+// hypotheses so "check" → "check on" → "check on Monday" does not become
+// "check check on check on Monday". UI receives one coherent string on stop.
 
 type SpeechToTextHandlers = {
   onResult: (text: string) => void;
@@ -29,13 +34,14 @@ export function useSpeechToText({
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const accumulatedRef = useRef('');
+  /** Committed finals only — never interim hypotheses. */
+  const committedRef = useRef('');
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // True while we intentionally called stop() — suppresses restart onend
   const stoppingRef = useRef(false);
+  // Prevent double-flush if onend fires more than once after stop
+  const flushedRef = useRef(false);
 
-  // Keep the latest callbacks in refs so `start` doesn't need to be
-  // recreated (and doesn't go stale) every time the parent re-renders.
   const onResultRef = useRef(onResult);
   const onErrorRef = useRef(onError);
   useEffect(() => {
@@ -60,8 +66,10 @@ export function useSpeechToText({
   }, []);
 
   const flushResult = useCallback(() => {
-    const text = accumulatedRef.current.trim();
-    accumulatedRef.current = '';
+    if (flushedRef.current) return;
+    flushedRef.current = true;
+    const text = committedRef.current.trim();
+    committedRef.current = '';
     if (text) onResultRef.current(text);
   }, []);
 
@@ -81,7 +89,8 @@ export function useSpeechToText({
     if (!SpeechRecognitionCtor) return;
 
     stoppingRef.current = false;
-    accumulatedRef.current = '';
+    flushedRef.current = false;
+    committedRef.current = '';
     clearMaxTimer();
 
     if (recognitionRef.current) {
@@ -93,28 +102,15 @@ export function useSpeechToText({
     }
 
     const recognition = new SpeechRecognitionCtor();
-    // continuous: keep the session open across pauses so the user can
-    // speak naturally and stop only when they tap the mic again.
     recognition.continuous = true;
+    // interimResults true is fine for engine state; we never commit interims
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     recognition.lang =
       typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US';
 
-    recognition.onresult = (event: any) => {
-      let finals = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const piece = event.results[i];
-        if (piece?.isFinal) {
-          const t = piece[0]?.transcript;
-          if (t) finals += (finals ? ' ' : '') + String(t).trim();
-        }
-      }
-      if (finals) {
-        accumulatedRef.current = accumulatedRef.current
-          ? `${accumulatedRef.current} ${finals}`
-          : finals;
-      }
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
+      committedRef.current = applySpeechRecognitionEvent(committedRef.current, event);
     };
 
     recognition.onerror = (event: any) => {
@@ -131,7 +127,8 @@ export function useSpeechToText({
 
     recognition.onend = () => {
       // Chrome sometimes ends continuous sessions after network blips or
-      // long silence. Restart unless the user explicitly stopped.
+      // long silence. Restart unless the user explicitly stopped — committed
+      // text is kept and merged with replacement semantics across restarts.
       if (!stoppingRef.current && recognitionRef.current === recognition) {
         try {
           recognition.start();
@@ -158,13 +155,11 @@ export function useSpeechToText({
       return;
     }
 
-    // Safety ceiling only — not a short dictation window
     maxTimerRef.current = setTimeout(() => {
       stop();
     }, maxDurationMs);
   }, [clearMaxTimer, flushResult, maxDurationMs, stop]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stoppingRef.current = true;
