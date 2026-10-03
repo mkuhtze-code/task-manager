@@ -145,7 +145,7 @@ export function interpretSpeech(
   };
 
   try {
-    const u = understand(text, profile);
+    const u = understand(text, { profile });
 
     derived = {
       statementType:
