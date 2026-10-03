@@ -305,9 +305,11 @@ function matchVal(
   expected: string | RegExp | undefined
 ): boolean {
   if (expected === undefined) return true;
+
   if (expected instanceof RegExp) {
     return expected.test(String(actual ?? ''));
   }
+
   return String(actual) === expected;
 }
 
@@ -332,11 +334,11 @@ export function runSpeechBenchmark(
     });
 
     /*
-     * interpretSpeech() performs its own normalization internally.
+     * interpretSpeech() performs normalization internally.
      *
-     * Do not pass `normalisation` here: it is not part of
-     * InterpretSpeechOptions, and passing it would create a benchmark-only
-     * path that differs from the production interpretation pipeline.
+     * Do not pass `normalisation` here because it is not part of
+     * InterpretSpeechOptions. More importantly, doing so would create
+     * a benchmark-only path that differs from the production pipeline.
      */
     const interp = interpretSpeech(c.input, {
       todayIso: c.todayIso,
@@ -502,5 +504,6 @@ export function runMustNotCorrectAudit(): {
   return {
     total: MUST_NOT_CORRECT.length,
     passed: MUST_NOT_CORRECT.length - failed.length,
+    failed,
   };
 }
