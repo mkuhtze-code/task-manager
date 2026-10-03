@@ -237,6 +237,50 @@ export function applyDiscourseSupersession(acts: SemanticAct[]): SemanticAct[] {
     }
   }
 
+  // Same person + same verb family: later open action supersedes earlier
+  // even without explicit "actually" (long-form plan revision).
+  for (let i = 0; i < next.length; i++) {
+    const later = next[i];
+    if (later.kind !== 'action' || later.blocksTaskCreation || later.polarity === 'negated') continue;
+    if (!later.actionVerb) continue;
+    const laterKey = objectKey(later);
+    if (!laterKey) continue;
+    for (let j = 0; j < i; j++) {
+      const earlier = next[j];
+      if (earlier.kind !== 'action' || earlier.blocksTaskCreation) continue;
+      if (!sameVerbFamily(earlier.actionVerb, later.actionVerb)) continue;
+      const earlierKey = objectKey(earlier);
+      if (earlierKey && earlierKey === laterKey) {
+        next[j] = {
+          ...earlier,
+          blocksTaskCreation: true,
+          evidence: [
+            ...earlier.evidence,
+            {
+              signal: 'superseded_by_later_same_person_action',
+              source: 'discourse',
+              span: later.rawSpan.slice(0, 60),
+            },
+          ],
+        };
+        if (!later.dependency && earlier.dependency) {
+          next[i] = {
+            ...next[i],
+            dependency: earlier.dependency,
+            evidence: [
+              ...next[i].evidence,
+              {
+                signal: 'dependency_inherited_from_superseded',
+                source: 'discourse',
+                span: earlier.dependency.raw,
+              },
+            ],
+          };
+        }
+      }
+    }
+  }
+
   return next;
 }
 
