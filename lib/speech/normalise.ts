@@ -88,8 +88,10 @@ export function applySpokenPunctuation(text: string): { text: string; hits: Spok
 export function detectCorrections(text: string): { text: string; corrections: CorrectionSpan[] } {
   const corrections: CorrectionSpan[] = [];
   let working = text;
+  // Bare "wait" is discourse (plan revision), not a mid-span correction marker.
+  // Only "wait no / wait actually / wait I mean" count as correction.
   const midCorrection =
-    /\b(.{2,40}?)\s*[,—-]?\s*(?:actually|sorry|i\s+mean|rather|instead|wait|make\s+that|change\s+that)\s+[,—-]?\s*(.{2,40}?)(?=[.!?]|$)/gi;
+    /\b(.{2,40}?)\s*[,—-]?\s*(?:actually|sorry|i\s+mean|rather|instead|wait,?\s+(?:no|actually|i\s+mean)|make\s+that|change\s+that)\s+[,—-]?\s*(.{2,40}?)(?=[.!?]|$)/gi;
   working = working.replace(midCorrection, (full, original, corrected) => {
     const o = String(original).trim();
     const c = String(corrected).trim();
@@ -251,6 +253,9 @@ export function extractTemporals(text: string, todayIso?: string): TemporalRefer
     const d = new Date(today);
     d.setDate(d.getDate() + 7);
     push('early next week', 'relative_week', d, 'low');
+  }
+  if (/\bend\s+of\s+(?:the\s+)?week\b/.test(lower)) {
+    push(lower.includes('the') ? 'end of the week' : 'end of week', 'relative_week', nextWeekday(today, 5, false), 'medium');
   }
   if (/\bend\s+of\s+(?:the\s+)?month\b/.test(lower)) {
     const d = new Date(today.getFullYear(), today.getMonth() + 1, 0);
