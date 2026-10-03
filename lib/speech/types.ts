@@ -1,7 +1,10 @@
 /**
  * Dokkit Speech Intelligence — canonical types.
- * Layers: raw audio → transcript → normalised text → interpretation → action/learning
- * Transcription providers are replaceable. Understanding is Dokkit-owned and deterministic.
+ * Layers: raw audio → transcript → contextual transcript repair →
+ * normalised text → interpretation → action/learning.
+ *
+ * Transcription providers are replaceable.
+ * Understanding is Dokkit-owned and deterministic.
  */
 
 import type { Confidence } from '@/lib/thinking/types';
@@ -65,6 +68,15 @@ export type SpeechTranscriptionProvider = {
   readonly version: string;
   transcribe(input: SpeechInput): Promise<TranscriptionResult>;
   supportsOffline?: boolean;
+};
+
+export type TranscriptRepair = {
+  original: string;
+  replacement: string;
+  reason: string;
+  confidence: Confidence;
+  score: number;
+  context: string;
 };
 
 export type SpokenPunctuationHit = {
@@ -131,8 +143,18 @@ export type SpeechIntent =
   | 'plan'
   | 'unknown';
 
-export type CommitmentStrength = 'none' | 'weak' | 'moderate' | 'strong';
-export type UrgencySignal = 'explicit' | 'implied' | 'none' | 'unknown';
+export type CommitmentStrength =
+  | 'none'
+  | 'weak'
+  | 'moderate'
+  | 'strong';
+
+export type UrgencySignal =
+  | 'explicit'
+  | 'implied'
+  | 'none'
+  | 'unknown';
+
 export type ConstraintSignal =
   | 'dependency'
   | 'competing_work'
@@ -142,7 +164,12 @@ export type ConstraintSignal =
   | 'resource'
   | 'uncertainty'
   | 'none';
-export type AmbiguityLevel = 'none' | 'partial' | 'high';
+
+export type AmbiguityLevel =
+  | 'none'
+  | 'partial'
+  | 'high';
+
 export type SpeechCertainty =
   | 'definite'
   | 'likely'
@@ -154,7 +181,12 @@ export type SpeechCertainty =
 
 export type EntityMention = {
   raw: string;
-  kind: 'person' | 'job' | 'place' | 'thing' | 'unknown';
+  kind:
+    | 'person'
+    | 'job'
+    | 'place'
+    | 'thing'
+    | 'unknown';
   resolvedId: string | null;
   confidence: Confidence;
   wasCorrected: boolean;
@@ -164,8 +196,16 @@ export type SpeechInterpretation = {
   id: string;
   transcriptId?: string;
   sessionId?: string;
+
   originalTranscript: string;
   normalisedText: string;
+
+  /*
+   * Repairs happen before normalisation, so the interpretation retains
+   * the exact contextual STT evidence that influenced the final meaning.
+   */
+  transcriptRepairs?: TranscriptRepair[];
+
   intent: SpeechIntent;
   statementType: StatementType;
   certainty: SpeechCertainty;
@@ -218,24 +258,61 @@ export type PersonalSpeechVocabularyEntry = {
   spoken: string;
   preferred: string;
   evidenceCount: number;
-  source: 'explicit_correction' | 'repeated_usage' | 'observation';
+  source:
+    | 'explicit_correction'
+    | 'repeated_usage'
+    | 'observation';
+  lastEvidenceAt: string;
+};
+
+export type PersonalTranscriptionRepair = {
+  from: string;
+  to: string;
+  context?: string;
+  evidenceCount: number;
   lastEvidenceAt: string;
 };
 
 export type PersonalLanguageModel = {
   userId: string;
+
   vocabulary: PersonalSpeechVocabularyEntry[];
-  taskIntroductionPhrases: { phrase: string; evidenceCount: number }[];
-  certaintyPhrases: { phrase: string; mapsTo: SpeechCertainty; evidenceCount: number }[];
-  commitmentPhrases: { phrase: string; mapsTo: CommitmentStrength; evidenceCount: number }[];
-  nameAliases: { spoken: string; canonical: string; evidenceCount: number }[];
+
+  transcriptionRepairs: PersonalTranscriptionRepair[];
+
+  taskIntroductionPhrases: {
+    phrase: string;
+    evidenceCount: number;
+  }[];
+
+  certaintyPhrases: {
+    phrase: string;
+    mapsTo: SpeechCertainty;
+    evidenceCount: number;
+  }[];
+
+  commitmentPhrases: {
+    phrase: string;
+    mapsTo: CommitmentStrength;
+    evidenceCount: number;
+  }[];
+
+  nameAliases: {
+    spoken: string;
+    canonical: string;
+    evidenceCount: number;
+  }[];
+
   updatedAt: string;
 };
 
-export function emptyPersonalLanguageModel(userId: string): PersonalLanguageModel {
+export function emptyPersonalLanguageModel(
+  userId: string
+): PersonalLanguageModel {
   return {
     userId,
     vocabulary: [],
+    transcriptionRepairs: [],
     taskIntroductionPhrases: [],
     certaintyPhrases: [],
     commitmentPhrases: [],
@@ -268,17 +345,22 @@ export type SpeechPipelineResult = {
   decision?: import('./decision').SpeechDecision;
 };
 
-export function speechCertaintyToComm(c: SpeechCertainty): CommCertainty {
+export function speechCertaintyToComm(
+  c: SpeechCertainty
+): CommCertainty {
   switch (c) {
     case 'definite':
       return 'CONFIRMED';
+
     case 'likely':
     case 'probable':
       return 'PROVISIONAL';
+
     case 'tentative':
     case 'uncertain':
     case 'speculative':
       return 'NEEDS_CHECK';
+
     default:
       return 'UNKNOWN';
   }
