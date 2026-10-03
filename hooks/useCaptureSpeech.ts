@@ -2,6 +2,7 @@
 
 /**
  * Capture speech intelligence — STT text → processCaptureSpeech.
+ * Does not open the mic; pairs with MicButton / useSpeechToText.
  * On Dock after speech: confirmCaptureSpeech → personal language model (localStorage).
  */
 
@@ -13,6 +14,7 @@ import {
   type CaptureSpeechResult,
   type ProcessCaptureSpeechInput,
   type PersonalLanguageModel,
+  emptyPersonalLanguageModel,
 } from '@/lib/speech';
 import {
   loadSpeechLanguageModel,
@@ -122,7 +124,10 @@ export function useCaptureSpeech(options?: UseCaptureSpeechOptions) {
     [getModel]
   );
 
-  /** Call when the user Docks after speech — learn from confirmed interpretation only. */
+  /**
+   * Call when the user Docks / saves after speech.
+   * Learns from confirmed interpretation only — never from a rejected guess alone.
+   */
   const confirmSpeechLearning = useCallback(() => {
     const result = lastResultRef.current;
     if (!result) return null;
