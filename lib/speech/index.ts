@@ -80,6 +80,9 @@ export {
   MIN_EVIDENCE_OBSERVATION,
   recordNameAlias,
   applyNameAliases,
+  recordTranscriptionRepair,
+  confirmTranscriptRepairs,
+  learnTranscriptCorrection,
 } from './learning';
 
 export {
