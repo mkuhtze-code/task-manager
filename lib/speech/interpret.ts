@@ -39,13 +39,15 @@ import type {
   Confidence,
   PersonalLanguageModel,
   CorrectionSpan,
+  TranscriptRepair,
 } from './types';
 
 import type {
   SpeechUnderstandingContext,
 } from './semantic/context';
 
-type SpeechNormalisation = ReturnType<typeof normaliseSpeech>;
+type SpeechNormalisation =
+  ReturnType<typeof normaliseSpeech>;
 
 function makeId(): string {
   if (
@@ -109,21 +111,23 @@ const INTENT_PATTERNS: {
 export type InterpretSpeechOptions = {
   todayIso?: string;
 
-  profile?: PersonalCommunicationProfile | null;
+  profile?:
+    | PersonalCommunicationProfile
+    | null;
 
-  languageModel?: PersonalLanguageModel | null;
+  languageModel?:
+    | PersonalLanguageModel
+    | null;
 
-  /**
-   * Reuse the normalisation already performed by the speech pipeline.
-   * This prevents the transcript from being normalised twice and keeps
-   * pipeline-level corrections/temporal extraction intact.
-   */
   normalisation?: SpeechNormalisation;
 
-  understandingContext?: SpeechUnderstandingContext | null;
+  understandingContext?:
+    | SpeechUnderstandingContext
+    | null;
+
+  transcriptRepairs?: TranscriptRepair[];
 
   transcriptId?: string;
-
   sessionId?: string;
 };
 
@@ -193,7 +197,8 @@ function deriveUrgency(
   text: string,
   semantic: SpeechInterpretation['semantic']
 ): UrgencySignal {
-  const lower = text.toLowerCase();
+  const lower =
+    text.toLowerCase();
 
   if (
     /\b(?:urgent|urgently|asap|immediately|right\s+away|right\s+now|today|first\s+thing|must\s+be\s+done)\b/i.test(
@@ -221,7 +226,8 @@ function deriveConstraints(
 ): ConstraintSignal[] {
   if (!semantic) return [];
 
-  const constraints = new Set<ConstraintSignal>();
+  const constraints =
+    new Set<ConstraintSignal>();
 
   for (const act of semantic.acts) {
     if (act.condition) {
@@ -254,24 +260,15 @@ function deriveConstraints(
           reference.requiresClarification
       )
     ) {
-      constraints.add('person_dependency');
+      constraints.add(
+        'person_dependency'
+      );
     }
   }
 
   return [...constraints];
 }
 
-/**
- * The semantic context supports a richer entity taxonomy than the
- * speech API exposes. SpeechInterpretation deliberately keeps its
- * public entity type small and stable.
- *
- * task / meeting / quote are represented as "thing" at this layer.
- *
- * Deliberately accepts the link kind structurally instead of importing
- * ContextEntityKind. This keeps this module decoupled from the semantic
- * context taxonomy and prevents another cross-layer type mismatch.
- */
 function mapEntityKind(
   kind: string
 ): EntityMention['kind'] {
@@ -300,11 +297,13 @@ function deriveEntities(
   if (!semantic) return [];
 
   const entities: EntityMention[] = [];
-  const seen = new Set<string>();
+  const seen =
+    new Set<string>();
 
   for (const act of semantic.acts) {
     for (const link of act.entityLinks ?? []) {
-      const key = `${link.entityId}:${link.matchedSpan.toLowerCase()}`;
+      const key =
+        `${link.entityId}:${link.matchedSpan.toLowerCase()}`;
 
       if (seen.has(key)) continue;
 
@@ -312,13 +311,18 @@ function deriveEntities(
 
       entities.push({
         raw: link.matchedSpan,
-        kind: mapEntityKind(link.kind),
-        resolvedId: link.entityId,
-        confidence: link.confidence,
+        kind: mapEntityKind(
+          link.kind
+        ),
+        resolvedId:
+          link.entityId,
+        confidence:
+          link.confidence,
         wasCorrected:
           act.corrections?.some(
             (correction) =>
-              correction.facet === 'entity'
+              correction.facet ===
+              'entity'
           ) ?? false,
       });
     }
@@ -331,23 +335,27 @@ function deriveTemporalReferences(
   normalisation: SpeechNormalisation,
   semantic: SpeechInterpretation['semantic']
 ): TemporalReference[] {
-  const refs = [...(normalisation.temporals ?? [])];
+  const refs = [
+    ...(normalisation.temporals ?? []),
+  ];
 
   if (!semantic) return refs;
 
-  const seen = new Set(
-    refs.map(
-      (ref) =>
-        `${ref.raw.toLowerCase()}|${ref.resolvedDate ?? ''}|${ref.resolvedTime ?? ''}`
-    )
-  );
+  const seen =
+    new Set(
+      refs.map(
+        (ref) =>
+          `${ref.raw.toLowerCase()}|${ref.resolvedDate ?? ''}|${ref.resolvedTime ?? ''}`
+      )
+    );
 
   for (const act of semantic.acts) {
     if (!act.temporalRaw) continue;
 
-    const key = `${act.temporalRaw.toLowerCase()}|${
-      act.temporalResolvedDate ?? ''
-    }|`;
+    const key =
+      `${act.temporalRaw.toLowerCase()}|${
+        act.temporalResolvedDate ?? ''
+      }|`;
 
     if (seen.has(key)) continue;
 
@@ -356,27 +364,32 @@ function deriveTemporalReferences(
     refs.push({
       raw: act.temporalRaw,
 
-      kind: act.temporalRelation
-        ? act.temporalRelation === 'by'
-          ? 'deadline'
-          : act.temporalRelation === 'on'
-            ? 'weekday'
-            : 'unknown'
-        : 'unknown',
+      kind:
+        act.temporalRelation
+          ? act.temporalRelation === 'by'
+            ? 'deadline'
+            : act.temporalRelation === 'on'
+              ? 'weekday'
+              : 'unknown'
+          : 'unknown',
 
       resolvedDate:
-        act.temporalResolvedDate ?? null,
+        act.temporalResolvedDate ??
+        null,
 
       resolvedTime: null,
 
       isCorrection:
         act.corrections?.some(
           (correction) =>
-            correction.facet === 'date' ||
-            correction.facet === 'time'
+            correction.facet ===
+              'date' ||
+            correction.facet ===
+              'time'
         ) ?? false,
 
-      confidence: act.confidence,
+      confidence:
+        act.confidence,
     });
   }
 
@@ -387,22 +400,19 @@ export function interpretSpeech(
   rawText: string,
   opts?: InterpretSpeechOptions
 ): SpeechInterpretation {
-  const options = opts ?? {};
+  const options =
+    opts ?? {};
 
-  const originalText = rawText ?? '';
+  const originalText =
+    rawText ?? '';
 
-  /*
-   * Reuse pipeline normalisation when supplied.
-   *
-   * This is important because pipeline.ts already performs the
-   * normalisation pass before interpretation.
-   */
   const normalisation =
     options.normalisation ??
     normaliseSpeech(
       originalText,
       {
-        todayIso: options.todayIso,
+        todayIso:
+          options.todayIso,
       }
     );
 
@@ -413,19 +423,35 @@ export function interpretSpeech(
   const reasons: string[] = [];
 
   /*
-   * -------------------------------------------------------------
-   * 1. Surface intent
-   * -------------------------------------------------------------
+   * Transcript repair is deliberately evidence-bearing.
+   * It does not silently disappear after preprocessing.
    */
+  if (
+    options.transcriptRepairs?.length
+  ) {
+    for (
+      const repair of
+        options.transcriptRepairs
+    ) {
+      reasons.push(
+        `transcriptRepair:${repair.original}→${repair.replacement}`
+      );
+    }
+  }
 
-  let intent: SpeechIntent = 'unknown';
+  let intent: SpeechIntent =
+    'unknown';
 
-  for (const {
-    re,
-    intent: detectedIntent,
-  } of INTENT_PATTERNS) {
+  for (
+    const {
+      re,
+      intent:
+        detectedIntent,
+    } of INTENT_PATTERNS
+  ) {
     if (re.test(text)) {
-      intent = detectedIntent;
+      intent =
+        detectedIntent;
 
       reasons.push(
         `intent:${detectedIntent}`
@@ -435,21 +461,19 @@ export function interpretSpeech(
     }
   }
 
-  if (intent === 'unknown') {
+  if (
+    intent === 'unknown'
+  ) {
     reasons.push(
       'intent:unknown'
     );
   }
 
-  /*
-   * -------------------------------------------------------------
-   * 2. Personal communication understanding
-   * -------------------------------------------------------------
-   */
-
   const profile =
     options.profile ??
-    defaultPersonalCommunicationProfile('anon');
+    defaultPersonalCommunicationProfile(
+      'anon'
+    );
 
   let derived: {
     statementType: StatementType;
@@ -461,40 +485,52 @@ export function interpretSpeech(
   } = {
     statementType: 'UNKNOWN',
     certainty: 'UNKNOWN',
-    communicationConfidence: 'low',
+    communicationConfidence:
+      'low',
     requiresConfirmation: true,
     action: null,
     learnedMeaning: null,
   };
 
   try {
-    const understood = understand(text, {
-      profile,
-      today: options.todayIso,
-    });
+    const understood =
+      understand(
+        text,
+        {
+          profile,
+          today:
+            options.todayIso,
+        }
+      );
 
     derived = {
       statementType:
-        understood.statementType ?? 'UNKNOWN',
+        understood.statementType ??
+        'UNKNOWN',
 
       certainty:
-        understood.certainty ?? 'UNKNOWN',
+        understood.certainty ??
+        'UNKNOWN',
 
       communicationConfidence:
-        understood.confidence ?? 'low',
+        understood.confidence ??
+        'low',
 
       requiresConfirmation:
         !!understood.requiresConfirmation,
 
       action:
-        understood.action ?? null,
+        understood.action ??
+        null,
 
       learnedMeaning:
-        understood.learnedMeaning ?? null,
+        understood.learnedMeaning ??
+        null,
     };
 
     if (
-      derived.statementType !== 'UNKNOWN'
+      derived.statementType !==
+      'UNKNOWN'
     ) {
       reasons.push(
         `statementType:${derived.statementType}`
@@ -502,33 +538,26 @@ export function interpretSpeech(
     }
 
     if (
-      derived.certainty !== 'UNKNOWN'
+      derived.certainty !==
+      'UNKNOWN'
     ) {
       reasons.push(
         `certainty:${derived.certainty}`
       );
     }
 
-    if (derived.learnedMeaning) {
+    if (
+      derived.learnedMeaning
+    ) {
       reasons.push(
         `learnedMeaning:${derived.learnedMeaning}`
       );
     }
   } catch {
-    /*
-     * Communication understanding is best-effort.
-     * Semantic interpretation remains authoritative for safety.
-     */
     reasons.push(
       'communication:understanding_failed'
     );
   }
-
-  /*
-   * -------------------------------------------------------------
-   * 3. Semantic interpretation
-   * -------------------------------------------------------------
-   */
 
   const semanticContext =
     options.understandingContext
@@ -537,17 +566,12 @@ export function interpretSpeech(
         }
       : undefined;
 
-  const semantic = composeSemanticUtterance(
-    originalText,
-    normalisation,
-    semanticContext
-  );
-
-  /*
-   * -------------------------------------------------------------
-   * 4. Safety / intent reconciliation
-   * -------------------------------------------------------------
-   */
+  const semantic =
+    composeSemanticUtterance(
+      originalText,
+      normalisation,
+      semanticContext
+    );
 
   if (
     semantic.mustNotCreateTask &&
@@ -561,7 +585,8 @@ export function interpretSpeech(
     if (
       semantic.acts.some(
         (act) =>
-          act.kind === 'question'
+          act.kind ===
+          'question'
       )
     ) {
       intent = 'ask';
@@ -572,7 +597,8 @@ export function interpretSpeech(
     } else if (
       semantic.acts.some(
         (act) =>
-          act.kind === 'observation'
+          act.kind ===
+          'observation'
       )
     ) {
       intent = 'observe';
@@ -583,8 +609,10 @@ export function interpretSpeech(
     } else if (
       semantic.acts.some(
         (act) =>
-          act.kind === 'refusal' ||
-          act.polarity === 'negated'
+          act.kind ===
+            'refusal' ||
+          act.polarity ===
+            'negated'
       )
     ) {
       intent = 'cancel';
@@ -601,31 +629,26 @@ export function interpretSpeech(
     }
   }
 
-  /*
-   * A semantic action is stronger than a shallow lexical match,
-   * provided it is positive and not blocked.
-   */
-
   const actionAct =
     semantic.acts.find(
       (act) =>
-        act.kind === 'action' &&
+        act.kind ===
+          'action' &&
         !act.blocksTaskCreation &&
-        act.polarity !== 'negated'
+        act.polarity !==
+          'negated'
     );
 
   const hasClearAction =
     !!actionAct ||
     semantic.acts.some(
       (act) =>
-        act.kind === 'commitment' &&
+        act.kind ===
+          'commitment' &&
         !act.blocksTaskCreation &&
-        act.polarity !== 'negated'
+        act.polarity !==
+          'negated'
     );
-
-  /*
-   * Refine unknown lexical intent from learned communication meaning.
-   */
 
   if (
     intent === 'unknown' &&
@@ -635,56 +658,59 @@ export function interpretSpeech(
       derived.action.toLowerCase()
     ) {
       case 'postpone':
-        intent = 'postpone';
+        intent =
+          'postpone';
         break;
 
       case 'complete':
       case 'resolve':
-        intent = 'complete';
+        intent =
+          'complete';
         break;
 
       case 'check':
       case 'investigate':
-        intent = 'create';
+        intent =
+          'create';
         break;
 
       default:
         if (hasClearAction) {
-          intent = 'create';
+          intent =
+            'create';
         }
+
         break;
     }
 
-    if (intent !== 'unknown') {
+    if (
+      intent !== 'unknown'
+    ) {
       reasons.push(
         `intent:communication_refinement:${intent}`
       );
     }
   }
 
-  /*
-   * -------------------------------------------------------------
-   * 5. Confidence
-   * -------------------------------------------------------------
-   */
-
-  let confidence: Confidence =
+  let confidence:
+    Confidence =
     normalisation.confidence;
 
-  const confidenceRank: Record<
-    Confidence,
-    number
-  > = {
-    low: 0,
-    medium: 1,
-    high: 2,
-  };
+  const confidenceRank:
+    Record<Confidence, number> =
+    {
+      low: 0,
+      medium: 1,
+      high: 2,
+    };
 
   if (
     confidenceRank[
       derived.communicationConfidence
     ] >
-    confidenceRank[confidence]
+    confidenceRank[
+      confidence
+    ]
   ) {
     confidence =
       derived.communicationConfidence;
@@ -695,26 +721,49 @@ export function interpretSpeech(
   }
 
   if (
-    semantic.confidence === 'high' &&
+    semantic.confidence ===
+      'high' &&
     confidence !== 'high'
   ) {
-    confidence = 'high';
+    confidence =
+      'high';
 
     reasons.push(
       'confidence:semantic_evidence'
     );
   } else if (
-    semantic.confidence === 'medium' &&
+    semantic.confidence ===
+      'medium' &&
     confidence === 'low'
   ) {
-    confidence = 'medium';
+    confidence =
+      'medium';
 
     reasons.push(
       'confidence:semantic_evidence'
     );
   }
 
-  if (intent === 'unknown') {
+  /*
+   * A contextual repair increases semantic confidence only modestly.
+   * It must never turn uncertain speech into an automatic action merely
+   * because a homophone was repaired.
+   */
+  if (
+    options.transcriptRepairs?.length &&
+    confidence === 'low'
+  ) {
+    confidence =
+      'medium';
+
+    reasons.push(
+      'confidence:transcript_repair'
+    );
+  }
+
+  if (
+    intent === 'unknown'
+  ) {
     confidence =
       confidence === 'high'
         ? 'medium'
@@ -736,13 +785,8 @@ export function interpretSpeech(
     );
   }
 
-  /*
-   * -------------------------------------------------------------
-   * 6. Ambiguity
-   * -------------------------------------------------------------
-   */
-
-  const ambiguity: AmbiguityLevel =
+  const ambiguity:
+    AmbiguityLevel =
     intent === 'unknown' &&
     !hasClearAction
       ? 'high'
@@ -755,20 +799,18 @@ export function interpretSpeech(
           ? 'partial'
           : 'none';
 
-  if (ambiguity !== 'none') {
+  if (
+    ambiguity !== 'none'
+  ) {
     reasons.push(
       `ambiguity:${ambiguity}`
     );
   }
 
-  /*
-   * -------------------------------------------------------------
-   * 7. Statement type
-   * -------------------------------------------------------------
-   */
-
-  const statementType: StatementType =
-    derived.statementType !== 'UNKNOWN'
+  const statementType:
+    StatementType =
+    derived.statementType !==
+    'UNKNOWN'
       ? derived.statementType
       : intent === 'ask'
         ? 'QUESTION'
@@ -777,9 +819,12 @@ export function interpretSpeech(
           : intent === 'observe'
             ? 'OBSERVATION'
             : (
-                intent === 'create' ||
-                intent === 'remember' ||
-                intent === 'plan'
+                intent ===
+                  'create' ||
+                intent ===
+                  'remember' ||
+                intent ===
+                  'plan'
               )
               ? 'TASK'
               : semantic.acts.some(
@@ -793,15 +838,11 @@ export function interpretSpeech(
                   ? 'TASK'
                   : 'UNKNOWN';
 
-  /*
-   * -------------------------------------------------------------
-   * 8. Derived communication signals
-   * -------------------------------------------------------------
-   */
-
-  const certainty: SpeechCertainty =
+  const certainty:
+    SpeechCertainty =
     semantic.acts.find(
-      (act) => act.certainty
+      (act) =>
+        act.certainty
     )?.certainty ??
     mapCommunicationCertainty(
       derived.certainty
@@ -815,16 +856,21 @@ export function interpretSpeech(
       hasClearAction
     );
 
-  const urgency = deriveUrgency(
-    text,
-    semantic
-  );
+  const urgency =
+    deriveUrgency(
+      text,
+      semantic
+    );
 
   const constraints =
-    deriveConstraints(semantic);
+    deriveConstraints(
+      semantic
+    );
 
   const entities =
-    deriveEntities(semantic);
+    deriveEntities(
+      semantic
+    );
 
   const temporalReferences =
     deriveTemporalReferences(
@@ -832,29 +878,33 @@ export function interpretSpeech(
       semantic
     );
 
-  const corrections: CorrectionSpan[] =
-    normalisation.corrections ?? [];
-
-  /*
-   * -------------------------------------------------------------
-   * 9. Surface summary
-   * -------------------------------------------------------------
-   */
+  const corrections:
+    CorrectionSpan[] =
+    normalisation.corrections ??
+    [];
 
   const surfaceSummary =
-    actionAct?.rawSpan?.slice(0, 120) ||
-    actionAct?.objectText?.slice(0, 120) ||
-    derived.action?.slice(0, 120) ||
-    text.slice(0, 120);
-
-  /*
-   * -------------------------------------------------------------
-   * 10. Confirmation / action gating
-   * -------------------------------------------------------------
-   */
+    actionAct?.rawSpan?.slice(
+      0,
+      120
+    ) ||
+    actionAct?.objectText?.slice(
+      0,
+      120
+    ) ||
+    derived.action?.slice(
+      0,
+      120
+    ) ||
+    text.slice(
+      0,
+      120
+    );
 
   const semanticCanProposeTask =
-    canProposeTask(semantic);
+    canProposeTask(
+      semantic
+    );
 
   const requiresConfirmation =
     semantic.mustNotCreateTask ||
@@ -870,12 +920,6 @@ export function interpretSpeech(
       intent === 'unknown' &&
       !hasClearAction
     );
-
-  /*
-   * -------------------------------------------------------------
-   * 11. Final interpretation
-   * -------------------------------------------------------------
-   */
 
   return {
     id: makeId(),
@@ -893,32 +937,23 @@ export function interpretSpeech(
     normalisedText:
       text,
 
+    transcriptRepairs:
+      options.transcriptRepairs ??
+      [],
+
     intent,
-
     statementType,
-
     certainty,
-
     commitmentStrength,
-
     urgency,
-
     constraints,
-
     temporalReferences,
-
     entities,
-
     corrections,
-
     ambiguity,
-
     surfaceSummary,
-
     confidence,
-
     reasons,
-
     requiresConfirmation,
 
     semantic,
