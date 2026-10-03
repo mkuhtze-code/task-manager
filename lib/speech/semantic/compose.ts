@@ -37,6 +37,7 @@ const REPORTED_RE = /\b([A-Z][a-z]+)\s+(?:said|says|told|tells)\b/;
 function splitClauses(text: string): string[] {
   const multi = extractActionClauses(text);
   if (multi.length >= 2 && multi.every((c) => c.raw.trim())) {
+    // Reject multi results that still glue multiple sentences into one clause
     // Only reject if one clause still contains multiple sentence terminators
     const looksGlued = multi.some(
       (c) => (c.raw.match(/[.!?]/g) ?? []).length >= 2
@@ -252,6 +253,7 @@ export function composeSemanticUtterance(
 }
 
 export function canProposeTask(u: SemanticUtterance): boolean {
+  // Act-level only: a negated sibling must not suppress an independent positive act.
   return u.acts.some(
     (a) => a.kind === 'action' && a.polarity !== 'negated' && !a.blocksTaskCreation
   );
