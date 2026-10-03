@@ -237,8 +237,9 @@ export function applyDiscourseSupersession(acts: SemanticAct[]): SemanticAct[] {
     }
   }
 
-  // Same person + same verb family: later open action supersedes earlier
-  // even without explicit "actually" (long-form plan revision).
+
+  // 5. Same person + same verb family: later open action supersedes earlier
+  //    even without explicit "actually" (long-form plan revision).
   for (let i = 0; i < next.length; i++) {
     const later = next[i];
     if (later.kind !== 'action' || later.blocksTaskCreation || later.polarity === 'negated') continue;
@@ -263,6 +264,7 @@ export function applyDiscourseSupersession(acts: SemanticAct[]): SemanticAct[] {
             },
           ],
         };
+        // Inherit earlier dependency evidence onto later if later has none
         if (!later.dependency && earlier.dependency) {
           next[i] = {
             ...next[i],
