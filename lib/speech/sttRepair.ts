@@ -14,6 +14,8 @@
  * - Preserve the original transcript through TranscriptRepair evidence.
  * - A repair may improve interpretation confidence, but never bypass
  *   the downstream action-safety gate.
+ * - Domain vocabulary is soft prior packs only — not a product identity.
+ *   Structure (cognitive verbs, temporals, clause shape) is universal.
  */
 
 import type {
@@ -32,6 +34,15 @@ type Candidate = {
   score: number;
   reasons: string[];
 };
+
+export type DomainPackId =
+  | 'trades'
+  | 'client_services'
+  | 'knowledge_ops'
+  | 'student'
+  | 'creative'
+  | 'personal'
+  | 'general_work';
 
 const HOMOPHONE_PAIRS: HomophonePair[] = [
   { a: 'weather', b: 'whether' },
@@ -58,36 +69,282 @@ const HOMOPHONE_PAIRS: HomophonePair[] = [
   { a: 'week', b: 'weak' },
 ];
 
-const DOMAIN_VOCABULARY = new Set([
-  'flashing', 'flashings', 'fascia', 'fascias', 'soffit', 'soffits',
-  'gutter', 'gutters', 'gib', 'gyprock', 'plasterboard', 'eaves', 'lead',
-  'weatherboard', 'weatherboards', 'ridge', 'ridges', 'valley', 'valleys',
-  'apron', 'aprons', 'counterflashing', 'roof', 'roofs', 'scaffold',
-  'scaffolding', 'tiler', 'tilers', 'cladding', 'claddings', 'extension',
-  'extensions', 'variation', 'variations', 'invoice', 'invoices', 'quote',
-  'quotes', 'quoting', 'builder', 'builders', 'subcontractor', 'subcontractors',
-  'council', 'consent', 'consents',
-]);
+/**
+ * Soft domain packs.
+ *
+ * These only nudge scoring when a nearby token is a known work noun.
+ * They never gate repair. Structure remains universal so any role from
+ * onboarding (professional, student, knowledge, personal) benefits.
+ */
+export const DOMAIN_PACKS: Record<DomainPackId, readonly string[]> = {
+  trades: [
+    'flashing',
+    'flashings',
+    'fascia',
+    'fascias',
+    'soffit',
+    'soffits',
+    'gutter',
+    'gutters',
+    'gib',
+    'gyprock',
+    'plasterboard',
+    'eaves',
+    'lead',
+    'weatherboard',
+    'weatherboards',
+    'ridge',
+    'ridges',
+    'valley',
+    'valleys',
+    'apron',
+    'aprons',
+    'counterflashing',
+    'roof',
+    'roofs',
+    'scaffold',
+    'scaffolding',
+    'tiler',
+    'tilers',
+    'cladding',
+    'claddings',
+    'extension',
+    'extensions',
+    'variation',
+    'variations',
+    'builder',
+    'builders',
+    'subcontractor',
+    'subcontractors',
+    'council',
+    'consent',
+    'consents',
+    'site',
+    'sites',
+  ],
+
+  client_services: [
+    'client',
+    'clients',
+    'quote',
+    'quotes',
+    'quoting',
+    'proposal',
+    'proposals',
+    'retainer',
+    'invoice',
+    'invoices',
+    'invoicing',
+    'kickoff',
+    'handover',
+    'handover',
+    'scope',
+    'brief',
+    'briefs',
+    'deliverable',
+    'deliverables',
+    'stakeholder',
+    'stakeholders',
+  ],
+
+  knowledge_ops: [
+    'standup',
+    'backlog',
+    'sprint',
+    'ticket',
+    'tickets',
+    'deploy',
+    'deployment',
+    'release',
+    'releases',
+    'vendor',
+    'vendors',
+    'supplier',
+    'suppliers',
+    'procurement',
+    'payroll',
+    'onboarding',
+    'offboarding',
+    'compliance',
+    'audit',
+    'audits',
+    'report',
+    'reports',
+    'roadmap',
+  ],
+
+  student: [
+    'assignment',
+    'assignments',
+    'essay',
+    'essays',
+    'tutorial',
+    'tutorials',
+    'lecture',
+    'lectures',
+    'exam',
+    'exams',
+    'coursework',
+    'thesis',
+    'dissertation',
+    'seminar',
+    'seminars',
+    'lab',
+    'labs',
+    'module',
+    'modules',
+    'supervisor',
+    'lecturer',
+  ],
+
+  creative: [
+    'draft',
+    'drafts',
+    'revision',
+    'revisions',
+    'shoot',
+    'shoots',
+    'edit',
+    'edits',
+    'cut',
+    'cuts',
+    'storyboard',
+    'moodboard',
+    'portfolio',
+    'commission',
+    'commissions',
+    'manuscript',
+    'layout',
+    'layouts',
+  ],
+
+  personal: [
+    'appointment',
+    'appointments',
+    'pickup',
+    'pickups',
+    'renewal',
+    'renewals',
+    'booking',
+    'bookings',
+    'prescription',
+    'prescriptions',
+    'registration',
+    'insurance',
+    'mortgage',
+    'grocery',
+    'groceries',
+    'school',
+    'daycare',
+  ],
+
+  general_work: [
+    'meeting',
+    'meetings',
+    'call',
+    'calls',
+    'email',
+    'emails',
+    'message',
+    'messages',
+    'deadline',
+    'deadlines',
+    'followup',
+    'follow-up',
+    'review',
+    'reviews',
+    'approval',
+    'approvals',
+    'contract',
+    'contracts',
+    'order',
+    'orders',
+    'shipment',
+    'delivery',
+    'schedule',
+    'schedules',
+    'budget',
+    'budgets',
+    'project',
+    'projects',
+    'task',
+    'tasks',
+  ],
+};
+
+/** Union of all pack terms for soft nearby-token scoring. */
+const DOMAIN_VOCABULARY: Set<string> = (() => {
+  const out = new Set<string>();
+  for (const terms of Object.values(DOMAIN_PACKS)) {
+    for (const term of terms) {
+      out.add(term.toLowerCase());
+    }
+  }
+  return out;
+})();
 
 const COMMON_CONNECTORS = new Set([
-  'and', 'or', 'but', 'if', 'because', 'when', 'while', 'before', 'after',
-  'unless', 'until', 'whether', 'that',
+  'and',
+  'or',
+  'but',
+  'if',
+  'because',
+  'when',
+  'while',
+  'before',
+  'after',
+  'unless',
+  'until',
+  'whether',
+  'that',
 ]);
 
 const QUESTION_WORDS = new Set([
-  'what', 'when', 'where', 'who', 'why', 'how',
+  'what',
+  'when',
+  'where',
+  'who',
+  'why',
+  'how',
 ]);
 
 const COGNITIVE_VERBS = new Set([
-  'check', 'see', 'know', 'confirm', 'determine', 'find', 'decide',
-  'verify', 'establish', 'ask', 'learn',
+  'check',
+  'see',
+  'know',
+  'confirm',
+  'determine',
+  'find',
+  'decide',
+  'verify',
+  'establish',
+  'ask',
+  'learn',
 ]);
 
 const TEMPORAL_WORDS = new Set([
-  'today', 'tomorrow', 'yesterday', 'monday', 'tuesday', 'wednesday',
-  'thursday', 'friday', 'saturday', 'sunday', 'tonight', 'morning',
-  'afternoon', 'evening', 'night', 'week', 'month', 'year', 'later',
-  'soon', 'next', 'last',
+  'today',
+  'tomorrow',
+  'yesterday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+  'tonight',
+  'morning',
+  'afternoon',
+  'evening',
+  'night',
+  'week',
+  'month',
+  'year',
+  'later',
+  'soon',
+  'next',
+  'last',
 ]);
 
 function normaliseWord(word: string): string {
@@ -130,8 +387,8 @@ function wordsBefore(tokens: string[], index: number, distance: number): string[
   return tokens.slice(Math.max(0, index - distance), index);
 }
 
-function wordsAfter(tokens: string[], index: number, distance: number): string[] {
-  return tokens.slice(index + 1, Math.min(tokens.length, index + 1 + distance));
+function isDomainTerm(word: string): boolean {
+  return DOMAIN_VOCABULARY.has(normaliseWord(word));
 }
 
 function hasCognitiveVerbBeforeClause(
@@ -163,7 +420,8 @@ function hasFollowingClause(tokens: string[], index: number): boolean {
     return true;
   }
   if (QUESTION_WORDS.has(next)) return true;
-  if (DOMAIN_VOCABULARY.has(next)) return true;
+  // Soft: any pack noun can open a practical clause
+  if (isDomainTerm(next)) return true;
   return false;
 }
 
@@ -245,7 +503,7 @@ function scoreCandidate(
       score += 0.04;
       reasons.push('weather_after_check');
     }
-    if (hasFollowingClause(tokens, index) && DOMAIN_VOCABULARY.has(next)) {
+    if (hasFollowingClause(tokens, index) && isDomainTerm(next)) {
       score -= 0.12;
       reasons.push('weather_domain_clause_conflict');
     }
@@ -288,13 +546,29 @@ function scoreCandidate(
   }
 
   if (word === 'to') {
-    if (['check', 'call', 'send', 'email', 'inspect', 'confirm', 'see', 'verify', 'finish', 'order'].includes(next)) {
+    if (
+      [
+        'check',
+        'call',
+        'send',
+        'email',
+        'inspect',
+        'confirm',
+        'see',
+        'verify',
+        'finish',
+        'order',
+      ].includes(next)
+    ) {
       score += 0.15;
       reasons.push('to_infinitive');
     }
   }
   if (word === 'too') {
-    if (['much', 'many', 'late', 'early', 'big', 'small', 'high', 'low'].includes(next) || previous === 'way') {
+    if (
+      ['much', 'many', 'late', 'early', 'big', 'small', 'high', 'low'].includes(next) ||
+      previous === 'way'
+    ) {
       score += 0.15;
       reasons.push('too_degree');
     }
@@ -304,7 +578,10 @@ function scoreCandidate(
     reasons.push('two_quantity');
   }
 
-  if (word === 'than' && (previous === 'more' || previous === 'less' || previous === 'better' || previous === 'worse')) {
+  if (
+    word === 'than' &&
+    (previous === 'more' || previous === 'less' || previous === 'better' || previous === 'worse')
+  ) {
     score += 0.18;
     reasons.push('than_comparative');
   }
@@ -313,7 +590,8 @@ function scoreCandidate(
     reasons.push('then_sequence');
   }
 
-  if (DOMAIN_VOCABULARY.has(next) || DOMAIN_VOCABULARY.has(previous)) {
+  // Soft domain pack nudge only — never required for a repair to fire.
+  if (isDomainTerm(next) || isDomainTerm(previous)) {
     score += 0.03;
     reasons.push('domain_vocabulary');
   }
@@ -402,13 +680,9 @@ export function repairTranscript(
     const occurrence = seenOccurrences.get(lower) ?? 0;
     seenOccurrences.set(lower, occurrence + 1);
 
-    const candidates = [
-      ...pairFor(lower),
-      ...learnedCandidates(lower, options?.model),
-    ].filter(
+    const candidates = [...pairFor(lower), ...learnedCandidates(lower, options?.model)].filter(
       (value, candidateIndex, values) =>
-        values.findIndex((v) => normaliseWord(v) === normaliseWord(value)) ===
-        candidateIndex
+        values.findIndex((v) => normaliseWord(v) === normaliseWord(value)) === candidateIndex
     );
 
     if (!candidates.length) continue;
