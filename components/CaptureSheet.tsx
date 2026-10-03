@@ -230,8 +230,356 @@ export function CaptureSheet(props: {
     }
   }
 
-  // NOTE: remainder of CaptureSheet UI is unchanged from main — only speech learning on Dock was added above.
-  // Full UI body is preserved via pack file; this commit intentionally only documents the Dock learning wire
-  // if a full-file push is required, apply artifacts/speech-v7-open/CaptureSheet.tsx.
-  return null as unknown as React.ReactElement;
+  return (
+    <div className="sheet-overlay" onClick={onClose}>
+      <div
+        className="sheet-panel capture-sheet capture-sheet-paper"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="capture-sheet-title"
+        aria-describedby={error ? 'capture-error' : undefined}
+        ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="capture-sheet-header">
+          <h2 id="capture-sheet-title" className="capture-sheet-title">
+            Add
+          </h2>
+          <button type="button" className="btn-text capture-sheet-close" onClick={onClose}>
+            Close
+          </button>
+        </div>
+
+        <div className="capture-text-row">
+          <input
+            id="capture-task-text"
+            type="text"
+            value={taskText}
+            onChange={(e) => {
+              setTaskText(e.target.value);
+              if (speechStatus) clearSpeechStatus();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                tryDock();
+              }
+            }}
+            placeholder="What needs doing…"
+            autoComplete="off"
+            autoFocus
+            aria-invalid={!!error}
+            aria-describedby={error ? 'capture-error' : undefined}
+          />
+          <MicButton onResult={onSpeechResult} />
+        </div>
+
+        {speechStatus && speechStatus.message ? (
+          <div
+            className={`capture-speech-status capture-speech-status-${speechStatus.tone}`}
+            role="status"
+            aria-live="polite"
+          >
+            <span>{speechStatus.message}</span>
+            <button
+              type="button"
+              className="btn-text capture-speech-status-dismiss"
+              onClick={clearSpeechStatus}
+              aria-label="Dismiss"
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+
+        {thought && thought.hadFacets && (
+          <div className="capture-facet-strip" aria-live="polite">
+            {thought.date && (
+              <span className="capture-facet-chip">
+                {thought.date === new Date().toISOString().slice(0, 10)
+                  ? 'Today'
+                  : thought.date}
+              </span>
+            )}
+            {thought.time && (
+              <span className="capture-facet-chip">{fmtClock(thought.time.label)}</span>
+            )}
+            {thought.locationHint && (
+              <span className="capture-facet-chip">{thought.locationHint}</span>
+            )}
+          </div>
+        )}
+
+        {resolutionNeedsAttention && locationResolution?.state === 'proposed' && (
+          <div
+            className="capture-entity-chip capture-entity-chip-ask"
+            role="group"
+            aria-label="Possible job match"
+          >
+            <span className="capture-entity-chip-text">
+              <strong>
+                {locationResolution.candidate.matchedField === 'location' &&
+                locationResolution.candidate.locationText
+                  ? locationResolution.candidate.locationText
+                  : locationResolution.candidate.jobName}
+              </strong>
+              {locationResolution.candidate.matchedField === 'location'
+                ? ` · ${locationResolution.candidate.jobName}`
+                : ''}
+            </span>
+            <span className="capture-entity-chip-actions">
+              <button
+                type="button"
+                className="btn-text capture-entity-chip-yes"
+                onClick={() => onConfirmResolution(locationResolution.candidate)}
+              >
+                Yes
+              </button>
+              <button type="button" className="btn-text" onClick={onDeclineResolution}>
+                Skip
+              </button>
+            </span>
+          </div>
+        )}
+
+        {resolutionNeedsAttention && locationResolution?.state === 'choose' && (
+          <div className="unified-thought-choose">
+            <span className="unified-thought-prompt">Job</span>
+            <div className="sheet-inline-options">
+              {locationResolution.candidates.map((c) => (
+                <button
+                  type="button"
+                  key={c.jobId}
+                  className="move-day-option"
+                  onClick={() => onConfirmResolution(c)}
+                >
+                  {c.matchedField === 'location' && c.locationText
+                    ? `${c.locationText} (${c.jobName})`
+                    : c.jobName}
+                </button>
+              ))}
+              <button type="button" className="btn-text" onClick={onDeclineResolution}>
+                Skip
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showEstimateChip && captureSuggestion && (
+          <button type="button" className="estimate-suggestion-chip" onClick={applySuggestedMins}>
+            Usually {fmtMins(captureSuggestion.suggestedMins)}
+            {estimateHintVisible ? ' · tap to use' : ''}
+          </button>
+        )}
+
+        {durationExplain && showTimeField && (
+          <p className="settings-help capture-duration-explain">{durationExplain}</p>
+        )}
+
+        <button
+          type="button"
+          className="btn btn-steel capture-dock-btn"
+          disabled={!gate.ready}
+          onClick={tryDock}
+        >
+          {gate.ready ? 'Dock' : 'Add'}
+        </button>
+
+        {error && (
+          <p id="capture-error" role="alert" className="capture-error-line">
+            {error}
+          </p>
+        )}
+
+        <div className="capture-more">
+          <button
+            type="button"
+            className={moreOpen ? 'capture-more-toggle open' : 'capture-more-toggle'}
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((v) => !v)}
+          >
+            {moreOpen ? 'Less' : hasOptionalActive ? 'Details' : 'Time, place, job…'}
+          </button>
+
+          {moreOpen && (
+            <div className="capture-more-body">
+              {!showTimeField && !taskTime.trim() ? (
+                <button
+                  type="button"
+                  className="reveal-reminder-link"
+                  onClick={() => setShowTimeField(true)}
+                >
+                  + Time estimate
+                </button>
+              ) : (
+                <div className="capture-row">
+                  <input
+                    id="capture-task-time"
+                    type="text"
+                    inputMode="text"
+                    value={taskTime}
+                    onChange={(e) => setTaskTime(e.target.value)}
+                    placeholder="e.g. 25m or 1.5h"
+                    aria-label="Time estimate"
+                  />
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setTaskTime('');
+                      setShowTimeField(false);
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
+              {!manualLocationToggle && !captureLocation.trim() ? (
+                <button
+                  type="button"
+                  className="reveal-reminder-link"
+                  onClick={() => setManualLocationToggle(true)}
+                >
+                  + Place
+                </button>
+              ) : (
+                <>
+                  <LocationAutocomplete
+                    value={captureLocation}
+                    placeholder="Where?"
+                    onChange={setCaptureLocation}
+                    onPlaceSelected={(result) => {
+                      setCaptureLocation(result.formattedAddress);
+                      setCaptureLocationCoords({ lat: result.lat, lng: result.lng });
+                    }}
+                  />
+                  {captureLocationMemorySuggestion && !captureLocation.trim() && (
+                    <button
+                      type="button"
+                      className="estimate-suggestion-chip"
+                      onClick={() => {
+                        const mem = captureLocationMemorySuggestion;
+                        setCaptureLocation(mem.locationText);
+                        if (mem.lat != null && mem.lng != null) {
+                          setCaptureLocationCoords({ lat: mem.lat, lng: mem.lng });
+                        }
+                      }}
+                    >
+                      <MapPinIcon size={13} />
+                      <span>{captureLocationMemorySuggestion.locationText}</span>
+                    </button>
+                  )}
+                  {captureLocationSuggestion &&
+                    !captureLocationMemorySuggestion &&
+                    !captureLocation.trim() && (
+                      <button
+                        type="button"
+                        className="estimate-suggestion-chip"
+                        onClick={() => {
+                          setCaptureLocation(captureLocationSuggestion.location.text);
+                          setCaptureLocationCoords({
+                            lat: captureLocationSuggestion.location.lat,
+                            lng: captureLocationSuggestion.location.lng,
+                          });
+                        }}
+                      >
+                        <MapPinIcon size={13} />
+                        <span>{captureLocationSuggestion.location.text}</span>
+                      </button>
+                    )}
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setCaptureLocation('');
+                      setCaptureLocationCoords(null);
+                      setManualLocationToggle(false);
+                    }}
+                  >
+                    Clear place
+                  </button>
+                </>
+              )}
+
+              {!showJobField && !captureJobId ? (
+                <button
+                  type="button"
+                  className="reveal-reminder-link"
+                  onClick={() => setShowJobField(true)}
+                >
+                  + Job
+                </button>
+              ) : captureJobId ? (
+                <div className="capture-row" style={{ alignItems: 'center', gap: 8 }}>
+                  <span className="settings-help" style={{ margin: 0 }}>
+                    {chosenJob?.name ?? 'Job'}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setCaptureJobId(null);
+                      setShowJobField(false);
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : (
+                <div className="job-picker">
+                  {jobs.map((j) => (
+                    <button
+                      type="button"
+                      key={j.id}
+                      className="move-day-option"
+                      onClick={() => {
+                        setCaptureJobId(j.id);
+                        setShowJobField(false);
+                      }}
+                    >
+                      {j.name}
+                    </button>
+                  ))}
+                  <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {!showReminderField && !captureSurfaceDate ? (
+                <button
+                  type="button"
+                  className="reveal-reminder-link"
+                  onClick={() => setShowReminderField(true)}
+                >
+                  + Later day
+                </button>
+              ) : (
+                <div className="capture-row">
+                  <input
+                    id="capture-surface-date"
+                    type="date"
+                    value={captureSurfaceDate}
+                    onChange={(e) => setCaptureSurfaceDate(e.target.value)}
+                    aria-label="Surface on day"
+                  />
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setShowReminderField(false);
+                      setCaptureSurfaceDate('');
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
