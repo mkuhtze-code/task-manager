@@ -145,3 +145,9 @@ export type {
   CaptureUiMode,
   ProcessCaptureSpeechInput,
 } from './captureAdapter';
+
+export {
+  loadSpeechLanguageModel,
+  saveSpeechLanguageModel,
+  clearSpeechLanguageModel,
+} from './speechModelStore';
