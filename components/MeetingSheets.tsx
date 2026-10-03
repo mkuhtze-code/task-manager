@@ -18,91 +18,113 @@ import { useDialogA11y } from '@/hooks/useDialogA11y';
 export type NewMeetingPayload = {
   text: string;
   durationMins: number;
-  location: string;
-  locationCoords: { lat: number; lng: number } | null;
+  startTime: string | null;
   jobId: string | null;
-  startAt: string | null;
+  locationText: string | null;
+  lat: number | null;
+  lng: number | null;
   notes: string;
 };
 
 export function NewMeetingSheet(props: {
+  saving: boolean;
   jobs: Job[];
-  onSave: (payload: NewMeetingPayload) => void;
   onClose: () => void;
-  initialText?: string;
-  initialJobId?: string | null;
-  locationResolution?: { state: string; candidate?: JobLocationCandidate; candidates?: JobLocationCandidate[] } | null;
-  onConfirmResolution?: (c: JobLocationCandidate) => void;
-  onDeclineResolution?: () => void;
+  onCreate: (payload: NewMeetingPayload) => void;
 }) {
-  const {
-    jobs,
-    onSave,
-    onClose,
-    initialText = '',
-    initialJobId = null,
-  } = props;
-
-  const [text, setText] = useState(initialText);
-  const [duration, setDuration] = useState('');
-  const [location, setLocation] = useState('');
-  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [jobId, setJobId] = useState<string | null>(initialJobId);
-  const [date, setDate] = useState(localDateStr());
-  const [time, setTime] = useState('');
-  const [notes, setNotes] = useState('');
+  const { saving, jobs, onClose, onCreate } = props;
   const dialogRef = useDialogA11y(onClose);
+  const today = localDateStr(new Date());
 
+  const [text, setText] = useState('');
+  const [durationInput, setDurationInput] = useState('30m');
+  const [dateInput, setDateInput] = useState(today);
+  const [timeInput, setTimeInput] = useState('');
+  const [notes, setNotes] = useState('');
+  const [locationText, setLocationText] = useState('');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [showJobField, setShowJobField] = useState(false);
+  const [declinedResolution, setDeclinedResolution] = useState(false);
+  const [error, setError] = useState('');
+
+  const preview = useMemo(() => parseMeetingInput(text, jobs, today), [text, jobs, today]);
+
+  const prefilled = useRef({ date: false, time: false });
   useEffect(() => {
-    if (initialText) setText(initialText);
-  }, [initialText]);
+    if (!preview.date || prefilled.current.date) return;
+    prefilled.current.date = true;
+    setDateInput(preview.date);
+    if (!preview.clock) return;
+    prefilled.current.time = true;
+    setTimeInput(`${String(preview.clock.hour).padStart(2, '0')}:${String(preview.clock.minute).padStart(2, '0')}`);
+  }, [preview.date, preview.clock]);
 
-  const preview = useMemo(() => parseMeetingInput(text), [text]);
+  const resolutionVisible = preview.hadFacets && (preview.resolution.state !== 'none' || preview.date || preview.clock || preview.locationHint);
+  const proposal = preview.resolution.state === 'proposed' ? preview.resolution.candidate : null;
+  const choices = preview.resolution.state === 'choose' ? preview.resolution.candidates : [];
+
+  function confirmResolution(c: JobLocationCandidate) {
+    setJobId(c.jobId);
+    setDeclinedResolution(true);
+    if (c.matchedField === 'location' && c.locationText) {
+      setLocationText(c.locationText);
+      setCoords(c.lat != null && c.lng != null ? { lat: c.lat, lng: c.lng } : null);
+    }
+  }
+
+  function chosenJob() {
+    return jobs.find((j) => j.id === jobId) ?? null;
+  }
 
   function submit() {
-    const durationMins = parseMins(duration) || 30;
-    const startAt =
-      date && time
-        ? combineDateAndTime(date, parseTimeInput(time) || time)
-        : date
-          ? combineDateAndTime(date, '09:00')
-          : null;
-    onSave({
-      text: text.trim() || preview.title || 'Meeting',
-      durationMins,
-      location: location.trim(),
-      locationCoords,
+    const title = text.trim();
+    if (title.length === 0) {
+      setError('Describe the meeting');
+      return;
+    }
+    if (!dateInput) {
+      setError('Pick a date');
+      return;
+    }
+    setError('');
+    const mins = parseMins(durationInput) ?? 30;
+    const clock = parseTimeInput(timeInput);
+    onCreate({
+      text: title,
+      durationMins: mins,
+      startTime: combineDateAndTime(dateInput, clock),
       jobId,
-      startAt,
+      locationText: locationText.trim() || null,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
       notes: notes.trim(),
     });
   }
 
+  const job = chosenJob();
+
   return (
-    <div className="sheet-overlay" onClick={onClose}>
-      <div
-        className="sheet-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="new-meeting-title"
-        ref={dialogRef}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sheet-header">
-          <h2 id="new-meeting-title">New meeting</h2>
-          <button type="button" className="btn-text" onClick={onClose} aria-label="Close">
-            <CloseIcon size={18} />
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div ref={dialogRef} className="capture-sheet new-meeting-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Record a meeting">
+        <div className="task-detail-header" style={{ marginBottom: 0 }}>
+          <div className="settings-panel-title">Record a meeting</div>
+          <button className="gear-btn" onClick={onClose} aria-label="Close">
+            <CloseIcon />
           </button>
         </div>
+
+        <p className="job-detail-kicker">Meeting</p>
+        <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px', lineHeight: 1.4 }}>
+          Give this meeting a starting point.
+        </p>
 
         <div className="capture-text-row">
           <input
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submit();
-            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
             id="new-meeting-text"
             aria-label="Meeting description"
             placeholder="e.g. Meeting with Tim at Belgium Rd tomorrow at 2pm"
@@ -117,49 +139,137 @@ export function NewMeetingSheet(props: {
           />
         </div>
 
-        <label className="settings-label">
-          Duration
-          <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="30m" />
-        </label>
+        {resolutionVisible && (
+          <div className="unified-thought-panel">
+            <div className="unified-thought-summary">
+              {preview.title && preview.title.length > 0 && (
+                <span className="unified-thought-intent">As: <strong>{preview.title}</strong></span>
+              )}
+              <span className="unified-thought-facets">
+                {preview.date && <span className="unified-thought-chip">📅 {preview.date}</span>}
+                {preview.clock && <span className="unified-thought-chip">⏰ {preview.clock.label}</span>}
+                {preview.locationHint && <span className="unified-thought-chip">📍 {preview.locationHint}</span>}
+              </span>
+            </div>
 
-        <label className="settings-label">
-          Location
-          <LocationAutocomplete
-            value={location}
-            onChange={setLocation}
-            onPlaceSelected={(r) => {
-              setLocation(r.formattedAddress);
-              setLocationCoords({ lat: r.lat, lng: r.lng });
-            }}
-            placeholder="Where?"
-          />
-        </label>
+            {!declinedResolution && proposal && (
+              <div className="unified-thought-confirm">
+                <span className="unified-thought-prompt">
+                  Do you mean{' '}
+                  <strong>
+                    {proposal.matchedField === 'location' && proposal.locationText
+                      ? proposal.locationText
+                      : proposal.jobName}
+                  </strong>
+                  {proposal.matchedField === 'location' ? ` (${proposal.jobName})` : ''}?
+                </span>
+                <div className="unified-thought-actions">
+                  <button
+                    type="button"
+                    className="btn btn-steel"
+                    style={{ flex: 1 }}
+                    onClick={() => confirmResolution(proposal)}
+                  >
+                    Yes
+                  </button>
+                  <button type="button" className="btn-text" onClick={() => setDeclinedResolution(true)}>
+                    Not this
+                  </button>
+                </div>
+              </div>
+            )}
 
-        <label className="settings-label">
-          Job
-          <select value={jobId ?? ''} onChange={(e) => setJobId(e.target.value || null)}>
-            <option value="">None</option>
-            {jobs.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            {!declinedResolution && choices.length > 0 && (
+              <div className="unified-thought-choose">
+                <span className="unified-thought-prompt">Which one?</span>
+                <div className="sheet-inline-options">
+                  {choices.map((c) => (
+                    <button
+                      type="button"
+                      key={c.jobId}
+                      className="move-day-option"
+                      onClick={() => confirmResolution(c)}
+                    >
+                      {c.matchedField === 'location' && c.locationText ? `${c.locationText} (${c.jobName})` : c.jobName}
+                    </button>
+                  ))}
+                  <button type="button" className="btn-text" onClick={() => setDeclinedResolution(true)}>
+                    Not here
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
-        <div className="capture-row">
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date" />
-          <input type="text" value={time} onChange={(e) => setTime(e.target.value)} placeholder="Time" aria-label="Time" />
+        <div className="reminder-date-row" style={{ flexWrap: 'wrap', gap: 8 }}>
+          <input type="date" value={dateInput} onChange={(e) => setDateInput(e.target.value)} aria-label="Meeting date" />
+          <input type="time" value={timeInput} onChange={(e) => { setTimeInput(e.target.value); prefilled.current.time = true; }} aria-label="Meeting time" />
+          <input type="text" value={durationInput} onChange={(e) => setDurationInput(e.target.value)} placeholder="30m" style={{ width: 70 }} aria-label="Duration" />
         </div>
 
-        <label className="settings-label">
-          Notes
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything jotted down before or during the meeting" rows={3} style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
-        </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="settings-label">Where (optional)</span>
+          <LocationAutocomplete
+            value={locationText}
+            placeholder="Where does the meeting happen?"
+            onChange={(t) => setLocationText(t)}
+            onPlaceSelected={(r) => {
+              setLocationText(r.formattedAddress);
+              setCoords({ lat: r.lat, lng: r.lng });
+            }}
+          />
+        </div>
 
-        <button type="button" className="btn btn-steel" onClick={submit}>
-          Save meeting
-        </button>
+        {job ? (
+          <div className="reminder-date-row">
+            <span className="settings-help">About <strong>{job.name}</strong></span>
+            <button type="button" className="btn-text" onClick={() => { setJobId(null); setShowJobField(false); }}>Remove</button>
+          </div>
+        ) : !showJobField ? (
+          <button type="button" className="reveal-reminder-link" onClick={() => setShowJobField(true)}>+ About a job</button>
+        ) : jobs.length === 0 ? (
+          <div className="reminder-date-row">
+            <span className="settings-help">No jobs yet — create one from the Jobs tab</span>
+            <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
+          </div>
+        ) : (
+          <div className="job-picker">
+            {jobs.map((j) => (
+              <button type="button" key={j.id} className="move-day-option" onClick={() => { setJobId(j.id); setShowJobField(false); }}>{j.name}</button>
+            ))}
+            <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="settings-label">Notes (optional — raw capture)</span>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything jotted down before or during the meeting" rows={3} style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
+        </div>
+
+        {(dateInput || job || text.trim()) && (
+          <div className="stop-context-strip" style={{ marginTop: 4 }}>
+            <div className="stop-context-line">
+              <span className="stop-context-kicker">Ready</span>
+              <span>
+                {dateInput ? dateInput : 'Pick a date'}
+                {timeInput ? ` · ${timeInput}` : ''}
+                {` · ${parseMins(durationInput) ?? 30}m`}
+                {job ? ` · ${job.name}` : ''}
+                {' · notes & photos after save'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <p id="new-meeting-error" role="alert" style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>
+        )}
+
+        <div className="capture-row">
+          <button className="btn btn-steel" style={{ flex: 1 }} onClick={submit} disabled={saving}>{saving ? 'Saving…' : 'Add meeting'}</button>
+          <button className="btn-text" onClick={onClose}>Cancel</button>
+        </div>
       </div>
     </div>
   );
@@ -171,43 +281,83 @@ export type CaptureSpeaker = 'customer' | 'us' | 'note';
 
 export type ObservationCaptureDraft = {
   text: string;
-  speaker: CaptureSpeaker;
+  media: CapturedMedia[];
+  speaker?: CaptureSpeaker;
 };
 
 export function ObservationCapture(props: {
+  saving: boolean;
   text: string;
-  onTextChange: (v: string) => void;
-  speaker: CaptureSpeaker;
-  onSpeakerChange: (s: CaptureSpeaker) => void;
+  media: CapturedMedia[];
+  recording: boolean;
+  captureError: string | null;
+  onTextChange: (text: string) => void;
   onAddPhoto: () => void;
   onToggleVoice: () => void;
-  recording: boolean;
-  saving: boolean;
-  captureError: string | null;
-  onSave: () => void;
-  onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
-  placeholder?: string;
+  onRemoveMedia: (index: number) => void;
+  onSave: (draft: ObservationCaptureDraft) => void;
+  onCancel: () => void;
+  defaultSpeaker?: CaptureSpeaker;
 }) {
   const {
+    saving,
     text,
+    media,
+    recording,
+    captureError,
     onTextChange,
-    speaker,
-    onSpeakerChange,
     onAddPhoto,
     onToggleVoice,
-    recording,
-    saving,
-    captureError,
+    onRemoveMedia,
     onSave,
-    onKeyDown,
-    placeholder = 'What was said or seen…',
+    onCancel,
+    defaultSpeaker = 'customer',
   } = props;
 
-  const textRef = useRef<HTMLTextAreaElement>(null);
+  const [speaker, setSpeaker] = useState<CaptureSpeaker>(defaultSpeaker);
+  const textRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const next = Math.min(Math.max(el.scrollHeight, 72), 240);
+    el.style.height = `${next}px`;
+  }, [text]);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    const t = window.setTimeout(() => {
+      try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  const canSave = !saving && !recording && (text.trim().length > 0 || media.length > 0);
+
+  function submit() {
+    if (!canSave) return;
+    onSave({ text, media, speaker });
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      submit();
+    }
+  }
+
+  const placeholder =
+    speaker === 'customer'
+      ? 'What did the customer say or want?'
+      : speaker === 'us'
+        ? 'What did you say, commit to, or need to check?'
+        : 'What did you see, hear, or notice?';
 
   return (
     <div className="observation-capture" role="region" aria-label="Capture meeting note">
-      <div className="observation-speaker-row" role="group" aria-label="Speaker">
+      <div className="observation-capture-speaker" role="group" aria-label="Who said this">
         {(
           [
             { id: 'customer' as const, label: 'Customer' },
@@ -218,10 +368,14 @@ export function ObservationCapture(props: {
           <button
             key={opt.id}
             type="button"
-            className={speaker === opt.id ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
+            className={
+              speaker === opt.id
+                ? 'meeting-pill meeting-pill--primary observation-speaker-chip'
+                : 'meeting-pill observation-speaker-chip'
+            }
             aria-pressed={speaker === opt.id}
             disabled={saving}
-            onClick={() => onSpeakerChange(opt.id)}
+            onClick={() => setSpeaker(opt.id)}
           >
             {opt.label}
           </button>
@@ -242,9 +396,7 @@ export function ObservationCapture(props: {
 
       <div className="observation-capture-toolbar">
         <div className="observation-capture-tools">
-          <button type="button" className="meeting-pill" onClick={onAddPhoto} disabled={saving}>
-            + Photo
-          </button>
+          <button type="button" className="meeting-pill" onClick={onAddPhoto} disabled={saving}>+ Photo</button>
           <button
             type="button"
             className={recording ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
@@ -261,14 +413,28 @@ export function ObservationCapture(props: {
       </div>
 
       {captureError && (
-        <p className="meeting-capture-error" role="alert" id="meeting-capture-error">
-          {captureError}
-        </p>
+        <p className="meeting-capture-error" role="alert" id="meeting-capture-error">{captureError}</p>
       )}
 
-      <button type="button" className="btn btn-steel" onClick={onSave} disabled={saving}>
-        Save note
-      </button>
+      {media.length > 0 && (
+        <div className="pending-media" aria-label="Attached media">
+          {media.map((m, i) => (
+            <div key={m.uri} className="pending-media-item">
+              {m.mediaType === 'audio' ? <AudioNote uri={m.uri} /> : <PhotoImage uri={m.uri} alt="Captured photo" />}
+              <button type="button" aria-label="Remove" className="pending-media-remove" onClick={() => onRemoveMedia(i)}>
+                <CloseIcon size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="observation-capture-footer">
+        <button type="button" className="meeting-pill meeting-pill--primary" onClick={submit} disabled={!canSave}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" className="meeting-pill" onClick={onCancel} disabled={saving}>Cancel</button>
+      </div>
     </div>
   );
 }
