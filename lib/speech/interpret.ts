@@ -1,8 +1,6 @@
 /**
  * Speech → structured communication signals.
- * Deterministic. Reuses communication.understand where helpful.
- * Semantic layer composes multi-act meaning and gates false tasks.
- * Optional understandingContext links entities from Dokkit state.
+ * Deterministic. Semantic layer composes multi-act meaning and gates false tasks.
  */
 
 import { understand } from '@/lib/communication/understand';
@@ -20,7 +18,10 @@ import type {
   TemporalReference,
   UrgencySignal,
   Confidence,
+  PersonalLanguageModel,
+  CorrectionSpan,
 } from './types';
+import type { SpeechUnderstandingContext } from './semantic/types';
 
 function makeId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -36,7 +37,12 @@ const INTENT_PATTERNS: { re: RegExp; intent: SpeechIntent }[] = [
   { re: /\b(?:cancel|scrub|drop\s+that)\b/i, intent: 'cancel' },
   { re: /\b(?:done|finished|complete(?:d)?|mark\s+(?:it\s+)?done)\b/i, intent: 'complete' },
   { re: /\b(?:create\s+(?:a\s+)?(?:job|task)|new\s+job|add\s+(?:a\s+)?task)\b/i, intent: 'create' },
-  { re: /\b(?:call|email|text|message|meet|send|check|inspect|chase|quote|invoice|order|pick\s+up|follow\s+up)\b/i, intent: 'create' },
+  // check / inspect / trades verbs — without these, "check on Monday…" stays intent:unknown
+  // and was forced into ASK_CLARIFICATION via low interpretation confidence.
+  {
+    re: /\b(?:call|email|text|message|meet|send|check|inspect|chase|quote|invoice|order|pick\s+up|follow\s+up)\b/i,
+    intent: 'create',
+  },
   { re: /\b(?:i\s+need\s+to|need\s+to|have\s+to|got\s+to|gotta)\b/i, intent: 'plan' },
   { re: /\b(?:can\s+you|could\s+you|what(?:'s|\s+is)|how\s+(?:do|does))\b/i, intent: 'ask' },
   { re: /\b(?:note|observe|noticed|saw\s+that)\b/i, intent: 'observe' },
@@ -45,14 +51,17 @@ const INTENT_PATTERNS: { re: RegExp; intent: SpeechIntent }[] = [
 export type InterpretSpeechOptions = {
   todayIso?: string;
   profile?: PersonalCommunicationProfile | null;
-  languageModel?: import('./types').PersonalLanguageModel | null;
-  understandingContext?: import('./semantic/types').SpeechUnderstandingContext | null;
+  languageModel?: PersonalLanguageModel | null;
+  understandingContext?: SpeechUnderstandingContext | null;
+  transcriptId?: string;
+  sessionId?: string;
 };
 
 export function interpretSpeech(
   rawText: string,
   opts?: InterpretSpeechOptions
 ): SpeechInterpretation {
+  const options = opts ?? {};
   const normalisation = normaliseSpeech(rawText ?? '');
   const text = normalisation.normalisedText || (rawText ?? '').trim();
   const reasons: string[] = [];
@@ -67,45 +76,134 @@ export function interpretSpeech(
   }
   if (intent === 'unknown') reasons.push('intent:unknown');
 
+  const profile =
+    options.profile ??
+    ({
+      userId: 'anon',
+      version: 1,
+      updatedAt: new Date().toISOString(),
+    } as PersonalCommunicationProfile);
+
+  let derived: {
+    statementType: StatementType;
+    requiresConfirmation: boolean;
+  } = { statementType: 'UNKNOWN', requiresConfirmation: false };
+  try {
+    const u = understand(text, profile);
+    derived = {
+      statementType: (u as { statementType?: StatementType }).statementType ?? 'UNKNOWN',
+      requiresConfirmation: !!(u as { requiresConfirmation?: boolean }).requiresConfirmation,
+    };
+    if (derived.statementType !== 'UNKNOWN') {
+      reasons.push(`statementType:${derived.statementType}`);
+    }
+  } catch {
+    // understand is best-effort
+  }
+
   const semantic = composeSemanticUtterance(rawText ?? '', normalisation, {
-    todayIso: opts?.todayIso,
-    understandingContext: opts?.understandingContext ?? undefined,
+    todayIso: options.todayIso,
+    understandingContext: options.understandingContext ?? undefined,
   });
 
   if (
     semantic.mustNotCreateTask &&
-    (intent === 'create' || intent === 'plan' || intent === 'remember')
+    (intent === 'create' || intent === 'plan' || intent === 'remember' || intent === 'schedule')
   ) {
-    intent = 'observe';
-    reasons.push('intent_downgraded_must_not_create');
+    if (semantic.acts.some((a) => a.kind === 'question')) {
+      intent = 'ask';
+      reasons.push('safety:intent_downgrade_question');
+    } else if (semantic.acts.some((a) => a.kind === 'observation')) {
+      intent = 'observe';
+      reasons.push('safety:intent_downgrade_observe');
+    } else if (semantic.acts.some((a) => a.kind === 'refusal' || a.polarity === 'negated')) {
+      intent = 'cancel';
+      reasons.push('safety:intent_downgrade_negation');
+    } else {
+      intent = 'unknown';
+      reasons.push('safety:intent_blocked');
+    }
   }
 
   let confidence: Confidence = normalisation.confidence;
   if (intent === 'unknown') confidence = confidence === 'high' ? 'medium' : 'low';
-  if (semantic.acts.some((a) => a.kind === 'action' && !a.blocksTaskCreation)) {
+  // Clear positive action acts must not stay confidence-starved
+  if (semantic.acts.some((a) => a.kind === 'action' && !a.blocksTaskCreation && a.polarity !== 'negated')) {
     confidence = confidence === 'low' ? 'medium' : confidence;
+    reasons.push('confidence:boost_clear_action');
   }
 
+  const hasClearAction = semantic.acts.some(
+    (a) => a.kind === 'action' && !a.blocksTaskCreation && a.polarity !== 'negated'
+  );
+  const ambiguity: AmbiguityLevel =
+    intent === 'unknown' && !hasClearAction
+      ? 'high'
+      : confidence === 'low'
+        ? 'partial'
+        : 'none';
+  if (ambiguity !== 'none') reasons.push(`ambiguity:${ambiguity}`);
+
+  const statementType: StatementType =
+    derived.statementType !== 'UNKNOWN'
+      ? derived.statementType
+      : intent === 'ask'
+        ? 'QUESTION'
+        : intent === 'complete'
+          ? 'STATUS_CHANGE'
+          : intent === 'observe'
+            ? 'OBSERVATION'
+            : intent === 'create' || intent === 'remember' || intent === 'plan'
+              ? 'TASK'
+              : hasClearAction
+                ? 'TASK'
+                : 'UNKNOWN';
+
+  const actionAct = semantic.acts.find(
+    (a) => a.kind === 'action' && !a.blocksTaskCreation && a.polarity !== 'negated'
+  );
   const surfaceSummary =
-    semantic.acts.find((a) => a.kind === 'action' && !a.blocksTaskCreation)?.rawSpan?.slice(0, 120) ||
+    actionAct?.rawSpan?.slice(0, 120) ||
+    actionAct?.objectText ||
     text.slice(0, 120);
+
+  const requiresConfirmation =
+    ambiguity === 'high' ||
+    (!hasClearAction && confidence === 'low') ||
+    (intent === 'unknown' && !hasClearAction) ||
+    derived.requiresConfirmation ||
+    semantic.requiresConfirmation ||
+    semantic.mustNotCreateTask ||
+    !canProposeTask(semantic);
+
+  const entities: EntityMention[] = [];
+  const constraints: ConstraintSignal[] = [];
+  const certainty: SpeechCertainty = 'unknown';
+  const commitmentStrength: CommitmentStrength = hasClearAction ? 'moderate' : 'none';
+  const urgency: UrgencySignal = 'unknown';
+  const temporalReferences: TemporalReference[] = normalisation.temporals ?? [];
+  const corrections: CorrectionSpan[] = normalisation.corrections ?? [];
 
   return {
     id: makeId(),
-    originalTranscript: rawText ?? '',
+    transcriptId: options.transcriptId,
+    sessionId: options.sessionId,
+    originalTranscript: normalisation.originalText || (rawText ?? ''),
     normalisedText: text,
     intent,
-    commitmentStrength: 'unknown',
-    urgency: 'none',
-    constraints: [],
-    certainty: 'unknown',
-    entities: [],
-    temporals: normalisation.temporals ?? [],
-    ambiguity: intent === 'unknown' ? 'high' : 'low',
+    statementType,
+    certainty,
+    commitmentStrength,
+    urgency,
+    constraints,
+    temporalReferences,
+    entities,
+    corrections,
+    ambiguity,
     surfaceSummary,
     confidence,
     reasons,
-    requiresConfirmation: true,
+    requiresConfirmation,
     semantic,
     mustNotCreateTask: semantic.mustNotCreateTask,
     createdAt: new Date().toISOString(),
