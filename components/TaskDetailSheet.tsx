@@ -11,6 +11,8 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
+import { textForCaptureField } from '@/hooks/useCaptureSpeech';
+import { processCaptureSpeech } from '@/lib/speech';
 import {
   CheckIcon,
   CloseIcon,
@@ -602,13 +604,15 @@ export function TaskDetailSheet(props: {
 
           <MicButton
             size="small"
-            onResult={(spoken) =>
+            onResult={(spoken) => {
+              const result = processCaptureSpeech({ text: spoken });
+              const next = textForCaptureField(result);
               setSubDraftText(
                 subDraftText.trim().length > 0
-                  ? `${subDraftText.trim()} ${spoken}`
-                  : spoken
-              )
-            }
+                  ? `${subDraftText.trim()} ${next}`
+                  : next
+              );
+            }}
           />
 
           <input
