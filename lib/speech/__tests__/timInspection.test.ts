@@ -18,15 +18,15 @@ describe('TIM_INSPECTION_GATE plan graph', () => {
     const open = u.acts.filter(
       (a) => a.kind === 'action' && a.polarity !== 'negated' && !a.blocksTaskCreation
     );
-    const callTim = open.filter(
-      (a) => a.actionVerb === 'call' && /tim/i.test(a.objectText ?? a.rawSpan)
-    );
+    const callTim = open.filter((a) => a.actionVerb === 'call' && /tim/i.test(a.objectText ?? a.rawSpan));
     expect(callTim.length).toBe(1);
     expect(
       (callTim[0].temporalRaw ?? '').toLowerCase().includes('end of the week') ||
         callTim[0].evidence.some((e) => e.signal === 'temporal_revised')
     ).toBe(true);
+    // Inspection is not a create
     expect(open.some((a) => /inspection/i.test(a.rawSpan))).toBe(false);
+    // Pickup survives
     expect(open.some((a) => a.actionVerb === 'pick' || /pick/i.test(a.rawSpan))).toBe(true);
   });
 });
