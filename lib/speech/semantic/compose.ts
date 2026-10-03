@@ -30,20 +30,25 @@ import {
 } from './types';
 
 const ACTION_VERB_RE =
-  /\b(call|email|send|meet|message|text|create|schedule|order|book|invoice|quote|chase|check|inspect|finish|complete|mark|push|postpone|cancel|delete|update|note|remind|tell|ask)\b/i;
+  /\b(call|email|send|meet|message|text|create|schedule|order|book|invoice|quote|chase|check|inspect|finish|complete|mark|push|postpone|cancel|delete|update|note|remind|tell|ask|pick|drop|collect|fetch|grab|deliver)\b/i;
 
 const REPORTED_RE = /\b([A-Z][a-z]+)\s+(?:said|says|told|tells)\b/;
 
 function splitClauses(text: string): string[] {
   const multi = extractActionClauses(text);
   if (multi.length >= 2 && multi.every((c) => c.raw.trim())) {
-    return multi.map((c) => c.raw.trim());
+    // Only reject if one clause still contains multiple sentence terminators
+    const looksGlued = multi.some(
+      (c) => (c.raw.match(/[.!?]/g) ?? []).length >= 2
+    );
+    if (!looksGlued) return multi.map((c) => c.raw.trim());
   }
   const parts = text
-    .split(/(?<=[.!?])\s+|\s+—\s+|\s+;\s+|\s+\bbut\b\s+|\s+\band\s+(?=tell\b|ask\b)/i)
+    .split(/(?<=[.!?])\s+|\s+—\s+|\s+;\s+|\s+\bbut\b\s+|\s+\band\s+(?=tell\b|ask\b)|\s*,\s*wait,?\s+|\s+\bOh,?\s+and\b\s+|\s+\bSo\s+(?:let'?s|lets)\b\s+/i)
     .map((s) => s.trim())
     .filter(Boolean);
   if (parts.length >= 2) return parts;
+  if (multi.length >= 2) return multi.map((c) => c.raw.trim());
   return text.trim() ? [text.trim()] : [];
 }
 
@@ -247,7 +252,6 @@ export function composeSemanticUtterance(
 }
 
 export function canProposeTask(u: SemanticUtterance): boolean {
-  // Act-level only: a negated sibling must not suppress an independent positive act.
   return u.acts.some(
     (a) => a.kind === 'action' && a.polarity !== 'negated' && !a.blocksTaskCreation
   );
