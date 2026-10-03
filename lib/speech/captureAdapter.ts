@@ -10,6 +10,7 @@ import {
   observeConfirmedInterpretation,
   recordSpeechCorrection,
   createSpeechLearningEvent,
+  confirmTranscriptRepairs,
 } from './learning';
 import type { SpeechUnderstandingContext } from './semantic/context';
 import type { SemanticActionOutcome, SemanticAct } from './semantic/types';
@@ -203,6 +204,15 @@ export function processCaptureSpeech(input: ProcessCaptureSpeechInput): CaptureS
   };
 }
 
+/**
+ * Dock / explicit accept after speech.
+ *
+ * Learns:
+ * - certainty / commitment phrase cues
+ * - transcript repairs with explicit-confirm strength (not weak observation)
+ *
+ * Never learns from a rejected or must-not-create path alone.
+ */
 export function confirmCaptureSpeech(
   model: PersonalLanguageModel,
   result: CaptureSpeechResult
@@ -219,7 +229,18 @@ export function confirmCaptureSpeech(
       }),
     };
   }
-  const next = observeConfirmedInterpretation(model, interpretation);
+
+  let next = observeConfirmedInterpretation(model, interpretation);
+
+  /*
+   * Dock is explicit acceptance. Repair evidence gets the stronger
+   * confirmTranscriptRepairs bump on top of the observation pass.
+   */
+  const repairs = interpretation.transcriptRepairs ?? [];
+  if (repairs.length > 0) {
+    next = confirmTranscriptRepairs(next, repairs);
+  }
+
   const event = createSpeechLearningEvent({
     userId: model.userId,
     kind: 'interpretation_confirmed',
@@ -230,8 +251,10 @@ export function confirmCaptureSpeech(
       outcome: result.outcome,
       interpretationId: result.interpretationId,
       proposalCount: result.proposals.length,
+      repairCount: repairs.length,
     },
   });
+
   return { model: next, event };
 }
 

@@ -110,4 +110,40 @@ describe('captureAdapter — learning hooks', () => {
     });
     expect(out.event.kind).toMatch(/correct/);
   });
+
+  it('Dock confirm learns transcript repairs with strong evidence', () => {
+    const model = emptyPersonalLanguageModel('u1');
+    const r = processCaptureSpeech({
+      text: 'check on Monday weather the flashing fits',
+      userId: 'u1',
+    });
+
+    const repairs = r.pipeline.interpretation?.transcriptRepairs ?? [];
+    expect(repairs.some((x) => x.original.toLowerCase() === 'weather')).toBe(true);
+
+    const { model: next, event } = confirmCaptureSpeech(model, r);
+    expect(event.kind).toBe('interpretation_confirmed');
+    expect((event.context as { repairCount?: number })?.repairCount).toBeGreaterThan(0);
+
+    const learned = next.transcriptionRepairs.find(
+      (entry) =>
+        entry.from.toLowerCase().includes('weather') &&
+        entry.to.toLowerCase().includes('whether')
+    );
+    expect(learned).toBeTruthy();
+    // observation (+1) + confirmTranscriptRepairs (+2) ≥ 3
+    expect(learned!.evidenceCount).toBeGreaterThanOrEqual(3);
+  });
+
+  it('must-not-create path can still be confirmed without forcing create learning', () => {
+    const model = emptyPersonalLanguageModel('u1');
+    const r = processCaptureSpeech({
+      text: 'Maybe I should call the supplier.',
+      userId: 'u1',
+    });
+    expect(captureMustNotCreate(r)).toBe(true);
+    const { model: next, event } = confirmCaptureSpeech(model, r);
+    expect(event.kind).toBe('interpretation_confirmed');
+    expect(next.userId).toBe('u1');
+  });
 });

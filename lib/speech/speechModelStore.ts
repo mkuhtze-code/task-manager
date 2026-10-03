@@ -9,7 +9,7 @@ import { emptyPersonalLanguageModel } from './types';
 const KEY_PREFIX = 'dokkit:speechLanguageModel:';
 
 function storageKey(userId: string): string {
-  return `\( {KEY_PREFIX} \){userId || 'anon'}`;
+  return `${KEY_PREFIX}${userId || 'anon'}`;
 }
 
 export function loadSpeechLanguageModel(userId: string): PersonalLanguageModel {
@@ -27,6 +27,20 @@ export function loadSpeechLanguageModel(userId: string): PersonalLanguageModel {
       ...emptyPersonalLanguageModel(userId || 'anon'),
       ...parsed,
       userId: userId || parsed.userId || 'anon',
+      vocabulary: Array.isArray(parsed.vocabulary) ? parsed.vocabulary : [],
+      transcriptionRepairs: Array.isArray(parsed.transcriptionRepairs)
+        ? parsed.transcriptionRepairs
+        : [],
+      taskIntroductionPhrases: Array.isArray(parsed.taskIntroductionPhrases)
+        ? parsed.taskIntroductionPhrases
+        : [],
+      certaintyPhrases: Array.isArray(parsed.certaintyPhrases)
+        ? parsed.certaintyPhrases
+        : [],
+      commitmentPhrases: Array.isArray(parsed.commitmentPhrases)
+        ? parsed.commitmentPhrases
+        : [],
+      nameAliases: Array.isArray(parsed.nameAliases) ? parsed.nameAliases : [],
     };
   } catch {
     return emptyPersonalLanguageModel(userId || 'anon');
@@ -36,7 +50,13 @@ export function loadSpeechLanguageModel(userId: string): PersonalLanguageModel {
 export function saveSpeechLanguageModel(model: PersonalLanguageModel): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
-    window.localStorage.setItem(storageKey(model.userId || 'anon'), JSON.stringify(model));
+    window.localStorage.setItem(
+      storageKey(model.userId || 'anon'),
+      JSON.stringify({
+        ...model,
+        updatedAt: model.updatedAt || new Date().toISOString(),
+      })
+    );
   } catch {
     // Quota / private mode — learning is best-effort
   }
