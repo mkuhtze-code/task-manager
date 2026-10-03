@@ -94,14 +94,16 @@ export type UseCaptureSpeechOptions = {
 };
 
 export function useCaptureSpeech(options?: UseCaptureSpeechOptions) {
-  const userId = options?.userId ?? 'anon';
+  const userId = (options?.userId && options.userId.trim()) || 'anon';
   const [speechStatus, setSpeechStatus] = useState<CaptureSpeechStatus>(null);
   const lastResultRef = useRef<CaptureSpeechResult | null>(null);
   const modelRef = useRef<PersonalLanguageModel | null>(null);
+  const loadedForUserRef = useRef<string | null>(null);
 
   const getModel = useCallback((): PersonalLanguageModel => {
-    if (!modelRef.current) {
+    if (!modelRef.current || loadedForUserRef.current !== userId) {
       modelRef.current = loadSpeechLanguageModel(userId);
+      loadedForUserRef.current = userId;
     }
     return modelRef.current;
   }, [userId]);
@@ -114,6 +116,7 @@ export function useCaptureSpeech(options?: UseCaptureSpeechOptions) {
       const result = processCaptureSpeech({
         text: trimmed,
         languageModel,
+        userId,
         ...opts,
       });
       const { message, tone } = messageFor(result);
@@ -121,7 +124,7 @@ export function useCaptureSpeech(options?: UseCaptureSpeechOptions) {
       setSpeechStatus({ result, message, tone });
       return result;
     },
-    [getModel]
+    [getModel, userId]
   );
 
   /**
