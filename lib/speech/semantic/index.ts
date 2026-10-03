@@ -39,3 +39,4 @@ export {
   scoreEntityMatch,
   emptySpeechContext,
 } from './context';
+export { applyDiscourseSupersession, reclassifyPastTenseObservations } from './discourse';
