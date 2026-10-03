@@ -5,13 +5,11 @@
 
 import {
   understand,
+  defaultPersonalCommunicationProfile,
 } from '@/lib/communication/understand';
 import type {
   PersonalCommunicationProfile,
   StatementType,
-} from '@/lib/communication/types';
-import {
-  defaultPersonalCommunicationProfile,
 } from '@/lib/communication/types';
 import { normaliseSpeech } from './normalise';
 import {
@@ -32,9 +30,7 @@ import type {
   PersonalLanguageModel,
   CorrectionSpan,
 } from './types';
-import type {
-  SpeechUnderstandingContext,
-} from './semantic/context';
+import type { SpeechUnderstandingContext } from './semantic/context';
 
 function makeId(): string {
   if (
@@ -77,7 +73,6 @@ const INTENT_PATTERNS: {
     re: /\b(?:create\s+(?:a\s+)?(?:job|task)|new\s+job|add\s+(?:a\s+)?task)\b/i,
     intent: 'create',
   },
-  // check / inspect / trades verbs
   {
     re: /\b(?:call|email|text|message|meet|send|check|inspect|chase|quote|invoice|order|pick\s+up|follow\s+up)\b/i,
     intent: 'create',
@@ -120,10 +115,10 @@ export function interpretSpeech(
 
   let intent: SpeechIntent = 'unknown';
 
-  for (const { re, intent: i } of INTENT_PATTERNS) {
+  for (const { re, intent: detectedIntent } of INTENT_PATTERNS) {
     if (re.test(text)) {
-      intent = i;
-      reasons.push(`intent:${i}`);
+      intent = detectedIntent;
+      reasons.push(`intent:${detectedIntent}`);
       break;
     }
   }
@@ -145,16 +140,16 @@ export function interpretSpeech(
   };
 
   try {
-    const u = understand(text, { profile });
+    const understood = understand(text, {
+      profile,
+      today: options.todayIso,
+    });
 
     derived = {
       statementType:
-        (u as { statementType?: StatementType })
-          .statementType ?? 'UNKNOWN',
-
-      requiresConfirmation: !!(
-        u as { requiresConfirmation?: boolean }
-      ).requiresConfirmation,
+        understood.statementType ?? 'UNKNOWN',
+      requiresConfirmation:
+        !!understood.requiresConfirmation,
     };
 
     if (derived.statementType !== 'UNKNOWN') {
@@ -163,17 +158,19 @@ export function interpretSpeech(
       );
     }
   } catch {
-    // understand is best-effort
+    // Communication understanding is best-effort.
+    // Semantic interpretation below remains authoritative.
   }
 
+  /*
+   * composeSemanticUtterance accepts SpeechUnderstandingContext
+   * directly as its third argument. It does not accept an options
+   * object containing todayIso/understandingContext.
+   */
   const semantic = composeSemanticUtterance(
     rawText ?? '',
     normalisation,
-    {
-      todayIso: options.todayIso,
-      understandingContext:
-        options.understandingContext ?? undefined,
-    }
+    options.understandingContext ?? undefined
   );
 
   if (
@@ -187,7 +184,7 @@ export function interpretSpeech(
   ) {
     if (
       semantic.acts.some(
-        (a) => a.kind === 'question'
+        (act) => act.kind === 'question'
       )
     ) {
       intent = 'ask';
@@ -196,7 +193,7 @@ export function interpretSpeech(
       );
     } else if (
       semantic.acts.some(
-        (a) => a.kind === 'observation'
+        (act) => act.kind === 'observation'
       )
     ) {
       intent = 'observe';
@@ -205,9 +202,9 @@ export function interpretSpeech(
       );
     } else if (
       semantic.acts.some(
-        (a) =>
-          a.kind === 'refusal' ||
-          a.polarity === 'negated'
+        (act) =>
+          act.kind === 'refusal' ||
+          act.polarity === 'negated'
       )
     ) {
       intent = 'cancel';
@@ -232,15 +229,19 @@ export function interpretSpeech(
         : 'low';
   }
 
-  // Clear positive action acts must not stay confidence-starved.
-  if (
+  /*
+   * A clear positive action should not remain confidence-starved
+   * simply because the normaliser was conservative.
+   */
+  const hasClearAction =
     semantic.acts.some(
-      (a) =>
-        a.kind === 'action' &&
-        !a.blocksTaskCreation &&
-        a.polarity !== 'negated'
-    )
-  ) {
+      (act) =>
+        act.kind === 'action' &&
+        !act.blocksTaskCreation &&
+        act.polarity !== 'negated'
+    );
+
+  if (hasClearAction) {
     confidence =
       confidence === 'low'
         ? 'medium'
@@ -250,14 +251,6 @@ export function interpretSpeech(
       'confidence:boost_clear_action'
     );
   }
-
-  const hasClearAction =
-    semantic.acts.some(
-      (a) =>
-        a.kind === 'action' &&
-        !a.blocksTaskCreation &&
-        a.polarity !== 'negated'
-    );
 
   const ambiguity: AmbiguityLevel =
     intent === 'unknown' &&
@@ -282,9 +275,11 @@ export function interpretSpeech(
           ? 'STATUS_CHANGE'
           : intent === 'observe'
             ? 'OBSERVATION'
-            : intent === 'create' ||
+            : (
+                intent === 'create' ||
                 intent === 'remember' ||
                 intent === 'plan'
+              )
               ? 'TASK'
               : hasClearAction
                 ? 'TASK'
@@ -292,10 +287,10 @@ export function interpretSpeech(
 
   const actionAct =
     semantic.acts.find(
-      (a) =>
-        a.kind === 'action' &&
-        !a.blocksTaskCreation &&
-        a.polarity !== 'negated'
+      (act) =>
+        act.kind === 'action' &&
+        !act.blocksTaskCreation &&
+        act.polarity !== 'negated'
     );
 
   const surfaceSummary =
@@ -307,8 +302,10 @@ export function interpretSpeech(
     ambiguity === 'high' ||
     (!hasClearAction &&
       confidence === 'low') ||
-    (intent === 'unknown' &&
-      !hasClearAction) ||
+    (
+      intent === 'unknown' &&
+      !hasClearAction
+    ) ||
     derived.requiresConfirmation ||
     semantic.requiresConfirmation ||
     semantic.mustNotCreateTask ||
@@ -337,27 +334,35 @@ export function interpretSpeech(
     id: makeId(),
     transcriptId: options.transcriptId,
     sessionId: options.sessionId,
+
     originalTranscript:
       normalisation.originalText ||
       (rawText ?? ''),
+
     normalisedText: text,
+
     intent,
     statementType,
     certainty,
     commitmentStrength,
     urgency,
+
     constraints,
     temporalReferences,
     entities,
     corrections,
+
     ambiguity,
     surfaceSummary,
     confidence,
     reasons,
+
     requiresConfirmation,
+
     semantic,
     mustNotCreateTask:
       semantic.mustNotCreateTask,
+
     createdAt: new Date().toISOString(),
   };
 }
