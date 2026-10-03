@@ -44,7 +44,7 @@ function makeId(): string {
     return crypto.randomUUID();
   }
 
-  return `ss-${Date.now()}-${Math.random()
+  return `ss-\( {Date.now()}- \){Math.random()
     .toString(36)
     .slice(2, 9)}`;
 }
