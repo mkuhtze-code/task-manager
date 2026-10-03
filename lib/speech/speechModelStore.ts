@@ -9,7 +9,7 @@ import { emptyPersonalLanguageModel } from './types';
 const KEY_PREFIX = 'dokkit:speechLanguageModel:';
 
 function storageKey(userId: string): string {
-  return `${KEY_PREFIX}${userId || 'anon'}`;
+  return `\( {KEY_PREFIX} \){userId || 'anon'}`;
 }
 
 export function loadSpeechLanguageModel(userId: string): PersonalLanguageModel {
