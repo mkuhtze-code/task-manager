@@ -67,6 +67,8 @@ export function CaptureSheet(props: {
   durationExplain?: string | null;
   error: string;
   onClose: () => void;
+  /** Auth user id — scopes personal speech language model. */
+  userId?: string | null;
 }) {
   const {
     taskText,
@@ -103,13 +105,16 @@ export function CaptureSheet(props: {
     durationExplain = null,
     error,
     onClose,
+    userId = null,
   } = props;
 
   const [showJobField, setShowJobField] = useState(false);
   const [showTimeField, setShowTimeField] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [estimateHintVisible, setEstimateHintVisible] = useState(false);
-  const { speechStatus, processSpokenText, clearSpeechStatus, confirmSpeechLearning } = useCaptureSpeech();
+  const { speechStatus, processSpokenText, clearSpeechStatus, confirmSpeechLearning } = useCaptureSpeech({
+    userId,
+  });
 
   function buildSpeechContext(): SpeechUnderstandingContext {
     const jobEntities =
@@ -135,6 +140,7 @@ export function CaptureSheet(props: {
   function onSpeechResult(spoken: string) {
     const result = processSpokenText(spoken, {
       understandingContext: buildSpeechContext(),
+      userId: userId ?? undefined,
     });
     if (!result) {
       setTaskText((prev) => (prev ? `${prev.trim()} ${spoken}` : spoken));
@@ -553,23 +559,22 @@ export function CaptureSheet(props: {
                   className="reveal-reminder-link"
                   onClick={() => setShowReminderField(true)}
                 >
-                  + Later day
+                  + Day
                 </button>
               ) : (
                 <div className="capture-row">
                   <input
-                    id="capture-surface-date"
                     type="date"
                     value={captureSurfaceDate}
                     onChange={(e) => setCaptureSurfaceDate(e.target.value)}
-                    aria-label="Surface on day"
+                    aria-label="Surface date"
                   />
                   <button
                     type="button"
                     className="btn-text"
                     onClick={() => {
-                      setShowReminderField(false);
                       setCaptureSurfaceDate('');
+                      setShowReminderField(false);
                     }}
                   >
                     Clear
