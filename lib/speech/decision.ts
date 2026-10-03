@@ -169,9 +169,13 @@ export function decideSpeechActions(
     primaryAction = 'create_task';
   } else if (positive.length > 1) {
     primaryAction = 'ask_user';
-  } else {
-    if (updatesOnly.length === 1) primaryAction = 'update_task';
-    else if (updatesOnly.length > 1) primaryAction = 'ask_user';
+  } else if (updatesOnly.length === 1) {
+    primaryAction = 'update_task';
+  } else if (updatesOnly.length > 1) {
+    primaryAction = 'ask_user';
+  } else if (actDecisions.some((d) => d.action === 'ask_user')) {
+    // Acts blocked only by clarification — prefer ask over silent noop
+    primaryAction = 'ask_user';
   }
 
   const actionConfidence: Confidence = mustNot
