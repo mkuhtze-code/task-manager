@@ -242,7 +242,8 @@ export function applyDiscourseSupersession(acts: SemanticAct[]): SemanticAct[] {
 
 export function reclassifyPastTenseObservations(acts: SemanticAct[]): SemanticAct[] {
   return acts.map((a) => {
-    if (a.kind !== 'action' || a.polarity === 'negated') return a;
+    if (a.polarity === 'negated') return a;
+    if (a.kind !== 'action' && a.kind !== 'unknown') return a;
     const span = a.rawSpan;
     const past =
       /\bi\s+(?:called|emailed|sent|spoke|met|texted|messaged|ordered|booked|finished|completed)\b/i.test(
