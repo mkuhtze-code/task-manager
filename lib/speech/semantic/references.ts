@@ -169,11 +169,34 @@ export function resolveReferencesInActs(
     const priors = entitiesFromActs(resolved);
     const refs: ReferenceResolution[] = [];
     for (const m of act.rawSpan.matchAll(PRONOUN_RE)) {
-      refs.push(resolveOne(m[1], priors, act.rawSpan, ctx));
+      const pronoun = m[1];
+      const idx = m.index ?? 0;
+      const after = act.rawSpan.slice(idx + pronoun.length);
+      // "this Friday / this afternoon / this week" is temporal, not anaphora
+      if (
+        /^(this|that)$/i.test(pronoun) &&
+        /^\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|afternoon|evening|night|week|weekend|month|year|time)\b/i.test(
+          after
+        )
+      ) {
+        continue;
+      }
+      refs.push(resolveOne(pronoun, priors, act.rawSpan, ctx));
     }
+    // Only treat "the job/quote/…" as anaphora when the act is not already a clear
+    // create with a person object (topic phrases like "about the quote" are not refs).
     if (/\bthe\s+(job|quote|meeting|task)\b/i.test(act.rawSpan)) {
-      const noun = act.rawSpan.match(/\bthe\s+(job|quote|meeting|task)\b/i)?.[1] ?? 'job';
-      refs.push(resolveOne(noun === 'job' || noun === 'task' ? 'it' : 'that', priors, act.rawSpan, ctx));
+      const hasPersonObject =
+        !!act.actionVerb &&
+        /call|email|meet|message|text|send/i.test(act.actionVerb) &&
+        /\b[A-Z][a-z]+\b/.test(act.objectText ?? act.rawSpan);
+      const updateLang = /\b(?:move|update|push|postpone|attach|put)\b/i.test(act.rawSpan);
+      if (!hasPersonObject || updateLang) {
+        const noun = act.rawSpan.match(/\bthe\s+(job|quote|meeting|task)\b/i)?.[1] ?? 'job';
+        refs.push(
+          resolveOne(noun === 'job' || noun === 'task' ? 'it' : 'that', priors, act.rawSpan, ctx)
+        );
+      }
     }
 
     const links = linkEntitiesInText(act.rawSpan, ctx);
