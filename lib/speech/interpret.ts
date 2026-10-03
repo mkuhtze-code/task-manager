@@ -1,3 +1,4 @@
+
 /**
  * Speech → structured communication signals.
  *
@@ -7,9 +8,7 @@
  * authoritative for task-safety decisions.
  */
 
-import {
-  understand,
-} from '@/lib/communication/understand';
+import { understand } from '@/lib/communication/understand';
 
 import {
   defaultPersonalCommunicationProfile,
@@ -43,7 +42,10 @@ import type {
   CorrectionSpan,
 } from './types';
 
-import type { SpeechUnderstandingContext } from './semantic/context';
+import type {
+  ContextEntityKind,
+  SpeechUnderstandingContext,
+} from './semantic/context';
 
 function makeId(): string {
   if (
@@ -246,6 +248,35 @@ function deriveConstraints(
   return [...constraints];
 }
 
+/**
+ * The semantic context supports a richer entity taxonomy than the
+ * speech API exposes. SpeechInterpretation deliberately keeps its
+ * public entity type small and stable.
+ *
+ * task / meeting / quote are represented as "thing" at this layer.
+ */
+function mapEntityKind(
+  kind: ContextEntityKind
+): EntityMention['kind'] {
+  switch (kind) {
+    case 'person':
+      return 'person';
+
+    case 'job':
+      return 'job';
+
+    case 'place':
+      return 'place';
+
+    case 'task':
+    case 'meeting':
+    case 'quote':
+    case 'thing':
+    default:
+      return 'thing';
+  }
+}
+
 function deriveEntities(
   semantic: SpeechInterpretation['semantic']
 ): EntityMention[] {
@@ -259,11 +290,12 @@ function deriveEntities(
       const key = `${link.entityId}:${link.matchedSpan.toLowerCase()}`;
 
       if (seen.has(key)) continue;
+
       seen.add(key);
 
       entities.push({
         raw: link.matchedSpan,
-        kind: link.kind,
+        kind: mapEntityKind(link.kind),
         resolvedId: link.entityId,
         confidence: link.confidence,
         wasCorrected:
@@ -354,10 +386,6 @@ export function interpretSpeech(
    * -------------------------------------------------------------
    * 1. Surface intent
    * -------------------------------------------------------------
-   *
-   * This is deliberately only a first-pass signal.
-   * Semantic interpretation and communication understanding can
-   * subsequently refine or downgrade it.
    */
 
   let intent: SpeechIntent = 'unknown';
@@ -382,8 +410,7 @@ export function interpretSpeech(
    * 2. Personal communication understanding
    * -------------------------------------------------------------
    *
-   * The default profile is defined in communication/types.ts.
-   * It must not be duplicated in the speech layer.
+   * The canonical default profile lives in communication/types.ts.
    */
 
   const profile =
@@ -448,9 +475,7 @@ export function interpretSpeech(
       );
     }
 
-    if (
-      derived.learnedMeaning
-    ) {
+    if (derived.learnedMeaning) {
       reasons.push(
         `learnedMeaning:${derived.learnedMeaning}`
       );
@@ -458,9 +483,7 @@ export function interpretSpeech(
   } catch {
     /*
      * Communication understanding is best-effort.
-     *
-     * The deterministic semantic layer below remains authoritative
-     * for safety and task creation.
+     * Semantic interpretation remains authoritative for safety.
      */
     reasons.push(
       'communication:understanding_failed'
@@ -471,12 +494,6 @@ export function interpretSpeech(
    * -------------------------------------------------------------
    * 3. Semantic interpretation
    * -------------------------------------------------------------
-   *
-   * Semantic interpretation receives the original transcript so
-   * evidence can remain tied to what the user actually said.
-   *
-   * Normalised text is supplied separately where supported by the
-   * context object.
    */
 
   const semanticContext =
@@ -496,8 +513,6 @@ export function interpretSpeech(
    * -------------------------------------------------------------
    * 4. Safety / intent reconciliation
    * -------------------------------------------------------------
-   *
-   * Semantic safety outranks shallow lexical intent.
    */
 
   if (
@@ -551,8 +566,8 @@ export function interpretSpeech(
   }
 
   /*
-   * A semantic action is a stronger signal than the lexical
-   * pattern matcher, provided the action is not negated or blocked.
+   * A semantic action is stronger than a shallow lexical match,
+   * provided it is positive and not blocked.
    */
 
   const actionAct =
@@ -573,8 +588,7 @@ export function interpretSpeech(
     );
 
   /*
-   * If the communication layer learned a direct action meaning,
-   * use it to refine an otherwise weak lexical intent.
+   * Refine unknown lexical intent from learned communication meaning.
    */
 
   if (
@@ -631,10 +645,8 @@ export function interpretSpeech(
   };
 
   /*
-   * Communication understanding is learned/user-specific evidence.
-   * Semantic confidence is structural evidence.
-   * We take the strongest reliable signal rather than blindly
-   * replacing one with the other.
+   * Use communication understanding as additional evidence,
+   * without allowing it to override semantic safety.
    */
 
   if (
@@ -682,11 +694,6 @@ export function interpretSpeech(
     );
   }
 
-  /*
-   * A clear positive action should not remain confidence-starved
-   * simply because speech normalisation was conservative.
-   */
-
   if (hasClearAction) {
     confidence =
       confidence === 'low'
@@ -727,10 +734,6 @@ export function interpretSpeech(
    * -------------------------------------------------------------
    * 7. Statement type
    * -------------------------------------------------------------
-   *
-   * Prefer the communication engine's learned statement type.
-   * Only fall back to speech/semantic inference when it has no
-   * useful classification.
    */
 
   const statementType: StatementType =
@@ -817,10 +820,6 @@ export function interpretSpeech(
    * -------------------------------------------------------------
    * 10. Confirmation / action gating
    * -------------------------------------------------------------
-   *
-   * This deliberately errs toward clarification when meaning is
-   * genuinely uncertain, while allowing clear semantic actions
-   * through without unnecessary friction.
    */
 
   const semanticCanProposeTask =
