@@ -185,13 +185,15 @@ export function decideSpeechActions(
         'high' as Confidence
       );
 
+  // Confirmation = do not auto-mutate; Dock / explicit confirm still required.
+  // Low interpretation confidence alone must not erase a clear positive action.
   const requiresConfirmation =
     interpretation.requiresConfirmation ||
     mustNot ||
     primaryAction === 'ask_user' ||
     positive.length > 1 ||
     actionConfidence === 'low' ||
-    interpretationConfidence === 'low' ||
+    (interpretationConfidence === 'low' && positive.length === 0) ||
     acts.some((a) => a.requiresClarification);
 
   const evidenceTrail: string[] = [
@@ -213,9 +215,10 @@ export function decideSpeechActions(
     interpretationConfidence,
     actionConfidence,
     actDecisions,
-    wouldMutateWithoutConfirm: !requiresConfirmation && primaryAction === 'create_task',
+    // Never auto-create from speech; Dock is the commit.
+    wouldMutateWithoutConfirm: false,
     primaryAction,
-    requiresConfirmation,
+    requiresConfirmation: true,
     mustNotCreateTask: mustNot,
     reasons: [
       ...new Set([
@@ -229,6 +232,7 @@ export function decideSpeechActions(
 }
 
 export function decisionWouldCreateTask(d: SpeechDecision): boolean {
+  // Speech never auto-mutates; Dock / confirm is required.
   if (d.mustNotCreateTask) return false;
   if (d.requiresConfirmation) return false;
   return (
@@ -237,6 +241,15 @@ export function decisionWouldCreateTask(d: SpeechDecision): boolean {
   );
 }
 
+/**
+ * Outcome for UI / capture adapter.
+ *
+ * Important: requiresConfirmation means "do not auto-mutate" — it does NOT
+ * mean "utterance is incomplete". A single clear create proposal is always
+ * CREATE_TASK (user confirms via Dock). ASK_CLARIFICATION is only for true
+ * ambiguity: ask_user primary, multi-create without ranking, or update that
+ * needs explicit choice.
+ */
 export function semanticOutcome(d: SpeechDecision): SemanticActionOutcome {
   if (d.mustNotCreateTask || d.primaryAction === 'noop') {
     if (d.primaryAction === 'ask_user') return 'ASK_CLARIFICATION';
@@ -244,15 +257,15 @@ export function semanticOutcome(d: SpeechDecision): SemanticActionOutcome {
     if (d.primaryAction === 'note_reported') return 'NOTE_REPORTED';
     return 'DO_NOT_CREATE';
   }
-  if (d.primaryAction === 'ask_user') return 'ASK_CLARIFICATION';
+  // Multi-create: ask which / confirm both — not a silent single create
   const creates = d.actDecisions.filter((a) => a.action === 'create_task' && !a.blocked);
   if (creates.length > 1) return 'CREATE_MULTIPLE_TASKS';
+  if (creates.length === 1) return 'CREATE_TASK';
+
+  if (d.primaryAction === 'ask_user') return 'ASK_CLARIFICATION';
+
   const updates = d.actDecisions.filter((a) => a.action === 'update_task' && !a.blocked);
-  if (updates.length >= 1 && creates.length === 0) {
-    return d.requiresConfirmation ? 'ASK_CLARIFICATION' : 'UPDATE_EXISTING_CONTEXT';
-  }
-  if (creates.length === 1) {
-    return d.requiresConfirmation ? 'ASK_CLARIFICATION' : 'CREATE_TASK';
-  }
+  if (updates.length >= 1) return 'UPDATE_EXISTING_CONTEXT';
+
   return 'DO_NOT_CREATE';
 }
