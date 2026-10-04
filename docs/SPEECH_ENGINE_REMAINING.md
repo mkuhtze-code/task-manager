@@ -5,25 +5,27 @@
 ## Done (current main)
 
 - Deterministic pipeline (repair → normalise → interpret → decide → confirm-only act)
-- Adversarial 530-case gate (wouldMutateWithoutConfirm = 0 historically)
+- Adversarial / unit speech tests; Web CI runs `npm test`
 - Capture / MeetingSheets / TaskDetail speech paths
 - Confirm → local personal language model learning
-- Persistent Collections engine + speech detect + Capture Dock apply (localStorage)
-- Collections dual-write to Supabase (best-effort via `remote.ts`)
-- Collections unit tests + CollectionsPeekSheet
-- **Capture “Lists” entry** + clarification picker + client_op_id on Dock items
-- Universal domain packs + soft scoring in `sttRepair`
+- Persistent Collections engine + speech detect + Capture Dock apply
+- Collections dual-write (local + best-effort Supabase remote)
+- CollectionsPeek + clarification picker + client_op_id
+- Job/meeting context linking (`for Smith Street` → contextId)
+- Universal domain packs soft-scored in `sttRepair`
+- **Cloud HTTP STT provider** (`createCloudTranscriptionProvider` / `cloudProviderFromEnv`)
+- Targeted scripts: `test:speech`, `test:collections`, `test:engine`
 
-## Remaining for “finished”
+## Remaining for "finished"
 
 ### A. Collections product
 - [ ] Apply `20261004_collections.sql` on production Supabase
-- [ ] Job/meeting context linking end-to-end (snag for job X)
 - [ ] Optional: Lists entry outside Capture (Today header)
 
 ### B. STT quality
-- [ ] Cloud STT provider behind same pipeline
-- [ ] Locale (NZ/AU/UK) packs
+- [ ] Production `/api/stt` proxy to Deepgram/AssemblyAI/Whisper
+- [ ] Record-blob → cloud path in Capture mic UX (when Web Speech weak)
+- [ ] Locale packs (NZ/AU/UK) beyond en-NZ default
 
 ### C. Discourse & learning
 - [ ] Cross-session discourse memory beyond vocab
@@ -31,7 +33,7 @@
 - [ ] Thinking-engine training from confirmed speech outcomes
 
 ### D. Quality ops
-- [ ] CI job: `vitest` speech + collections required
+- [x] CI: Web workflow already runs unit tests + typecheck + build
 - [ ] Prod instrumentation (privacy-safe)
 - [ ] Freeze SPEECH_ENGINE_QUALITY exit criteria
 
