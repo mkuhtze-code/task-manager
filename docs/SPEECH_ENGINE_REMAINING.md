@@ -4,43 +4,37 @@
 
 ## Done (current main)
 
-- Deterministic pipeline (repair → normalise → interpret → decide → confirm-only act)
-- Adversarial / unit speech tests; Web CI runs `npm test`
-- Capture / MeetingSheets / TaskDetail speech paths
-- Confirm → local personal language model learning
-- Persistent Collections engine + speech detect + Capture Dock apply
-- Collections dual-write (local + best-effort Supabase remote)
-- CollectionsPeek + clarification picker + client_op_id
-- Job/meeting context linking (`for Smith Street` → contextId)
-- Universal domain packs soft-scored in `sttRepair`
-- **Cloud HTTP STT provider** (`createCloudTranscriptionProvider` / `cloudProviderFromEnv`)
-- Targeted scripts: `test:speech`, `test:collections`, `test:engine`
+- Deterministic speech pipeline + confirm-only act
+- Persistent Collections + Capture Dock + Lists/clarification
+- Job/meeting context linking
+- Cloud HTTP client provider + **POST /api/stt** proxy (Deepgram/OpenAI/generic)
+- **Blob capture path**: MediaRecorder → `/api/stt` (fallback when no Web Speech; optional prefer-cloud)
+- Unit tests + Web CI + `test:engine` scripts
 
-## Remaining for "finished"
+## Remaining
 
-### A. Collections product
+### A. Collections
 - [ ] Apply `20261004_collections.sql` on production Supabase
-- [ ] Optional: Lists entry outside Capture (Today header)
+- [ ] Optional Lists entry on Today header
 
-### B. STT quality
-- [ ] Production `/api/stt` proxy to Deepgram/AssemblyAI/Whisper
-- [ ] Record-blob → cloud path in Capture mic UX (when Web Speech weak)
-- [ ] Locale packs (NZ/AU/UK) beyond en-NZ default
+### B. STT polish
+- [ ] Wire a real `DOKKIT_STT_API_KEY` in Vercel (Deepgram recommended)
+- [ ] Locale packs beyond en-NZ default
 
 ### C. Discourse & learning
 - [ ] Cross-session discourse memory beyond vocab
 - [ ] Server-synced personal language model
 - [ ] Thinking-engine training from confirmed speech outcomes
 
-### D. Quality ops
-- [x] CI: Web workflow already runs unit tests + typecheck + build
-- [ ] Prod instrumentation (privacy-safe)
+### D. Ops
+- [ ] Privacy-safe prod instrumentation
 - [ ] Freeze SPEECH_ENGINE_QUALITY exit criteria
 
-## Exit criteria
+## Enable cloud STT
 
-1. No auto-mutate from speech
-2. Multi-turn lists survive refresh + multi-device
-3. Personal model improves from Dock/correct
-4. CI green on speech + collections
-5. Cloud STT or explicit degraded-mode messaging
+1. Set on Vercel (server):
+   - `DOKKIT_STT_API_KEY` = Deepgram (or OpenAI) key
+   - `DOKKIT_STT_PROVIDER` = `deepgram` | `openai`
+2. Optional browser:
+   - `NEXT_PUBLIC_DOKKIT_STT_PREFER_CLOUD=1` to force blob→`/api/stt`
+3. Probe: `GET /api/stt` → `{ configured: true, provider: "deepgram" }`
