@@ -1,0 +1,570 @@
+/**
+ * Task/List bridge — maps collection-style intents onto the existing
+ * tasks + subtasks system. A list is a normal task used as a container.
+ *
+ * Reuses collection intent detection; does not persist to collections tables.
+ */
+
+import type { CollectionIntent, CollectionTarget, CollectionItemInput } from '@/lib/collections';
+import {
+  ACTIVE_HARD_TTL_MS,
+  ACTIVE_SOFT_TTL_MS,
+  evaluateActiveEligibility,
+  type ActiveEligibility,
+} from '@/lib/collections/active';
+import { normalizeKey, normalizeTitle, isLikelySameItem } from '@/lib/collections/normalize';
+import { detectCollectionIntent, intentBlocksTaskCreate } from '@/lib/collections/intent';
+import type { Task } from '@/lib/taskTypes';
+
+/** Marker stored in task.info so list-like tasks remain ordinary tasks. */
+export const LIST_TASK_MARKER = '__list__';
+
+export type ActiveListState = {
+  taskId: string | null;
+  title: string | null;
+  activatedAt: string | null;
+  lastInteractionAt: string | null;
+};
+
+export type RecentSemanticMemory = {
+  items: string[];
+  updatedAt: string | null;
+};
+
+const ACTIVE_LIST_KEY = 'dokkit-active-list';
+const SEMANTIC_MEM_KEY = 'dokkit-list-semantic-mem';
+const SEMANTIC_TTL_MS = 5 * 60 * 1000;
+
+/** In-memory fallback when localStorage is unavailable (SSR / node tests). */
+let memoryActive: ActiveListState = {
+  taskId: null,
+  title: null,
+  activatedAt: null,
+  lastInteractionAt: null,
+};
+let memorySemantic: RecentSemanticMemory = { items: [], updatedAt: null };
+
+export function emptyActiveListState(): ActiveListState {
+  return {
+    taskId: null,
+    title: null,
+    activatedAt: null,
+    lastInteractionAt: null,
+  };
+}
+
+export function loadActiveListState(): ActiveListState {
+  if (typeof localStorage === 'undefined') {
+    return { ...memoryActive };
+  }
+  try {
+    const raw = localStorage.getItem(ACTIVE_LIST_KEY);
+    if (!raw) return emptyActiveListState();
+    const parsed = JSON.parse(raw) as ActiveListState;
+    if (!parsed || typeof parsed !== 'object') return emptyActiveListState();
+    return {
+      taskId: parsed.taskId ?? null,
+      title: parsed.title ?? null,
+      activatedAt: parsed.activatedAt ?? null,
+      lastInteractionAt: parsed.lastInteractionAt ?? null,
+    };
+  } catch {
+    return emptyActiveListState();
+  }
+}
+
+export function saveActiveListState(state: ActiveListState): void {
+  memoryActive = { ...state };
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(ACTIVE_LIST_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function activateListTask(
+  taskId: string,
+  title: string,
+  now = Date.now()
+): ActiveListState {
+  const iso = new Date(now).toISOString();
+  const prev = loadActiveListState();
+  const next: ActiveListState = {
+    taskId,
+    title,
+    activatedAt: prev.taskId === taskId ? prev.activatedAt ?? iso : iso,
+    lastInteractionAt: iso,
+  };
+  saveActiveListState(next);
+  return next;
+}
+
+export function touchActiveList(now = Date.now()): ActiveListState {
+  const state = loadActiveListState();
+  if (!state.taskId) return state;
+  const next = {
+    ...state,
+    lastInteractionAt: new Date(now).toISOString(),
+  };
+  saveActiveListState(next);
+  return next;
+}
+
+export function clearActiveList(): ActiveListState {
+  const empty = emptyActiveListState();
+  memorySemantic = { items: [], updatedAt: null };
+  saveActiveListState(empty);
+  return empty;
+}
+
+export function evaluateActiveListEligibility(
+  state: ActiveListState = loadActiveListState(),
+  now = Date.now()
+): ActiveEligibility {
+  return evaluateActiveEligibility(
+    {
+      collectionId: state.taskId,
+      activatedAt: state.activatedAt,
+      lastInteractionAt: state.lastInteractionAt,
+      surface: null,
+    },
+    now
+  );
+}
+
+export function canUseActiveList(
+  state: ActiveListState = loadActiveListState(),
+  now = Date.now()
+): boolean {
+  return evaluateActiveListEligibility(state, now).eligible;
+}
+
+export function loadSemanticMemory(): RecentSemanticMemory {
+  const fromMem = (): RecentSemanticMemory => {
+    if (!memorySemantic.updatedAt) return { items: [], updatedAt: null };
+    const age = Date.now() - Date.parse(memorySemantic.updatedAt);
+    if (!Number.isFinite(age) || age > SEMANTIC_TTL_MS) {
+      return { items: [], updatedAt: null };
+    }
+    return {
+      items: memorySemantic.items.slice(0, 12),
+      updatedAt: memorySemantic.updatedAt,
+    };
+  };
+  if (typeof localStorage === 'undefined') return fromMem();
+  try {
+    const raw = localStorage.getItem(SEMANTIC_MEM_KEY);
+    if (!raw) return fromMem();
+    const parsed = JSON.parse(raw) as RecentSemanticMemory;
+    if (!parsed?.updatedAt) return fromMem();
+    const age = Date.now() - Date.parse(parsed.updatedAt);
+    if (!Number.isFinite(age) || age > SEMANTIC_TTL_MS) {
+      return { items: [], updatedAt: null };
+    }
+    return {
+      items: Array.isArray(parsed.items) ? parsed.items.slice(0, 12) : [],
+      updatedAt: parsed.updatedAt,
+    };
+  } catch {
+    return fromMem();
+  }
+}
+
+export function rememberSemanticItems(items: string[]): void {
+  if (items.length === 0) return;
+  const cleaned = items.map((s) => s.trim()).filter(Boolean).slice(0, 12);
+  if (cleaned.length === 0) return;
+  memorySemantic = {
+    items: cleaned,
+    updatedAt: new Date().toISOString(),
+  };
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(SEMANTIC_MEM_KEY, JSON.stringify(memorySemantic));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Resolve pronouns like "this", "that", "it" against short-lived semantic memory. */
+export function resolveReferentialItems(
+  contents: string[]
+): { items: string[]; ambiguous: boolean } {
+  const REFS = /^(this|that|it|the last one|that one|those|them)$/i;
+  const mem = loadSemanticMemory();
+  const out: string[] = [];
+  let usedRef = false;
+  for (const c of contents) {
+    const t = c.trim();
+    if (REFS.test(t)) {
+      usedRef = true;
+      if (mem.items.length === 1) {
+        out.push(mem.items[0]);
+      } else if (mem.items.length > 1) {
+        return { items: [], ambiguous: true };
+      }
+    } else {
+      out.push(t);
+    }
+  }
+  if (usedRef && out.length === 0 && mem.items.length === 0) {
+    return { items: [], ambiguous: true };
+  }
+  return { items: out, ambiguous: false };
+}
+
+export function isListTask(task: Task): boolean {
+  const info = (task.info || '').trim();
+  if (info === LIST_TASK_MARKER || info.startsWith(LIST_TASK_MARKER)) return true;
+  return false;
+}
+
+export type ListTaskCandidate = {
+  id: string;
+  text: string;
+  info?: string | null;
+};
+
+export type ListResolveResult =
+  | { kind: 'found'; taskId: string; title: string }
+  | { kind: 'ambiguous'; candidates: Array<{ taskId: string; title: string; reason: string }> }
+  | { kind: 'none' };
+
+function matchTitle(taskText: string, spoken: string): boolean {
+  const a = normalizeKey(taskText);
+  const b = normalizeKey(spoken.replace(/\blist\b/gi, '').trim());
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.includes(b) || b.includes(a)) return true;
+  return false;
+}
+
+export function resolveListTarget(
+  target: CollectionTarget,
+  tasks: ListTaskCandidate[],
+  active: ActiveListState = loadActiveListState()
+): ListResolveResult {
+  if (target.kind === 'id') {
+    const t = tasks.find((x) => x.id === target.collectionId);
+    if (t) return { kind: 'found', taskId: t.id, title: t.text };
+    return { kind: 'none' };
+  }
+
+  if (target.kind === 'active') {
+    if (active.taskId && canUseActiveList(active)) {
+      const t = tasks.find((x) => x.id === active.taskId);
+      if (t) return { kind: 'found', taskId: t.id, title: t.text };
+      if (active.title) {
+        return { kind: 'found', taskId: active.taskId, title: active.title };
+      }
+    }
+    return { kind: 'none' };
+  }
+
+  if (target.kind === 'title' || target.kind === 'unresolved') {
+    const spoken = target.kind === 'title' ? target.title : target.spoken;
+    const matches = tasks.filter((t) => matchTitle(t.text, spoken));
+    if (matches.length === 1) {
+      return { kind: 'found', taskId: matches[0].id, title: matches[0].text };
+    }
+    if (matches.length > 1) {
+      const exact = matches.filter(
+        (t) => normalizeKey(t.text) === normalizeKey(spoken.replace(/\blist\b/gi, '').trim())
+      );
+      if (exact.length === 1) {
+        return { kind: 'found', taskId: exact[0].id, title: exact[0].text };
+      }
+      const listMarked = matches.filter((t) => (t.info || '').includes(LIST_TASK_MARKER));
+      if (listMarked.length === 1) {
+        return { kind: 'found', taskId: listMarked[0].id, title: listMarked[0].text };
+      }
+      return {
+        kind: 'ambiguous',
+        candidates: matches.slice(0, 5).map((t) => ({
+          taskId: t.id,
+          title: t.text,
+          reason: 'title_match',
+        })),
+      };
+    }
+    if (active.taskId && active.title && canUseActiveList(active)) {
+      if (matchTitle(active.title, spoken)) {
+        return { kind: 'found', taskId: active.taskId, title: active.title };
+      }
+    }
+    return { kind: 'none' };
+  }
+
+  return { kind: 'none' };
+}
+
+export type TaskListOps = {
+  createListTask: (title: string, itemTexts: string[]) => Promise<{
+    taskId: string;
+    title: string;
+  } | null>;
+  appendSubtasks: (taskId: string, itemTexts: string[]) => Promise<number>;
+  completeSubtasks: (taskId: string, refs: string[]) => Promise<number>;
+  removeSubtasks: (taskId: string, refs: string[]) => Promise<number>;
+  openTask: (taskId: string) => void;
+  getSubtaskTexts: (taskId: string) => Promise<string[]>;
+  listTasks: () => ListTaskCandidate[];
+};
+
+export type ApplyListResult = {
+  ok: boolean;
+  message: string;
+  taskId: string | null;
+  openTaskId: string | null;
+  needsClarification?: {
+    spoken: string;
+    candidates: Array<{ taskId: string; title: string; reason: string }>;
+    pendingIntent: Exclude<CollectionIntent, { type: 'clarification_required' }> | null;
+  };
+};
+
+function itemContents(items: CollectionItemInput[]): string[] {
+  return items.map((i) => i.content.trim()).filter(Boolean);
+}
+
+export async function applyListIntent(
+  intent: CollectionIntent,
+  ops: TaskListOps
+): Promise<ApplyListResult> {
+  if (intent.type === 'clarification_required') {
+    return {
+      ok: false,
+      message: `Which list — ${intent.candidates.map((c) => c.title).join(' or ')}?`,
+      taskId: null,
+      openTaskId: null,
+      needsClarification: {
+        spoken: intent.spoken,
+        candidates: intent.candidates.map((c) => ({
+          taskId: c.collectionId,
+          title: c.title,
+          reason: c.reason,
+        })),
+        pendingIntent: intent.pendingIntent,
+      },
+    };
+  }
+
+  if (intent.type === 'create_collection') {
+    const title = (intent.title || 'List').trim() || 'List';
+    let texts = itemContents(intent.items);
+    const resolved = resolveReferentialItems(texts);
+    if (resolved.ambiguous) {
+      return { ok: false, message: 'Which items did you mean?', taskId: null, openTaskId: null };
+    }
+    texts = resolved.items;
+    const created = await ops.createListTask(title, texts);
+    if (!created) {
+      return { ok: false, message: 'Could not create list.', taskId: null, openTaskId: null };
+    }
+    activateListTask(created.taskId, created.title);
+    if (texts.length > 0) rememberSemanticItems(texts);
+    const n = texts.length;
+    return {
+      ok: true,
+      message: n > 0 ? `"${created.title}" with \( {n} item \){n === 1 ? '' : 's'}` : `"${created.title}" created`,
+      taskId: created.taskId,
+      openTaskId: null,
+    };
+  }
+
+  if (intent.type === 'append_collection') {
+    let texts = itemContents(intent.items);
+    const resolved = resolveReferentialItems(texts);
+    if (resolved.ambiguous) {
+      return { ok: false, message: 'Which items did you mean by "this"?', taskId: null, openTaskId: null };
+    }
+    texts = resolved.items;
+    if (texts.length === 0) {
+      return { ok: false, message: 'Nothing to add.', taskId: null, openTaskId: null };
+    }
+    const res = resolveListTarget(intent.target, ops.listTasks());
+    if (res.kind === 'ambiguous') {
+      return {
+        ok: false,
+        message: `Which list — ${res.candidates.map((c) => c.title).join(' or ')}?`,
+        taskId: null,
+        openTaskId: null,
+        needsClarification: {
+          spoken: intent.target.kind === 'title' ? intent.target.title : '',
+          candidates: res.candidates,
+          pendingIntent: intent,
+        },
+      };
+    }
+    if (res.kind === 'none') {
+      return { ok: false, message: 'No list to add to. Start one first.', taskId: null, openTaskId: null };
+    }
+    const added = await ops.appendSubtasks(res.taskId, texts);
+    activateListTask(res.taskId, res.title);
+    rememberSemanticItems(texts);
+    return {
+      ok: true,
+      message: `Added \( {added} to " \){res.title}"`,
+      taskId: res.taskId,
+      openTaskId: null,
+    };
+  }
+
+  if (intent.type === 'complete_collection_items') {
+    const res = resolveListTarget(intent.target, ops.listTasks());
+    if (res.kind === 'ambiguous') {
+      return {
+        ok: false,
+        message: `Which list — ${res.candidates.map((c) => c.title).join(' or ')}?`,
+        taskId: null,
+        openTaskId: null,
+        needsClarification: { spoken: '', candidates: res.candidates, pendingIntent: intent },
+      };
+    }
+    if (res.kind === 'none') {
+      return { ok: false, message: 'No list found.', taskId: null, openTaskId: null };
+    }
+    const n = await ops.completeSubtasks(res.taskId, intent.itemReferences);
+    touchActiveList();
+    return {
+      ok: true,
+      message: n > 0 ? `Marked \( {n} done on " \){res.title}"` : 'No matching items',
+      taskId: res.taskId,
+      openTaskId: null,
+    };
+  }
+
+  if (intent.type === 'remove_collection_items') {
+    const res = resolveListTarget(intent.target, ops.listTasks());
+    if (res.kind === 'ambiguous') {
+      return {
+        ok: false,
+        message: `Which list — ${res.candidates.map((c) => c.title).join(' or ')}?`,
+        taskId: null,
+        openTaskId: null,
+        needsClarification: { spoken: '', candidates: res.candidates, pendingIntent: intent },
+      };
+    }
+    if (res.kind === 'none') {
+      return { ok: false, message: 'No list found.', taskId: null, openTaskId: null };
+    }
+    const n = await ops.removeSubtasks(res.taskId, intent.itemReferences);
+    touchActiveList();
+    return {
+      ok: true,
+      message: n > 0 ? `Removed \( {n} from " \){res.title}"` : 'No matching items',
+      taskId: res.taskId,
+      openTaskId: null,
+    };
+  }
+
+  if (intent.type === 'query_collection' || intent.type === 'reopen_collection') {
+    const res = resolveListTarget(intent.target, ops.listTasks());
+    if (res.kind === 'ambiguous') {
+      return {
+        ok: false,
+        message: `Which list — ${res.candidates.map((c) => c.title).join(' or ')}?`,
+        taskId: null,
+        openTaskId: null,
+        needsClarification: { spoken: '', candidates: res.candidates, pendingIntent: intent },
+      };
+    }
+    if (res.kind === 'none') {
+      return { ok: false, message: 'List not found.', taskId: null, openTaskId: null };
+    }
+    activateListTask(res.taskId, res.title);
+    if (intent.type === 'query_collection') {
+      const items = await ops.getSubtaskTexts(res.taskId);
+      ops.openTask(res.taskId);
+      const preview =
+        items.length === 0
+          ? 'empty'
+          : items.slice(0, 6).join(', ') + (items.length > 6 ? '…' : '');
+      return {
+        ok: true,
+        message: `"${res.title}": ${preview}`,
+        taskId: res.taskId,
+        openTaskId: res.taskId,
+      };
+    }
+    ops.openTask(res.taskId);
+    return {
+      ok: true,
+      message: `Opened "${res.title}"`,
+      taskId: res.taskId,
+      openTaskId: res.taskId,
+    };
+  }
+
+  if (intent.type === 'close_collection') {
+    clearActiveList();
+    return { ok: true, message: 'List closed', taskId: null, openTaskId: null };
+  }
+
+  if (intent.type === 'update_collection_item') {
+    return {
+      ok: false,
+      message: 'Edit items in the task detail view.',
+      taskId: null,
+      openTaskId: null,
+    };
+  }
+
+  return { ok: false, message: 'Unknown list action.', taskId: null, openTaskId: null };
+}
+
+export function detectListIntent(
+  text: string,
+  tasks?: ListTaskCandidate[]
+): CollectionIntent | null {
+  const active = loadActiveListState();
+  const eligible = canUseActiveList(active);
+  const ctx = {
+    activeCollectionId: eligible ? active.taskId : null,
+    activeCollectionTitle: eligible ? active.title : null,
+    collections: (tasks || []).map((t) => ({
+      id: t.id,
+      userId: '',
+      title: t.text,
+      normalizedTitle: normalizeTitle(t.text),
+      collectionType: 'generic' as const,
+      status: 'open' as const,
+      contextType: null,
+      contextId: null,
+      aliases: [] as string[],
+      isActive: active.taskId === t.id,
+      createdAt: '',
+      updatedAt: '',
+      lastActivityAt: '',
+      closedAt: null,
+    })),
+    msSinceLastActivity: active.lastInteractionAt
+      ? Date.now() - Date.parse(active.lastInteractionAt)
+      : null,
+  };
+  return detectCollectionIntent(text, ctx);
+}
+
+export { intentBlocksTaskCreate, ACTIVE_HARD_TTL_MS, ACTIVE_SOFT_TTL_MS };
+
+export function matchSubtaskRefs(
+  subtasks: Array<{ id: string; text: string; done?: boolean }>,
+  refs: string[]
+): string[] {
+  const ids: string[] = [];
+  for (const ref of refs) {
+    const r = ref.trim();
+    if (!r) continue;
+    const exact = subtasks.filter((s) => normalizeKey(s.text) === normalizeKey(r));
+    if (exact.length === 1) {
+      ids.push(exact[0].id);
+      continue;
+    }
+    const similar = subtasks.filter((s) => isLikelySameItem(s.text, r));
+    if (similar.length === 1) {
+      ids.push(similar[0].id);
+    }
+  }
+  return [...new Set(ids)];
+}
