@@ -69,7 +69,10 @@ export {
   webSpeechProvider,
   isWebSpeechAvailable,
   recognizeLive,
+  createCloudTranscriptionProvider,
+  cloudProviderFromEnv,
 } from './providers';
+export type { CloudSttConfig } from './providers';
 
 export {
   createSpeechLearningEvent,
