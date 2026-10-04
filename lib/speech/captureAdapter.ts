@@ -1,6 +1,6 @@
 /**
  * UI-facing speech capture adapter — the only seam Capture/Today should call.
- * Does not render UI. Does not open the mic. Does not write tasks.
+ * Does not render UI. Does not open the mic. Does not write tasks or collections.
  * Principle: understanding ≠ permission to act.
  */
 
@@ -22,6 +22,11 @@ import type {
   SpeechPipelineResult,
 } from './types';
 import type { PersonalCommunicationProfile } from '@/lib/communication/types';
+import type { CollectionDetectContext } from '@/lib/collections';
+import {
+  detectCaptureCollection,
+  type CaptureCollectionSummary,
+} from './collectionBridge';
 
 export type CaptureUiMode =
   | 'silent'
@@ -29,6 +34,8 @@ export type CaptureUiMode =
   | 'ask_clarification'
   | 'confirm_proposals'
   | 'confirm_update'
+  | 'confirm_collection'
+  | 'collection_clarification'
   | 'auto_safe_noop';
 
 export type CaptureProposal = {
@@ -68,6 +75,8 @@ export type CaptureSpeechResult = {
   sessionId?: string;
   pipeline: SpeechPipelineResult;
   decision: SpeechDecision | null;
+  /** Present when utterance matched a persistent-collection intent. */
+  collection: CaptureCollectionSummary | null;
 };
 
 export type ProcessCaptureSpeechInput = {
@@ -77,9 +86,26 @@ export type ProcessCaptureSpeechInput = {
   understandingContext?: SpeechUnderstandingContext | null;
   profile?: PersonalCommunicationProfile | null;
   userId?: string;
+  /** Active / known collections for resolution + implicit continuation. */
+  collectionContext?: CollectionDetectContext | null;
 };
 
-function uiModeFrom(outcome: SemanticActionOutcome, d: SpeechDecision | null): CaptureUiMode {
+function uiModeFrom(
+  outcome: SemanticActionOutcome,
+  d: SpeechDecision | null,
+  collection: CaptureCollectionSummary | null
+): CaptureUiMode {
+  if (collection) {
+    if (collection.intent.type === 'clarification_required') {
+      return 'collection_clarification';
+    }
+    if (collection.intent.type === 'query_collection') {
+      return 'show_observation';
+    }
+    if (collection.blocksTaskCreate) {
+      return 'confirm_collection';
+    }
+  }
   switch (outcome) {
     case 'CREATE_TASK':
     case 'CREATE_MULTIPLE_TASKS':
@@ -153,11 +179,11 @@ export function processCaptureSpeech(input: ProcessCaptureSpeechInput): CaptureS
 
   const interpretation = pipeline.interpretation;
   const decision = pipeline.decision ?? null;
-  const outcome = decision
+  let outcome = decision
     ? semanticOutcome(decision)
     : ('DO_NOT_CREATE' as SemanticActionOutcome);
 
-  const proposals = proposalsFrom(decision, interpretation).filter((p) => {
+  let proposals = proposalsFrom(decision, interpretation).filter((p) => {
     if (p.blocked && p.kind !== 'question') return false;
     if (
       outcome === 'DO_NOT_CREATE' ||
@@ -169,7 +195,6 @@ export function processCaptureSpeech(input: ProcessCaptureSpeechInput): CaptureS
     return true;
   });
 
-  let finalOutcome = outcome;
   if (
     proposals.filter(
       (p) =>
@@ -177,30 +202,65 @@ export function processCaptureSpeech(input: ProcessCaptureSpeechInput): CaptureS
         (p.reason === 'positive_action' || p.reason === 'targets_existing_context')
     ).length > 1
   ) {
-    finalOutcome = 'CREATE_MULTIPLE_TASKS';
+    outcome = 'CREATE_MULTIPLE_TASKS';
+  }
+
+  // Persistent collection path — prefer normalised text; fall back to raw.
+  const collectionText =
+    interpretation?.normalisedText?.trim() ||
+    input.text.trim();
+  const collection = detectCaptureCollection(
+    collectionText,
+    input.collectionContext ?? null
+  );
+
+  let mustNotCreateTask = decision?.mustNotCreateTask ?? true;
+  let requiresConfirmation = decision?.requiresConfirmation ?? true;
+  let surfaceSummary = interpretation?.surfaceSummary ?? input.text.slice(0, 120);
+  const reasons = [...(decision?.reasons ?? interpretation?.reasons ?? [])];
+  const evidenceTrail = [...(decision?.evidenceTrail ?? [])];
+
+  if (collection) {
+    reasons.push(`collection:${collection.intent.type}`);
+    evidenceTrail.push(`collectionIntent:${collection.intent.type}`);
+    if (collection.blocksTaskCreate) {
+      // Collection mutation supersedes task create for this utterance.
+      mustNotCreateTask = true;
+      requiresConfirmation = true;
+      outcome = 'DO_NOT_CREATE';
+      proposals = [];
+      surfaceSummary = collection.surfaceMessage;
+      if (collection.previewItems.length > 0) {
+        surfaceSummary = `${collection.surfaceMessage}: ${collection.previewItems.slice(0, 4).join(', ')}`;
+      }
+    } else if (collection.intent.type === 'query_collection') {
+      surfaceSummary = collection.surfaceMessage;
+      evidenceTrail.push('collection:query');
+    }
   }
 
   return {
-    outcome: finalOutcome,
-    uiMode: uiModeFrom(finalOutcome, decision),
-    surfaceSummary: interpretation?.surfaceSummary ?? input.text.slice(0, 120),
+    outcome,
+    uiMode: uiModeFrom(outcome, decision, collection),
+    surfaceSummary,
     rawText: interpretation?.originalTranscript ?? input.text,
     normalisedText: interpretation?.normalisedText ?? input.text,
     proposals,
-    wouldMutateWithoutConfirm: decision ? decisionWouldCreateTask(decision) : false,
-    mustNotCreateTask: decision?.mustNotCreateTask ?? true,
-    requiresConfirmation: decision?.requiresConfirmation ?? true,
+    wouldMutateWithoutConfirm: false,
+    mustNotCreateTask,
+    requiresConfirmation,
     confidence: {
       transcription: decision?.transcriptionConfidence ?? 'medium',
       interpretation: decision?.interpretationConfidence ?? interpretation?.confidence ?? 'low',
       action: decision?.actionConfidence ?? 'low',
     },
-    reasons: decision?.reasons ?? interpretation?.reasons ?? [],
-    evidenceTrail: decision?.evidenceTrail ?? [],
+    reasons,
+    evidenceTrail,
     interpretationId: interpretation?.id ?? 'none',
     sessionId: pipeline.session.id,
     pipeline,
     decision,
+    collection,
   };
 }
 
@@ -212,6 +272,7 @@ export function processCaptureSpeech(input: ProcessCaptureSpeechInput): CaptureS
  * - transcript repairs with explicit-confirm strength (not weak observation)
  *
  * Never learns from a rejected or must-not-create path alone.
+ * Collection mutations are applied by the UI via applyCollectionIntent — not here.
  */
 export function confirmCaptureSpeech(
   model: PersonalLanguageModel,
@@ -252,6 +313,7 @@ export function confirmCaptureSpeech(
       interpretationId: result.interpretationId,
       proposalCount: result.proposals.length,
       repairCount: repairs.length,
+      collectionIntent: result.collection?.intent.type ?? null,
     },
   });
 
@@ -285,3 +347,14 @@ export function captureMustNotCreate(result: CaptureSpeechResult): boolean {
     result.outcome === 'NOTE_REPORTED'
   );
 }
+
+/** True when capture should route to collection confirm, not task Dock-as-task. */
+export function captureIsCollectionMutation(result: CaptureSpeechResult): boolean {
+  return (
+    !!result.collection &&
+    result.collection.blocksTaskCreate &&
+    result.collection.intent.type !== 'query_collection'
+  );
+}
+
+export type { CaptureCollectionSummary };
