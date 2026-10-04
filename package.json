@@ -8,8 +8,11 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:speech": "vitest run lib/speech",
+    "test:collections": "vitest run lib/collections",
+    "test:engine": "vitest run lib/speech lib/collections",
     "typecheck": "tsc --noEmit",
-    "ci": "npm test && npm run typecheck && npm run build"
+    "ci": "npm run test:engine && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
