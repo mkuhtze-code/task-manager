@@ -5,6 +5,7 @@
  */
 
 import type { Confidence } from '@/lib/thinking/types';
+export type { Confidence };
 
 export type CollectionStatus = 'open' | 'closed' | 'archived';
 export type CollectionItemStatus = 'open' | 'completed' | 'removed';
