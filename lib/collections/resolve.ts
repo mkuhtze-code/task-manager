@@ -8,8 +8,9 @@ import {
   tokenSimilarity,
   COLLECTION_ALIAS_SEEDS,
 } from './normalize';
-import { canUseActiveForImplicit, type ActiveCollectionState } from './active';
+import { canUseActiveForImplicit } from './active';
 import type {
+  ActiveCollectionState,
   Collection,
   CollectionResolution,
   CollectionTarget,
