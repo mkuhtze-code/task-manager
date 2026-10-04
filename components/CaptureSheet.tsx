@@ -335,37 +335,42 @@ export function CaptureSheet(props: {
 
   function tryDock() {
     const speechResult = speechStatus?.result ?? null;
-    let isCollection =
-      !!speechResult &&
-      !!speechResult.collection &&
-      (captureIsCollectionMutation(speechResult) ||
-        speechResult.collection.intent.type === 'clarification_required' ||
-        speechResult.uiMode === 'collection_clarification' ||
-        speechResult.collection.intent.type === 'query_collection');
     let collectionIntent = speechResult?.collection?.intent ?? null;
 
-    if (!collectionIntent && taskText.trim()) {
-      const detected = detectCaptureCollection(taskText.trim(), buildCollectionContext());
-      const fallback = !detected ? detectListIntent(taskText.trim(), listTasks) : null;
+    // Always re-detect from the current capture line. Speech understanding can
+    // miss list phrasing; the field text is authoritative at dock time.
+    if (taskText.trim()) {
+      const ctx = buildCollectionContext();
+      const detected = detectCaptureCollection(taskText.trim(), ctx);
+      const fallback = detectListIntent(taskText.trim(), listTasks);
       const intent = detected?.intent ?? fallback;
-      if (
-        intent &&
-        (detected?.blocksTaskCreate ||
-          intent.type === 'clarification_required' ||
-          intent.type === 'query_collection' ||
-          !!fallback)
-      ) {
-        isCollection = true;
+      if (intent) {
         collectionIntent = intent;
       }
     }
 
-    if (!isCollection && !gate.ready) return;
+    const isListIntent =
+      !!collectionIntent &&
+      (collectionIntent.type === 'create_collection' ||
+        collectionIntent.type === 'append_collection' ||
+        collectionIntent.type === 'complete_collection_items' ||
+        collectionIntent.type === 'remove_collection_items' ||
+        collectionIntent.type === 'update_collection_item' ||
+        collectionIntent.type === 'close_collection' ||
+        collectionIntent.type === 'reopen_collection' ||
+        collectionIntent.type === 'query_collection' ||
+        collectionIntent.type === 'clarification_required');
 
-    if (isCollection && collectionIntent && listOps) {
+    if (isListIntent && collectionIntent) {
+      if (!listOps) {
+        setCollectionFeedback('Sign in to use lists.');
+        return;
+      }
       void applyListDock(collectionIntent);
       return;
     }
+
+    if (!gate.ready) return;
 
     confirmSpeechLearning();
     clearSpeechStatus();
