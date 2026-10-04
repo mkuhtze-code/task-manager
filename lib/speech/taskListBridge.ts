@@ -232,12 +232,34 @@ export type ListResolveResult =
   | { kind: 'none' };
 
 function matchTitle(taskText: string, spoken: string): boolean {
-  const a = normalizeKey(taskText);
-  const b = normalizeKey(spoken.replace(/\blist\b/gi, '').trim());
+  const a = normalizeTitle(taskText);
+  const b = normalizeTitle(spoken);
   if (!a || !b) return false;
   if (a === b) return true;
+  // Containment on normalised keys (e.g. "grocery shopping" vs "grocery")
   if (a.includes(b) || b.includes(a)) return true;
+  // Token overlap: at least one meaningful shared token
+  const ta = new Set(a.split(' ').filter(Boolean));
+  const tb = new Set(b.split(' ').filter(Boolean));
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  if (inter > 0 && (inter === ta.size || inter === tb.size)) return true;
   return false;
+}
+
+function scoreTitleMatch(taskText: string, spoken: string): number {
+  const a = normalizeTitle(taskText);
+  const b = normalizeTitle(spoken);
+  if (!a || !b) return 0;
+  if (a === b) return 100;
+  if (a.startsWith(b) || b.startsWith(a)) return 80;
+  if (a.includes(b) || b.includes(a)) return 60;
+  const ta = a.split(' ').filter(Boolean);
+  const tb = new Set(b.split(' ').filter(Boolean));
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  if (inter === 0) return 0;
+  return Math.round((40 * inter) / Math.max(ta.length, tb.size));
 }
 
 export function resolveListTarget(
@@ -255,42 +277,72 @@ export function resolveListTarget(
     if (active.taskId && canUseActiveList(active)) {
       const t = tasks.find((x) => x.id === active.taskId);
       if (t) return { kind: 'found', taskId: t.id, title: t.text };
+      // Active id may still be valid even if not in the current in-memory array yet
       if (active.title) {
         return { kind: 'found', taskId: active.taskId, title: active.title };
       }
+    }
+    // Soft fallback: most recent list-marked task
+    const listMarked = tasks.filter((t) => (t.info || '').includes(LIST_TASK_MARKER));
+    if (listMarked.length === 1) {
+      return { kind: 'found', taskId: listMarked[0].id, title: listMarked[0].text };
     }
     return { kind: 'none' };
   }
 
   if (target.kind === 'title' || target.kind === 'unresolved') {
     const spoken = target.kind === 'title' ? target.title : target.spoken;
-    const matches = tasks.filter((t) => matchTitle(t.text, spoken));
-    if (matches.length === 1) {
-      return { kind: 'found', taskId: matches[0].id, title: matches[0].text };
+    const spokenNorm = normalizeTitle(spoken);
+
+    // Prefer list-marked tasks when scoring
+    const scored = tasks
+      .map((t) => ({
+        t,
+        score:
+          scoreTitleMatch(t.text, spoken) +
+          ((t.info || '').includes(LIST_TASK_MARKER) ? 15 : 0),
+      }))
+      .filter((x) => x.score >= 60)
+      .sort((a, b) => b.score - a.score);
+
+    if (scored.length === 1) {
+      return { kind: 'found', taskId: scored[0].t.id, title: scored[0].t.text };
     }
-    if (matches.length > 1) {
-      const exact = matches.filter(
-        (t) => normalizeKey(t.text) === normalizeKey(spoken.replace(/\blist\b/gi, '').trim())
+    if (scored.length > 1) {
+      // Clear winner
+      if (scored[0].score >= scored[1].score + 20) {
+        return { kind: 'found', taskId: scored[0].t.id, title: scored[0].t.text };
+      }
+      const exact = scored.filter(
+        (x) => normalizeTitle(x.t.text) === spokenNorm
       );
       if (exact.length === 1) {
-        return { kind: 'found', taskId: exact[0].id, title: exact[0].text };
+        return { kind: 'found', taskId: exact[0].t.id, title: exact[0].t.text };
       }
-      const listMarked = matches.filter((t) => (t.info || '').includes(LIST_TASK_MARKER));
-      if (listMarked.length === 1) {
-        return { kind: 'found', taskId: listMarked[0].id, title: listMarked[0].text };
+      const listOnly = scored.filter((x) =>
+        (x.t.info || '').includes(LIST_TASK_MARKER)
+      );
+      if (listOnly.length === 1) {
+        return { kind: 'found', taskId: listOnly[0].t.id, title: listOnly[0].t.text };
       }
       return {
         kind: 'ambiguous',
-        candidates: matches.slice(0, 5).map((t) => ({
-          taskId: t.id,
-          title: t.text,
+        candidates: scored.slice(0, 5).map((x) => ({
+          taskId: x.t.id,
+          title: x.t.text,
           reason: 'title_match',
         })),
       };
     }
-    if (active.taskId && active.title && canUseActiveList(active)) {
-      if (matchTitle(active.title, spoken)) {
-        return { kind: 'found', taskId: active.taskId, title: active.title };
+
+    // Fall back to active if still eligible
+    if (active.taskId && canUseActiveList(active)) {
+      if (!spokenNorm || (active.title && matchTitle(active.title, spoken))) {
+        return {
+          kind: 'found',
+          taskId: active.taskId,
+          title: active.title || 'List',
+        };
       }
     }
     return { kind: 'none' };
@@ -367,7 +419,7 @@ export async function applyListIntent(
     const n = texts.length;
     return {
       ok: true,
-      message: n > 0 ? `"${created.title}" with \( {n} item \){n === 1 ? '' : 's'}` : `"${created.title}" created`,
+      message: n > 0 ? `"${created.title}" with ${n} item${n === 1 ? '' : 's'}` : `"${created.title}" created`,
       taskId: created.taskId,
       openTaskId: null,
     };
@@ -405,7 +457,7 @@ export async function applyListIntent(
     rememberSemanticItems(texts);
     return {
       ok: true,
-      message: `Added \( {added} to " \){res.title}"`,
+      message: `Added ${added} to "${res.title}"`,
       taskId: res.taskId,
       openTaskId: null,
     };
@@ -429,7 +481,7 @@ export async function applyListIntent(
     touchActiveList();
     return {
       ok: true,
-      message: n > 0 ? `Marked \( {n} done on " \){res.title}"` : 'No matching items',
+      message: n > 0 ? `Marked ${n} done on "${res.title}"` : 'No matching items',
       taskId: res.taskId,
       openTaskId: null,
     };
@@ -453,7 +505,7 @@ export async function applyListIntent(
     touchActiveList();
     return {
       ok: true,
-      message: n > 0 ? `Removed \( {n} from " \){res.title}"` : 'No matching items',
+      message: n > 0 ? `Removed ${n} from "${res.title}"` : 'No matching items',
       taskId: res.taskId,
       openTaskId: null,
     };
