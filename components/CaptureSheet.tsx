@@ -4,7 +4,7 @@
  * Capture — pen to paper.
  * Primary path: type (or speak) → Dock.
  * Speech goes through processCaptureSpeech before filling the line.
- * Collection list phrases route to applyAndPersistCollectionIntent (not tasks).
+ * List phrases map onto tasks + subtasks (taskListBridge), not collections tables.
  */
 
 import { useEffect, useState } from 'react';
@@ -32,13 +32,15 @@ import {
   detectCaptureCollection,
   type SpeechUnderstandingContext,
 } from '@/lib/speech';
+import type { CollectionIntent } from '@/lib/collections';
 import {
-  applyAndPersistCollectionIntent,
-  detectContextFromStore,
-  loadCollectionStore,
-  type CollectionIntent,
-} from '@/lib/collections';
-import { CollectionsPeekSheet } from '@/components/CollectionsPeekSheet';
+  applyListIntent,
+  detectListIntent,
+  loadActiveListState,
+  canUseActiveList,
+  type TaskListOps,
+  type ListTaskCandidate,
+} from '@/lib/speech/taskListBridge';
 import { MapPinIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
@@ -79,6 +81,8 @@ export function CaptureSheet(props: {
   error: string;
   onClose: () => void;
   userId?: string | null;
+  listOps?: TaskListOps | null;
+  listTasks?: ListTaskCandidate[];
 }) {
   const {
     taskText,
@@ -116,6 +120,8 @@ export function CaptureSheet(props: {
     error,
     onClose,
     userId = null,
+    listOps = null,
+    listTasks = [],
   } = props;
 
   const [showJobField, setShowJobField] = useState(false);
@@ -123,10 +129,10 @@ export function CaptureSheet(props: {
   const [moreOpen, setMoreOpen] = useState(false);
   const [estimateHintVisible, setEstimateHintVisible] = useState(false);
   const [collectionFeedback, setCollectionFeedback] = useState<string | null>(null);
-  const [listsOpen, setListsOpen] = useState(false);
+  const [listBusy, setListBusy] = useState(false);
   const [pendingClarification, setPendingClarification] = useState<{
     spoken: string;
-    candidates: Array<{ collectionId: string; title: string; reason: string }>;
+    candidates: Array<{ taskId: string; title: string; reason: string }>;
     pendingIntent: Exclude<CollectionIntent, { type: 'clarification_required' }> | null;
   } | null>(null);
   const { speechStatus, processSpokenText, clearSpeechStatus, confirmSpeechLearning } = useCaptureSpeech({
@@ -155,11 +161,31 @@ export function CaptureSheet(props: {
   }
 
   function buildCollectionContext() {
-    const uid = userId ?? 'anon';
-    const base = detectContextFromStore(loadCollectionStore(uid));
+    const active = loadActiveListState();
+    const eligible = canUseActiveList(active);
     return {
-      ...base,
+      activeCollectionId: eligible ? active.taskId : null,
+      activeCollectionTitle: eligible ? active.title : null,
+      collections: (listTasks ?? []).map((t) => ({
+        id: t.id,
+        userId: userId ?? '',
+        title: t.text,
+        normalizedTitle: t.text.toLowerCase(),
+        collectionType: 'generic' as const,
+        status: 'open' as const,
+        contextType: null as null,
+        contextId: null as null,
+        aliases: [] as string[],
+        isActive: active.taskId === t.id,
+        createdAt: '',
+        updatedAt: '',
+        lastActivityAt: '',
+        closedAt: null as null,
+      })),
       jobs: (jobs ?? []).map((j) => ({ id: j.id, name: j.name })),
+      msSinceLastActivity: active.lastInteractionAt
+        ? Date.now() - Date.parse(active.lastInteractionAt)
+        : null,
     };
   }
 
@@ -252,43 +278,46 @@ export function CaptureSheet(props: {
       (captureIsCollectionMutation(speechStatus.result) ||
         speechStatus.result.uiMode === 'collection_clarification'));
 
-  function stampClientOpIds(intent: CollectionIntent): CollectionIntent {
-    const op = `cap-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    if (intent.type === 'create_collection' || intent.type === 'append_collection') {
-      return {
-        ...intent,
-        items: intent.items.map((item, idx) => ({
-          ...item,
-          clientOpId: item.clientOpId || `${op}-${idx}`,
-        })),
-      };
+  async function applyListDock(intent: CollectionIntent) {
+    if (!listOps) {
+      setCollectionFeedback('List actions need an active session.');
+      return;
     }
-    return intent;
-  }
-
-  function applyCollectionDock(intent: CollectionIntent) {
-    const uid = userId ?? 'anon';
     if (intent.type === 'clarification_required') {
       setPendingClarification({
         spoken: intent.spoken,
-        candidates: intent.candidates,
+        candidates: intent.candidates.map((c) => ({
+          taskId: c.collectionId,
+          title: c.title,
+          reason: c.reason,
+        })),
         pendingIntent: intent.pendingIntent,
       });
       setCollectionFeedback(null);
       return;
     }
-    const stamped = stampClientOpIds(intent);
-    const applied = applyAndPersistCollectionIntent(uid, stamped);
-    confirmSpeechLearning();
-    clearSpeechStatus();
-    setPendingClarification(null);
-    setCollectionFeedback(
-      applied.message || (applied.ok ? 'List updated.' : 'Could not update list.')
-    );
-    setTaskText('');
+    setListBusy(true);
+    try {
+      const applied = await applyListIntent(intent, listOps);
+      confirmSpeechLearning();
+      clearSpeechStatus();
+      setPendingClarification(null);
+      if (applied.needsClarification) {
+        setPendingClarification(applied.needsClarification);
+        setCollectionFeedback(applied.message);
+      } else {
+        setCollectionFeedback(applied.message || (applied.ok ? 'List updated.' : 'Could not update list.'));
+        setTaskText('');
+        if (applied.openTaskId) {
+          onClose();
+        }
+      }
+    } finally {
+      setListBusy(false);
+    }
   }
 
-  function resolveClarification(collectionId: string) {
+  function resolveClarification(taskId: string) {
     if (!pendingClarification?.pendingIntent) {
       setPendingClarification(null);
       return;
@@ -298,40 +327,43 @@ export function CaptureSheet(props: {
     if ('target' in pending) {
       next = {
         ...pending,
-        target: { kind: 'id', collectionId },
+        target: { kind: 'id', collectionId: taskId },
       } as CollectionIntent;
     }
-    applyCollectionDock(next);
+    void applyListDock(next);
   }
 
   function tryDock() {
-    const uid = userId ?? 'anon';
     const speechResult = speechStatus?.result ?? null;
     let isCollection =
       !!speechResult &&
       !!speechResult.collection &&
       (captureIsCollectionMutation(speechResult) ||
         speechResult.collection.intent.type === 'clarification_required' ||
-        speechResult.uiMode === 'collection_clarification');
+        speechResult.uiMode === 'collection_clarification' ||
+        speechResult.collection.intent.type === 'query_collection');
     let collectionIntent = speechResult?.collection?.intent ?? null;
 
     if (!collectionIntent && taskText.trim()) {
-      const ctx = buildCollectionContext();
-      const detected = detectCaptureCollection(taskText.trim(), ctx);
+      const detected = detectCaptureCollection(taskText.trim(), buildCollectionContext());
+      const fallback = !detected ? detectListIntent(taskText.trim(), listTasks) : null;
+      const intent = detected?.intent ?? fallback;
       if (
-        detected &&
-        (detected.blocksTaskCreate ||
-          detected.intent.type === 'clarification_required')
+        intent &&
+        (detected?.blocksTaskCreate ||
+          intent.type === 'clarification_required' ||
+          intent.type === 'query_collection' ||
+          !!fallback)
       ) {
         isCollection = true;
-        collectionIntent = detected.intent;
+        collectionIntent = intent;
       }
     }
 
     if (!isCollection && !gate.ready) return;
 
-    if (isCollection && collectionIntent) {
-      applyCollectionDock(collectionIntent);
+    if (isCollection && collectionIntent && listOps) {
+      void applyListDock(collectionIntent);
       return;
     }
 
@@ -367,14 +399,6 @@ export function CaptureSheet(props: {
             Add
           </h2>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button
-              type="button"
-              className="btn-text"
-              onClick={() => setListsOpen(true)}
-              aria-label="Open lists"
-            >
-              Lists
-            </button>
             <button type="button" className="btn-text capture-sheet-close" onClick={onClose}>
               Close
             </button>
@@ -449,9 +473,9 @@ export function CaptureSheet(props: {
               {pendingClarification.candidates.map((c) => (
                 <button
                   type="button"
-                  key={c.collectionId}
+                  key={c.taskId}
                   className="move-day-option"
-                  onClick={() => resolveClarification(c.collectionId)}
+                  onClick={() => resolveClarification(c.taskId)}
                 >
                   {c.title}
                 </button>
@@ -548,7 +572,7 @@ export function CaptureSheet(props: {
         <button
           type="button"
           className="btn btn-steel capture-dock-btn"
-          disabled={!gate.ready && !collectionDockReady}
+          disabled={listBusy || (!gate.ready && !collectionDockReady)}
           onClick={tryDock}
         >
           {gate.ready || collectionDockReady ? 'Dock' : 'Add'}
@@ -748,11 +772,6 @@ export function CaptureSheet(props: {
           )}
         </div>
       </div>
-      <CollectionsPeekSheet
-        userId={userId}
-        open={listsOpen}
-        onClose={() => setListsOpen(false)}
-      />
     </div>
   );
 }
