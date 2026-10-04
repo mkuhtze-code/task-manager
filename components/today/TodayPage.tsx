@@ -1991,7 +1991,7 @@ export function TodayPage() {
     ? {
         listTasks: (): ListTaskCandidate[] =>
           tasks.map((t) => ({ id: t.id, text: t.text, info: t.info })),
-        createListTask: async (title: string, itemTexts: string[]) => {
+        createListTask: async (title: string, itemTexts: string[], opts) => {
           const userId = session.user.id;
           const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order_index), 0);
           const { data, error } = await supabase
@@ -2004,7 +2004,9 @@ export function TodayPage() {
               source: 'came_up',
               order_index: maxOrder + 1,
               info: LIST_TASK_MARKER,
-              original_input: title,
+              original_input: opts?.originalInput ?? title,
+              job_id: opts?.jobId ?? null,
+              location_text: opts?.locationText ?? null,
             })
             .select()
             .single();
