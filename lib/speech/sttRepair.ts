@@ -21,6 +21,9 @@ import type {
   PersonalLanguageModel,
   TranscriptRepair,
 } from './types';
+import { allDomainTerms, domainPackScore } from './domainPacks';
+export { DOMAIN_PACKS } from './domainPacks';
+export type { DomainPackId } from './domainPacks';
 
 type HomophonePair = {
   a: string;
@@ -58,16 +61,7 @@ const HOMOPHONE_PAIRS: HomophonePair[] = [
   { a: 'week', b: 'weak' },
 ];
 
-const DOMAIN_VOCABULARY = new Set([
-  'flashing', 'flashings', 'fascia', 'fascias', 'soffit', 'soffits',
-  'gutter', 'gutters', 'gib', 'gyprock', 'plasterboard', 'eaves', 'lead',
-  'weatherboard', 'weatherboards', 'ridge', 'ridges', 'valley', 'valleys',
-  'apron', 'aprons', 'counterflashing', 'roof', 'roofs', 'scaffold',
-  'scaffolding', 'tiler', 'tilers', 'cladding', 'claddings', 'extension',
-  'extensions', 'variation', 'variations', 'invoice', 'invoices', 'quote',
-  'quotes', 'quoting', 'builder', 'builders', 'subcontractor', 'subcontractors',
-  'council', 'consent', 'consents',
-]);
+const DOMAIN_VOCABULARY = allDomainTerms();
 
 const COMMON_CONNECTORS = new Set([
   'and', 'or', 'but', 'if', 'because', 'when', 'while', 'before', 'after',
@@ -316,6 +310,11 @@ function scoreCandidate(
   if (DOMAIN_VOCABULARY.has(next) || DOMAIN_VOCABULARY.has(previous)) {
     score += 0.03;
     reasons.push('domain_vocabulary');
+  }
+  const packNudge = domainPackScore(previous, next);
+  if (packNudge > 0) {
+    score += packNudge;
+    reasons.push('domain_pack');
   }
 
   if (word !== originalWord) {
