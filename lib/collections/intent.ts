@@ -1,6 +1,10 @@
 /**
- * Detect collection intents from normalised text.
- * Plugs into the speech pipeline — does not special-case "grocery".
+ * Detect list (collection) intents from normalised text.
+ * Deterministic — no LLM.
+ *
+ * Goal: natural speech should work without rigid keyword recipes.
+ * "Start list", "I need a packing list", "put milk on it", "what's on my list"
+ * should all resolve. Ordinary tasks ("Call John tomorrow") must still fall through.
  */
 
 import { itemsFromText, looksLikeImplicitItem, splitItemEnumeration } from './items';
@@ -19,54 +23,98 @@ import type {
 } from './types';
 import { resolveContextLink } from './contextLink';
 
-/**
- * Generic list create. Matches e.g.:
- *   "start a grocery list"
- *   "create packing list"
- *   "new list"
- *   "make a birthday list for the party"
- *   "open my materials list"
- * Domain words (grocery, packing, …) are examples only — any "<name> list" works.
- */
-const CREATE_RE =
-  /^(?:(?:start|create|make|new|open)\s+(?:a\s+|an\s+|my\s+|the\s+)?)?(?:(.+?)\s+)?list(?:\s+for\s+([^.:—–\-]+))?(?:\s*[:.—–\-]\s*(.+))?$/i;
+const CREATE_VERBS =
+  /^(?:start|create|make|new|open|begin|setup|set\s*up|kick\s*off|fire\s*up)\b/i;
 
-const CREATE_COLON_RE =
-  /^(.+?)\s*(?:list)?\s*[:—–\-]\s*(.+)$/i;
+const NEED_LIST_RE =
+  /^(?:i\s+)?(?:need|want|gotta|got\s+to|have\s+to)\s+(?:a\s+|an\s+|my\s+|the\s+)?(.+?)\s+lists?\s*$/i;
 
-const CREATE_IS_RE =
-  /^(?:i(?:'m| am)\s+(?:making|starting)\s+(?:a\s+|an\s+|my\s+)?)(.+?)\s+list$/i;
+const NEED_LIST_BARE_RE =
+  /^(?:i\s+)?(?:need|want)\s+(?:a\s+|an\s+|my\s+|the\s+)?lists?\s*$/i;
 
-/** Bare known-type or any "<name> list" followed by items, no verb required. */
-const LIST_INLINE_RE =
-  /^(.+?)\s+list\s+(.+)$/i;
+const CAN_YOU_LIST_RE =
+  /^(?:can\s+you\s+|could\s+you\s+|please\s+)?(?:start|create|make|open|begin|set\s*up)\s+(?:me\s+|us\s+)?(?:a\s+|an\s+|my\s+|the\s+)?(?:(.+?)\s+)?lists?\b/i;
+
+/** "start a grocery list", "start list", "make packing list", "new list" */
+const CREATE_CORE_RE =
+  /^(?:start|create|make|new|open|begin|setup|set\s*up)\s+(?:me\s+|us\s+)?(?:a\s+|an\s+|my\s+|the\s+)?(?:(.+?)\s+)?lists?\b(?:\s+for\s+(.+?))?(?:\s*[:.—–\-]\s*(.+))?$/i;
+
+/** "grocery list: milk, bread" / "packing list milk eggs" */
+const NAMED_LIST_INLINE_RE =
+  /^(.+?)\s+lists?\s*(?:[:.—–\-]\s*|\s+)(.+)$/i;
+
+/** Bare seed without the word list: "grocery milk, bread" */
+const BARE_SEED_RE =
+  /^((?:grocery|groceries|shopping|snag|packing|materials|questions|ideas|observations|todo|errands|checklist))\s+(.+)$/i;
 
 const APPEND_TO_RE =
-  /^(?:add|put|include)\s+(.+?)\s+to\s+(?:my\s+|the\s+)?(.+?)(?:\s+list)?$/i;
+  /^(?:add|put|include|stick|throw)\s+(.+?)\s+(?:to|on|onto)\s+(?:my\s+|the\s+|our\s+)?(.+?)(?:\s+lists?)?$/i;
+
+/** "put milk on the list" / "add milk to the list" / "put milk on it" */
+const APPEND_THE_LIST_RE =
+  /^(?:add|put|include|stick|throw)\s+(.+?)\s+(?:to|on|onto)\s+(?:my\s+|the\s+|our\s+|that\s+|this\s+)?(?:lists?|it)$/i;
 
 const ADD_BARE_RE = /^(?:add|also|plus|and)\s+(.+)$/i;
 
 const COMPLETE_RE =
   /^(?:(?:i\s+)?(?:got|have|bought|picked\s*up)|(?:mark|set)\s+)?(.+?)\s+(?:is\s+)?(?:done|complete|completed|finished)|(?:got|have)\s+(?:the\s+)?(.+)$/i;
 
-/** "Complete eggs" / "Mark eggs done" / "Check off eggs" */
 const COMPLETE_CMD_RE =
   /^(?:complete|check\s*off|tick\s*off|mark)\s+(.+?)(?:\s+(?:as\s+)?(?:done|complete|completed|finished))?$/i;
 
 const REMOVE_RE =
-  /^(?:remove|delete|take)\s+(.+?)(?:\s+off(?:\s+the\s+list)?|\s+from\s+(?:my\s+|the\s+)?(.+?)(?:\s+list)?)?$/i;
+  /^(?:remove|delete|take|cross\s*off)\s+(.+?)(?:\s+off(?:\s+the\s+list)?|\s+from\s+(?:my\s+|the\s+)?(.+?)(?:\s+lists?)?)?$/i;
 
 const CLOSE_RE =
-  /^(?:that(?:'s| is)\s+(?:it|everything|all)(?:\s+for\s+(.+))?|close\s+(?:my\s+|the\s+)?(.+?)(?:\s+list)?|i(?:'m| am)\s+done\s+with\s+(?:that\s+list|(?:my\s+|the\s+)?(.+?)))$/i;
+  /^(?:that(?:'s| is)\s+(?:it|everything|all)(?:\s+for\s+(.+))?|close\s+(?:my\s+|the\s+)?(.+?)(?:\s+lists?)?|i(?:'m| am)\s+done\s+with\s+(?:that\s+list|(?:my\s+|the\s+)?(.+?)))$/i;
 
 const REOPEN_RE =
-  /^(?:open\s+(?:my\s+|the\s+)?(.+?)(?:\s+list)?|i\s+need\s+to\s+add\s+(?:something\s+)?to\s+(?:my\s+|the\s+)?(.+?)(?:\s+list)?)$/i;
+  /^(?:open\s+(?:my\s+|the\s+)?(.+?)(?:\s+lists?)?|i\s+need\s+to\s+add\s+(?:something\s+)?to\s+(?:my\s+|the\s+)?(.+?)(?:\s+lists?)?)$/i;
 
 const CHANGE_RE =
   /^(?:change|replace)\s+(.+?)\s+to\s+(.+)$/i;
 
 const QUERY_RE =
-  /^(?:what(?:'s| is)\s+on\s+(?:my\s+|the\s+)?(.+?)(?:\s+list)?|show\s+(?:my\s+|the\s+)?(.+?)(?:\s+list)?)$/i;
+  /^(?:what(?:'s| is)\s+on\s+(?:my\s+|the\s+|our\s+)?(.+?)(?:\s+lists?)?|show\s+(?:me\s+)?(?:my\s+|the\s+|our\s+)?(.+?)(?:\s+lists?)?|open\s+(?:my\s+|the\s+)?(.+?)\s+lists?)$/i;
+
+/** "what's on the list" / "show the list" / "show my list" with no name */
+const QUERY_BARE_LIST_RE =
+  /^(?:what(?:'s| is)\s+on\s+(?:my\s+|the\s+|our\s+|that\s+|this\s+)?lists?|show\s+(?:me\s+)?(?:my\s+|the\s+|our\s+|that\s+|this\s+)?lists?|open\s+(?:my\s+|the\s+)?lists?)$/i;
+
+const VERB_RESIDUE = new Set([
+  'start',
+  'create',
+  'make',
+  'new',
+  'open',
+  'begin',
+  'setup',
+  'set',
+  'up',
+  'kick',
+  'off',
+  'fire',
+  'need',
+  'want',
+  'gotta',
+  'please',
+  'can',
+  'you',
+  'could',
+  'me',
+  'us',
+  'i',
+  'a',
+  'an',
+  'the',
+  'my',
+  'our',
+  'for',
+  'to',
+  'of',
+  'list',
+  'lists',
+]);
 
 function high(reasons: string[]): { confidence: Confidence; reasons: string[] } {
   return { confidence: 'high', reasons };
@@ -83,6 +131,25 @@ function targetActive(): CollectionTarget {
   return { kind: 'active' };
 }
 
+/**
+ * Turn a spoken name fragment into a clean display title.
+ * Never returns a create-verb residue like "Start".
+ */
+function cleanListTitle(spoken: string | undefined | null, fallback = 'List'): string {
+  const raw = collapseWhitespace(spoken || '');
+  if (!raw) return fallback;
+  let title = titleFromSpoken(raw);
+  // Strip residual verbs if normalize left them
+  const tokens = title.split(/\s+/).filter((t) => t && !VERB_RESIDUE.has(t.toLowerCase()));
+  title = tokens.join(' ').trim();
+  if (!title) return fallback;
+  // Re-capitalise
+  return title
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 function withContextLink(
   base: Extract<CollectionIntent, { type: 'create_collection' }>,
   ctx?: CollectionDetectContext
@@ -97,8 +164,21 @@ function withContextLink(
   };
 }
 
+function looksLikeStandaloneTask(text: string): boolean {
+  return /\b(need to|have to|should|must|schedule|call|email|meet|finish|write|send|buy|fix|book|pay|pick up)\b/i.test(
+    text
+  ) && !/\blists?\b/i.test(text);
+}
+
+function isListyUtterance(raw: string): boolean {
+  if (/\blists?\b/i.test(raw)) return true;
+  if (/\b(checklist|todo|to-do|snag|grocery|groceries|packing|materials)\b/i.test(raw))
+    return true;
+  return false;
+}
+
 /**
- * Primary entry: detect a collection intent from text.
+ * Primary entry: detect a list intent from text.
  * Returns null when the utterance should fall through to normal task create.
  */
 export function detectCollectionIntent(
@@ -108,6 +188,7 @@ export function detectCollectionIntent(
   const raw = collapseWhitespace(text);
   if (!raw) return null;
 
+  // --- close ---
   const close = raw.match(CLOSE_RE);
   if (close) {
     const name = close[1] || close[2] || close[3] || '';
@@ -118,20 +199,9 @@ export function detectCollectionIntent(
     };
   }
 
-  const reopen = raw.match(REOPEN_RE);
-  if (reopen) {
-    const name = reopen[1] || reopen[2] || '';
-    if (name.trim()) {
-      return {
-        type: 'reopen_collection',
-        target: targetTitle(name),
-        ...high(['reopen_phrase']),
-      };
-    }
-  }
-
+  // --- change item ---
   const change = raw.match(CHANGE_RE);
-  if (change) {
+  if (change && (ctx?.activeCollectionId || isListyUtterance(raw))) {
     return {
       type: 'update_collection_item',
       target: targetActive(),
@@ -141,6 +211,7 @@ export function detectCollectionIntent(
     };
   }
 
+  // --- remove ---
   const remove = raw.match(REMOVE_RE);
   if (remove) {
     const refs = splitItemEnumeration(remove[1]);
@@ -153,6 +224,7 @@ export function detectCollectionIntent(
     };
   }
 
+  // --- complete command: "complete eggs" ---
   const completeCmd = raw.match(COMPLETE_CMD_RE);
   if (completeCmd) {
     const refs = splitItemEnumeration(completeCmd[1]);
@@ -166,6 +238,7 @@ export function detectCollectionIntent(
     }
   }
 
+  // --- complete phrase: "eggs are done", "got the milk" ---
   if (
     /\b(got|bought|picked up|is done|are done|finished)\b/i.test(raw) &&
     !/\b(need|start|create|list)\b/i.test(raw)
@@ -187,109 +260,191 @@ export function detectCollectionIntent(
     }
   }
 
-  const query = raw.match(QUERY_RE);
-  if (query) {
-    const name = query[1] || query[2] || '';
+  // --- query bare: "what's on the list" / "show my list" ---
+  if (QUERY_BARE_LIST_RE.test(raw)) {
     return {
       type: 'query_collection',
-      target: name.trim() ? targetTitle(name) : targetActive(),
+      target: targetActive(),
+      ...high(['query_bare_list']),
+    };
+  }
+
+  // --- query named: "show my packing list" / "what's on grocery" ---
+  const query = raw.match(QUERY_RE);
+  if (query) {
+    const name = query[1] || query[2] || query[3] || '';
+    const cleaned = collapseWhitespace(name.replace(/\blists?\b/i, ''));
+    return {
+      type: 'query_collection',
+      target: cleaned ? targetTitle(cleaned) : targetActive(),
       ...high(['query_phrase']),
     };
   }
 
+  // --- reopen ---
+  const reopen = raw.match(REOPEN_RE);
+  if (reopen) {
+    const name = reopen[1] || reopen[2] || '';
+    if (name.trim()) {
+      return {
+        type: 'reopen_collection',
+        target: targetTitle(name),
+        ...high(['reopen_phrase']),
+      };
+    }
+  }
+
+  // --- append to named list ---
   const appendTo = raw.match(APPEND_TO_RE);
   if (appendTo) {
     const items = itemsFromText(appendTo[1]);
+    const targetName = collapseWhitespace(appendTo[2].replace(/\blists?\b/i, ''));
+    // "add milk to my list" → active; "add milk to packing" → packing
+    if (!targetName || /^(?:it|that|this)$/i.test(targetName)) {
+      return {
+        type: 'append_collection',
+        target: targetActive(),
+        items,
+        ...high(['append_to_the_list']),
+      };
+    }
     return {
       type: 'append_collection',
-      target: targetTitle(appendTo[2]),
+      target: targetTitle(targetName),
       items,
       ...high(['append_to_named']),
     };
   }
 
-  // Explicit create: "start a grocery list", "make a packing list", "new list", …
-  const createMatch = raw.match(CREATE_RE);
-  if (createMatch && /\blist\b/i.test(raw)) {
-    // Avoid treating "add X to my list" as create (handled above via APPEND).
-    if (!/^(?:add|put|include|remove|delete|show|what)\b/i.test(raw)) {
-      const namePart = collapseWhitespace(createMatch[1] || '');
-      const title = titleFromSpoken(namePart) || 'List';
-      const contextHint = createMatch[2]
-        ? collapseWhitespace(createMatch[2])
-        : extractForClause(raw) ?? undefined;
-      // Items may follow via colon/dash/period: "Start a packing list: screws, gib"
-      const trailing = collapseWhitespace(createMatch[3] || '');
-      const afterPeriod = raw.split(/\.\s+/).slice(1).join('. ');
-      const itemSource = trailing || afterPeriod;
-      const items = itemSource ? itemsFromText(itemSource) : [];
-      return withContextLink({
-        type: 'create_collection',
-        title,
-        collectionType: inferCollectionType(title),
-        items,
-        contextHint: contextHint || undefined,
-        ...high(['create_list_phrase']),
-      }, ctx);
-    }
-  }
-
-  const createColon = raw.match(CREATE_COLON_RE);
-  if (createColon) {
-    const head = collapseWhitespace(createColon[1]);
-    const body = createColon[2];
-    // Require "list" in the utterance, or a known list-head seed, so
-    // "Call: John" does not become a list.
-    if (/\blist\b/i.test(head) || isListHead(head) || /\blist\b/i.test(raw)) {
-      const title = titleFromSpoken(head.replace(/\blist\b/i, '')) || 'List';
-      const items = itemsFromText(body);
-      const contextHint = extractForClause(raw);
-      return withContextLink({
-        type: 'create_collection',
-        title,
-        collectionType: inferCollectionType(title),
-        items,
-        contextHint: contextHint ?? undefined,
-        ...high(['create_colon_list']),
-      }, ctx);
-    }
-  }
-
-  const createIs = raw.match(CREATE_IS_RE);
-  if (createIs) {
-    const title = titleFromSpoken(createIs[1]) || 'List';
+  // --- put X on the list / on it ---
+  const appendThe = raw.match(APPEND_THE_LIST_RE);
+  if (appendThe) {
     return {
-      type: 'create_collection',
-      title,
-      collectionType: inferCollectionType(title),
-      items: [],
-      ...high(['create_list_progressive']),
+      type: 'append_collection',
+      target: targetActive(),
+      items: itemsFromText(appendThe[1]),
+      ...high(['append_the_list']),
     };
   }
 
-  // "grocery list milk, bread" or "birthday list cake, candles" (no verb).
-  // Known seeds (grocery, packing, …) may omit the word "list".
-  const listInline = raw.match(LIST_INLINE_RE);
-  if (listInline) {
-    const title = titleFromSpoken(listInline[1]) || 'List';
-    const items = itemsFromText(listInline[2]);
-    if (items.length >= 1 && !looksLikeStandaloneTask(raw)) {
-      return {
+  // --- CREATE: "I need a packing list" ---
+  const needBare = raw.match(NEED_LIST_BARE_RE);
+  if (needBare) {
+    return withContextLink(
+      {
+        type: 'create_collection',
+        title: 'List',
+        collectionType: 'generic',
+        items: [],
+        ...high(['need_list_bare']),
+      },
+      ctx
+    );
+  }
+  const needNamed = raw.match(NEED_LIST_RE);
+  if (needNamed) {
+    const title = cleanListTitle(needNamed[1]);
+    return withContextLink(
+      {
+        type: 'create_collection',
+        title,
+        collectionType: inferCollectionType(title),
+        items: [],
+        ...high(['need_list_named']),
+      },
+      ctx
+    );
+  }
+
+  // --- CREATE: "can you make a birthday list" ---
+  const canYou = raw.match(CAN_YOU_LIST_RE);
+  if (canYou && isListyUtterance(raw)) {
+    const title = cleanListTitle(canYou[1]);
+    const after = raw.split(/\.\s+/).slice(1).join('. ');
+    const items = after ? itemsFromText(after) : [];
+    return withContextLink(
+      {
         type: 'create_collection',
         title,
         collectionType: inferCollectionType(title),
         items,
-        ...med(['create_list_inline_items']),
-      };
+        ...high(['can_you_list']),
+      },
+      ctx
+    );
+  }
+
+  // --- CREATE core: "start list", "start a grocery list", "make packing list: a, b" ---
+  const createCore = raw.match(CREATE_CORE_RE);
+  if (createCore) {
+    const title = cleanListTitle(createCore[1]);
+    const contextHint = createCore[2] ? collapseWhitespace(createCore[2]) : undefined;
+    const trailing = collapseWhitespace(createCore[3] || '');
+    const afterPeriod = raw.split(/\.\s+/).slice(1).join('. ');
+    const items = itemsFromText(trailing || afterPeriod || '');
+    return withContextLink(
+      {
+        type: 'create_collection',
+        title,
+        collectionType: inferCollectionType(title),
+        items,
+        contextHint,
+        ...high(['create_list_phrase']),
+      },
+      ctx
+    );
+  }
+
+  // Fallback create: verb + listy word somewhere (handles odd word order)
+  if (CREATE_VERBS.test(raw) && isListyUtterance(raw) && !looksLikeStandaloneTask(raw)) {
+    // Strip verb + articles, strip trailing "list", leftover is the name
+    let rest = raw
+      .replace(CREATE_VERBS, '')
+      .replace(/^(?:\s*(?:me|us)\s+)?(?:a|an|my|the)\s+/i, ' ')
+      .replace(/\blists?\b/i, ' ')
+      .replace(/\bfor\s+.+$/i, ' ');
+    // Drop trailing items after colon
+    const colonSplit = rest.split(/[:.—–\-]/);
+    const namePart = collapseWhitespace(colonSplit[0] || '');
+    const itemPart = colonSplit.slice(1).join(' ');
+    const title = cleanListTitle(namePart);
+    const items = itemPart ? itemsFromText(itemPart) : [];
+    return withContextLink(
+      {
+        type: 'create_collection',
+        title,
+        collectionType: inferCollectionType(title),
+        items,
+        ...med(['create_list_fallback']),
+      },
+      ctx
+    );
+  }
+
+  // --- "packing list: screws, gib" / "birthday list cake, candles" ---
+  const inline = raw.match(NAMED_LIST_INLINE_RE);
+  if (inline && !looksLikeStandaloneTask(raw) && !CREATE_VERBS.test(raw)) {
+    // Avoid "call list of clients" style — require short head
+    const head = collapseWhitespace(inline[1]);
+    if (head.split(/\s+/).length <= 4) {
+      const title = cleanListTitle(head);
+      const items = itemsFromText(inline[2]);
+      if (items.length >= 1) {
+        return {
+          type: 'create_collection',
+          title,
+          collectionType: inferCollectionType(title),
+          items,
+          ...med(['create_list_inline_items']),
+        };
+      }
     }
   }
 
-  // Bare seed + items: "grocery milk, bread" / "packing screws, gib"
-  const bareSeed = raw.match(
-    /^((?:grocery|groceries|shopping|snag|packing|materials|questions|ideas|observations))\s+(.+)$/i
-  );
+  // --- bare seed + items ---
+  const bareSeed = raw.match(BARE_SEED_RE);
   if (bareSeed) {
-    const title = titleFromSpoken(bareSeed[1]);
+    const title = cleanListTitle(bareSeed[1]);
     const items = itemsFromText(bareSeed[2]);
     if (items.length >= 1) {
       return {
@@ -302,6 +457,7 @@ export function detectCollectionIntent(
     }
   }
 
+  // --- bare add / implicit continuation on active list ---
   const addBare = raw.match(ADD_BARE_RE);
   if (addBare) {
     const items = itemsFromText(addBare[1]);
@@ -332,39 +488,9 @@ export function detectCollectionIntent(
   return null;
 }
 
-function isListHead(head: string): boolean {
-  const k = normalizeTitle(head);
-  // Known seeds (examples only) OR any head that already ends with "list".
-  if (/\blist\b/i.test(head)) return true;
-  return [
-    'grocery',
-    'shopping',
-    'snag',
-    'packing',
-    'materials',
-    'questions',
-    'ideas',
-    'observations',
-    'todo',
-    'to do',
-    'checklist',
-    'errands',
-  ].some((x) => k === x || k.includes(x));
-}
-
-function extractForClause(raw: string): string | null {
-  const m = raw.match(/\bfor\s+(.+?)(?:\s*[:—–\-]|$)/i);
-  return m ? collapseWhitespace(m[1]) : null;
-}
-
-function looksLikeStandaloneTask(text: string): boolean {
-  return /\b(need to|have to|should|must|schedule|call|email|meet|finish|write|send)\b/i.test(
-    text
-  );
-}
-
-/** Whether speech decision should prefer collection mutation over task create. */
+/** Whether speech decision should prefer list mutation over task create. */
 export function intentBlocksTaskCreate(intent: CollectionIntent | null): boolean {
   if (!intent) return false;
   return intent.type !== 'query_collection';
 }
+
