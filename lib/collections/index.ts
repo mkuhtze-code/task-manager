@@ -82,3 +82,6 @@ export {
   fetchCollectionStoreRemote,
   pushCollectionStoreRemote,
 } from './remote';
+
+export { resolveContextLink } from './contextLink';
+export type { ContextLink } from './contextLink';
