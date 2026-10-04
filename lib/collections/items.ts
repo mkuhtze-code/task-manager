@@ -95,6 +95,15 @@ export function looksLikeImplicitItem(text: string): boolean {
   if (/\b(need to|have to|should|must|please|remind|schedule|meeting)\b/i.test(t)) {
     return false;
   }
+  // Done-state utterances are completions, never new items
+  if (
+    /\b(?:is|are|was|were)\s+(?:done|complete|completed|finished|sorted|dealt\s+with|handled)\b/i.test(
+      t
+    ) ||
+    /\b(?:done|finished|sorted(?:\s+out)?|dealt\s+with|handled|taken\s+care\s+of)\s*$/i.test(t)
+  ) {
+    return false;
+  }
   if (t.length > 80) return false;
   // Single phrase / short enumeration
   const items = splitItemEnumeration(t);
