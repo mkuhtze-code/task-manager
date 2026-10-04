@@ -19,14 +19,27 @@ import type {
 } from './types';
 import { resolveContextLink } from './contextLink';
 
+/**
+ * Generic list create. Matches e.g.:
+ *   "start a grocery list"
+ *   "create packing list"
+ *   "new list"
+ *   "make a birthday list for the party"
+ *   "open my materials list"
+ * Domain words (grocery, packing, …) are examples only — any "<name> list" works.
+ */
 const CREATE_RE =
-  /^(?:(?:start|create|make|new|open)\s+(?:a\s+|an\s+|my\s+)?)?(?:(.+?)\s+)?(?:list|snag\s*list|grocery\s*list|packing\s*list|shopping\s*list)(?:\s+for\s+(.+))?$/i;
+  /^(?:(?:start|create|make|new|open)\s+(?:a\s+|an\s+|my\s+|the\s+)?)?(?:(.+?)\s+)?list(?:\s+for\s+([^.:—–\-]+))?(?:\s*[:.—–\-]\s*(.+))?$/i;
 
 const CREATE_COLON_RE =
   /^(.+?)\s*(?:list)?\s*[:—–\-]\s*(.+)$/i;
 
 const CREATE_IS_RE =
-  /^(?:i(?:'m| am)\s+(?:making|starting)\s+(?:a\s+|an\s+|my\s+)?)(.+?)(?:\s+list)?$/i;
+  /^(?:i(?:'m| am)\s+(?:making|starting)\s+(?:a\s+|an\s+|my\s+)?)(.+?)\s+list$/i;
+
+/** Bare known-type or any "<name> list" followed by items, no verb required. */
+const LIST_INLINE_RE =
+  /^(.+?)\s+list\s+(.+)$/i;
 
 const APPEND_TO_RE =
   /^(?:add|put|include)\s+(.+?)\s+to\s+(?:my\s+|the\s+)?(.+?)(?:\s+list)?$/i;
@@ -195,17 +208,45 @@ export function detectCollectionIntent(
     };
   }
 
+  // Explicit create: "start a grocery list", "make a packing list", "new list", …
+  const createMatch = raw.match(CREATE_RE);
+  if (createMatch && /\blist\b/i.test(raw)) {
+    // Avoid treating "add X to my list" as create (handled above via APPEND).
+    if (!/^(?:add|put|include|remove|delete|show|what)\b/i.test(raw)) {
+      const namePart = collapseWhitespace(createMatch[1] || '');
+      const title = titleFromSpoken(namePart) || 'List';
+      const contextHint = createMatch[2]
+        ? collapseWhitespace(createMatch[2])
+        : extractForClause(raw) ?? undefined;
+      // Items may follow via colon/dash/period: "Start a packing list: screws, gib"
+      const trailing = collapseWhitespace(createMatch[3] || '');
+      const afterPeriod = raw.split(/\.\s+/).slice(1).join('. ');
+      const itemSource = trailing || afterPeriod;
+      const items = itemSource ? itemsFromText(itemSource) : [];
+      return withContextLink({
+        type: 'create_collection',
+        title,
+        collectionType: inferCollectionType(title),
+        items,
+        contextHint: contextHint || undefined,
+        ...high(['create_list_phrase']),
+      }, ctx);
+    }
+  }
+
   const createColon = raw.match(CREATE_COLON_RE);
   if (createColon) {
     const head = collapseWhitespace(createColon[1]);
     const body = createColon[2];
+    // Require "list" in the utterance, or a known list-head seed, so
+    // "Call: John" does not become a list.
     if (/\blist\b/i.test(head) || isListHead(head) || /\blist\b/i.test(raw)) {
-      const title = titleFromSpoken(head.replace(/\blist\b/i, ''));
+      const title = titleFromSpoken(head.replace(/\blist\b/i, '')) || 'List';
       const items = itemsFromText(body);
       const contextHint = extractForClause(raw);
       return withContextLink({
         type: 'create_collection',
-        title: title || 'List',
+        title,
         collectionType: inferCollectionType(title),
         items,
         contextHint: contextHint ?? undefined,
@@ -214,33 +255,9 @@ export function detectCollectionIntent(
     }
   }
 
-  if (
-    /\b(start|create|make|new)\b/i.test(raw) &&
-    /\b(list|snag|grocery|packing|shopping|materials|questions|observations)\b/i.test(raw)
-  ) {
-    const forMatch = raw.match(/\bfor\s+(.+)$/i);
-    const contextHint = forMatch ? collapseWhitespace(forMatch[1]) : undefined;
-    let titlePart = raw
-      .replace(/^(?:start|create|make|new)\s+(?:a\s+|an\s+|my\s+)?/i, '')
-      .replace(/\blist\b/i, '')
-      .replace(/\bfor\s+.+$/i, '');
-    titlePart = collapseWhitespace(titlePart);
-    const title = titleFromSpoken(titlePart || 'list');
-    const afterPeriod = raw.split(/\.\s+/).slice(1).join('. ');
-    const items = afterPeriod ? itemsFromText(afterPeriod) : [];
-    return withContextLink({
-      type: 'create_collection',
-      title,
-      collectionType: inferCollectionType(title),
-      items,
-      contextHint,
-      ...high(['create_list_phrase']),
-    }, ctx);
-  }
-
   const createIs = raw.match(CREATE_IS_RE);
   if (createIs) {
-    const title = titleFromSpoken(createIs[1]);
+    const title = titleFromSpoken(createIs[1]) || 'List';
     return {
       type: 'create_collection',
       title,
@@ -250,19 +267,37 @@ export function detectCollectionIntent(
     };
   }
 
-  const listWord = raw.match(
-    /^((?:grocery|groceries|shopping|snag|packing|materials|questions|ideas|observations)(?:\s+list)?)\s+(.+)$/i
-  );
-  if (listWord) {
-    const title = titleFromSpoken(listWord[1]);
-    const items = itemsFromText(listWord[2]);
-    if (items.length >= 1) {
+  // "grocery list milk, bread" or "birthday list cake, candles" (no verb).
+  // Known seeds (grocery, packing, …) may omit the word "list".
+  const listInline = raw.match(LIST_INLINE_RE);
+  if (listInline) {
+    const title = titleFromSpoken(listInline[1]) || 'List';
+    const items = itemsFromText(listInline[2]);
+    if (items.length >= 1 && !looksLikeStandaloneTask(raw)) {
       return {
         type: 'create_collection',
         title,
         collectionType: inferCollectionType(title),
         items,
         ...med(['create_list_inline_items']),
+      };
+    }
+  }
+
+  // Bare seed + items: "grocery milk, bread" / "packing screws, gib"
+  const bareSeed = raw.match(
+    /^((?:grocery|groceries|shopping|snag|packing|materials|questions|ideas|observations))\s+(.+)$/i
+  );
+  if (bareSeed) {
+    const title = titleFromSpoken(bareSeed[1]);
+    const items = itemsFromText(bareSeed[2]);
+    if (items.length >= 1) {
+      return {
+        type: 'create_collection',
+        title,
+        collectionType: inferCollectionType(title),
+        items,
+        ...med(['create_list_seed_items']),
       };
     }
   }
@@ -299,6 +334,8 @@ export function detectCollectionIntent(
 
 function isListHead(head: string): boolean {
   const k = normalizeTitle(head);
+  // Known seeds (examples only) OR any head that already ends with "list".
+  if (/\blist\b/i.test(head)) return true;
   return [
     'grocery',
     'shopping',
@@ -308,6 +345,10 @@ function isListHead(head: string): boolean {
     'questions',
     'ideas',
     'observations',
+    'todo',
+    'to do',
+    'checklist',
+    'errands',
   ].some((x) => k === x || k.includes(x));
 }
 
