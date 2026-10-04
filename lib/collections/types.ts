@@ -175,9 +175,11 @@ export type CollectionDetectContext = {
   activeCollectionId?: string | null;
   activeCollectionTitle?: string | null;
   collections?: Collection[];
+  /** Job/meeting labels for context linking */
   jobs?: Array<{ id: string; name: string }>;
   meetings?: Array<{ id: string; text: string }>;
   surface?: string | null;
+  /** ms since last collection interaction; used for active decay */
   msSinceLastActivity?: number | null;
 };
 
