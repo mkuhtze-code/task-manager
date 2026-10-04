@@ -68,3 +68,11 @@ export {
   reopenCollection,
 } from './service';
 export type { CollectionStore, ApplyResult } from './service';
+
+export {
+  loadCollectionStore,
+  saveCollectionStore,
+  detectContextFromStore,
+  applyAndPersistCollectionIntent,
+  listOpenCollections,
+} from './localStore';
