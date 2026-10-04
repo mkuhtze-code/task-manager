@@ -1,6 +1,6 @@
 /**
- * Client-side collection store (localStorage).
- * Supabase persistence can replace load/save later without changing apply API.
+ * Client-side collection store (localStorage) + optional Supabase dual-write.
+ * Local is always written for snappy UX; remote is best-effort.
  */
 
 import { emptyStore, applyCollectionIntent } from './service';
@@ -10,6 +10,10 @@ import type {
   CollectionDetectContext,
   Collection,
 } from './types';
+import {
+  fetchCollectionStoreRemote,
+  pushCollectionStoreRemote,
+} from './remote';
 
 const KEY_PREFIX = 'dokkit.collections.v1:';
 
@@ -54,7 +58,7 @@ export function saveCollectionStore(userId: string, store: CollectionStore): voi
       })
     );
   } catch {
-    // quota / private mode — ignore
+    // quota / private mode
   }
 }
 
@@ -76,10 +80,6 @@ export function detectContextFromStore(store: CollectionStore): CollectionDetect
   };
 }
 
-/**
- * Apply a collection intent against the persisted store for this user.
- * Returns the ApplyResult (message, ok, needsClarification).
- */
 export function applyAndPersistCollectionIntent(
   userId: string,
   intent: CollectionIntent
@@ -87,9 +87,34 @@ export function applyAndPersistCollectionIntent(
   const store = loadCollectionStore(userId);
   const result = applyCollectionIntent(store, userId || 'anon', intent);
   saveCollectionStore(userId, result.store);
+  void pushCollectionStoreRemote(userId, result.store);
   return result;
 }
 
 export function listOpenCollections(userId: string): Collection[] {
   return loadCollectionStore(userId).collections.filter((c) => c.status === 'open');
+}
+
+/** Pull remote into local when remote is newer / local empty. */
+export async function hydrateCollectionsFromRemote(userId: string): Promise<CollectionStore> {
+  const local = loadCollectionStore(userId);
+  const remote = await fetchCollectionStoreRemote(userId);
+  if (!remote) return local;
+  if (local.collections.length === 0 && remote.collections.length > 0) {
+    saveCollectionStore(userId, remote);
+    return remote;
+  }
+  const localMax = Math.max(
+    0,
+    ...local.collections.map((c) => Date.parse(c.lastActivityAt) || 0)
+  );
+  const remoteMax = Math.max(
+    0,
+    ...remote.collections.map((c) => Date.parse(c.lastActivityAt) || 0)
+  );
+  if (remoteMax > localMax) {
+    saveCollectionStore(userId, remote);
+    return remote;
+  }
+  return local;
 }
