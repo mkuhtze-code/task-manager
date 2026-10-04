@@ -5,7 +5,9 @@
 
 import type { ActiveCollectionState, Collection } from './types';
 
+/** Default: active soft-expires after 2 hours without interaction. */
 export const ACTIVE_SOFT_TTL_MS = 2 * 60 * 60 * 1000;
+/** Hard: after 24h never use active for implicit continuation. */
 export const ACTIVE_HARD_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function emptyActiveState(): ActiveCollectionState {
@@ -67,6 +69,7 @@ export function evaluateActiveEligibility(
   return { eligible: true, reason: 'fresh' };
 }
 
+/** Whether implicit continuation (bare "Milk.") may use active. */
 export function canUseActiveForImplicit(
   state: ActiveCollectionState,
   now = Date.now()
