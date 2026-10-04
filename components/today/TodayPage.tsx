@@ -13,6 +13,12 @@ import { TravelLeg } from '@/components/TravelLeg';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
+import {
+  LIST_TASK_MARKER,
+  matchSubtaskRefs,
+  type TaskListOps,
+  type ListTaskCandidate,
+} from '@/lib/speech/taskListBridge';
 import { RealityCheckSheet } from '@/components/RealityCheckSheet';
 import { TodayHeader } from '@/components/TodayHeader';
 import MapView from '@/components/MapView';
@@ -1980,6 +1986,119 @@ export function TodayPage() {
     }));
   }
 
+  /** List-as-task ops for speech capture (tasks + subtasks, not collections). */
+  const listOps: TaskListOps | null = session?.user?.id
+    ? {
+        listTasks: (): ListTaskCandidate[] =>
+          tasks.map((t) => ({ id: t.id, text: t.text, info: t.info })),
+        createListTask: async (title: string, itemTexts: string[]) => {
+          const userId = session.user.id;
+          const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order_index), 0);
+          const { data, error } = await supabase
+            .from('tasks')
+            .insert({
+              user_id: userId,
+              text: title,
+              estimate_mins: 0,
+              due_today: false,
+              source: 'came_up',
+              order_index: maxOrder + 1,
+              info: LIST_TASK_MARKER,
+              original_input: title,
+            })
+            .select()
+            .single();
+          if (error || !data) {
+            console.error(error);
+            return null;
+          }
+          setTasks((prev) => [...prev, data]);
+          if (itemTexts.length > 0) {
+            const rows = itemTexts.map((text, i) => ({
+              user_id: userId,
+              task_id: data.id,
+              text,
+              mins: 0,
+              order_index: i,
+            }));
+            const { data: subData, error: subErr } = await supabase
+              .from('subtasks')
+              .insert(rows)
+              .select();
+            if (subErr) {
+              console.error(subErr);
+            } else if (subData) {
+              setSubtasksByTask((prev) => ({ ...prev, [data.id]: subData }));
+            }
+          }
+          return { taskId: data.id, title: data.text };
+        },
+        appendSubtasks: async (taskId: string, itemTexts: string[]) => {
+          const userId = session.user.id;
+          const existing = subtasksByTask[taskId] || [];
+          const rows = itemTexts.map((text, i) => ({
+            user_id: userId,
+            task_id: taskId,
+            text,
+            mins: 0,
+            order_index: existing.length + i,
+          }));
+          const { data, error } = await supabase.from('subtasks').insert(rows).select();
+          if (error) {
+            console.error(error);
+            return 0;
+          }
+          if (data) {
+            setSubtasksByTask((prev) => ({
+              ...prev,
+              [taskId]: [...(prev[taskId] || []), ...data],
+            }));
+          }
+          return data?.length ?? 0;
+        },
+        completeSubtasks: async (taskId: string, refs: string[]) => {
+          const subs = subtasksByTask[taskId] || [];
+          const ids = matchSubtaskRefs(subs, refs);
+          if (ids.length === 0) return 0;
+          const { error } = await supabase.from('subtasks').update({ done: true }).in('id', ids);
+          if (error) {
+            console.error(error);
+            return 0;
+          }
+          setSubtasksByTask((prev) => ({
+            ...prev,
+            [taskId]: (prev[taskId] || []).map((s) =>
+              ids.includes(s.id) ? { ...s, done: true } : s
+            ),
+          }));
+          return ids.length;
+        },
+        removeSubtasks: async (taskId: string, refs: string[]) => {
+          const subs = subtasksByTask[taskId] || [];
+          const ids = matchSubtaskRefs(subs, refs);
+          if (ids.length === 0) return 0;
+          const { error } = await supabase.from('subtasks').delete().in('id', ids);
+          if (error) {
+            console.error(error);
+            return 0;
+          }
+          setSubtasksByTask((prev) => ({
+            ...prev,
+            [taskId]: (prev[taskId] || []).filter((s) => !ids.includes(s.id)),
+          }));
+          return ids.length;
+        },
+        openTask: (taskId: string) => {
+          setCaptureOpen(false);
+          setExpandedId(null);
+          setOpenTaskId(taskId);
+        },
+        getSubtaskTexts: async (taskId: string) => {
+          return (subtasksByTask[taskId] || []).map((s) => s.text);
+        },
+      }
+    : null;
+
   // Parent (app/page.tsx) only mounts Today when session is established.
 
   // Travel presence for capacity (authenticated user only; RLS + user_id filter).
@@ -2782,6 +2901,8 @@ export function TodayPage() {
           error={error}
           onClose={() => setCaptureOpen(false)}
           userId={session?.user?.id ?? null}
+          listOps={listOps}
+          listTasks={tasks.map((t) => ({ id: t.id, text: t.text, info: t.info }))}
         />
       )}
 
