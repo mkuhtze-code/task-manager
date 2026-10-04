@@ -36,6 +36,10 @@ const ADD_BARE_RE = /^(?:add|also|plus|and)\s+(.+)$/i;
 const COMPLETE_RE =
   /^(?:(?:i\s+)?(?:got|have|bought|picked\s*up)|(?:mark|set)\s+)?(.+?)\s+(?:is\s+)?(?:done|complete|completed|finished)|(?:got|have)\s+(?:the\s+)?(.+)$/i;
 
+/** "Complete eggs" / "Mark eggs done" / "Check off eggs" */
+const COMPLETE_CMD_RE =
+  /^(?:complete|check\s*off|tick\s*off|mark)\s+(.+?)(?:\s+(?:as\s+)?(?:done|complete|completed|finished))?$/i;
+
 const REMOVE_RE =
   /^(?:remove|delete|take)\s+(.+?)(?:\s+off(?:\s+the\s+list)?|\s+from\s+(?:my\s+|the\s+)?(.+?)(?:\s+list)?)?$/i;
 
@@ -134,6 +138,19 @@ export function detectCollectionIntent(
       itemReferences: refs,
       ...high(['remove_phrase']),
     };
+  }
+
+  const completeCmd = raw.match(COMPLETE_CMD_RE);
+  if (completeCmd) {
+    const refs = splitItemEnumeration(completeCmd[1]);
+    if (refs.length > 0) {
+      return {
+        type: 'complete_collection_items',
+        target: targetActive(),
+        itemReferences: refs,
+        ...high(['complete_command']),
+      };
+    }
   }
 
   if (
