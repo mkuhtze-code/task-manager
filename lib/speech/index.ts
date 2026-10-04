@@ -162,6 +162,24 @@ export type {
 export { detectCaptureCollection } from './collectionBridge';
 
 export {
+  applyListIntent,
+  detectListIntent,
+  LIST_TASK_MARKER,
+  loadActiveListState,
+  activateListTask,
+  clearActiveList,
+  canUseActiveList,
+  resolveReferentialItems,
+  matchSubtaskRefs,
+} from './taskListBridge';
+export type {
+  TaskListOps,
+  ListTaskCandidate,
+  ApplyListResult,
+  ActiveListState,
+} from './taskListBridge';
+
+export {
   loadSpeechLanguageModel,
   saveSpeechLanguageModel,
   clearSpeechLanguageModel,
