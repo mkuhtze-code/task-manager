@@ -10,17 +10,16 @@
 - Confirm → local personal language model learning
 - Persistent Collections engine + speech detect + Capture Dock apply (localStorage)
 - Collections dual-write to Supabase (best-effort via `remote.ts`)
-- Collections unit tests + CollectionsPeekSheet (minimal list UI)
-- Universal domain pack definitions + soft scoring in `sttRepair`
+- Collections unit tests + CollectionsPeekSheet
+- **Capture “Lists” entry** + clarification picker + client_op_id on Dock items
+- Universal domain packs + soft scoring in `sttRepair`
 
 ## Remaining for “finished”
 
 ### A. Collections product
 - [ ] Apply `20261004_collections.sql` on production Supabase
-- [ ] Surface CollectionsPeek from Today/Capture chrome
-- [ ] Clarification picker UI (ambiguous list)
-- [ ] Job/meeting context linking end-to-end
-- [ ] client_op_id from speech session on Dock
+- [ ] Job/meeting context linking end-to-end (snag for job X)
+- [ ] Optional: Lists entry outside Capture (Today header)
 
 ### B. STT quality
 - [ ] Cloud STT provider behind same pipeline
