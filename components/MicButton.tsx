@@ -1,6 +1,12 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { useSpeechToText } from '@/lib/useSpeechToText';
+import {
+  isBlobSpeechCaptureAvailable,
+  useBlobSpeechCapture,
+} from '@/lib/useBlobSpeechCapture';
+import { isWebSpeechAvailable } from '@/lib/speech';
 
 function MicIcon() {
   return (
@@ -11,6 +17,19 @@ function MicIcon() {
   );
 }
 
+function preferCloudBlob(): boolean {
+  if (typeof process === 'undefined') return false;
+  const flag = process.env.NEXT_PUBLIC_DOKKIT_STT_PREFER_CLOUD;
+  if (flag === '1' || flag === 'true') return true;
+  const endpoint = process.env.NEXT_PUBLIC_DOKKIT_STT_ENDPOINT;
+  return !!endpoint && endpoint.trim().length > 0;
+}
+
+/**
+ * Mic for Capture.
+ * - Default: Web Speech live recognition (fast, free).
+ * - Fallback / preferred cloud: MediaRecorder → POST /api/stt (or configured endpoint).
+ */
 export default function MicButton({
   onResult,
   size = 'default',
@@ -18,36 +37,77 @@ export default function MicButton({
   onResult: (text: string) => void;
   size?: 'default' | 'small';
 }) {
-  const { isSupported, isListening, start, stop } = useSpeechToText({
+  const [modeError, setModeError] = useState<string | null>(null);
+  const [status, setStatus] = useState<'idle' | 'recording' | 'transcribing'>('idle');
+
+  const useCloud = useMemo(() => {
+    if (preferCloudBlob() && isBlobSpeechCaptureAvailable()) return true;
+    if (!isWebSpeechAvailable() && isBlobSpeechCaptureAvailable()) return true;
+    return false;
+  }, []);
+
+  const web = useSpeechToText({
     onResult,
     onError: (err) => {
-      // Permission-denied is the realistic failure mode here; everything
-      // else (no-speech, network) is rare enough not to need its own UI —
-      // the button just returns to its idle state either way.
       if (err === 'not-allowed') {
         console.warn('Dokkit: microphone permission was denied.');
       }
+      setModeError(err);
     },
   });
 
-  // No SpeechRecognition support (Safari, some embedded webviews) — hide
-  // the button entirely rather than show something that won't work.
+  const blob = useBlobSpeechCapture({
+    onResult,
+    onError: (err) => {
+      if (err === 'not-allowed') {
+        console.warn('Dokkit: microphone permission was denied.');
+      }
+      setModeError(err);
+    },
+    onStatus: setStatus,
+    endpoint:
+      (typeof process !== 'undefined' &&
+        process.env.NEXT_PUBLIC_DOKKIT_STT_ENDPOINT?.trim()) ||
+      '/api/stt',
+  });
+
+  const isSupported = useCloud ? blob.isSupported : web.isSupported || blob.isSupported;
+  const isListening = useCloud
+    ? blob.isListening || status === 'transcribing'
+    : web.isListening;
+  const start = useCloud ? blob.start : web.isSupported ? web.start : blob.start;
+  const stop = useCloud ? blob.stop : web.isSupported ? web.stop : blob.stop;
+
   if (!isSupported) return null;
 
-  const classes = ['mic-btn', size === 'small' ? 'mic-btn-small' : '', isListening ? 'listening' : '']
+  const classes = [
+    'mic-btn',
+    size === 'small' ? 'mic-btn-small' : '',
+    isListening ? 'listening' : '',
+    status === 'transcribing' ? 'transcribing' : '',
+  ]
     .join(' ')
     .trim();
+
+  const label =
+    status === 'transcribing'
+      ? 'Transcribing…'
+      : isListening
+        ? 'Stop dictation'
+        : 'Dictate by voice';
 
   return (
     <button
       type="button"
       className={classes}
       onClick={() => (isListening ? stop() : start())}
-      aria-label={isListening ? 'Stop dictation' : 'Dictate by voice'}
+      aria-label={label}
       aria-pressed={isListening}
+      title={modeError || label}
+      disabled={status === 'transcribing'}
     >
       <MicIcon />
-      {isListening && <span className="mic-btn-pulse" />}
+      {isListening && status !== 'transcribing' && <span className="mic-btn-pulse" />}
     </button>
   );
 }
