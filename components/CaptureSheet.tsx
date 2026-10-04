@@ -272,11 +272,38 @@ export function CaptureSheet(props: {
     showReminderField ||
     showJobField;
 
+  /** Live list intent from the capture line (not only speech result). */
+  const liveListIntent = (() => {
+    const line = taskText.trim();
+    if (!line) return null;
+    const ctx = buildCollectionContext();
+    const detected = detectCaptureCollection(line, ctx);
+    const fallback = detectListIntent(line, listTasks);
+    return detected?.intent ?? fallback;
+  })();
+
+  const isLiveListIntent =
+    !!liveListIntent &&
+    (liveListIntent.type === 'create_collection' ||
+      liveListIntent.type === 'append_collection' ||
+      liveListIntent.type === 'complete_collection_items' ||
+      liveListIntent.type === 'remove_collection_items' ||
+      liveListIntent.type === 'update_collection_item' ||
+      liveListIntent.type === 'close_collection' ||
+      liveListIntent.type === 'reopen_collection' ||
+      liveListIntent.type === 'query_collection' ||
+      liveListIntent.type === 'clarification_required');
+
   const collectionDockReady =
-    !!speechStatus?.result &&
-    (!!speechStatus.result.collection &&
+    isLiveListIntent ||
+    (!!speechStatus?.result &&
+      !!speechStatus.result.collection &&
       (captureIsCollectionMutation(speechStatus.result) ||
         speechStatus.result.uiMode === 'collection_clarification'));
+
+  // List mutations use their own target resolution — don't block on job confirm.
+  const resolutionBlocksDock =
+    resolutionNeedsAttention && !isLiveListIntent;
 
   async function applyListDock(intent: CollectionIntent) {
     if (!listOps) {
@@ -508,7 +535,7 @@ export function CaptureSheet(props: {
           </div>
         )}
 
-        {resolutionNeedsAttention && locationResolution?.state === 'proposed' && (
+        {resolutionNeedsAttention && !isLiveListIntent && locationResolution?.state === 'proposed' && (
           <div
             className="capture-entity-chip capture-entity-chip-ask"
             role="group"
@@ -540,7 +567,7 @@ export function CaptureSheet(props: {
           </div>
         )}
 
-        {resolutionNeedsAttention && locationResolution?.state === 'choose' && (
+        {resolutionNeedsAttention && !isLiveListIntent && locationResolution?.state === 'choose' && (
           <div className="unified-thought-choose">
             <span className="unified-thought-prompt">Job</span>
             <div className="sheet-inline-options">
@@ -577,7 +604,7 @@ export function CaptureSheet(props: {
         <button
           type="button"
           className="btn btn-steel capture-dock-btn"
-          disabled={listBusy || (!gate.ready && !collectionDockReady)}
+          disabled={listBusy || (resolutionBlocksDock && !collectionDockReady) || (!gate.ready && !collectionDockReady)}
           onClick={tryDock}
         >
           {gate.ready || collectionDockReady ? 'Dock' : 'Add'}
