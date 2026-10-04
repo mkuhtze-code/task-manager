@@ -1990,7 +1990,13 @@ export function TodayPage() {
   const listOps: TaskListOps | null = session?.user?.id
     ? {
         listTasks: (): ListTaskCandidate[] =>
-          tasks.map((t) => ({ id: t.id, text: t.text, info: t.info })),
+          tasks.map((t) => ({
+            id: t.id,
+            text: t.text,
+            info: t.info,
+            jobId: t.job_id,
+            jobName: jobs.find((j) => j.id === t.job_id)?.name ?? null,
+          })),
         createListTask: async (title: string, itemTexts: string[], opts) => {
           const userId = session.user.id;
           const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order_index), 0);
@@ -2904,7 +2910,13 @@ export function TodayPage() {
           onClose={() => setCaptureOpen(false)}
           userId={session?.user?.id ?? null}
           listOps={listOps}
-          listTasks={tasks.map((t) => ({ id: t.id, text: t.text, info: t.info }))}
+          listTasks={tasks.map((t) => ({
+            id: t.id,
+            text: t.text,
+            info: t.info,
+            jobId: t.job_id,
+            jobName: jobs.find((j) => j.id === t.job_id)?.name ?? null,
+          }))}
         />
       )}
 
