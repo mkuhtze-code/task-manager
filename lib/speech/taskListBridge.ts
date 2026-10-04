@@ -229,6 +229,9 @@ export type ListTaskCandidate = {
   id: string;
   text: string;
   info?: string | null;
+  /** Job this list-task is attached to (Dokkit landscape). */
+  jobId?: string | null;
+  jobName?: string | null;
 };
 
 export type ListResolveResult =
@@ -299,14 +302,18 @@ export function resolveListTarget(
     const spoken = target.kind === 'title' ? target.title : target.spoken;
     const spokenNorm = normalizeTitle(spoken);
 
-    // Prefer list-marked tasks when scoring
+    // Prefer list-marked tasks when scoring. Also score job-name anchors
+    // so "fixings for Munstead is sorted" finds a list titled "Order"
+    // that is attached to the Munstead job.
     const scored = tasks
-      .map((t) => ({
-        t,
-        score:
-          scoreTitleMatch(t.text, spoken) +
-          ((t.info || '').includes(LIST_TASK_MARKER) ? 15 : 0),
-      }))
+      .map((t) => {
+        const titleScore = scoreTitleMatch(t.text, spoken);
+        const jobScore = t.jobName ? scoreTitleMatch(t.jobName, spoken) : 0;
+        const base = Math.max(titleScore, jobScore);
+        const listBonus = (t.info || '').includes(LIST_TASK_MARKER) ? 15 : 0;
+        const jobBonus = jobScore >= 60 ? 10 : 0;
+        return { t, score: base + listBonus + jobBonus, jobScore, titleScore };
+      })
       .filter((x) => x.score >= 60)
       .sort((a, b) => b.score - a.score);
 
@@ -502,7 +509,21 @@ export async function applyListIntent(
   }
 
   if (intent.type === 'complete_collection_items') {
-    const res = resolveListTarget(intent.target, ops.listTasks());
+    let res = resolveListTarget(intent.target, ops.listTasks());
+    // If named target misses but active list still holds the item refs, use active.
+    if (res.kind === 'none' || (res.kind === 'found' && intent.itemReferences.length > 0)) {
+      const active = loadActiveListState();
+      if (active.taskId && canUseActiveList(active)) {
+        const activeRes: ListResolveResult = {
+          kind: 'found',
+          taskId: active.taskId,
+          title: active.title || 'List',
+        };
+        if (res.kind === 'none') {
+          res = activeRes;
+        }
+      }
+    }
     if (res.kind === 'ambiguous') {
       return {
         ok: false,
@@ -516,6 +537,26 @@ export async function applyListIntent(
       return { ok: false, message: 'No list found.', taskId: null, openTaskId: null };
     }
     const n = await ops.completeSubtasks(res.taskId, intent.itemReferences);
+    // If named list matched but item names didn't, try active list once.
+    if (n === 0) {
+      const active = loadActiveListState();
+      if (
+        active.taskId &&
+        canUseActiveList(active) &&
+        active.taskId !== res.taskId
+      ) {
+        const n2 = await ops.completeSubtasks(active.taskId, intent.itemReferences);
+        if (n2 > 0) {
+          touchActiveList();
+          return {
+            ok: true,
+            message: `Marked ${n2} done on "${active.title || 'List'}"`,
+            taskId: active.taskId,
+            openTaskId: null,
+          };
+        }
+      }
+    }
     touchActiveList();
     return {
       ok: true,
