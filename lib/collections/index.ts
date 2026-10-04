@@ -56,6 +56,9 @@ export {
 
 export { detectCollectionIntent, intentBlocksTaskCreate } from './intent';
 
+export { tryStructuralMultiItemCapture } from './structuralCapture';
+export type { StructuralCapture } from './structuralCapture';
+
 export {
   emptyStore,
   applyCollectionIntent,
