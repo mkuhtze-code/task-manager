@@ -5,6 +5,7 @@
  * Primary path: type (or speak) → Dock.
  * Speech goes through processCaptureSpeech before filling the line.
  * Time, place, job, and day are optional and stay collapsed until asked for.
+ * Collection list phrases route to applyAndPersistCollectionIntent (not tasks).
  */
 
 import { useEffect, useState } from 'react';
@@ -27,7 +28,16 @@ import { oneShotGate } from '@/lib/unifiedInput/oneShot';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { useCaptureSpeech, textForCaptureField } from '@/hooks/useCaptureSpeech';
-import type { SpeechUnderstandingContext } from '@/lib/speech';
+import {
+  captureIsCollectionMutation,
+  detectCaptureCollection,
+  type SpeechUnderstandingContext,
+} from '@/lib/speech';
+import {
+  applyAndPersistCollectionIntent,
+  detectContextFromStore,
+  loadCollectionStore,
+} from '@/lib/collections';
 import { MapPinIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
@@ -67,7 +77,7 @@ export function CaptureSheet(props: {
   durationExplain?: string | null;
   error: string;
   onClose: () => void;
-  /** Auth user id — scopes personal speech language model. */
+  /** Auth user id — scopes personal speech language model + collections. */
   userId?: string | null;
 }) {
   const {
@@ -112,6 +122,7 @@ export function CaptureSheet(props: {
   const [showTimeField, setShowTimeField] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [estimateHintVisible, setEstimateHintVisible] = useState(false);
+  const [collectionFeedback, setCollectionFeedback] = useState<string | null>(null);
   const { speechStatus, processSpokenText, clearSpeechStatus, confirmSpeechLearning } = useCaptureSpeech({
     userId,
   });
@@ -138,9 +149,12 @@ export function CaptureSheet(props: {
   }
 
   function onSpeechResult(spoken: string) {
+    const uid = userId ?? 'anon';
+    const collectionContext = detectContextFromStore(loadCollectionStore(uid));
     const result = processSpokenText(spoken, {
       understandingContext: buildSpeechContext(),
-      userId: userId ?? undefined,
+      userId: uid,
+      collectionContext,
     });
     if (!result) {
       setTaskText((prev) => (prev ? `${prev.trim()} ${spoken}` : spoken));
@@ -217,9 +231,42 @@ export function CaptureSheet(props: {
     showReminderField ||
     showJobField;
 
+  const collectionDockReady =
+    !!speechStatus?.result && captureIsCollectionMutation(speechStatus.result);
+
   function tryDock() {
-    if (!gate.ready) return;
-    // Learn only when the user commits (Dock) after speech
+    const uid = userId ?? 'anon';
+    const speechResult = speechStatus?.result ?? null;
+    let isCollection =
+      !!speechResult && captureIsCollectionMutation(speechResult);
+    let collectionIntent = isCollection
+      ? speechResult!.collection!.intent
+      : null;
+
+    // Typed capture: same detector when user typed a list phrase
+    if (!collectionIntent && taskText.trim()) {
+      const ctx = detectContextFromStore(loadCollectionStore(uid));
+      const detected = detectCaptureCollection(taskText.trim(), ctx);
+      if (detected && detected.blocksTaskCreate) {
+        isCollection = true;
+        collectionIntent = detected.intent;
+      }
+    }
+
+    if (!isCollection && !gate.ready) return;
+
+    if (isCollection && collectionIntent) {
+      const applied = applyAndPersistCollectionIntent(uid, collectionIntent);
+      confirmSpeechLearning();
+      clearSpeechStatus();
+      setCollectionFeedback(
+        applied.message || (applied.ok ? 'List updated.' : 'Could not update list.')
+      );
+      setTaskText('');
+      // Do not create a task — sheet stays open for continuation
+      return;
+    }
+
     confirmSpeechLearning();
     clearSpeechStatus();
     addTask();
@@ -264,6 +311,7 @@ export function CaptureSheet(props: {
             onChange={(e) => {
               setTaskText(e.target.value);
               if (speechStatus) clearSpeechStatus();
+              if (collectionFeedback) setCollectionFeedback(null);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -291,6 +339,24 @@ export function CaptureSheet(props: {
               type="button"
               className="btn-text capture-speech-status-dismiss"
               onClick={clearSpeechStatus}
+              aria-label="Dismiss"
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+
+        {collectionFeedback ? (
+          <div
+            className="capture-speech-status capture-speech-status-propose"
+            role="status"
+            aria-live="polite"
+          >
+            <span>{collectionFeedback}</span>
+            <button
+              type="button"
+              className="btn-text capture-speech-status-dismiss"
+              onClick={() => setCollectionFeedback(null)}
               aria-label="Dismiss"
             >
               Dismiss
@@ -385,10 +451,10 @@ export function CaptureSheet(props: {
         <button
           type="button"
           className="btn btn-steel capture-dock-btn"
-          disabled={!gate.ready}
+          disabled={!gate.ready && !collectionDockReady}
           onClick={tryDock}
         >
-          {gate.ready ? 'Dock' : 'Add'}
+          {gate.ready || collectionDockReady ? 'Dock' : 'Add'}
         </button>
 
         {error && (
