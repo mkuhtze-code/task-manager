@@ -17,13 +17,16 @@ const LIST_LEADINS = [
 const ENUM_PREFIX = /^(?:first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th)[,.\s]+/i;
 const NUMBERED = /^\d+[.)]\s*/;
 
+/** Split a list body into item strings. */
 export function splitItemEnumeration(raw: string): string[] {
   let text = collapseWhitespace(raw);
   if (!text) return [];
 
+  // "I've got three things: a, b and c" → body after colon
   const colon = text.match(/^[^:]{0,80}:\s*(.+)$/);
   if (colon) text = colon[1];
 
+  // Prefer comma splits when present
   if (/,/.test(text)) {
     const parts = text
       .split(/,|\band\b|\bplus\b/i)
@@ -33,6 +36,7 @@ export function splitItemEnumeration(raw: string): string[] {
     return dedupeAdjacent(parts.filter((p) => p.length > 0));
   }
 
+  // "a and b and c" without commas
   if (/\band\b/i.test(text)) {
     const parts = text
       .split(/\band\b|\bplus\b/i)
@@ -42,6 +46,7 @@ export function splitItemEnumeration(raw: string): string[] {
     if (parts.length > 1) return dedupeAdjacent(parts.filter((p) => p.length > 0));
   }
 
+  // Numbered / first-second-third lines
   if (ENUM_PREFIX.test(text) || NUMBERED.test(text) || /\.\s+(?:First|Second|Third)/i.test(text)) {
     const parts = text
       .split(/(?:(?:^|\.\s*)(?:First|Second|Third|Fourth|Fifth|1st|2nd|3rd|4th|5th)[,.\s]+|\d+[.)]\s*)/i)
@@ -82,13 +87,16 @@ export function itemsFromText(raw: string, source = 'speech'): CollectionItemInp
   }));
 }
 
+/** Very short single-token continuations often used while a list is active. */
 export function looksLikeImplicitItem(text: string): boolean {
   const t = collapseWhitespace(text);
   if (!t) return false;
+  // Avoid sentences that look like full tasks
   if (/\b(need to|have to|should|must|please|remind|schedule|meeting)\b/i.test(t)) {
     return false;
   }
   if (t.length > 80) return false;
+  // Single phrase / short enumeration
   const items = splitItemEnumeration(t);
   if (items.length >= 2) return true;
   if (items.length === 1 && items[0].split(/\s+/).length <= 8) return true;
