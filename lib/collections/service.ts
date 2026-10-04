@@ -15,9 +15,9 @@ import {
   clearActive,
   touchActive,
   emptyActiveState,
-  type ActiveCollectionState,
 } from './active';
 import type {
+  ActiveCollectionState,
   Collection,
   CollectionItem,
   CollectionItemInput,
