@@ -12,7 +12,12 @@ import {
   evaluateActiveEligibility,
   type ActiveEligibility,
 } from '@/lib/collections/active';
-import { normalizeKey, normalizeTitle, isLikelySameItem } from '@/lib/collections/normalize';
+import {
+  normalizeKey,
+  normalizeTitle,
+  isLikelySameItem,
+  collapseWhitespace,
+} from '@/lib/collections/normalize';
 import { detectCollectionIntent, intentBlocksTaskCreate } from '@/lib/collections/intent';
 import type { Task } from '@/lib/taskTypes';
 
@@ -351,8 +356,21 @@ export function resolveListTarget(
   return { kind: 'none' };
 }
 
+export type CreateListTaskOpts = {
+  /** Existing job to attach when context resolved. */
+  jobId?: string | null;
+  /** Unresolved place/job phrase kept as free-text location. */
+  locationText?: string | null;
+  /** Verbatim capture line. */
+  originalInput?: string | null;
+};
+
 export type TaskListOps = {
-  createListTask: (title: string, itemTexts: string[]) => Promise<{
+  createListTask: (
+    title: string,
+    itemTexts: string[],
+    opts?: CreateListTaskOpts
+  ) => Promise<{
     taskId: string;
     title: string;
   } | null>;
@@ -403,23 +421,43 @@ export async function applyListIntent(
   }
 
   if (intent.type === 'create_collection') {
-    const title = (intent.title || 'List').trim() || 'List';
+    let title = (intent.title || 'List').trim() || 'List';
     let texts = itemContents(intent.items);
     const resolved = resolveReferentialItems(texts);
     if (resolved.ambiguous) {
       return { ok: false, message: 'Which items did you mean?', taskId: null, openTaskId: null };
     }
     texts = resolved.items;
-    const created = await ops.createListTask(title, texts);
+
+    // Attach to existing job when context linked; otherwise keep the anchor
+    // on the title/location so the landscape is not lost.
+    const jobId =
+      intent.contextType === 'job' && intent.contextId ? intent.contextId : null;
+    const unresolvedHint =
+      !jobId && intent.contextHint ? collapseWhitespace(intent.contextHint) : null;
+    if (unresolvedHint && !normalizeKey(title).includes(normalizeKey(unresolvedHint))) {
+      // Standalone: preserve anchor in the task name (Dokkit remembers places).
+      title = `${title} — ${unresolvedHint}`;
+    }
+
+    const created = await ops.createListTask(title, texts, {
+      jobId,
+      locationText: unresolvedHint,
+      originalInput: title,
+    });
     if (!created) {
       return { ok: false, message: 'Could not create list.', taskId: null, openTaskId: null };
     }
     activateListTask(created.taskId, created.title);
     if (texts.length > 0) rememberSemanticItems(texts);
     const n = texts.length;
+    const jobNote = jobId ? ' (on job)' : '';
     return {
       ok: true,
-      message: n > 0 ? `"${created.title}" with ${n} item${n === 1 ? '' : 's'}` : `"${created.title}" created`,
+      message:
+        n > 0
+          ? `"${created.title}" with ${n} item${n === 1 ? '' : 's'}${jobNote}`
+          : `"${created.title}" created${jobNote}`,
       taskId: created.taskId,
       openTaskId: null,
     };
