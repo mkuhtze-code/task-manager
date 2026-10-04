@@ -11,6 +11,7 @@ import {
   processCaptureSpeech,
   confirmCaptureSpeech,
   rejectOrCorrectCaptureSpeech,
+  captureIsCollectionMutation,
   type CaptureSpeechResult,
   type ProcessCaptureSpeechInput,
   type PersonalLanguageModel,
@@ -35,10 +36,23 @@ function messageFor(r: CaptureSpeechResult): {
   message: string;
   tone: 'neutral' | 'safe' | 'ask' | 'propose';
 } {
+  if (r.uiMode === 'confirm_collection' && r.collection) {
+    return {
+      message: r.surfaceSummary || r.collection.surfaceMessage,
+      tone: 'propose',
+    };
+  }
+  if (r.uiMode === 'collection_clarification' && r.collection) {
+    return {
+      message: r.collection.surfaceMessage,
+      tone: 'ask',
+    };
+  }
+
   switch (r.uiMode) {
     case 'auto_safe_noop':
     case 'silent':
-      if (r.mustNotCreateTask) {
+      if (r.mustNotCreateTask && !r.collection) {
         return {
           message: 'Understood — not treating that as a new task.',
           tone: 'safe',
@@ -46,6 +60,12 @@ function messageFor(r: CaptureSpeechResult): {
       }
       return { message: '', tone: 'neutral' };
     case 'show_observation':
+      if (r.collection?.intent.type === 'query_collection') {
+        return {
+          message: r.surfaceSummary || 'Looking up that list.',
+          tone: 'neutral',
+        };
+      }
       return { message: 'Noted as an observation.', tone: 'neutral' };
     case 'ask_clarification':
       return {
@@ -77,6 +97,11 @@ function messageFor(r: CaptureSpeechResult): {
 
 /** Prefer proposal/surface text for the field; never discard raw on result. */
 export function textForCaptureField(r: CaptureSpeechResult): string {
+  if (captureIsCollectionMutation(r) && r.collection) {
+    const items = r.collection.previewItems;
+    if (items.length > 0) return items.join(', ');
+    return r.surfaceSummary || r.normalisedText || r.rawText;
+  }
   if (r.mustNotCreateTask && (r.uiMode === 'auto_safe_noop' || r.uiMode === 'silent')) {
     return r.normalisedText || r.rawText;
   }
@@ -130,11 +155,17 @@ export function useCaptureSpeech(options?: UseCaptureSpeechOptions) {
   /**
    * Call when the user Docks / saves after speech.
    * Learns from confirmed interpretation only — never from a rejected guess alone.
+   * Collection mutations still require UI to call applyCollectionIntent.
    */
   const confirmSpeechLearning = useCallback(() => {
     const result = lastResultRef.current;
     if (!result) return null;
-    if (result.mustNotCreateTask && result.outcome === 'DO_NOT_CREATE') {
+    // Safe noops (non-collection) skip learning
+    if (
+      result.mustNotCreateTask &&
+      result.outcome === 'DO_NOT_CREATE' &&
+      !result.collection
+    ) {
       lastResultRef.current = null;
       return null;
     }
