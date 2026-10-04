@@ -2781,6 +2781,7 @@ export function TodayPage() {
           durationExplain={captureDurationExplain}
           error={error}
           onClose={() => setCaptureOpen(false)}
+          userId={session?.user?.id ?? null}
         />
       )}
 
