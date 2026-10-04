@@ -125,7 +125,9 @@ describe('contextual STT repair', () => {
 
     expect(
       result.text.toLowerCase()
-    ).toBe('weather');
+    ).toBe(
+      'weather'
+    );
   });
 
   it('does not aggressively repair legitimate there usage', () => {
@@ -275,36 +277,72 @@ describe('contextual STT repair', () => {
   });
 
   it('repairs confirm next week weather → whether', () => {
-    const result = repairTranscript(
-      'confirm next week weather the builder approved it'
+    const result =
+      repairTranscript(
+        'confirm next week weather the builder approved it'
+      );
+
+    expect(
+      result.text.toLowerCase()
+    ).toContain(
+      'whether the builder'
     );
-    expect(result.text.toLowerCase()).toContain('whether the builder');
   });
 
   it('repairs verify on Friday weather → whether', () => {
-    const result = repairTranscript(
-      'verify on Friday weather the gutter fits'
+    const result =
+      repairTranscript(
+        'verify on Friday weather the gutter fits'
+      );
+
+    expect(
+      result.text.toLowerCase()
+    ).toContain(
+      'whether the gutter'
     );
-    expect(result.text.toLowerCase()).toContain('whether the gutter');
   });
 
   it('does not leak context across multi-act clauses', () => {
-    const result = repairTranscript(
-      'check the weather on Monday and call John'
+    const result =
+      repairTranscript(
+        'check the weather on Monday and call John'
+      );
+
+    expect(
+      result.text.toLowerCase()
+    ).toContain(
+      'check the weather'
     );
-    expect(result.text.toLowerCase()).toContain('check the weather');
-    expect(result.repairs.length).toBe(0);
+
+    expect(
+      result.repairs.length
+    ).toBe(0);
   });
 
   it('high STT confidence blocks weak contextual repair', () => {
-    const result = repairTranscript('weather looks fine', {
-      transcriptionConfidence: 0.95,
-    });
-    expect(result.repairs.length).toBe(0);
+    const result =
+      repairTranscript(
+        'weather looks fine',
+        {
+          transcriptionConfidence: 0.95,
+        }
+      );
+
+    expect(
+      result.repairs.length
+    ).toBe(0);
   });
 
   it('does not repair to/too when context is infinitive', () => {
-    const result = repairTranscript('need to check the flashing');
-    expect(result.text.toLowerCase()).toBe('need to check the flashing');
+    const result =
+      repairTranscript(
+        'need to check the flashing'
+      );
+
+    expect(
+      result.text.toLowerCase()
+    ).toBe(
+      'need to check the flashing'
+    );
   });
 });
