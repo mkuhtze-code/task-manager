@@ -75,4 +75,10 @@ export {
   detectContextFromStore,
   applyAndPersistCollectionIntent,
   listOpenCollections,
+  hydrateCollectionsFromRemote,
 } from './localStore';
+
+export {
+  fetchCollectionStoreRemote,
+  pushCollectionStoreRemote,
+} from './remote';
