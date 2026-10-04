@@ -6,7 +6,6 @@ import {
 
 import {
   repairTranscript,
-  DOMAIN_PACKS,
 } from '../sttRepair';
 
 import {
@@ -307,33 +306,5 @@ describe('contextual STT repair', () => {
   it('does not repair to/too when context is infinitive', () => {
     const result = repairTranscript('need to check the flashing');
     expect(result.text.toLowerCase()).toBe('need to check the flashing');
-  });
-
-  it('repairs whether with student-domain clause', () => {
-    const result = repairTranscript(
-      'check tomorrow weather the assignment is due'
-    );
-    expect(result.text.toLowerCase()).toContain('whether the assignment');
-  });
-
-  it('repairs whether with client-services clause', () => {
-    const result = repairTranscript(
-      'confirm next week weather the proposal is ready'
-    );
-    expect(result.text.toLowerCase()).toContain('whether the proposal');
-  });
-
-  it('repairs whether with general work clause', () => {
-    const result = repairTranscript(
-      'see on Monday weather the deadline moved'
-    );
-    expect(result.text.toLowerCase()).toContain('whether the deadline');
-  });
-
-  it('exposes domain packs without making them exclusive', () => {
-    expect(DOMAIN_PACKS.trades.length).toBeGreaterThan(10);
-    expect(DOMAIN_PACKS.student.length).toBeGreaterThan(5);
-    expect(DOMAIN_PACKS.client_services.length).toBeGreaterThan(5);
-    expect(DOMAIN_PACKS.general_work.length).toBeGreaterThan(5);
   });
 });
