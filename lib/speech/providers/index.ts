@@ -1,6 +1,11 @@
 import type { SpeechTranscriptionProvider } from '../types';
 import { nullTranscriptionProvider } from './nullProvider';
 import { webSpeechProvider, isWebSpeechAvailable, recognizeLive } from './webSpeechProvider';
+import {
+  createCloudTranscriptionProvider,
+  cloudProviderFromEnv,
+} from './cloudProvider';
+import type { CloudSttConfig } from './cloudProvider';
 
 let activeProvider: SpeechTranscriptionProvider = nullTranscriptionProvider;
 
@@ -17,10 +22,15 @@ export function resetTranscriptionProvider(): void {
 }
 
 /**
- * Prefer Web Speech when available in browser; otherwise keep null
- * (queue / fail clearly). Does not invent transcripts.
+ * Prefer cloud HTTP STT when endpoint configured; else Web Speech in browser;
+ * otherwise null (queue / fail clearly). Does not invent transcripts.
  */
 export function useDefaultBrowserProvider(): SpeechTranscriptionProvider {
+  const cloud = cloudProviderFromEnv();
+  if (cloud) {
+    activeProvider = cloud;
+    return activeProvider;
+  }
   if (isWebSpeechAvailable()) {
     activeProvider = webSpeechProvider;
   } else {
@@ -29,5 +39,12 @@ export function useDefaultBrowserProvider(): SpeechTranscriptionProvider {
   return activeProvider;
 }
 
-export { nullTranscriptionProvider, webSpeechProvider, isWebSpeechAvailable, recognizeLive };
-export type { SpeechTranscriptionProvider };
+export {
+  nullTranscriptionProvider,
+  webSpeechProvider,
+  isWebSpeechAvailable,
+  recognizeLive,
+  createCloudTranscriptionProvider,
+  cloudProviderFromEnv,
+};
+export type { SpeechTranscriptionProvider, CloudSttConfig };
