@@ -144,13 +144,17 @@ export {
   confirmCaptureSpeech,
   rejectOrCorrectCaptureSpeech,
   captureMustNotCreate,
+  captureIsCollectionMutation,
 } from './captureAdapter';
 export type {
   CaptureSpeechResult,
   CaptureProposal,
   CaptureUiMode,
   ProcessCaptureSpeechInput,
+  CaptureCollectionSummary,
 } from './captureAdapter';
+
+export { detectCaptureCollection } from './collectionBridge';
 
 export {
   loadSpeechLanguageModel,
