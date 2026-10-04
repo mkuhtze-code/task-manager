@@ -57,11 +57,35 @@ const APPEND_THE_LIST_RE =
 
 const ADD_BARE_RE = /^(?:add|also|plus|and)\s+(.+)$/i;
 
-const COMPLETE_RE =
-  /^(?:(?:i\s+)?(?:got|have|bought|picked\s*up)|(?:mark|set)\s+)?(.+?)\s+(?:is\s+)?(?:done|complete|completed|finished)|(?:got|have)\s+(?:the\s+)?(.+)$/i;
+/**
+ * Done-state predicates — structural class, not a phrase cookbook.
+ * "sorted", "dealt with", "handled" sit with "done" / "finished".
+ */
+const DONE_PREDICATE =
+  '(?:done|complete|completed|finished|sorted(?:\\s+out)?|dealt\\s+with|handled|taken\\s+care\\s+of|covered|tick(?:ed)?\\s*off|checked\\s*off)';
 
-const COMPLETE_CMD_RE =
-  /^(?:complete|check\s*off|tick\s*off|mark)\s+(.+?)(?:\s+(?:as\s+)?(?:done|complete|completed|finished))?$/i;
+/** "fixings is sorted", "eggs are done", "milk sorted" */
+const ITEM_DONE_RE = new RegExp(
+  `^(.+?)\\s+(?:(?:is|are|was|were)\\s+)?${DONE_PREDICATE}$`,
+  'i'
+);
+
+/** "I've sorted the fixings", "sorted fixings", "got the milk" */
+const VERB_DONE_RE = new RegExp(
+  `^(?:(?:i(?:'ve| have)?\\s+)?(?:got|have|bought|picked\\s*up|sorted(?:\\s+out)?|dealt\\s+with|handled)|(?:mark|set|complete|check\\s*off|tick\\s*off))\\s+(?:the\\s+)?(.+?)(?:\\s+(?:as\\s+)?${DONE_PREDICATE})?$`,
+  'i'
+);
+
+const COMPLETE_CMD_RE = new RegExp(
+  `^(?:complete|check\\s*off|tick\\s*off|mark)\\s+(.+?)(?:\\s+(?:as\\s+)?${DONE_PREDICATE})?$`,
+  'i'
+);
+
+/** Quick gate: utterance carries a done-state signal. */
+const HAS_DONE_SIGNAL = new RegExp(
+  `\\b(?:is|are|was|were)\\s+${DONE_PREDICATE}\\b|\\b${DONE_PREDICATE}\\b|\\b(?:got|bought|picked\\s*up)\\b`,
+  'i'
+);
 
 const REMOVE_RE =
   /^(?:remove|delete|take|cross\s*off)\s+(.+?)(?:\s+off(?:\s+the\s+list)?|\s+from\s+(?:my\s+|the\s+)?(.+?)(?:\s+lists?)?)?$/i;
@@ -225,39 +249,47 @@ export function detectCollectionIntent(
     };
   }
 
-  // --- complete command: "complete eggs" ---
-  const completeCmd = raw.match(COMPLETE_CMD_RE);
-  if (completeCmd) {
-    const refs = splitItemEnumeration(completeCmd[1]);
-    if (refs.length > 0) {
-      return {
-        type: 'complete_collection_items',
-        target: targetActive(),
-        itemReferences: refs,
-        ...high(['complete_command']),
-      };
-    }
-  }
+  // --- complete: done-state predicates (sorted / done / finished / dealt with…) ---
+  // Runs before append/implicit so "fixings is sorted" never becomes a new item.
+  if (HAS_DONE_SIGNAL.test(raw) && !/\b(need to|start|create|make a list)\b/i.test(raw)) {
+    const completeCmd = raw.match(COMPLETE_CMD_RE);
+    const itemDone = raw.match(ITEM_DONE_RE);
+    const verbDone = raw.match(VERB_DONE_RE);
 
-  // --- complete phrase: "eggs are done", "got the milk" ---
-  if (
-    /\b(got|bought|picked up|is done|are done|finished)\b/i.test(raw) &&
-    !/\b(need|start|create|list)\b/i.test(raw)
-  ) {
-    const m = raw.match(COMPLETE_RE);
-    const body = m ? m[1] || m[2] || raw : raw;
-    const cleaned = body
-      .replace(/^(?:i\s+)?(?:got|have|bought|picked\s*up)\s+(?:the\s+)?/i, '')
-      .replace(/\s+is\s+done$/i, '')
-      .replace(/\s+are\s+done$/i, '');
-    const refs = splitItemEnumeration(cleaned);
-    if (refs.length > 0 && refs.join(' ').length < 120) {
-      return {
-        type: 'complete_collection_items',
-        target: targetActive(),
-        itemReferences: refs,
-        ...med(['complete_phrase']),
-      };
+    let body = '';
+    let reason = 'complete_phrase';
+    if (completeCmd?.[1]) {
+      body = completeCmd[1];
+      reason = 'complete_command';
+    } else if (itemDone?.[1]) {
+      body = itemDone[1];
+      reason = 'item_done_predicate';
+    } else if (verbDone?.[1]) {
+      body = verbDone[1];
+      reason = 'verb_done_predicate';
+    }
+
+    if (body) {
+      // Optional "X for Anchor" → item X, target list named Anchor when present
+      let target = targetActive();
+      const forSplit = body.match(/^(.+?)\s+for\s+(.+)$/i);
+      let itemBody = body;
+      if (forSplit) {
+        itemBody = forSplit[1];
+        const anchor = collapseWhitespace(forSplit[2]);
+        if (anchor) target = targetTitle(anchor);
+      }
+      const refs = splitItemEnumeration(itemBody)
+        .map((r) => r.replace(/^(?:the|a|an)\s+/i, '').trim())
+        .filter(Boolean);
+      if (refs.length > 0 && refs.join(' ').length < 120) {
+        return {
+          type: 'complete_collection_items',
+          target,
+          itemReferences: refs,
+          ...(reason === 'complete_command' ? high([reason]) : med([reason])),
+        };
+      }
     }
   }
 
