@@ -22,6 +22,7 @@ import type {
   Confidence,
 } from './types';
 import { resolveContextLink } from './contextLink';
+import { tryStructuralMultiItemCapture } from './structuralCapture';
 
 const CREATE_VERBS =
   /^(?:start|create|make|new|open|begin|setup|set\s*up|kick\s*off|fire\s*up)\b/i;
@@ -483,6 +484,25 @@ export function detectCollectionIntent(
         ...med(['implicit_continuation']),
       };
     }
+  }
+
+  // --- structural multi-item capture (wide net) ---
+  // "I need to order A, B and C for Munstead" — no need to say "list".
+  // Reuses for/at/on anchors → job/meeting via withContextLink.
+  const structural = tryStructuralMultiItemCapture(raw);
+  if (structural) {
+    return withContextLink(
+      {
+        type: 'create_collection',
+        title: structural.title,
+        collectionType: inferCollectionType(structural.title),
+        items: structural.items,
+        contextHint: structural.contextHint ?? undefined,
+        confidence: 'medium',
+        reasons: structural.reasons,
+      },
+      ctx
+    );
   }
 
   return null;
