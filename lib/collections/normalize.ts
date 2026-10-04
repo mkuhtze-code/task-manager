@@ -50,12 +50,16 @@ export function normalizeKey(s: string): string {
     .trim();
 }
 
+/** Title key used for matching (strip stopwords lightly, singularise list words). */
 export function normalizeTitle(title: string): string {
   let key = normalizeKey(title);
+  // Drop trailing "list"
   key = key.replace(/\blists?\b/g, ' ').replace(/\s+/g, ' ').trim();
+  // Prefer seed alias if whole phrase matches
   if (COLLECTION_ALIAS_SEEDS[key]) {
     return COLLECTION_ALIAS_SEEDS[key];
   }
+  // Token filter
   const tokens = key.split(' ').filter((t) => t && !TITLE_STOP.has(t));
   const joined = tokens.join(' ').trim() || key;
   return COLLECTION_ALIAS_SEEDS[joined] ?? joined;
@@ -69,6 +73,7 @@ export function normalizeItemContent(content: string): string {
 
 export function titleFromSpoken(spoken: string): string {
   const key = normalizeTitle(spoken);
+  // Human title: capitalise first letter of each word
   return key
     .split(' ')
     .filter(Boolean)
@@ -93,6 +98,7 @@ export function inferCollectionType(
   return 'generic';
 }
 
+/** Token Jaccard similarity in [0,1] */
 export function tokenSimilarity(a: string, b: string): number {
   const ta = new Set(normalizeKey(a).split(' ').filter(Boolean));
   const tb = new Set(normalizeKey(b).split(' ').filter(Boolean));
@@ -109,6 +115,7 @@ export function isLikelySameItem(a: string, b: string): boolean {
   if (!na || !nb) return false;
   if (na === nb) return true;
   if (na.includes(nb) || nb.includes(na)) {
+    // "dishwasher tablets" vs "dishwasher stuff" — partial
     const sim = tokenSimilarity(na, nb);
     return sim >= 0.5;
   }
