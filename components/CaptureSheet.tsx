@@ -43,9 +43,14 @@ import {
 } from '@/lib/speech/taskListBridge';
 import {
   runEngineCycle,
-  loadWorkingMemory,
-  saveWorkingMemory,
+  loadWorkingMemoryLocal,
+  saveWorkingMemoryLocal,
+  loadActiveRequestLocal,
+  saveActiveRequestLocal,
+  appendEvidenceLocal,
   type EngineRequest,
+  type LearningEvidence,
+  type WorkingMemorySnapshot,
 } from '@/lib/engine';
 import { MapPinIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
@@ -60,6 +65,10 @@ export type EngineDockOverrides = {
   estimateMins?: number;
   originalInput?: string;
   explanation?: string;
+  updateTaskId?: string;
+  engineRequest?: EngineRequest;
+  evidence?: LearningEvidence[];
+  workingMemory?: WorkingMemorySnapshot;
 };
 
 export function CaptureSheet(props: {
@@ -158,7 +167,9 @@ export function CaptureSheet(props: {
     candidates: Array<{ taskId: string; title: string; reason: string }>;
     pendingIntent: Exclude<CollectionIntent, { type: 'clarification_required' }> | null;
   } | null>(null);
-  const [enginePriorRequest, setEnginePriorRequest] = useState<EngineRequest | null>(null);
+  const [enginePriorRequest, setEnginePriorRequest] = useState<EngineRequest | null>(() =>
+    loadActiveRequestLocal(userId)
+  );
   const [engineExplain, setEngineExplain] = useState<string | null>(null);
   const { speechStatus, processSpokenText, clearSpeechStatus, confirmSpeechLearning } = useCaptureSpeech({
     userId,
@@ -434,8 +445,8 @@ export function CaptureSheet(props: {
             : new Date().toISOString().slice(0, 10);
         const cycle = runEngineCycle({
           utterance: line,
-          priorRequest: enginePriorRequest,
-          workingMemory: loadWorkingMemory(),
+          priorRequest: enginePriorRequest ?? loadActiveRequestLocal(userId),
+          workingMemory: loadWorkingMemoryLocal(userId),
           todayDate: today,
           context: {
             jobs: jobs.map((j) => ({
@@ -448,16 +459,23 @@ export function CaptureSheet(props: {
             surfaceDate: captureSurfaceDate || null,
           },
         });
-        saveWorkingMemory(cycle.workingMemory);
+        saveWorkingMemoryLocal(cycle.workingMemory, userId);
+        saveActiveRequestLocal(cycle.request, userId);
+        appendEvidenceLocal(cycle.evidence, userId);
         setEnginePriorRequest(cycle.request);
 
-        const structured =
+        const structuredCreate =
           cycle.action.kind === 'create_task' &&
           cycle.authority.mayAct &&
           cycle.request.action !== 'unknown' &&
           !!cycle.request.objectText;
 
-        if (structured && cycle.action.kind === 'create_task') {
+        const structuredUpdate =
+          cycle.action.kind === 'update_task' &&
+          cycle.authority.mayAct &&
+          !!cycle.request.objectText;
+
+        if (structuredUpdate && cycle.action.kind === 'update_task') {
           setEngineExplain(cycle.explanation);
           setCollectionFeedback(cycle.explanation);
           confirmSpeechLearning();
@@ -470,6 +488,30 @@ export function CaptureSheet(props: {
             estimateMins: cycle.action.estimateMins || undefined,
             originalInput: line,
             explanation: cycle.explanation,
+            updateTaskId: cycle.action.taskId,
+            engineRequest: cycle.request,
+            evidence: cycle.evidence,
+            workingMemory: cycle.workingMemory,
+          });
+          return;
+        }
+
+        if (structuredCreate && cycle.action.kind === 'create_task') {
+          setEngineExplain(cycle.explanation);
+          setCollectionFeedback(cycle.explanation);
+          confirmSpeechLearning();
+          clearSpeechStatus();
+          addTaskWithOverrides({
+            text: cycle.action.text,
+            locationText: cycle.action.locationText,
+            jobId: cycle.action.jobId ?? captureJobId,
+            surfaceDate: cycle.action.surfaceDate,
+            estimateMins: cycle.action.estimateMins || undefined,
+            originalInput: line,
+            explanation: cycle.explanation,
+            engineRequest: cycle.request,
+            evidence: cycle.evidence,
+            workingMemory: cycle.workingMemory,
           });
           return;
         }
