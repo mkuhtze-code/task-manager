@@ -163,11 +163,18 @@ function planForRequest(
   return { steps, summary, confidence: conf, facts: [...facts] };
 }
 
+function taskIdFromConstraints(req: EngineRequest): string | null {
+  const c = req.constraints.find(
+    (x) => x.axis === 'dependency' && x.value.startsWith('task:')
+  );
+  return c ? c.value.slice(5) : null;
+}
+
 function actionFromPlan(
   req: EngineRequest,
   plan: PlanProposal,
   mayAct: boolean,
-  ctx: ReasoningContext
+  _ctx: ReasoningContext
 ): EngineAction {
   if (!mayAct) {
     const ask = plan.steps.find((s) => s.kind === 'ask');
@@ -185,15 +192,32 @@ function actionFromPlan(
   const text =
     create && create.kind === 'create_task' ? create.text : requestTaskText(req);
 
+  const locationText =
+    locStep && locStep.kind === 'attach_location'
+      ? locStep.locationText
+      : req.locationText;
+  const jobId = jobStep && jobStep.kind === 'attach_job' ? jobStep.jobId : null;
+  const surfaceDate = place && place.kind === 'place' ? place.surfaceDate : null;
+
+  const boundTaskId = taskIdFromConstraints(req);
+  if (boundTaskId) {
+    return {
+      kind: 'update_task',
+      taskId: boundTaskId,
+      text,
+      locationText,
+      jobId,
+      surfaceDate,
+      estimateMins: null,
+    };
+  }
+
   return {
     kind: 'create_task',
     text,
-    locationText:
-      locStep && locStep.kind === 'attach_location'
-        ? locStep.locationText
-        : req.locationText,
-    jobId: jobStep && jobStep.kind === 'attach_job' ? jobStep.jobId : null,
-    surfaceDate: place && place.kind === 'place' ? place.surfaceDate : null,
+    locationText,
+    jobId,
+    surfaceDate,
     estimateMins: 15,
   };
 }
