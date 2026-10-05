@@ -36,6 +36,9 @@
   ],
   "exclude": [
     "node_modules",
-    "lib/thinking/__diagnostic__"
+    "lib/thinking/__diagnostic__",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/__tests__/**"
   ]
 }
