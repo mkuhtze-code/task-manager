@@ -7,7 +7,6 @@
  * List phrases map onto tasks + subtasks (taskListBridge), not collections tables.
  *
  * Intelligence: tryDock → runCaptureDock → processInteraction (ACT/ANSWER/DEFER/CLARIFY).
- * Full UI restored from CaptureSheet-interaction-wire artifact.
  */
 
 import { useEffect, useState } from 'react';
@@ -22,7 +21,6 @@ import { fmtMins, minsToInput, fmtClock } from '@/lib/timeFormat';
 import type { Job } from '@/lib/jobTypes';
 import type { ThoughtParts } from '@/lib/unifiedInput/parse';
 import {
-  hasEntityResolution,
   type JobLocationResolution,
   type JobLocationCandidate,
 } from '@/lib/unifiedInput/resolve';
@@ -413,7 +411,6 @@ export function CaptureSheet(props: {
       return;
     }
 
-    // Personal Operating Engine — Capture is a consumer of processInteraction.
     const line = taskText.trim();
     if (line && addTaskWithOverrides) {
       try {
@@ -494,12 +491,20 @@ export function CaptureSheet(props: {
   }
 
   function applySuggestedLocation() {
-    if (captureLocationSuggestion?.text) {
-      setCaptureLocation(captureLocationSuggestion.text);
+    if (captureLocationSuggestion?.location?.text) {
+      setCaptureLocation(captureLocationSuggestion.location.text);
+      setCaptureLocationCoords({
+        lat: captureLocationSuggestion.location.lat,
+        lng: captureLocationSuggestion.location.lng,
+      });
       setManualLocationToggle(true);
       setMoreOpen(true);
-    } else if (captureLocationMemorySuggestion?.text) {
-      setCaptureLocation(captureLocationMemorySuggestion.text);
+    } else if (captureLocationMemorySuggestion?.locationText) {
+      setCaptureLocation(captureLocationMemorySuggestion.locationText);
+      setCaptureLocationCoords({
+        lat: captureLocationMemorySuggestion.lat,
+        lng: captureLocationMemorySuggestion.lng,
+      });
       setManualLocationToggle(true);
       setMoreOpen(true);
     }
@@ -560,12 +565,13 @@ export function CaptureSheet(props: {
             <p className="text-sm">Link to a place or job?</p>
             {locationResolution.candidates?.map((c: JobLocationCandidate) => (
               <button
-                key={c.jobId || c.label}
+                key={c.jobId}
                 type="button"
                 className="capture-resolution-option"
                 onClick={() => onConfirmResolution(c)}
               >
-                {c.label}
+                {c.jobName}
+                {c.locationText ? ` · ${c.locationText}` : ''}
               </button>
             ))}
             <button type="button" className="text-sm underline" onClick={onDeclineResolution}>
@@ -642,7 +648,10 @@ export function CaptureSheet(props: {
                 <LocationAutocomplete
                   value={captureLocation}
                   onChange={setCaptureLocation}
-                  onCoords={setCaptureLocationCoords}
+                  onPlaceSelected={(result) => {
+                    setCaptureLocation(result.formattedAddress);
+                    setCaptureLocationCoords({ lat: result.lat, lng: result.lng });
+                  }}
                 />
               </label>
             )}
