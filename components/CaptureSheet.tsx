@@ -175,6 +175,12 @@ export function CaptureSheet(props: {
     userId,
   });
 
+  // Sheet unmounts after dock — reload prior request when userId is ready / changes.
+  useEffect(() => {
+    const prior = loadActiveRequestLocal(userId);
+    if (prior) setEnginePriorRequest(prior);
+  }, [userId]);
+
   function buildSpeechContext(): SpeechUnderstandingContext {
     const jobEntities =
       jobs?.map((j) => ({
@@ -443,9 +449,12 @@ export function CaptureSheet(props: {
           captureSurfaceDate && /^\d{4}-\d{2}-\d{2}$/.test(captureSurfaceDate)
             ? captureSurfaceDate
             : new Date().toISOString().slice(0, 10);
+        // Always re-read storage at dock time (state can lag after unmount).
+        const prior =
+          loadActiveRequestLocal(userId) ?? enginePriorRequest ?? null;
         const cycle = runEngineCycle({
           utterance: line,
-          priorRequest: enginePriorRequest ?? loadActiveRequestLocal(userId),
+          priorRequest: prior,
           workingMemory: loadWorkingMemoryLocal(userId),
           todayDate: today,
           context: {
@@ -464,6 +473,11 @@ export function CaptureSheet(props: {
         appendEvidenceLocal(cycle.evidence, userId);
         setEnginePriorRequest(cycle.request);
 
+        const continuing =
+          !!prior &&
+          cycle.request.id === prior.id &&
+          cycle.request.rawUtterances.length > (prior.rawUtterances?.length ?? 0);
+
         const structuredCreate =
           cycle.action.kind === 'create_task' &&
           cycle.authority.mayAct &&
@@ -473,7 +487,7 @@ export function CaptureSheet(props: {
         const structuredUpdate =
           cycle.action.kind === 'update_task' &&
           cycle.authority.mayAct &&
-          !!cycle.request.objectText;
+          (!!cycle.request.objectText || continuing);
 
         if (structuredUpdate && cycle.action.kind === 'update_task') {
           setEngineExplain(cycle.explanation);
