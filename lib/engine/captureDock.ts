@@ -60,6 +60,10 @@ export type CaptureDockInput = {
   remainingMinsToday: number | null;
   openTaskCount: number;
   inputType?: 'text' | 'speech_transcript';
+  /** Optional calendar / travel context for ANSWER feasibility. */
+  meetings?: Array<{ id: string; text: string; startAt?: string | null }>;
+  travelMins?: number | null;
+  visitDurationMins?: number | null;
 };
 
 /**
@@ -96,6 +100,9 @@ export function runCaptureDock(input: CaptureDockInput): CaptureDockResult {
         name: j.name,
         locationText: j.locationText ?? null,
       })),
+      meetings: input.meetings,
+      travelMins: input.travelMins ?? null,
+      visitDurationMins: input.visitDurationMins ?? null,
       currentFocus: focusJob
         ? { kind: 'job', id: focusJob.id, label: focusJob.name }
         : null,
