@@ -72,6 +72,9 @@ describe('Integration Pass 1 — ANSWER', () => {
     expect(r.answer).not.toBeNull();
     expect(r.answer!.evidence.length).toBeGreaterThan(0);
     expect(r.answer!.text.length).toBeGreaterThan(20);
+    // V3 decideTaskFit evidence when capacity is known
+    expect(r.answer!.evidence.some((e) => e.startsWith('v3_fit='))).toBe(true);
+    expect(r.answer!.decisionTrace).toBeTruthy();
   });
 
   it('says no when capacity is insufficient', () => {
@@ -171,5 +174,73 @@ describe('Integration Pass 1 — reference / correction', () => {
     if (r.outcome === 'ACT' && r.action?.kind === 'create_task') {
       expect(r.action.jobId).toBe('j-henderson');
     }
+  });
+});
+
+describe('Integration Pass 1 — adversarial / fail-safe', () => {
+  it('does not create a task for pure feasibility questions', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: { type: 'text', text: 'Can I fit Henderson this afternoon?' },
+      context: {
+        ...baseContext,
+        remainingMinsToday: 180,
+        travelMins: 25,
+        visitDurationMins: 45,
+        currentFocus: { kind: 'job', id: 'j-henderson', label: 'Henderson' },
+      },
+    });
+    expect(r.outcome).toBe('ANSWER');
+    expect(r.action).toBeNull();
+  });
+
+  it('defers when-I-get-back without claiming notification', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: {
+        type: 'text',
+        text: 'Remind me when I get back to the office to call the client.',
+      },
+      context: baseContext,
+    });
+    expect(r.outcome).toBe('DEFER');
+    expect(r.deferred!.executionReady).toBe(false);
+    expect(r.facts).toContain('execution_not_claimed');
+  });
+
+  it('missing capacity stays honest (no over-claim)', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: {
+        type: 'text',
+        text: 'Have I got time to go see this job this afternoon?',
+      },
+      context: {
+        ...baseContext,
+        remainingMinsToday: null,
+        currentFocus: { kind: 'job', id: 'j-henderson', label: 'Henderson' },
+      },
+    });
+    expect(r.outcome).toBe('ANSWER');
+    expect(r.answer!.fits).toBeNull();
+    expect(r.answer!.confidence).toBe('low');
+  });
+
+  it('should-I is query not mutation', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: { type: 'text', text: 'Should I go see this job later?' },
+      context: {
+        ...baseContext,
+        remainingMinsToday: 90,
+        currentFocus: { kind: 'job', id: 'j-henderson', label: 'Henderson' },
+      },
+    });
+    expect(r.outcome).toBe('ANSWER');
+    expect(r.action).toBeNull();
   });
 });
