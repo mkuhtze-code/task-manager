@@ -38,66 +38,21 @@ import {
   appendEvidenceLocal,
 } from './persist';
 
-export type InteractionInputType = 'text' | 'speech_transcript' | 'structured';
-
-export type InteractionInput = {
-  userId: string | null;
-  input: {
-    type: InteractionInputType;
-    text: string;
-    confidence?: Confidence;
-  };
-  context: {
-    /** e.g. 'capture' | 'today' | 'jobs' | 'voice' */
-    interface: string;
-    activity?: string | null;
-    surface?: string | null;
-    currentFocus?: {
-      kind: 'task' | 'job' | 'list' | 'meeting' | 'request' | 'none';
-      id: string | null;
-      label: string | null;
-    } | null;
-    jobs?: Array<{ id: string; name: string; locationText?: string | null }>;
-    meetings?: Array<{ id: string; text: string; startAt?: string | null }>;
-    remainingMinsToday?: number | null;
-    openTaskCount?: number;
-    todayDate?: string;
-    visitDurationMins?: number | null;
-    travelMins?: number | null;
-  };
-  priorRequest?: EngineRequest | null;
-  workingMemory?: WorkingMemorySnapshot;
-  dryRun?: boolean;
-};
-
-export type InteractionOutcomeKind = 'ACT' | 'ANSWER' | 'DEFER' | 'CLARIFY' | 'NO_OP';
-
-export type InteractionAnswer = {
-  text: string;
-  fits: boolean | null;
-  evidence: string[];
-  confidence: Confidence;
-};
-
-export type InteractionResult = {
-  outcome: InteractionOutcomeKind;
-  message: string;
-  action: EngineAction | null;
-  answer: InteractionAnswer | null;
-  deferred: DeferredIntention | null;
-  clarify: {
-    question: string;
-    candidates: Array<{ id: string; label: string; kind: string }>;
-  } | null;
-  request: EngineRequest;
-  workingMemory: WorkingMemorySnapshot;
-  authority: AuthorityDecision;
-  evidence: LearningEvidence[];
-  facts: string[];
-  explanation: string;
-  cycle: EngineCycleResult | null;
-  confidence: Confidence;
-};
+import type {
+  InteractionInput,
+  InteractionInputType,
+  InteractionOutcomeKind,
+  InteractionAnswer,
+  InteractionResult,
+} from './interactionTypes';
+export type {
+  InteractionInput,
+  InteractionInputType,
+  InteractionOutcomeKind,
+  InteractionAnswer,
+  InteractionResult,
+} from './interactionTypes';
+import { answerFeasibility } from './interactionAnswer';
 
 function isQueryUtterance(text: string): boolean {
   const lower = text.toLowerCase();
@@ -127,82 +82,6 @@ function isAddToJobPattern(text: string): {
   const lower = text.toLowerCase();
   const jobRef = named || (/this\s+job|that\s+job|the\s+job/i.test(lower) ? 'this_job' : null);
   return { objectText: objectText || null, jobRef };
-}
-
-function answerFeasibility(
-  utterance: string,
-  cycle: EngineCycleResult,
-  input: InteractionInput
-): InteractionAnswer {
-  const facts: string[] = [...cycle.facts];
-  const remaining = input.context.remainingMinsToday;
-  const visit =
-    input.context.visitDurationMins ??
-    (cycle.request.objectText ? 45 : 30);
-  const travel = input.context.travelMins ?? 20;
-  const roundTrip = travel * 2;
-  const needed = visit + roundTrip;
-
-  const meetings = input.context.meetings ?? [];
-  const nowIso = new Date().toISOString();
-  const afternoonHint =
-    /\bafternoon\b/i.test(utterance) || cycle.request.timeHint === 'afternoon';
-
-  let hardBlock: string | null = null;
-  for (const m of meetings) {
-    if (!m.startAt) continue;
-    const start = Date.parse(m.startAt);
-    const now = Date.parse(nowIso);
-    if (start > now && start - now < 4 * 60 * 60 * 1000) {
-      const minsUntil = Math.round((start - now) / 60000);
-      if (minsUntil < needed + 15) {
-        hardBlock = `Meeting "${m.text}" in ~${minsUntil} min`;
-        facts.push(hardBlock);
-      } else {
-        facts.push(`Meeting "${m.text}" in ~${minsUntil} min — room after/before.`);
-      }
-    }
-  }
-
-  let fits: boolean | null = null;
-  let textOut = '';
-
-  if (remaining == null) {
-    fits = null;
-    textOut =
-      'I do not have a clear remaining-capacity signal for today, so I cannot confirm a fit. Check your calendar and open work before committing.';
-    facts.push('remainingMinsToday unavailable');
-  } else if (hardBlock && remaining < needed) {
-    fits = false;
-    textOut = `Tight. ${hardBlock}, and you only have about ${remaining} minutes of workable time. A visit (~${visit} min) plus travel (~${roundTrip} min round-trip) needs roughly ${needed} minutes.`;
-  } else if (remaining >= needed + 15) {
-    fits = true;
-    const spare = remaining - needed;
-    textOut = afternoonHint
-      ? `Yes. You can fit a visit this afternoon. After travel and ~${visit} minutes on site you should still have about ${spare} minutes of workable time when you get back.`
-      : `Yes. Roughly ${remaining} minutes remain; the visit needs about ${needed} minutes including travel, leaving ~${spare} minutes.`;
-    facts.push(`remaining=${remaining}`, `needed≈${needed}`, `spare≈${spare}`);
-  } else if (remaining >= needed) {
-    fits = true;
-    textOut = `You can, but it is tight. About ${remaining} minutes remain and the visit plus travel is ~${needed} minutes — little buffer if anything overruns.`;
-    facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'tight_fit');
-  } else {
-    fits = false;
-    textOut = `Not comfortably. About ${remaining} minutes remain; a visit plus travel needs ~${needed} minutes. It would push other planned work.`;
-    facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'over_capacity');
-  }
-
-  const focus = input.context.currentFocus;
-  if (focus?.kind === 'job' && focus.label) {
-    facts.push(`focus_job=${focus.label}`);
-  }
-
-  return {
-    text: textOut,
-    fits,
-    evidence: facts,
-    confidence: remaining != null ? 'medium' : 'low',
-  };
 }
 
 function clarifyFromAmbiguity(
