@@ -1390,13 +1390,20 @@ export function TodayPage() {
     const lng = confirmedLocation?.lng != null ? confirmedLocation.lng : (captureLocationCoords?.lng ?? null);
 
     // Multi-turn refine: update the bound task instead of inserting another.
+    // Never replace the title with the refinement utterance ("Actually I need it…").
     if (engineOverrides?.updateTaskId) {
       const patch: Record<string, unknown> = {
-        text,
         location_text: locationText,
         job_id: jobId,
         surface_date: surfaceDate,
       };
+      const refineLine = originalInput.trim();
+      const looksLikeRefineUtterance =
+        /^(?:actually|sorry|no[, ]|i\s+need\s+it|make\s+that)\b/i.test(refineLine) ||
+        (engineOverrides.text?.trim() === refineLine);
+      if (engineOverrides.text && !looksLikeRefineUtterance) {
+        patch.text = engineOverrides.text;
+      }
       if (mins > 0) patch.estimate_mins = mins;
       const { data: updated, error: updErr } = await supabase
         .from('tasks')
