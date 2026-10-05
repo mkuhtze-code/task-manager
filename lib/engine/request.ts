@@ -32,6 +32,7 @@ export function emptyRequest(action: RequestAction = 'unknown'): EngineRequest {
     consequence: null,
     constraints: [],
     rawUtterances: [],
+    titleText: null,
     confidence: 'low',
     updatedAt: now,
   };
@@ -113,11 +114,14 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     out.locationText = locLoose[1].trim().replace(/[.,]$/, '');
   }
 
-  // Job link: "on the Henderson job" / "for Henderson"
+  // Job link: "on the Henderson job" / "for Henderson" / "Munstead job"
   const job =
-    text.match(/\b(?:on|for)\s+(?:the\s+)?([A-Z][\w\s-]{1,40}?)\s+job\b/i) ||
-    text.match(/\busing\s+it\s+on\s+(?:the\s+)?([A-Z][\w\s-]{1,40})\b/i);
-  if (job?.[1]) out.relatedJobText = job[1].trim();
+    text.match(/\b(?:on|for)\s+(?:the\s+)?([A-Z][\w][\w\s-]{0,40}?)\s+job\b/i) ||
+    text.match(/\busing\s+it\s+on\s+(?:the\s+)?([A-Z][\w][\w\s-]{0,40}?)\s+job\b/i) ||
+    text.match(/\busing\s+it\s+on\s+(?:the\s+)?([A-Z][\w][\w\s-]{0,40})\b/i);
+  if (job?.[1]) {
+    out.relatedJobText = job[1].trim().replace(/\s+job$/i, '');
+  }
 
   // Meeting: "after the meeting"
   if (/\bafter\s+(?:the\s+)?meeting\b/i.test(lower)) {
@@ -251,8 +255,19 @@ export function applyUtteranceToRequest(
     if (base.action === 'unknown') base.action = partial.action;
   }
 
-  if (partial.objectText) base.objectText = partial.objectText;
-  if (partial.locationText) base.locationText = partial.locationText;
+  // Refinements must not steal object/location from pronouns ("it", "that").
+  // Only adopt a new object when this is a fresh capture or an explicit rename.
+  const explicitRename =
+    !!partial.objectText &&
+    !partial.isRefinement &&
+    !/\b(?:it|that|this|those|these)\b/i.test(partial.objectText);
+
+  if (partial.objectText && (!continueActive || explicitRename)) {
+    base.objectText = partial.objectText;
+  }
+  if (partial.locationText && (!continueActive || !partial.isRefinement)) {
+    base.locationText = partial.locationText;
+  }
   if (partial.relatedJobText) base.relatedJobText = partial.relatedJobText;
   if (partial.relatedMeetingText) base.relatedMeetingText = partial.relatedMeetingText;
   if (partial.dateHint) base.dateHint = partial.dateHint;
@@ -287,20 +302,32 @@ export function applyUtteranceToRequest(
     base.commitment = base.urgency === 'high' ? 'soft' : 'weak';
   }
 
+  // Lock canonical title on first structured capture; refinements keep it.
+  if (!base.titleText && (base.objectText || base.action === 'remind' || base.action === 'pickup')) {
+    base.titleText = composeTitle(base);
+  } else if (explicitRename && base.objectText) {
+    base.titleText = composeTitle(base);
+  }
+
   return base;
 }
 
-export function requestTaskText(req: EngineRequest): string {
+function composeTitle(req: Pick<EngineRequest, 'action' | 'objectText' | 'locationText'>): string {
   const bits: string[] = [];
   if (req.action === 'remind' || req.action === 'pickup') {
     bits.push(req.objectText ? `Pick up ${req.objectText}` : 'Pick up');
   } else if (req.objectText) {
     bits.push(req.objectText);
-  } else if (req.rawUtterances[0]) {
-    bits.push(req.rawUtterances[0]);
   } else {
     bits.push('Task');
   }
   if (req.locationText) bits.push(`from ${req.locationText}`);
   return bits.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+export function requestTaskText(req: EngineRequest): string {
+  if (req.titleText && req.titleText.trim()) {
+    return req.titleText.trim();
+  }
+  return composeTitle(req);
 }
