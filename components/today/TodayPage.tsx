@@ -1,1 +1,2 @@
-PLACEHOLDER_REPLACE_ME2
+'use client';
+export { default } from './TodayPageFull';
