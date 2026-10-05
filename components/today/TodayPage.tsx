@@ -3034,6 +3034,27 @@ export function TodayPage() {
             void addTask(o);
           }}
           remainingMinsToday={Math.max(0, minutesLeftToday - remainingWorkMins)}
+          dockMeetings={[
+            ...todayMeetings.map((m) => ({
+              id: m.id,
+              text: m.text,
+              startAt: m.start_time,
+            })),
+            ...calendarEvents
+              .filter((e) => {
+                try {
+                  return localDateStr(new Date(e.start_at)) === todayStr;
+                } catch {
+                  return false;
+                }
+              })
+              .map((e) => ({
+                id: e.id,
+                text: e.title || 'Calendar',
+                startAt: e.start_at,
+              })),
+          ]}
+          travelMins={routeDriveMins > 0 ? routeDriveMins : null}
         />
       )}
 
