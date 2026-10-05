@@ -15,10 +15,21 @@ function userSuffix(userId: string | null | undefined): string {
   return userId && userId.length > 0 ? `:${userId}` : '';
 }
 
+function readJsonKey(key: string): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 export function loadWorkingMemoryLocal(userId?: string | null): WorkingMemorySnapshot {
   if (typeof localStorage === 'undefined') return emptyWorkingMemory();
   try {
-    const raw = localStorage.getItem(WM_KEY + userSuffix(userId));
+    const raw =
+      readJsonKey(WM_KEY + userSuffix(userId)) ||
+      (userId ? readJsonKey(WM_KEY) : null);
     if (!raw) return emptyWorkingMemory();
     const parsed = JSON.parse(raw) as WorkingMemorySnapshot;
     if (parsed?.version !== 1) return emptyWorkingMemory();
@@ -34,7 +45,9 @@ export function saveWorkingMemoryLocal(
 ): void {
   if (typeof localStorage === 'undefined') return;
   try {
-    localStorage.setItem(WM_KEY + userSuffix(userId), JSON.stringify(mem));
+    const payload = JSON.stringify(mem);
+    localStorage.setItem(WM_KEY + userSuffix(userId), payload);
+    localStorage.setItem(WM_KEY, payload);
   } catch {
     /* quota */
   }
@@ -43,9 +56,13 @@ export function saveWorkingMemoryLocal(
 export function loadActiveRequestLocal(userId?: string | null): EngineRequest | null {
   if (typeof localStorage === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(REQ_KEY + userSuffix(userId));
+    const raw =
+      readJsonKey(REQ_KEY + userSuffix(userId)) ||
+      (userId ? readJsonKey(REQ_KEY) : null);
     if (!raw) return null;
-    return JSON.parse(raw) as EngineRequest;
+    const parsed = JSON.parse(raw) as EngineRequest;
+    if (!parsed?.id) return null;
+    return parsed;
   } catch {
     return null;
   }
@@ -58,8 +75,14 @@ export function saveActiveRequestLocal(
   if (typeof localStorage === 'undefined') return;
   try {
     const key = REQ_KEY + userSuffix(userId);
-    if (!req) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(req));
+    if (!req) {
+      localStorage.removeItem(key);
+      if (userId) localStorage.removeItem(REQ_KEY);
+      return;
+    }
+    const payload = JSON.stringify(req);
+    localStorage.setItem(key, payload);
+    localStorage.setItem(REQ_KEY, payload);
   } catch {
     /* quota */
   }
