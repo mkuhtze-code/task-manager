@@ -88,10 +88,13 @@ export function answerFeasibility(
     decisionTrace = traceFromFit(fitDecision, dec, {
       typedEstimateMins: needed,
     });
+    // FitState: strong | possible | poor | blocked | unknown | protect | carry_safe | needs_context | uncertain
     v3Fits =
-      fitDecision.fit === 'fits' || fitDecision.fit === 'tight'
+      fitDecision.fit === 'strong' || fitDecision.fit === 'possible'
         ? true
-        : fitDecision.fit === 'blocked' || fitDecision.fit === 'protect'
+        : fitDecision.fit === 'blocked' ||
+            fitDecision.fit === 'protect' ||
+            fitDecision.fit === 'poor'
           ? false
           : null;
   }
