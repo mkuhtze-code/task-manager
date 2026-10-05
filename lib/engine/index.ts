@@ -99,3 +99,11 @@ export type {
   DeferredTriggerType,
   DeferredIntentionStatus,
 } from './deferredIntention';
+
+export { runCaptureDock, loadPriorForDock } from './captureDock';
+export type {
+  CaptureDockInput,
+  CaptureDockResult,
+  CaptureDockOverrides,
+  CaptureDockJob,
+} from './captureDock';
