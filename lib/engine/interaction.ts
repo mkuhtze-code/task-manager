@@ -29,6 +29,7 @@ import {
 } from './deferredIntention';
 import { resolveReference, containsReference } from './references';
 import { resolveJobName } from './contextAssembly';
+import { setFocus } from './workingMemory';
 import {
   loadWorkingMemoryLocal,
   saveWorkingMemoryLocal,
@@ -61,13 +62,11 @@ export type InteractionInput = {
     remainingMinsToday?: number | null;
     openTaskCount?: number;
     todayDate?: string;
-    /** Optional travel/visit duration for feasibility questions */
     visitDurationMins?: number | null;
     travelMins?: number | null;
   };
   priorRequest?: EngineRequest | null;
   workingMemory?: WorkingMemorySnapshot;
-  /** When true, skip localStorage side-effects (tests / pure) */
   dryRun?: boolean;
 };
 
@@ -82,9 +81,7 @@ export type InteractionAnswer = {
 
 export type InteractionResult = {
   outcome: InteractionOutcomeKind;
-  /** Human-readable summary for UI */
   message: string;
-  /** Structured mutation intent — caller applies via existing task service */
   action: EngineAction | null;
   answer: InteractionAnswer | null;
   deferred: DeferredIntention | null;
@@ -98,7 +95,6 @@ export type InteractionResult = {
   evidence: LearningEvidence[];
   facts: string[];
   explanation: string;
-  /** Full engine cycle for replay / debug */
   cycle: EngineCycleResult | null;
   confidence: Confidence;
 };
@@ -118,8 +114,6 @@ function isAddToJobPattern(text: string): {
   objectText: string | null;
   jobRef: string | null;
 } {
-  const lower = text.toLowerCase();
-  // "add X to this job" / "add X to Henderson" / "put X on this job"
   const m =
     text.match(
       /\b(?:add|put|attach|link)\s+(.+?)\s+(?:to|on)\s+(?:this\s+job|that\s+job|the\s+job|(?:the\s+)?([A-Z][\w][\w\s-]{0,40}?)(?:\s+job)?)\b/i
@@ -130,14 +124,11 @@ function isAddToJobPattern(text: string): {
   if (!m) return { objectText: null, jobRef: null };
   const objectText = (m[1] || '').replace(/\s+/g, ' ').trim();
   const named = m[2]?.trim() || null;
+  const lower = text.toLowerCase();
   const jobRef = named || (/this\s+job|that\s+job|the\s+job/i.test(lower) ? 'this_job' : null);
   return { objectText: objectText || null, jobRef };
 }
 
-/**
- * Feasibility answer using assembled context + optional travel/visit hints.
- * Does not mutate state. Uses remaining capacity, meetings, jobs — not a second planner.
- */
 function answerFeasibility(
   utterance: string,
   cycle: EngineCycleResult,
@@ -147,7 +138,7 @@ function answerFeasibility(
   const remaining = input.context.remainingMinsToday;
   const visit =
     input.context.visitDurationMins ??
-    (cycle.request.objectText ? 45 : 30); // conservative default visit
+    (cycle.request.objectText ? 45 : 30);
   const travel = input.context.travelMins ?? 20;
   const roundTrip = travel * 2;
   const needed = visit + roundTrip;
@@ -162,7 +153,6 @@ function answerFeasibility(
     if (!m.startAt) continue;
     const start = Date.parse(m.startAt);
     const now = Date.parse(nowIso);
-    // crude: meeting in next 4h blocks tight afternoon plans
     if (start > now && start - now < 4 * 60 * 60 * 1000) {
       const minsUntil = Math.round((start - now) / 60000);
       if (minsUntil < needed + 15) {
@@ -175,41 +165,40 @@ function answerFeasibility(
   }
 
   let fits: boolean | null = null;
-  let text = '';
+  let textOut = '';
 
   if (remaining == null) {
     fits = null;
-    text =
+    textOut =
       'I do not have a clear remaining-capacity signal for today, so I cannot confirm a fit. Check your calendar and open work before committing.';
     facts.push('remainingMinsToday unavailable');
   } else if (hardBlock && remaining < needed) {
     fits = false;
-    text = `Tight. ${hardBlock}, and you only have about ${remaining} minutes of workable time. A visit (~${visit} min) plus travel (~${roundTrip} min round-trip) needs roughly ${needed} minutes.`;
+    textOut = `Tight. ${hardBlock}, and you only have about ${remaining} minutes of workable time. A visit (~${visit} min) plus travel (~${roundTrip} min round-trip) needs roughly ${needed} minutes.`;
   } else if (remaining >= needed + 15) {
     fits = true;
     const spare = remaining - needed;
-    text = afternoonHint
+    textOut = afternoonHint
       ? `Yes. You can fit a visit this afternoon. After travel and ~${visit} minutes on site you should still have about ${spare} minutes of workable time when you get back.`
       : `Yes. Roughly ${remaining} minutes remain; the visit needs about ${needed} minutes including travel, leaving ~${spare} minutes.`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, `spare≈${spare}`);
   } else if (remaining >= needed) {
     fits = true;
-    text = `You can, but it is tight. About ${remaining} minutes remain and the visit plus travel is ~${needed} minutes — little buffer if anything overruns.`;
+    textOut = `You can, but it is tight. About ${remaining} minutes remain and the visit plus travel is ~${needed} minutes — little buffer if anything overruns.`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'tight_fit');
   } else {
     fits = false;
-    text = `Not comfortably. About ${remaining} minutes remain; a visit plus travel needs ~${needed} minutes. It would push other planned work.`;
+    textOut = `Not comfortably. About ${remaining} minutes remain; a visit plus travel needs ~${needed} minutes. It would push other planned work.`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'over_capacity');
   }
 
-  // Job focus mention
   const focus = input.context.currentFocus;
   if (focus?.kind === 'job' && focus.label) {
     facts.push(`focus_job=${focus.label}`);
   }
 
   return {
-    text,
+    text: textOut,
     fits,
     evidence: facts,
     confidence: remaining != null ? 'medium' : 'low',
@@ -227,10 +216,7 @@ function clarifyFromAmbiguity(
     action: null,
     answer: null,
     deferred: null,
-    clarify: {
-      question: reason,
-      candidates,
-    },
+    clarify: { question: reason, candidates },
     request: cycle.request,
     workingMemory: cycle.workingMemory,
     authority: cycle.authority,
@@ -242,9 +228,7 @@ function clarifyFromAmbiguity(
   };
 }
 
-/**
- * Primary entry — one interaction cycle.
- */
+/** Primary entry — one interaction cycle. */
 export function processInteraction(input: InteractionInput): InteractionResult {
   const text = input.input.text.replace(/\s+/g, ' ').trim();
   const userId = input.userId;
@@ -252,25 +236,21 @@ export function processInteraction(input: InteractionInput): InteractionResult {
   let mem =
     input.workingMemory ??
     (input.dryRun ? undefined : loadWorkingMemoryLocal(userId));
-  let prior =
+  const prior =
     input.priorRequest ??
     (input.dryRun ? null : loadActiveRequestLocal(userId));
 
-  // Apply current focus into memory when provided by the client surface
   if (input.context.currentFocus?.id && mem) {
-    const { setFocus } = require('./workingMemory') as typeof import('./workingMemory');
     mem = setFocus(mem, input.context.currentFocus);
   }
 
-  // --- DEFER path (contextual intention) before ordinary task planning ---
+  // --- DEFER ---
   const deferred = detectDeferredIntention(text, {
     userId,
     requestId: prior?.id ?? null,
   });
   if (deferred) {
-    if (!input.dryRun) {
-      saveDeferredIntentionLocal(deferred, userId);
-    }
+    if (!input.dryRun) saveDeferredIntentionLocal(deferred, userId);
     const cycle = runEngineCycle({
       utterance: text,
       priorRequest: prior,
@@ -285,7 +265,6 @@ export function processInteraction(input: InteractionInput): InteractionResult {
         workingMemory: mem,
       },
     });
-    // Force action to noop — do not create ordinary task for deferred intention
     const evidence: LearningEvidence[] = [
       ...cycle.evidence,
       {
@@ -327,9 +306,7 @@ export function processInteraction(input: InteractionInput): InteractionResult {
     };
   }
 
-  // --- Pre-resolve "this job" / named job into request-friendly form ---
   const addPat = isAddToJobPattern(text);
-  let utteranceForCycle = text;
   let forcedJobId: string | null = null;
   let forcedJobName: string | null = null;
 
@@ -343,7 +320,6 @@ export function processInteraction(input: InteractionInput): InteractionResult {
       forcedJobId = jobs[0].id;
       forcedJobName = jobs[0].name;
     } else if (jobs.length > 1) {
-      // Ambiguous — need clarify before acting
       const cycleStub = runEngineCycle({
         utterance: text,
         priorRequest: prior,
@@ -374,10 +350,7 @@ export function processInteraction(input: InteractionInput): InteractionResult {
         priorRequest: prior,
         workingMemory: mem,
         todayDate: input.context.todayDate,
-        context: {
-          jobs: input.context.jobs,
-          workingMemory: mem,
-        },
+        context: { jobs: input.context.jobs, workingMemory: mem },
       });
       return clarifyFromAmbiguity(
         `I could not uniquely match job "${addPat.jobRef}". Which job?`,
@@ -391,7 +364,6 @@ export function processInteraction(input: InteractionInput): InteractionResult {
     }
   }
 
-  // Reference ambiguity for "that" / "this" when multiple equals
   if (containsReference(text) && mem) {
     const ref = resolveReference(text, mem);
     if (ref.status === 'ambiguous') {
@@ -400,10 +372,7 @@ export function processInteraction(input: InteractionInput): InteractionResult {
         priorRequest: prior,
         workingMemory: mem,
         todayDate: input.context.todayDate,
-        context: {
-          jobs: input.context.jobs,
-          workingMemory: mem,
-        },
+        context: { jobs: input.context.jobs, workingMemory: mem },
       });
       return clarifyFromAmbiguity(
         'Which one did you mean?',
@@ -418,7 +387,7 @@ export function processInteraction(input: InteractionInput): InteractionResult {
   }
 
   const cycleInput: CycleInput = {
-    utterance: utteranceForCycle,
+    utterance: text,
     priorRequest: prior,
     workingMemory: mem,
     todayDate: input.context.todayDate,
@@ -434,8 +403,7 @@ export function processInteraction(input: InteractionInput): InteractionResult {
 
   const cycle = runEngineCycle(cycleInput);
 
-  // Inject resolved job into action when "this job" was resolved from focus
-  let action = cycle.action;
+  let action: EngineAction = cycle.action;
   if (
     forcedJobId &&
     (action.kind === 'create_task' || action.kind === 'update_task')
@@ -446,16 +414,29 @@ export function processInteraction(input: InteractionInput): InteractionResult {
     }
   }
 
-  // Also enrich request relatedJobText for learning
   if (forcedJobName && !cycle.request.relatedJobText) {
     cycle.request.relatedJobText = forcedJobName;
   }
-  if (addPat.objectText && !cycle.request.objectText) {
-    cycle.request.objectText = addPat.objectText;
-    cycle.request.action =
-      cycle.request.action === 'unknown' ? 'create_task' : cycle.request.action;
-    cycle.request.confidence =
-      cycle.request.confidence === 'low' ? 'medium' : cycle.request.confidence;
+  if (addPat.objectText) {
+    if (!cycle.request.objectText) cycle.request.objectText = addPat.objectText;
+    if (cycle.request.action === 'unknown') cycle.request.action = 'create_task';
+    if (cycle.request.confidence === 'low') cycle.request.confidence = 'medium';
+  }
+
+  if (
+    addPat.objectText &&
+    forcedJobId &&
+    action.kind !== 'create_task' &&
+    action.kind !== 'update_task'
+  ) {
+    action = {
+      kind: 'create_task',
+      text: addPat.objectText,
+      locationText: cycle.request.locationText,
+      jobId: forcedJobId,
+      surfaceDate: null,
+      estimateMins: 15,
+    };
   }
 
   if (!input.dryRun) {
@@ -464,7 +445,6 @@ export function processInteraction(input: InteractionInput): InteractionResult {
     appendEvidenceLocal(cycle.evidence, userId);
   }
 
-  // --- QUESTION / ANSWER path ---
   if (isQueryUtterance(text) || cycle.request.action === 'query') {
     const answer = answerFeasibility(text, cycle, input);
     return {
@@ -485,24 +465,35 @@ export function processInteraction(input: InteractionInput): InteractionResult {
     };
   }
 
-  // --- ACT path ---
-  if (
+  const canAct =
     (action.kind === 'create_task' || action.kind === 'update_task') &&
-    cycle.authority.mayAct &&
-    (cycle.request.objectText || addPat.objectText)
-  ) {
+    (cycle.authority.mayAct || (!!addPat.objectText && !!forcedJobId)) &&
+    (!!cycle.request.objectText || !!addPat.objectText);
+
+  if (canAct) {
     return {
       outcome: 'ACT',
-      message: cycle.explanation,
+      message:
+        cycle.explanation ||
+        `Add "${addPat.objectText || cycle.request.objectText}"`,
       action,
       answer: null,
       deferred: null,
       clarify: null,
       request: cycle.request,
       workingMemory: cycle.workingMemory,
-      authority: cycle.authority,
+      authority: {
+        ...cycle.authority,
+        mayAct: true,
+        reason: cycle.authority.mayAct
+          ? cycle.authority.reason
+          : 'add_to_job_pattern',
+      },
       evidence: cycle.evidence,
-      facts: cycle.facts,
+      facts: [
+        ...cycle.facts,
+        ...(forcedJobName ? [`job=${forcedJobName}`] : []),
+      ],
       explanation: cycle.explanation,
       cycle,
       confidence: cycle.request.confidence,
@@ -516,10 +507,7 @@ export function processInteraction(input: InteractionInput): InteractionResult {
       action: null,
       answer: null,
       deferred: null,
-      clarify: {
-        question: action.message,
-        candidates: [],
-      },
+      clarify: { question: action.message, candidates: [] },
       request: cycle.request,
       workingMemory: cycle.workingMemory,
       authority: cycle.authority,
