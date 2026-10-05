@@ -1,24 +1,34 @@
 # Integration Pass 1 — Status
 
 **Date:** 2026-10-05  
-**Repo:** `mkuhtze-code/task-manager`
+**Repo:** `mkuhtze-code/task-manager`  
+**Latest:** V3 ANSWER wire (`interactionAnswer` + `decideTaskFit`)
 
 ## Done
 
-- Thin interaction contract `processInteraction`
-- Outcomes ACT / ANSWER / DEFER / CLARIFY / NO_OP
-- CaptureSheet full UI → `runCaptureDock` → `processInteraction`
-- DeferredIntention foundation (LOCATION / RETURN_TO_ACTIVITY, executionReady false)
-- ANSWER path uses V3 `decideTaskFit` + `Decision` / `DecisionTrace`
-- Product + adversarial tests in `interactionPass1.test.ts`
+| Item | Status |
+|------|--------|
+| Thin interaction contract `processInteraction` | Done |
+| Outcomes ACT / ANSWER / DEFER / CLARIFY / NO_OP | Done |
+| CaptureSheet → `runCaptureDock` → `processInteraction` | Done |
+| DeferredIntention (LOCATION / RETURN_TO_ACTIVITY, executionReady false) | Done |
+| ANSWER uses V3 `decideTaskFit` + DecisionTrace | **Wired** via `interactionAnswer.ts` |
+| captureDock accepts meetings / travelMins / visitDurationMins | Done |
+| Product + adversarial tests | Done |
 
-## Residual
+## Residual (Pass 1 close-out / Pass 2)
 
-- Speech semantic acts not yet primary EngineRequest source
-- Caller must inject meetings / travelMins / remainingMinsToday
-- ACT path does not yet attach full V3 Decision object
-- No formal replay harness
+1. **Today/Capture callers** — pass real `meetings[]`, `travelMins` from Routes when available (API is ready on CaptureDockInput).
+2. **Speech → EngineRequest** — semantic acts as primary request source (no giant NL parser in `request.ts`).
+3. **ACT path DecisionTrace** — attach V3 Decision when authority is engaged.
+4. **Replay harness** — fixture-based interaction replay.
 
 ## Non-goals honoured
 
-No LLM, no second DecisionTrace, no Android Auto, no UI redesign, no fake location polling.
+No LLM, no second DecisionTrace architecture, no Android Auto, no UI redesign, no fake location polling.
+
+## Vertical slices
+
+1. **ACT** — add to this job → mutation via overrides  
+2. **ANSWER** — have I got time… → no mutation; V3 fit evidence  
+3. **DEFER** — when I get back to the office… → DeferredIntention  
