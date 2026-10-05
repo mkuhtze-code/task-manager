@@ -1317,6 +1317,10 @@ export function TodayPage() {
     estimateMins?: number;
     originalInput?: string;
     explanation?: string;
+    updateTaskId?: string;
+    engineRequest?: import('@/lib/engine').EngineRequest;
+    evidence?: import('@/lib/engine').LearningEvidence[];
+    workingMemory?: import('@/lib/engine').WorkingMemorySnapshot;
   }) {
     const originalInput = (engineOverrides?.originalInput ?? taskText).trim();
     if (originalInput.length === 0) return;
@@ -1384,6 +1388,69 @@ export function TodayPage() {
               : (parsed?.locationHint && parsed.locationHint.length > 0 ? parsed.locationHint : null));
     const lat = confirmedLocation?.lat != null ? confirmedLocation.lat : (captureLocationCoords?.lat ?? null);
     const lng = confirmedLocation?.lng != null ? confirmedLocation.lng : (captureLocationCoords?.lng ?? null);
+
+    // Multi-turn refine: update the bound task instead of inserting another.
+    if (engineOverrides?.updateTaskId) {
+      const patch: Record<string, unknown> = {
+        text,
+        location_text: locationText,
+        job_id: jobId,
+        surface_date: surfaceDate,
+      };
+      if (mins > 0) patch.estimate_mins = mins;
+      const { data: updated, error: updErr } = await supabase
+        .from('tasks')
+        .update(patch)
+        .eq('id', engineOverrides.updateTaskId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+      if (updErr) {
+        console.error(updErr);
+        alert(updErr.message);
+        return;
+      }
+      setTasks((prev) =>
+        prev.map((t) => (t.id === engineOverrides.updateTaskId ? { ...t, ...updated } : t))
+      );
+      setDockSummary(
+        formatDockSummary({
+          text,
+          surfaceDate: surfaceDate,
+          intendedTime: intendedTime,
+          locationText: locationText,
+          jobName: jobId ? jobs.find((j) => j.id === jobId)?.name ?? null : null,
+        })
+      );
+      if (engineOverrides.engineRequest) {
+        const { bindRequestToTask, saveActiveRequestLocal, pushEngineStateRemote } = await import(
+          '@/lib/engine'
+        );
+        const bound = bindRequestToTask(engineOverrides.engineRequest, engineOverrides.updateTaskId);
+        saveActiveRequestLocal(bound, userId);
+        void pushEngineStateRemote(
+          supabase as never,
+          userId,
+          engineOverrides.workingMemory ?? (await import('@/lib/engine')).loadWorkingMemoryLocal(userId),
+          bound,
+          engineOverrides.evidence ?? []
+        );
+      }
+      setTaskText('');
+      setTaskTime('');
+      setShowReminderField(false);
+      setCaptureSurfaceDate('');
+      setCaptureLocation('');
+      setCaptureLocationCoords(null);
+      setManualLocationToggle(false);
+      setCaptureJobId(null);
+      setConfirmedJobId(null);
+      setConfirmedLocation(null);
+      setDeclinedResolution(false);
+      setCaptureOpen(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -1407,6 +1474,21 @@ export function TodayPage() {
       console.error(error);
       alert(error.message);
       return;
+    }
+
+    // Bind engine request → task id so the next utterance can refine this row.
+    if (engineOverrides?.engineRequest && data?.id) {
+      const { bindRequestToTask, saveActiveRequestLocal, pushEngineStateRemote, loadWorkingMemoryLocal } =
+        await import('@/lib/engine');
+      const bound = bindRequestToTask(engineOverrides.engineRequest, data.id);
+      saveActiveRequestLocal(bound, userId);
+      void pushEngineStateRemote(
+        supabase as never,
+        userId,
+        engineOverrides.workingMemory ?? loadWorkingMemoryLocal(userId),
+        bound,
+        engineOverrides.evidence ?? []
+      );
     }
 
     const dockedJobName = (confirmedJobId ?? captureJobId)
