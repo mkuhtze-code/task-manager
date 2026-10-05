@@ -78,4 +78,8 @@ export type InteractionResult = {
   explanation: string;
   cycle: EngineCycleResult | null;
   confidence: Confidence;
+  /** V3 Decision when fit was consulted (ACT and ANSWER). */
+  decision?: Decision | null;
+  decisionTrace?: DecisionTrace | null;
+  fitState?: string | null;
 };
