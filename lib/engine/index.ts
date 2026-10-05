@@ -63,3 +63,17 @@ export { explainDecision } from './explain';
 
 export { runEngineCycle, runConversation } from './orchestrate';
 export type { CycleInput } from './orchestrate';
+
+export {
+  loadWorkingMemoryLocal,
+  saveWorkingMemoryLocal,
+  loadActiveRequestLocal,
+  saveActiveRequestLocal,
+  appendEvidenceLocal,
+  loadEvidenceLocal,
+  pushEngineStateRemote,
+  hydrateEngineStateRemote,
+  bindRequestToTask,
+  taskIdFromRequest,
+} from './persist';
+export type { EngineSupabase } from './persist';
