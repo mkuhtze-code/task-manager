@@ -3,15 +3,13 @@
  * Keeps CaptureSheet thin: it is a consumer of the interaction contract.
  */
 
-import {
-  processInteraction,
-  loadWorkingMemoryLocal,
-  loadActiveRequestLocal,
-  type EngineRequest,
-  type LearningEvidence,
-  type WorkingMemorySnapshot,
-  type EngineAction,
-} from './index';
+import { processInteraction } from './interaction';
+import { loadWorkingMemoryLocal, loadActiveRequestLocal } from './persist';
+import type {
+  EngineRequest,
+  LearningEvidence,
+  WorkingMemorySnapshot,
+} from './types';
 
 export type CaptureDockJob = {
   id: string;
