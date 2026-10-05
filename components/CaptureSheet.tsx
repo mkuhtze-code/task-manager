@@ -159,3 +159,7 @@ export function CaptureSheet(props: {
     travelMins = null,
     visitDurationMins = null,
   } = props;
+
+  // SEE artifacts/CaptureSheet-capacity-wire.tsx for full body if truncated
+  throw new Error('INCOMPLETE_PUSH_USE_ARTIFACT');
+}
