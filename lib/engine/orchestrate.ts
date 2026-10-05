@@ -212,6 +212,19 @@ function actionFromPlan(
     };
   }
 
+  const focus = _ctx.workingMemory?.currentFocus;
+  if (focus?.kind === 'task' && focus.id && req.rawUtterances.length > 1) {
+    return {
+      kind: 'update_task',
+      taskId: focus.id,
+      text,
+      locationText,
+      jobId,
+      surfaceDate,
+      estimateMins: null,
+    };
+  }
+
   return {
     kind: 'create_task',
     text,
@@ -260,13 +273,24 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
   );
 
   mem = setActiveRequest(mem, request.id);
+  // Prefer task focus when this request is already bound to a docked task.
+  const boundId = taskIdFromConstraints(request);
+  if (boundId) {
+    mem = setFocus(mem, {
+      kind: 'task',
+      id: boundId,
+      label: request.objectText || requestTaskText(request),
+    });
+  }
   if (request.objectText) {
     mem = setTopic(mem, request.objectText);
-    mem = setFocus(mem, {
-      kind: 'request',
-      id: request.id,
-      label: request.objectText,
-    });
+    if (!boundId) {
+      mem = setFocus(mem, {
+        kind: 'request',
+        id: request.id,
+        label: request.objectText,
+      });
+    }
     mem = remember(
       mem,
       makeMemoryItem({
