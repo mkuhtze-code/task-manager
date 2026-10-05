@@ -41,9 +41,26 @@ import {
   type TaskListOps,
   type ListTaskCandidate,
 } from '@/lib/speech/taskListBridge';
+import {
+  runEngineCycle,
+  loadWorkingMemory,
+  saveWorkingMemory,
+  type EngineRequest,
+} from '@/lib/engine';
 import { MapPinIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
+
+/** Optional structured dock from the personal operating engine. */
+export type EngineDockOverrides = {
+  text: string;
+  locationText?: string | null;
+  jobId?: string | null;
+  surfaceDate?: string | null;
+  estimateMins?: number;
+  originalInput?: string;
+  explanation?: string;
+};
 
 export function CaptureSheet(props: {
   taskText: string;
@@ -83,6 +100,10 @@ export function CaptureSheet(props: {
   userId?: string | null;
   listOps?: TaskListOps | null;
   listTasks?: ListTaskCandidate[];
+  /** When set, dock may pass engine-structured fields instead of only the text line. */
+  addTaskWithOverrides?: (o: EngineDockOverrides) => void;
+  /** Remaining capacity today (mins) for engine planning. */
+  remainingMinsToday?: number | null;
 }) {
   const {
     taskText,
@@ -122,6 +143,8 @@ export function CaptureSheet(props: {
     userId = null,
     listOps = null,
     listTasks = [],
+    addTaskWithOverrides,
+    remainingMinsToday = null,
   } = props;
 
   const [showJobField, setShowJobField] = useState(false);
@@ -135,6 +158,8 @@ export function CaptureSheet(props: {
     candidates: Array<{ taskId: string; title: string; reason: string }>;
     pendingIntent: Exclude<CollectionIntent, { type: 'clarification_required' }> | null;
   } | null>(null);
+  const [enginePriorRequest, setEnginePriorRequest] = useState<EngineRequest | null>(null);
+  const [engineExplain, setEngineExplain] = useState<string | null>(null);
   const { speechStatus, processSpokenText, clearSpeechStatus, confirmSpeechLearning } = useCaptureSpeech({
     userId,
   });
@@ -395,6 +420,70 @@ export function CaptureSheet(props: {
       }
       void applyListDock(collectionIntent);
       return;
+    }
+
+    // Personal operating engine — structured request / refine / plan / explain.
+    // List path already returned. Ordinary tasks still dock via addTask when
+    // the engine does not claim a structured action.
+    const line = taskText.trim();
+    if (line && addTaskWithOverrides) {
+      try {
+        const today =
+          captureSurfaceDate && /^\d{4}-\d{2}-\d{2}$/.test(captureSurfaceDate)
+            ? captureSurfaceDate
+            : new Date().toISOString().slice(0, 10);
+        const cycle = runEngineCycle({
+          utterance: line,
+          priorRequest: enginePriorRequest,
+          workingMemory: loadWorkingMemory(),
+          todayDate: today,
+          context: {
+            jobs: jobs.map((j) => ({
+              id: j.id,
+              name: j.name,
+              locationText: j.location_text ?? null,
+            })),
+            remainingMinsToday,
+            openTaskCount: listTasks.length,
+            surfaceDate: captureSurfaceDate || null,
+          },
+        });
+        saveWorkingMemory(cycle.workingMemory);
+        setEnginePriorRequest(cycle.request);
+
+        const structured =
+          cycle.action.kind === 'create_task' &&
+          cycle.authority.mayAct &&
+          cycle.request.action !== 'unknown' &&
+          !!cycle.request.objectText;
+
+        if (structured && cycle.action.kind === 'create_task') {
+          setEngineExplain(cycle.explanation);
+          setCollectionFeedback(cycle.explanation);
+          confirmSpeechLearning();
+          clearSpeechStatus();
+          addTaskWithOverrides({
+            text: cycle.action.text,
+            locationText: cycle.action.locationText,
+            jobId: cycle.action.jobId ?? captureJobId,
+            surfaceDate: cycle.action.surfaceDate,
+            estimateMins: cycle.action.estimateMins || undefined,
+            originalInput: line,
+            explanation: cycle.explanation,
+          });
+          return;
+        }
+
+        if (cycle.action.kind === 'suggest' || cycle.action.kind === 'ask') {
+          setEngineExplain(
+            cycle.action.kind === 'suggest' ? cycle.action.message : cycle.action.message
+          );
+          setCollectionFeedback(cycle.explanation || cycle.action.message);
+          // Fall through to normal dock if gate allows — user still controls.
+        }
+      } catch (err) {
+        console.error('engine cycle', err);
+      }
     }
 
     if (!gate.ready) return;
