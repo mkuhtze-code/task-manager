@@ -64,9 +64,23 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     constraints: [],
   };
 
-  // Corrections / refinements
-  if (/^(?:no|actually|sorry|wait|i\s+meant)\b/i.test(text) || /\bactually\b/i.test(lower)) {
+  // Corrections / refinements — structural, not phrase cookbook
+  if (
+    /^(?:no|actually|sorry|wait|i\s+meant)\b/i.test(text) ||
+    /\bactually\b/i.test(lower) ||
+    /\b(?:i\s+)?need\s+it\b/i.test(lower) ||
+    /\b(?:make|put|do)\s+that\b/i.test(lower) ||
+    /\b(?:the\s+)?same\s+one\b/i.test(lower)
+  ) {
     out.isCorrection = /^(?:no|sorry|i\s+meant)\b/i.test(text);
+    out.isRefinement = true;
+  }
+
+  // Pronoun / anaphora toward prior request
+  if (
+    /\b(?:\bit\b|\bthat\b|\bthis\b|\bthose\b|\bthese\b)\b/i.test(lower) &&
+    !/\b(?:pick\s*up|remind\s+me|start|create|make\s+a)\b/i.test(lower)
+  ) {
     out.isRefinement = true;
   }
 
@@ -201,18 +215,34 @@ export function applyUtteranceToRequest(
   mem: WorkingMemorySnapshot
 ): EngineRequest {
   const partial = interpretRequestUtterance(raw);
+  const partialAction = partial.action ?? 'unknown';
+
+  // Continue the open request when the user is clearly refining it, or when
+  // working memory still points at it and this isn't a brand-new remind/pickup.
+  const hasTaskBind = !!existing?.constraints?.some(
+    (c) => c.axis === 'dependency' && c.value.startsWith('task:')
+  );
+  const looksLikeNewCapture =
+    (partialAction === 'remind' || partialAction === 'pickup' || partialAction === 'create_task') &&
+    !!partial.objectText &&
+    !partial.isRefinement &&
+    !partial.isCorrection;
+
   const continueActive =
     !!existing &&
+    !looksLikeNewCapture &&
     (partial.isRefinement ||
       partial.isCorrection ||
-      (mem.activeRequestId === existing.id &&
-        (partial.action === 'unknown' ||
-          partial.action === existing.action ||
-          partial.action === 'remind' ||
-          partial.action === 'pickup' ||
-          partial.action === 'move')));
+      hasTaskBind ||
+      mem.activeRequestId === existing.id ||
+      partialAction === 'unknown' ||
+      partialAction === existing.action ||
+      partialAction === 'move');
 
-  const base = continueActive && existing ? { ...existing } : emptyRequest(partial.action ?? 'unknown');
+  const base =
+    continueActive && existing
+      ? { ...existing, constraints: [...existing.constraints] }
+      : emptyRequest(partialAction);
 
   if (!continueActive) {
     base.action = partial.action ?? 'unknown';
