@@ -1309,31 +1309,46 @@ export function TodayPage() {
     });
   }
 
-  async function addTask() {
-    const originalInput = taskText.trim();
+  async function addTask(engineOverrides?: {
+    text?: string;
+    locationText?: string | null;
+    jobId?: string | null;
+    surfaceDate?: string | null;
+    estimateMins?: number;
+    originalInput?: string;
+    explanation?: string;
+  }) {
+    const originalInput = (engineOverrides?.originalInput ?? taskText).trim();
     if (originalInput.length === 0) return;
-    const gate = oneShotGate({
-      rawText: originalInput,
-      thought,
-      locationResolution,
-      declinedResolution,
-      confirmedJobId,
-    });
-    if (!gate.ready) {
-      setError(gate.blockReason || 'Confirm or skip the place first');
-      return;
+    // Engine-structured docks already resolved place/job; skip job-confirm gate.
+    if (!engineOverrides) {
+      const gate = oneShotGate({
+        rawText: originalInput,
+        thought,
+        locationResolution,
+        declinedResolution,
+        confirmedJobId,
+      });
+      if (!gate.ready) {
+        setError(gate.blockReason || 'Confirm or skip the place first');
+        return;
+      }
     }
     const parsed = thought;
     // The action is the parsed intent when the thought carried consumable
-    // facets; otherwise it is the raw text, unchanged.
-    const text = parsed && parsed.hadFacets && parsed.intent && parsed.intent.length > 0
-      ? parsed.intent
-      : originalInput;
+    // facets; otherwise it is the raw text, unchanged. Engine overrides win.
+    const text =
+      engineOverrides?.text?.trim() ||
+      (parsed && parsed.hadFacets && parsed.intent && parsed.intent.length > 0
+        ? parsed.intent
+        : originalInput);
     // One-shot: empty time is allowed (untimed work). Soft parse only when typed.
     const mins =
-      taskTime.trim().length === 0
-        ? 0
-        : parseMins(taskTime);
+      engineOverrides?.estimateMins != null && engineOverrides.estimateMins > 0
+        ? engineOverrides.estimateMins
+        : taskTime.trim().length === 0
+          ? 0
+          : parseMins(taskTime);
     if (mins === null) {
       setError('Could not read that time, try 15m or 1.5h');
       return;
@@ -1343,21 +1358,30 @@ export function TodayPage() {
     const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order_index), 0);
     // A manual reminder date (explicit) wins over the parsed one; otherwise
     // the parsed date applies. Time is the parsed 'HH:MM', if any.
-    const surfaceDate = showReminderField && captureSurfaceDate.length > 0
-      ? captureSurfaceDate
-      : (parsed?.date ?? null);
+    const surfaceDate =
+      engineOverrides?.surfaceDate !== undefined
+        ? engineOverrides.surfaceDate
+        : showReminderField && captureSurfaceDate.length > 0
+          ? captureSurfaceDate
+          : (parsed?.date ?? null);
     const intendedTime = parsed?.time ? parsed.time.label : null;
     // A confirmed resolution wins over a manual pick; both are explicit and
     // never co-occur for the same facet in practice.
-    const jobId = confirmedJobId ?? captureJobId;
+    const jobId =
+      engineOverrides?.jobId !== undefined
+        ? engineOverrides.jobId
+        : (confirmedJobId ?? captureJobId);
         // Unresolved road-phrase hints still belong on the task as free-text
     // location — even when no job matched and the user did not open the
     // location field. Never discard a place the user named.
-    const locationText = confirmedLocation && confirmedLocation.text.length > 0
-      ? confirmedLocation.text
-      : (captureLocation.trim().length > 0
-          ? captureLocation.trim()
-          : (parsed?.locationHint && parsed.locationHint.length > 0 ? parsed.locationHint : null));
+    const locationText =
+      engineOverrides?.locationText !== undefined
+        ? engineOverrides.locationText
+        : confirmedLocation && confirmedLocation.text.length > 0
+          ? confirmedLocation.text
+          : (captureLocation.trim().length > 0
+              ? captureLocation.trim()
+              : (parsed?.locationHint && parsed.locationHint.length > 0 ? parsed.locationHint : null));
     const lat = confirmedLocation?.lat != null ? confirmedLocation.lat : (captureLocationCoords?.lat ?? null);
     const lng = confirmedLocation?.lng != null ? confirmedLocation.lng : (captureLocationCoords?.lng ?? null);
     const { data, error } = await supabase
@@ -2917,6 +2941,10 @@ export function TodayPage() {
             jobId: t.job_id,
             jobName: jobs.find((j) => j.id === t.job_id)?.name ?? null,
           }))}
+          addTaskWithOverrides={(o) => {
+            void addTask(o);
+          }}
+          remainingMinsToday={Math.max(0, minutesLeftToday - remainingWorkMins)}
         />
       )}
 
