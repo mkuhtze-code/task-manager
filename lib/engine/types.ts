@@ -155,6 +155,15 @@ export type EngineAction =
       surfaceDate: string | null;
       estimateMins: number;
     }
+  | {
+      kind: 'update_task';
+      taskId: string;
+      text: string;
+      locationText: string | null;
+      jobId: string | null;
+      surfaceDate: string | null;
+      estimateMins: number | null;
+    }
   | { kind: 'suggest'; message: string }
   | { kind: 'ask'; message: string }
   | { kind: 'noop'; message: string };
