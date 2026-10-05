@@ -77,3 +77,25 @@ export {
   taskIdFromRequest,
 } from './persist';
 export type { EngineSupabase } from './persist';
+
+/** Interaction contract — preferred entry for Capture / voice / future clients. */
+export { processInteraction } from './interaction';
+export type {
+  InteractionInput,
+  InteractionInputType,
+  InteractionOutcomeKind,
+  InteractionAnswer,
+  InteractionResult,
+} from './interaction';
+
+export {
+  detectDeferredIntention,
+  loadDeferredIntentionsLocal,
+  saveDeferredIntentionLocal,
+} from './deferredIntention';
+export type {
+  DeferredIntention,
+  DeferredTrigger,
+  DeferredTriggerType,
+  DeferredIntentionStatus,
+} from './deferredIntention';
