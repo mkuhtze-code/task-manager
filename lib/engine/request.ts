@@ -86,10 +86,18 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   }
 
   // Action class
-  if (/\b(?:remind\s+me|don(?:'t|’t)\s+let\s+me\s+forget|keep\s+that\s+in\s+mind)\b/i.test(lower)) {
+  if (
+    /\b(?:have\s+i\s+got\s+time|do\s+i\s+have\s+time|can\s+i\s+(?:fit|make|go|see)|is\s+there\s+time|will\s+it\s+fit)\b/i.test(
+      lower
+    )
+  ) {
+    out.action = 'query';
+  } else if (/\b(?:remind\s+me|don(?:'t|’t)\s+let\s+me\s+forget|keep\s+that\s+in\s+mind)\b/i.test(lower)) {
     out.action = 'remind';
   } else if (/\b(?:pick\s*up|grab|collect|get|fetch)\b/i.test(lower)) {
     out.action = out.action === 'remind' ? 'remind' : 'pickup';
+  } else if (/\b(?:add|put|attach|link)\b.+(?:to|on)\b/i.test(lower)) {
+    out.action = 'create_task';
   } else if (/\b(?:put|move|chuck)\b.+\b(?:tomorrow|today|monday|tuesday)\b/i.test(lower)) {
     out.action = 'move';
     out.isRefinement = true;
@@ -106,6 +114,17 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     if (o.length > 1 && o.length < 80) out.objectText = o;
   }
 
+  // Object: "add split September invoice to this job"
+  if (!out.objectText) {
+    const addObj = text.match(
+      /\b(?:add|put|attach|link)\s+(.+?)\s+(?:to|on)\s+(?:this\s+job|that\s+job|the\s+job|(?:the\s+)?[A-Z])/i
+    );
+    if (addObj?.[1]) {
+      const o = addObj[1].replace(/\s+/g, ' ').trim();
+      if (o.length > 1 && o.length < 80) out.objectText = o;
+    }
+  }
+
   // Location: from / at
   const loc = text.match(/\b(?:from|at)\s+([A-Z][\w\s&'.-]{1,60})(?:\s|$|\.|,)/);
   const locLoose = text.match(/\b(?:from|at)\s+(.+?)(?:\s+today|\s+tomorrow|\s+because|\s+after|$)/i);
@@ -114,12 +133,12 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     out.locationText = locLoose[1].trim().replace(/[.,]$/, '');
   }
 
-  // Job link: "on the Henderson job" / "for Henderson" / "Munstead job"
+  // Job link: "on the Henderson job" / "for Henderson" / "to this job" / named
   const job =
-    text.match(/\b(?:on|for)\s+(?:the\s+)?([A-Z][\w][\w\s-]{0,40}?)\s+job\b/i) ||
+    text.match(/\b(?:on|for|to)\s+(?:the\s+)?([A-Z][\w][\w\s-]{0,40}?)\s+job\b/i) ||
     text.match(/\busing\s+it\s+on\s+(?:the\s+)?([A-Z][\w][\w\s-]{0,40}?)\s+job\b/i) ||
     text.match(/\busing\s+it\s+on\s+(?:the\s+)?([A-Z][\w][\w\s-]{0,40})\b/i);
-  if (job?.[1]) {
+  if (job?.[1] && !/^(?:this|that|the)$/i.test(job[1])) {
     out.relatedJobText = job[1].trim().replace(/\s+job$/i, '');
   }
 
@@ -221,13 +240,13 @@ export function applyUtteranceToRequest(
   const partial = interpretRequestUtterance(raw);
   const partialAction = partial.action ?? 'unknown';
 
-  // Continue the open request when the user is clearly refining it, or when
-  // working memory still points at it and this isn't a brand-new remind/pickup.
   const hasTaskBind = !!existing?.constraints?.some(
     (c) => c.axis === 'dependency' && c.value.startsWith('task:')
   );
   const looksLikeNewCapture =
-    (partialAction === 'remind' || partialAction === 'pickup' || partialAction === 'create_task') &&
+    (partialAction === 'remind' ||
+      partialAction === 'pickup' ||
+      partialAction === 'create_task') &&
     !!partial.objectText &&
     !partial.isRefinement &&
     !partial.isCorrection;
@@ -235,6 +254,7 @@ export function applyUtteranceToRequest(
   const continueActive =
     !!existing &&
     !looksLikeNewCapture &&
+    partialAction !== 'query' &&
     (partial.isRefinement ||
       partial.isCorrection ||
       hasTaskBind ||
@@ -251,12 +271,9 @@ export function applyUtteranceToRequest(
   if (!continueActive) {
     base.action = partial.action ?? 'unknown';
   } else if (partial.action && partial.action !== 'unknown') {
-    // Refinement may keep remind while adding pickup semantics
     if (base.action === 'unknown') base.action = partial.action;
   }
 
-  // Refinements must not steal object/location from pronouns ("it", "that").
-  // Only adopt a new object when this is a fresh capture or an explicit rename.
   const explicitRename =
     !!partial.objectText &&
     !partial.isRefinement &&
@@ -290,7 +307,6 @@ export function applyUtteranceToRequest(
   base.rawUtterances = [...base.rawUtterances, raw.trim()].slice(-12);
   base.updatedAt = new Date().toISOString();
 
-  // Confidence grows with structure
   let score = 0;
   if (base.objectText) score += 1;
   if (base.locationText) score += 1;
@@ -302,8 +318,7 @@ export function applyUtteranceToRequest(
     base.commitment = base.urgency === 'high' ? 'soft' : 'weak';
   }
 
-  // Lock canonical title on first structured capture; refinements keep it.
-  if (!base.titleText && (base.objectText || base.action === 'remind' || base.action === 'pickup')) {
+  if (!base.titleText && (base.objectText || base.action === 'remind' || base.action === 'pickup' || base.action === 'create_task')) {
     base.titleText = composeTitle(base);
   } else if (explicitRename && base.objectText) {
     base.titleText = composeTitle(base);
