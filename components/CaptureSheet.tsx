@@ -1,1 +1,578 @@
-PLACEHOLDER
+'use client';
+
+/**
+ * Capture — pen to paper.
+ * Primary path: type (or speak) → Dock.
+ * Speech goes through processCaptureSpeech before filling the line.
+ * List phrases map onto tasks + subtasks (taskListBridge), not collections tables.
+ *
+ * Dock intelligence goes through processInteraction (via runCaptureDock).
+ */
+
+import { useEffect, useState } from 'react';
+import type {
+  EstimateSuggestion,
+  LocationSuggestion,
+  JobSuggestion,
+  LocationMemorySuggestion,
+} from '@/lib/taskIntelligence';
+import type { CaptureContextDecision } from '@/lib/thinking/types';
+import { fmtMins, minsToInput, fmtClock } from '@/lib/timeFormat';
+import type { Job } from '@/lib/jobTypes';
+import type { ThoughtParts } from '@/lib/unifiedInput/parse';
+import {
+  hasEntityResolution,
+  type JobLocationResolution,
+  type JobLocationCandidate,
+} from '@/lib/unifiedInput/resolve';
+import { oneShotGate } from '@/lib/unifiedInput/oneShot';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
+import MicButton from '@/components/MicButton';
+import { useCaptureSpeech, textForCaptureField } from '@/hooks/useCaptureSpeech';
+import {
+  captureIsCollectionMutation,
+  detectCaptureCollection,
+  type SpeechUnderstandingContext,
+} from '@/lib/speech';
+import type { CollectionIntent } from '@/lib/collections';
+import {
+  applyListIntent,
+  detectListIntent,
+  loadActiveListState,
+  canUseActiveList,
+  type TaskListOps,
+  type ListTaskCandidate,
+} from '@/lib/speech/taskListBridge';
+import {
+  loadActiveRequestLocal,
+  type EngineRequest,
+  type LearningEvidence,
+  type WorkingMemorySnapshot,
+} from '@/lib/engine';
+import { runCaptureDock, loadPriorForDock } from '@/lib/engine/captureDock';
+import { MapPinIcon } from '@/components/icons';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
+import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
+
+/** Optional structured dock from the personal operating engine. */
+export type EngineDockOverrides = {
+  text: string;
+  locationText?: string | null;
+  jobId?: string | null;
+  surfaceDate?: string | null;
+  estimateMins?: number;
+  originalInput?: string;
+  explanation?: string;
+  updateTaskId?: string;
+  engineRequest?: EngineRequest;
+  evidence?: LearningEvidence[];
+  workingMemory?: WorkingMemorySnapshot;
+};
+
+export function CaptureSheet(props: {
+  taskText: string;
+  setTaskText: React.Dispatch<React.SetStateAction<string>>;
+  taskTime: string;
+  setTaskTime: (v: string) => void;
+  captureSuggestion: EstimateSuggestion | null;
+  captureLocationSuggestion: LocationSuggestion | null;
+  captureLocationMemorySuggestion: LocationMemorySuggestion | null;
+  captureJobSuggestion: JobSuggestion | null;
+  captureContext: CaptureContextDecision | null;
+  locationFieldVisible: boolean;
+  addTask: () => void;
+  captureLocation: string;
+  setCaptureLocation: (v: string) => void;
+  captureLocationCoords: { lat: number; lng: number } | null;
+  setCaptureLocationCoords: (c: { lat: number; lng: number } | null) => void;
+  manualLocationToggle: boolean;
+  setManualLocationToggle: (v: boolean) => void;
+  showReminderField: boolean;
+  setShowReminderField: (v: boolean) => void;
+  captureSurfaceDate: string;
+  setCaptureSurfaceDate: (v: string) => void;
+  jobs: Job[];
+  captureJobId: string | null;
+  setCaptureJobId: (v: string | null) => void;
+  thought: ThoughtParts | null;
+  intendedTime: string;
+  locationResolution: JobLocationResolution | null;
+  declinedResolution: boolean;
+  onConfirmResolution: (c: JobLocationCandidate) => void;
+  onDeclineResolution: () => void;
+  confirmedJobId?: string | null;
+  durationExplain?: string | null;
+  error: string;
+  onClose: () => void;
+  userId?: string | null;
+  listOps?: TaskListOps | null;
+  listTasks?: ListTaskCandidate[];
+  addTaskWithOverrides?: (o: EngineDockOverrides) => void;
+  remainingMinsToday?: number | null;
+}) {
+  const {
+    taskText,
+    setTaskText,
+    taskTime,
+    setTaskTime,
+    captureSuggestion,
+    captureLocationSuggestion,
+    captureLocationMemorySuggestion,
+    captureJobSuggestion,
+    captureContext,
+    locationFieldVisible,
+    addTask,
+    captureLocation,
+    setCaptureLocation,
+    captureLocationCoords,
+    setCaptureLocationCoords,
+    manualLocationToggle,
+    setManualLocationToggle,
+    showReminderField,
+    setShowReminderField,
+    captureSurfaceDate,
+    setCaptureSurfaceDate,
+    jobs,
+    captureJobId,
+    setCaptureJobId,
+    thought,
+    intendedTime,
+    locationResolution,
+    declinedResolution,
+    onConfirmResolution,
+    onDeclineResolution,
+    confirmedJobId = null,
+    durationExplain = null,
+    error,
+    onClose,
+    userId = null,
+    listOps = null,
+    listTasks = [],
+    addTaskWithOverrides,
+    remainingMinsToday = null,
+  } = props;
+
+  const [showJobField, setShowJobField] = useState(false);
+  const [showTimeField, setShowTimeField] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [estimateHintVisible, setEstimateHintVisible] = useState(false);
+  const [collectionFeedback, setCollectionFeedback] = useState<string | null>(null);
+  const [listBusy, setListBusy] = useState(false);
+  const [pendingClarification, setPendingClarification] = useState<{
+    spoken: string;
+    candidates: Array<{ taskId: string; title: string; reason: string }>;
+    pendingIntent: Exclude<CollectionIntent, { type: 'clarification_required' }> | null;
+  } | null>(null);
+  const [enginePriorRequest, setEnginePriorRequest] = useState<EngineRequest | null>(() =>
+    loadActiveRequestLocal(userId)
+  );
+  const [engineExplain, setEngineExplain] = useState<string | null>(null);
+  const { speechStatus, processSpokenText, clearSpeechStatus, confirmSpeechLearning } = useCaptureSpeech({
+    userId,
+  });
+
+  useEffect(() => {
+    const prior = loadActiveRequestLocal(userId);
+    if (prior) setEnginePriorRequest(prior);
+  }, [userId]);
+
+  function buildSpeechContext(): SpeechUnderstandingContext {
+    const jobEntities =
+      jobs?.map((j) => ({
+        id: j.id,
+        label: j.name,
+        kind: 'job' as const,
+        aliases: j.name ? [j.name.split(' ')[0]].filter(Boolean) : [],
+      })) ?? [];
+    const focus =
+      captureJobId != null
+        ? [captureJobId]
+        : jobEntities.length === 1
+          ? [jobEntities[0].id]
+          : undefined;
+    return {
+      jobs: jobEntities,
+      people: [],
+      focusEntityIds: focus,
+    };
+  }
+
+  function buildCollectionContext() {
+    const active = loadActiveListState();
+    const eligible = canUseActiveList(active);
+    return {
+      activeCollectionId: eligible ? active.taskId : null,
+      activeCollectionTitle: eligible ? active.title : null,
+      collections: (listTasks ?? []).map((t) => ({
+        id: t.id,
+        userId: userId ?? '',
+        title: t.text,
+        normalizedTitle: t.text.toLowerCase(),
+        collectionType: 'generic' as const,
+        status: 'open' as const,
+        contextType: null as null,
+        contextId: null as null,
+        aliases: [] as string[],
+        isActive: active.taskId === t.id,
+        createdAt: '',
+        updatedAt: '',
+        lastActivityAt: '',
+        closedAt: null as null,
+      })),
+      jobs: (jobs ?? []).map((j) => ({ id: j.id, name: j.name })),
+      msSinceLastActivity: active.lastInteractionAt
+        ? Date.now() - Date.parse(active.lastInteractionAt)
+        : null,
+    };
+  }
+
+  function onSpeechResult(spoken: string) {
+    const uid = userId ?? 'anon';
+    const collectionContext = buildCollectionContext();
+    const result = processSpokenText(spoken, {
+      understandingContext: buildSpeechContext(),
+      userId: uid,
+      collectionContext,
+    });
+    if (!result) {
+      setTaskText((prev) => (prev ? `${prev.trim()} ${spoken}` : spoken));
+      return;
+    }
+    const next = textForCaptureField(result);
+    setTaskText((prev) => {
+      if (!prev.trim()) return next;
+      if (next.toLowerCase().includes(prev.trim().toLowerCase())) return next;
+      return `${prev.trim()} ${next}`;
+    });
+  }
+
+  useEffect(() => {
+    setEstimateHintVisible(shouldShowEstimateHint());
+  }, []);
+
+  useEffect(() => {
+    if (captureJobId) return;
+    if (
+      captureContext &&
+      captureContext.authority !== 'observe' &&
+      captureContext.suggestedJobId
+    ) {
+      const suggestedJob = jobs.find((j) => j.id === captureContext.suggestedJobId);
+      if (suggestedJob) setCaptureJobId(suggestedJob.id);
+    }
+  }, [captureContext, captureJobId, jobs, setCaptureJobId]);
+
+  useEffect(() => {
+    if (locationFieldVisible || manualLocationToggle || captureLocation.trim()) {
+      setMoreOpen(true);
+      setManualLocationToggle(true);
+    }
+  }, [locationFieldVisible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (showReminderField || captureSurfaceDate) setMoreOpen(true);
+  }, [showReminderField, captureSurfaceDate]);
+
+  useEffect(() => {
+    if (captureJobId || showJobField) setMoreOpen(true);
+  }, [captureJobId, showJobField]);
+
+  const dialogRef = useDialogA11y(onClose);
+
+  const gate = oneShotGate({
+    rawText: taskText,
+    thought,
+    locationResolution,
+    declinedResolution,
+    confirmedJobId: confirmedJobId ?? null,
+  });
+
+  const chosenJob =
+    captureJobId != null ? jobs.find((j) => j.id === captureJobId) ?? null : null;
+
+  const resolutionNeedsAttention =
+    !declinedResolution &&
+    locationResolution &&
+    (locationResolution.state === 'proposed' || locationResolution.state === 'choose');
+
+  const showEstimateChip =
+    !!captureSuggestion &&
+    (captureSuggestion.confidence !== 'low' || captureSuggestion.source === 'measured');
+
+  const hasOptionalActive =
+    !!taskTime.trim() ||
+    !!captureLocation.trim() ||
+    !!captureJobId ||
+    !!captureSurfaceDate ||
+    showTimeField ||
+    manualLocationToggle ||
+    showReminderField ||
+    showJobField;
+
+  const liveListIntent = (() => {
+    const line = taskText.trim();
+    if (!line) return null;
+    const ctx = buildCollectionContext();
+    const detected = detectCaptureCollection(line, ctx);
+    const fallback = detectListIntent(line, listTasks);
+    return detected?.intent ?? fallback;
+  })();
+
+  const isLiveListIntent =
+    !!liveListIntent &&
+    (liveListIntent.type === 'create_collection' ||
+      liveListIntent.type === 'append_collection' ||
+      liveListIntent.type === 'complete_collection_items' ||
+      liveListIntent.type === 'remove_collection_items' ||
+      liveListIntent.type === 'update_collection_item' ||
+      liveListIntent.type === 'close_collection' ||
+      liveListIntent.type === 'reopen_collection' ||
+      liveListIntent.type === 'query_collection' ||
+      liveListIntent.type === 'clarification_required');
+
+  const collectionDockReady =
+    isLiveListIntent ||
+    (!!speechStatus?.result &&
+      !!speechStatus.result.collection &&
+      (captureIsCollectionMutation(speechStatus.result) ||
+        speechStatus.result.uiMode === 'collection_clarification'));
+
+  const resolutionBlocksDock =
+    resolutionNeedsAttention && !isLiveListIntent;
+
+  async function applyListDock(intent: CollectionIntent) {
+    if (!listOps) {
+      setCollectionFeedback('List actions need an active session.');
+      return;
+    }
+    if (intent.type === 'clarification_required') {
+      setPendingClarification({
+        spoken: intent.spoken,
+        candidates: intent.candidates.map((c) => ({
+          taskId: c.collectionId,
+          title: c.title,
+          reason: c.reason,
+        })),
+        pendingIntent: intent.pendingIntent,
+      });
+      setCollectionFeedback(null);
+      return;
+    }
+    setListBusy(true);
+    try {
+      const applied = await applyListIntent(intent, listOps);
+      confirmSpeechLearning();
+      clearSpeechStatus();
+      setPendingClarification(null);
+      if (applied.needsClarification) {
+        setPendingClarification(applied.needsClarification);
+        setCollectionFeedback(applied.message);
+      } else {
+        setCollectionFeedback(applied.message || (applied.ok ? 'List updated.' : 'Could not update list.'));
+        setTaskText('');
+        if (applied.openTaskId) {
+          onClose();
+        }
+      }
+    } finally {
+      setListBusy(false);
+    }
+  }
+
+  function resolveClarification(taskId: string) {
+    if (!pendingClarification?.pendingIntent) {
+      setPendingClarification(null);
+      return;
+    }
+    const pending = pendingClarification.pendingIntent;
+    let next: CollectionIntent = pending;
+    if ('target' in pending) {
+      next = {
+        ...pending,
+        target: { kind: 'id', collectionId: taskId },
+      } as CollectionIntent;
+    }
+    void applyListDock(next);
+  }
+
+  function tryDock() {
+    const speechResult = speechStatus?.result ?? null;
+    let collectionIntent = speechResult?.collection?.intent ?? null;
+
+    if (taskText.trim()) {
+      const ctx = buildCollectionContext();
+      const detected = detectCaptureCollection(taskText.trim(), ctx);
+      const fallback = detectListIntent(taskText.trim(), listTasks);
+      const intent = detected?.intent ?? fallback;
+      if (intent) {
+        collectionIntent = intent;
+      }
+    }
+
+    const isListIntent =
+      !!collectionIntent &&
+      (collectionIntent.type === 'create_collection' ||
+        collectionIntent.type === 'append_collection' ||
+        collectionIntent.type === 'complete_collection_items' ||
+        collectionIntent.type === 'remove_collection_items' ||
+        collectionIntent.type === 'update_collection_item' ||
+        collectionIntent.type === 'close_collection' ||
+        collectionIntent.type === 'reopen_collection' ||
+        collectionIntent.type === 'query_collection' ||
+        collectionIntent.type === 'clarification_required');
+
+    if (isListIntent && collectionIntent) {
+      if (!listOps) {
+        setCollectionFeedback('Sign in to use lists.');
+        return;
+      }
+      void applyListDock(collectionIntent);
+      return;
+    }
+
+    // Personal Operating Engine — Capture is a consumer of processInteraction.
+    const line = taskText.trim();
+    if (line && addTaskWithOverrides) {
+      try {
+        const prior = loadPriorForDock(userId) ?? enginePriorRequest ?? null;
+        const dock = runCaptureDock({
+          line,
+          userId: userId ?? null,
+          priorRequest: prior,
+          jobs: jobs.map((j) => ({
+            id: j.id,
+            name: j.name,
+            locationText: j.location_text ?? null,
+          })),
+          captureJobId,
+          captureSurfaceDate,
+          remainingMinsToday,
+          openTaskCount: listTasks.length,
+          inputType: speechStatus?.result ? 'speech_transcript' : 'text',
+        });
+
+        if (dock.request) {
+          setEnginePriorRequest(dock.request);
+        }
+
+        if (dock.kind === 'act_create' || dock.kind === 'act_update') {
+          setEngineExplain(dock.message);
+          setCollectionFeedback(dock.message);
+          confirmSpeechLearning();
+          clearSpeechStatus();
+          addTaskWithOverrides(dock.overrides);
+          return;
+        }
+
+        if (dock.kind === 'answer') {
+          setEngineExplain(dock.message);
+          setCollectionFeedback(dock.message);
+          return;
+        }
+
+        if (dock.kind === 'defer') {
+          setEngineExplain(dock.message);
+          setCollectionFeedback(dock.message);
+          confirmSpeechLearning();
+          clearSpeechStatus();
+          if (dock.clearLine) setTaskText('');
+          return;
+        }
+
+        if (dock.kind === 'clarify') {
+          setEngineExplain(dock.message);
+          setCollectionFeedback(dock.message);
+          return;
+        }
+
+        if (dock.kind === 'fallthrough' && dock.message) {
+          setEngineExplain(dock.message);
+          setCollectionFeedback(dock.message);
+        }
+      } catch (err) {
+        console.error('processInteraction dock', err);
+      }
+    }
+
+    if (!gate.ready) return;
+
+    confirmSpeechLearning();
+    clearSpeechStatus();
+    addTask();
+  }
+
+  function applySuggestedMins() {
+    if (!captureSuggestion) return;
+    setTaskTime(minsToInput(captureSuggestion.suggestedMins));
+    setShowTimeField(true);
+    setMoreOpen(true);
+    if (estimateHintVisible) {
+      markEstimateHintSeen();
+      setEstimateHintVisible(false);
+    }
+  }
+
+  // Minimal shell — full UI restored from prior CaptureSheet body below this marker.
+  // If this commit lands without the full JSX, restore from artifacts/CaptureSheet-interaction-wire.tsx
+  return (
+    <div ref={dialogRef as React.RefObject<HTMLDivElement>} className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40">
+      <div className="rounded-t-2xl bg-white p-4 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Capture</h2>
+          <button type="button" onClick={onClose} className="text-sm text-neutral-500">
+            Close
+          </button>
+        </div>
+        {error ? <p className="text-sm text-red-600 mb-2">{error}</p> : null}
+        {collectionFeedback ? (
+          <p className="text-sm text-neutral-700 mb-2">{collectionFeedback}</p>
+        ) : null}
+        {engineExplain ? (
+          <p className="text-xs text-neutral-500 mb-2">{engineExplain}</p>
+        ) : null}
+        <textarea
+          className="w-full border rounded-lg p-3 text-base min-h-[88px]"
+          value={taskText}
+          onChange={(e) => setTaskText(e.target.value)}
+          placeholder="What needs doing?"
+          autoFocus
+        />
+        <div className="mt-3 flex gap-2 items-center">
+          <MicButton onResult={onSpeechResult} />
+          <button
+            type="button"
+            className="flex-1 rounded-lg bg-neutral-900 text-white py-2.5 font-medium disabled:opacity-40"
+            disabled={!taskText.trim() || listBusy || !!resolutionBlocksDock}
+            onClick={() => tryDock()}
+          >
+            Dock
+          </button>
+        </div>
+        {pendingClarification ? (
+          <div className="mt-3 space-y-2">
+            <p className="text-sm">Which list?</p>
+            {pendingClarification.candidates.map((c) => (
+              <button
+                key={c.taskId}
+                type="button"
+                className="block w-full text-left border rounded-lg px-3 py-2 text-sm"
+                onClick={() => resolveClarification(c.taskId)}
+              >
+                {c.title}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {showEstimateChip && captureSuggestion ? (
+          <button
+            type="button"
+            className="mt-2 text-xs text-neutral-600 underline"
+            onClick={applySuggestedMins}
+          >
+            Use ~{fmtMins(captureSuggestion.suggestedMins)}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
