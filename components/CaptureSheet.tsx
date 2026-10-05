@@ -42,16 +42,12 @@ import {
   type ListTaskCandidate,
 } from '@/lib/speech/taskListBridge';
 import {
-  runEngineCycle,
-  loadWorkingMemoryLocal,
-  saveWorkingMemoryLocal,
   loadActiveRequestLocal,
-  saveActiveRequestLocal,
-  appendEvidenceLocal,
   type EngineRequest,
   type LearningEvidence,
   type WorkingMemorySnapshot,
 } from '@/lib/engine';
+import { runCaptureDock, loadPriorForDock } from '@/lib/engine/captureDock';
 import { MapPinIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
@@ -113,6 +109,12 @@ export function CaptureSheet(props: {
   addTaskWithOverrides?: (o: EngineDockOverrides) => void;
   /** Remaining capacity today (mins) for engine planning. */
   remainingMinsToday?: number | null;
+  /** Timed meetings / calendar for ANSWER feasibility. */
+  dockMeetings?: Array<{ id: string; text: string; startAt?: string | null }>;
+  /** Route travel minutes for capacity reasoning. */
+  travelMins?: number | null;
+  /** Optional on-site visit duration for feasibility questions. */
+  visitDurationMins?: number | null;
 }) {
   const {
     taskText,
@@ -154,6 +156,9 @@ export function CaptureSheet(props: {
     listTasks = [],
     addTaskWithOverrides,
     remainingMinsToday = null,
+    dockMeetings = [],
+    travelMins = null,
+    visitDurationMins = null,
   } = props;
 
   const [showJobField, setShowJobField] = useState(false);
@@ -439,106 +444,69 @@ export function CaptureSheet(props: {
       return;
     }
 
-    // Personal operating engine — structured request / refine / plan / explain.
-    // List path already returned. Ordinary tasks still dock via addTask when
-    // the engine does not claim a structured action.
+    // Personal operating engine — processInteraction via runCaptureDock.
+    // Outcomes: ACT / ANSWER / DEFER / CLARIFY / fallthrough → ordinary dock.
     const line = taskText.trim();
     if (line && addTaskWithOverrides) {
       try {
-        const today =
-          captureSurfaceDate && /^\d{4}-\d{2}-\d{2}$/.test(captureSurfaceDate)
-            ? captureSurfaceDate
-            : new Date().toISOString().slice(0, 10);
-        // Always re-read storage at dock time (state can lag after unmount).
-        const prior =
-          loadActiveRequestLocal(userId) ?? enginePriorRequest ?? null;
-        const cycle = runEngineCycle({
-          utterance: line,
+        const prior = loadPriorForDock(userId) ?? enginePriorRequest ?? null;
+        const dock = runCaptureDock({
+          line,
+          userId: userId ?? null,
           priorRequest: prior,
-          workingMemory: loadWorkingMemoryLocal(userId),
-          todayDate: today,
-          context: {
-            jobs: jobs.map((j) => ({
-              id: j.id,
-              name: j.name,
-              locationText: j.location_text ?? null,
-            })),
-            remainingMinsToday,
-            openTaskCount: listTasks.length,
-            surfaceDate: captureSurfaceDate || null,
-          },
+          jobs: jobs.map((j) => ({
+            id: j.id,
+            name: j.name,
+            locationText: j.location_text ?? null,
+          })),
+          captureJobId,
+          captureSurfaceDate,
+          remainingMinsToday,
+          openTaskCount: listTasks.length,
+          inputType: speechStatus?.result ? 'speech_transcript' : 'text',
+          meetings: dockMeetings,
+          travelMins,
+          visitDurationMins,
         });
-        saveWorkingMemoryLocal(cycle.workingMemory, userId);
-        saveActiveRequestLocal(cycle.request, userId);
-        appendEvidenceLocal(cycle.evidence, userId);
-        setEnginePriorRequest(cycle.request);
 
-        const continuing =
-          !!prior &&
-          cycle.request.id === prior.id &&
-          cycle.request.rawUtterances.length > (prior.rawUtterances?.length ?? 0);
+        if (dock.request) setEnginePriorRequest(dock.request);
 
-        const structuredCreate =
-          cycle.action.kind === 'create_task' &&
-          cycle.authority.mayAct &&
-          cycle.request.action !== 'unknown' &&
-          !!cycle.request.objectText;
-
-        const structuredUpdate =
-          cycle.action.kind === 'update_task' &&
-          cycle.authority.mayAct &&
-          (!!cycle.request.objectText || continuing);
-
-        if (structuredUpdate && cycle.action.kind === 'update_task') {
-          setEngineExplain(cycle.explanation);
-          setCollectionFeedback(cycle.explanation);
+        if (dock.kind === 'act_create' || dock.kind === 'act_update') {
+          setEngineExplain(dock.message);
+          setCollectionFeedback(dock.message);
           confirmSpeechLearning();
           clearSpeechStatus();
-          addTaskWithOverrides({
-            text: cycle.action.text,
-            locationText: cycle.action.locationText,
-            jobId: cycle.action.jobId ?? captureJobId,
-            surfaceDate: cycle.action.surfaceDate,
-            estimateMins: cycle.action.estimateMins || undefined,
-            originalInput: line,
-            explanation: cycle.explanation,
-            updateTaskId: cycle.action.taskId,
-            engineRequest: cycle.request,
-            evidence: cycle.evidence,
-            workingMemory: cycle.workingMemory,
-          });
+          addTaskWithOverrides(dock.overrides);
           return;
         }
 
-        if (structuredCreate && cycle.action.kind === 'create_task') {
-          setEngineExplain(cycle.explanation);
-          setCollectionFeedback(cycle.explanation);
-          confirmSpeechLearning();
-          clearSpeechStatus();
-          addTaskWithOverrides({
-            text: cycle.action.text,
-            locationText: cycle.action.locationText,
-            jobId: cycle.action.jobId ?? captureJobId,
-            surfaceDate: cycle.action.surfaceDate,
-            estimateMins: cycle.action.estimateMins || undefined,
-            originalInput: line,
-            explanation: cycle.explanation,
-            engineRequest: cycle.request,
-            evidence: cycle.evidence,
-            workingMemory: cycle.workingMemory,
-          });
+        if (dock.kind === 'answer') {
+          setEngineExplain(dock.message);
+          setCollectionFeedback(dock.message);
           return;
         }
 
-        if (cycle.action.kind === 'suggest' || cycle.action.kind === 'ask') {
-          setEngineExplain(
-            cycle.action.kind === 'suggest' ? cycle.action.message : cycle.action.message
-          );
-          setCollectionFeedback(cycle.explanation || cycle.action.message);
-          // Fall through to normal dock if gate allows — user still controls.
+        if (dock.kind === 'defer') {
+          setEngineExplain(dock.message);
+          setCollectionFeedback(dock.message);
+          confirmSpeechLearning();
+          clearSpeechStatus();
+          if (dock.clearLine) setTaskText('');
+          return;
+        }
+
+        if (dock.kind === 'clarify') {
+          setEngineExplain(dock.message);
+          setCollectionFeedback(dock.message);
+          return;
+        }
+
+        if (dock.kind === 'fallthrough' && dock.message) {
+          setEngineExplain(dock.message);
+          setCollectionFeedback(dock.message);
         }
       } catch (err) {
-        console.error('engine cycle', err);
+        console.error('processInteraction dock', err);
       }
     }
 
