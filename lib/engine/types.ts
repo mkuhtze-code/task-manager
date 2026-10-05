@@ -109,6 +109,12 @@ export type EngineRequest = {
   consequence: string | null;
   constraints: Constraint[];
   rawUtterances: string[];
+  /**
+   * Canonical task title locked on first structured capture.
+   * Refinements update constraints (date, job, urgency) — not this title —
+   * unless the user explicitly renames the object.
+   */
+  titleText: string | null;
   confidence: Confidence;
   updatedAt: string;
 };
