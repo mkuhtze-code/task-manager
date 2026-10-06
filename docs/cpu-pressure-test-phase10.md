@@ -61,3 +61,32 @@ Do not start the next CPU reasoning phase until:
 Full gate:
 
 `npm test && npm run typecheck && npm run build`
+
+
+## Torture run — initial result
+
+The isolated suite initially ran **20 tests: 16 passed, 4 failed**.
+
+The failures were genuine CPU-bound defects:
+
+1. **Explicit commitment classification gap:** “I need to call the client tomorrow” and “I need to drop that off at 4 today” were not consistently promoted to `HARD_COMMITMENT`, so authority could refuse them.
+2. **Capacity explanation leakage:** The concrete Grace James commitment still exposed “Today looks tight; consider tomorrow morning” inside the final explanation despite the hard-commitment authority boundary.
+3. **Opportunity surfacing leakage:** A hard commitment with a matching job could still produce a surfaced job opportunity.
+
+The root cause was systemic: Phase 10 corrected the authority decision for an already-classified `HARD_COMMITMENT`, but the request parser did not reliably classify natural “I need/have/got to …” language as a hard executable commitment.
+
+### Fix applied
+
+The request boundary now:
+- recognises generic “need/have/got to” captures as `create_task`;
+- extracts the task phrase for non-movement tasks such as calls;
+- promotes sufficiently structured explicit “need/have/got to” or “must” requests to `commitment: 'hard'`;
+- keeps the existing authority rule as the final guard.
+
+This lets the existing Phase 10 authority and opportunity protections operate on actual user language rather than only synthetic hard-commitment requests.
+
+### Re-run
+
+After the fix, the isolated CPU pressure suite ran **20/20 green**.
+
+This is the important gate result. The repository-wide Web CI still has a separate pre-existing failing test set, so its failure must not be conflated with the CPU pressure result.
