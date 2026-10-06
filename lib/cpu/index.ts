@@ -46,3 +46,8 @@ export function processCpuInteraction(
     decision,
   };
 }
+
+export type { UniversalAction, ActionExecutionResult } from './actions/types';
+export { universalActionFromEngine } from './actions/types';
+export { dispatchUniversalAction } from './actions/dispatcher';
+export type { UniversalActionExecutors } from './actions/dispatcher';
