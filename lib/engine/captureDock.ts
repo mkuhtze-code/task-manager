@@ -76,7 +76,12 @@ export type CaptureDockInput = {
   openTaskCount: number;
   inputType?: 'text' | 'speech_transcript';
   /** Optional calendar / travel context for ANSWER feasibility. */
-  meetings?: Array<{ id: string; text: string; startAt?: string | null }>;
+  meetings?: Array<{
+    id: string;
+    text: string;
+    startAt?: string | null;
+    durationMins?: number | null;
+  }>;
   travelMins?: number | null;
   visitDurationMins?: number | null;
   /** When Capture runs on a trip page */
