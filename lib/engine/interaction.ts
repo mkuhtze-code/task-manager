@@ -54,7 +54,6 @@ export type {
 } from './interactionTypes';
 import { answerFeasibility, actFitDecision } from './interactionAnswer';
 import type { TravelReasoningSlice } from './types';
-import { processCpuInteraction } from '@/lib/cpu';
 
 function travelSliceFromInput(input: InteractionInput): TravelReasoningSlice | null {
   const t = input.context.travel;
@@ -451,11 +450,12 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
 
 
 /**
- * Public compatibility entry point.
+ * Legacy compatibility entry point.
  *
- * Phase 5 routes all public interaction calls through the CPU. The CPU then
- * invokes processInteractionCore as its deterministic behavioural brain.
+ * New product surfaces should enter through processCpuInteraction. This
+ * function remains available for engine-level tests and lower-level callers;
+ * it executes the deterministic core directly so the CPU does not recurse.
  */
 export function processInteraction(input: InteractionInput): InteractionResult {
-  return processCpuInteraction(input).decision.interaction;
+  return processInteractionCore(input);
 }
