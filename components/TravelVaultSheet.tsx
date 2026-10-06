@@ -65,6 +65,8 @@ export default function TravelVaultSheet({
   const [addToItinerary, setAddToItinerary] = useState(true);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  /** Expanded vault row id — full body / actions */
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -260,13 +262,21 @@ export default function TravelVaultSheet({
   }
 
   async function openAttachment(doc: TravelDocument) {
-    if (!doc.storage_path) return;
-    const url = await signedUrlForTravelVaultFile(supabase, doc.storage_path);
-    if (!url) {
-      setError('Could not open file — try again or re-upload');
+    if (!doc.storage_path) {
+      setError('This entry has no file attached');
       return;
     }
-    window.open(url, '_blank', 'noopener,noreferrer');
+    setError('');
+    const result = await signedUrlForTravelVaultFile(supabase, doc.storage_path);
+    if ('error' in result) {
+      setError(result.error);
+      return;
+    }
+    const opened = window.open(result.url, '_blank', 'noopener,noreferrer');
+    if (!opened) {
+      // Popup blocked — navigate same tab as fallback
+      window.location.href = result.url;
+    }
   }
 
   async function removeDoc(
@@ -491,7 +501,9 @@ export default function TravelVaultSheet({
               gap: 8,
             }}
           >
-            {docs.map((d) => (
+            {docs.map((d) => {
+              const open = expandedId === d.id;
+              return (
               <li
                 key={d.id}
                 style={{
@@ -502,12 +514,25 @@ export default function TravelVaultSheet({
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <div>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(open ? null : d.id)}
+                    style={{
+                      flex: 1,
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      color: 'inherit',
+                    }}
+                  >
                     <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginBottom: 2 }}>
                       {docTypeLabel(d.doc_type)}
                       {d.reference_code ? ` · ${d.reference_code}` : ''}
                       {d.activity_id ? ' · on itinerary' : ''}
                       {d.storage_path ? ' · file' : ''}
+                      <span style={{ marginLeft: 6 }}>{open ? '▾' : '▸'}</span>
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{d.title}</div>
                     {d.carrier ? (
@@ -518,31 +543,21 @@ export default function TravelVaultSheet({
                         {d.location_text}
                       </div>
                     ) : null}
-                    {d.original_filename ? (
-                      <button
-                        type="button"
-                        className="btn-text"
-                        style={{ fontSize: 12, marginTop: 4, padding: 0 }}
-                        onClick={() => openAttachment(d)}
-                      >
-                        Open {d.original_filename}
-                      </button>
-                    ) : null}
-                    {d.body ? (
+                    {d.body && !open ? (
                       <div
                         style={{
                           fontSize: 12,
                           color: 'var(--ink-soft)',
                           marginTop: 4,
                           lineHeight: 1.35,
-                          maxHeight: 48,
+                          maxHeight: 40,
                           overflow: 'hidden',
                         }}
                       >
                         {d.body}
                       </div>
                     ) : null}
-                  </div>
+                  </button>
                   <button
                     type="button"
                     className="gear-btn"
@@ -554,8 +569,43 @@ export default function TravelVaultSheet({
                     <TrashIcon />
                   </button>
                 </div>
+                {open ? (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+                    {d.body ? (
+                      <pre
+                        style={{
+                          fontSize: 12,
+                          color: 'var(--ink)',
+                          margin: '0 0 10px',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.4,
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        {d.body}
+                      </pre>
+                    ) : (
+                      <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px' }}>
+                        No notes on this entry.
+                      </p>
+                    )}
+                    {d.storage_path ? (
+                      <button
+                        type="button"
+                        className="btn btn-steel"
+                        style={{ fontSize: 13, marginBottom: 6 }}
+                        onClick={() => openAttachment(d)}
+                      >
+                        Open file
+                        {d.original_filename ? ` · ${d.original_filename}` : ''}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>
