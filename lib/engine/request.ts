@@ -208,6 +208,12 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 } {
   const text = raw.replace(/\s+/g, ' ').trim();
   const lower = text.toLowerCase();
+  const isQuestion =
+    /\?\s*$/.test(text) ||
+    /^(?:can|could|do|does|should|is|are|will|what|when|where|why|how)\b/i.test(lower);
+  const isNegatedCommitment =
+    /\b(?:i\s+)?(?:do\s+not|don't|do\s+n[o’]t|never)\s+(?:need|have|got)\s+to\b/i.test(lower) ||
+    /\bnot\s+(?:need|have|got)\s+to\b/i.test(lower);
 
   const out: Partial<EngineRequest> & {
     isRefinement: boolean;
@@ -252,7 +258,12 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   // Action class
   // ---------------------------------------------------------------------------
 
-  if (
+  // Questions and explicit negations are observations about possible work,
+  // never executable captures. This guard must run before verb extraction so
+  // "Do I need to drop this off?" cannot inherit "drop off" as an action.
+  if (isQuestion || isNegatedCommitment) {
+    out.action = 'unknown';
+  } else if (
     /\b(?:remind\s+me|don(?:'t|’t)\s+let\s+me\s+forget|keep\s+that\s+in\s+mind)\b/i.test(
       lower
     )
@@ -292,6 +303,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   ];
 
   for (const pattern of objectPatterns) {
+    if (isQuestion || isNegatedCommitment) break;
     const match = text.match(pattern);
 
     if (!match?.[1]) continue;
@@ -604,8 +616,12 @@ export function applyUtteranceToRequest(
   // enough structure to execute, mark it hard so capacity/opportunity logic
   // cannot later downgrade or veto the user's chosen commitment.
   const explicitCommitment =
-    /\b(?:i\s+)?(?:need|have|got)\s+to\s+/i.test(raw) ||
-    /\b(?:i\s+)?must\s+/i.test(raw);
+    !isQuestion &&
+    !isNegatedCommitment &&
+    (
+      /\b(?:i\s+)?(?:need|have|got)\s+to\s+/i.test(raw) ||
+      /\b(?:i\s+)?must\s+/i.test(raw)
+    );
 
   if (
     explicitCommitment &&
