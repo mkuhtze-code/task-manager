@@ -433,14 +433,7 @@ export default function MeetingsHome() {
             </div>
           </div>
           <div className="app-header-right">
-            <button
-              type="button"
-              className="btn btn-steel"
-              onClick={() => setNewMeetingOpen(true)}
-            >
-              Record
-            </button>
-            <GearMenu />
+            <GearMenu userId={session?.user.id ?? null} />
           </div>
         </div>
       )}
