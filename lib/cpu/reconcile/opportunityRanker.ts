@@ -44,7 +44,7 @@ function dispositionFor(score: number): OpportunityDisposition {
 
 function requestIsFlexible(interaction: InteractionResult): boolean {
   const text = interaction.request.objectText ?? interaction.message ?? '';
-  return /\\b(sometime|some time|when you can|if you can|while you.?re there|on the way|on my way|later|this week)\\b/i.test(text);
+  return /\b(sometime|some time|when you can|if you can|while you.?re there|on the way|on my way|later|this week)\b/i.test(text);
 }
 
 function practicalValue(
