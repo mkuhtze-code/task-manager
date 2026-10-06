@@ -11,5 +11,13 @@ export type UniversalAction =
 export type ActionExecutionStatus='executed'|'presented'|'unsupported'|'failed';
 export type ActionExecutionResult={status:ActionExecutionStatus; action:UniversalAction; message:string; entityId?:string|null; error?:unknown};
 export function universalActionFromEngine(action:EngineAction):UniversalAction {
- switch(action.kind){case'create_task':return{kind:'create_task',text:action.text,locationText:action.locationText,jobId:action.jobId,surfaceDate:action.surfaceDate,estimateMins:action.estimateMins};case'update_task':return{kind:'update_task',taskId:action.taskId,text:action.text,locationText:action.locationText,jobId:action.jobId,surfaceDate:action.surfaceDate,estimateMins:action.estimateMins};case'suggest':return{kind:'suggest',message:action.message};case'ask':return{kind:'ask',message:action.message};case'noop':return{kind:'noop',message:action.message};}
+ switch (action.kind) {
+  case 'create_task':
+   return { kind:'create_task', text:action.text, locationText:action.locationText, jobId:action.jobId, surfaceDate:action.surfaceDate, estimateMins:action.estimateMins };
+  case 'update_task':
+   return { kind:'update_task', taskId:action.taskId, text:action.text, locationText:action.locationText, jobId:action.jobId, surfaceDate:action.surfaceDate, estimateMins:action.estimateMins };
+  case 'suggest': return { kind:'suggest', message:action.message };
+  case 'ask': return { kind:'ask', message:action.message };
+  case 'noop': return { kind:'noop', message:action.message };
+ }
 }

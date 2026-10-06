@@ -51,3 +51,38 @@ export { dispatchUniversalAction } from './actions/dispatcher';
 export type { UniversalActionExecutors } from './actions/dispatcher';
 
 export { DEFAULT_BRAINS } from './brains';
+
+
+import type { UniversalActionExecutors } from './actions/dispatcher';
+import { dispatchUniversalAction } from './actions/dispatcher';
+import { universalActionFromEngine } from './actions/types';
+import type { ActionExecutionResult } from './actions/types';
+
+export type CpuExecutionResult = {
+  executed: boolean;
+  execution: ActionExecutionResult | null;
+};
+
+/**
+ * Phase 7 execution boundary.
+ *
+ * The CPU decides first. Execution happens only for an ACT decision with an
+ * action and registered domain executor. The executor is supplied by the
+ * surface/application layer so the CPU remains independent of Supabase/UI.
+ */
+export async function executeCpuDecision(
+  result: CpuCycleResult,
+  executors: UniversalActionExecutors = {},
+): Promise<CpuExecutionResult> {
+  const decision = result.decision;
+  if (decision.outcome !== 'ACT' || !decision.authority.mayAct || !decision.recommendedAction) {
+    return { executed:false, execution:null };
+  }
+
+  const action = universalActionFromEngine(decision.recommendedAction);
+  const execution = await dispatchUniversalAction(action, executors);
+  return {
+    executed: execution.status === 'executed',
+    execution,
+  };
+}
