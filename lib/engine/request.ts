@@ -643,7 +643,10 @@ export function applyUtteranceToRequest(
     base.flexibility = 'low';
   }
 
-  if (base.action === 'remind' || base.action === 'pickup') {
+  if (
+    (base.action === 'remind' || base.action === 'pickup') &&
+    base.commitment !== 'hard'
+  ) {
     base.commitment = base.urgency === 'high' ? 'soft' : 'weak';
   }
 
