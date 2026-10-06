@@ -53,6 +53,22 @@ export type {
   InteractionResult,
 } from './interactionTypes';
 import { answerFeasibility, actFitDecision } from './interactionAnswer';
+import type { TravelReasoningSlice } from './types';
+
+function travelSliceFromInput(input: InteractionInput): TravelReasoningSlice | null {
+  const t = input.context.travel;
+  if (!t?.tripId) return null;
+  return {
+    tripId: t.tripId,
+    tripName: t.tripName,
+    intent: t.intent ?? null,
+    dayId: t.dayId ?? null,
+    dayDate: t.dayDate ?? null,
+    remainingMins: t.remainingMins ?? null,
+    plannedMins: t.plannedMins ?? 0,
+    baseLocationText: t.baseLocationText ?? null,
+  };
+}
 
 function isQueryUtterance(text: string): boolean {
   const lower = text.toLowerCase();
@@ -138,10 +154,14 @@ export function processInteraction(input: InteractionInput): InteractionResult {
       context: {
         jobs: input.context.jobs,
         meetings: input.context.meetings,
-        remainingMinsToday: input.context.remainingMinsToday,
+        remainingMinsToday:
+          input.context.remainingMinsToday ??
+          input.context.travel?.remainingMins ??
+          null,
         openTaskCount: input.context.openTaskCount,
         surfaceDate: input.context.surface ?? null,
         workingMemory: mem,
+        travel: travelSliceFromInput(input),
       },
     });
     const evidence: LearningEvidence[] = [
@@ -273,10 +293,14 @@ export function processInteraction(input: InteractionInput): InteractionResult {
     context: {
       jobs: input.context.jobs,
       meetings: input.context.meetings,
-      remainingMinsToday: input.context.remainingMinsToday,
+      remainingMinsToday:
+        input.context.remainingMinsToday ??
+        input.context.travel?.remainingMins ??
+        null,
       openTaskCount: input.context.openTaskCount,
       surfaceDate: input.context.surface ?? null,
       workingMemory: mem,
+      travel: travelSliceFromInput(input),
     },
   };
 
