@@ -1,9 +1,9 @@
 /**
  * Dokkit CPU — single universal orchestration façade.
  *
- * This is an additive compatibility layer in Phase 1. Existing clients may
- * continue using processInteraction unchanged. New clients should use the CPU
- * entry point so future cross-surface integration has one home.
+ * Phase 3 adds synchronous reconciliation. Existing domain execution remains
+ * authoritative; the CPU now combines observations, relationships,
+ * opportunities, conflicts and authority into one decision.
  */
 
 import { processInteraction } from '@/lib/engine';
@@ -13,6 +13,7 @@ import { coreBrain } from './brains';
 import { reconcileCpuDecision } from './reconcile';
 
 export type * from './types';
+export type * from './reconcile/types';
 export {
   selectTodayContext,
   selectJobsContext,
@@ -31,16 +32,13 @@ export function processCpuInteraction(
   brains: CpuBrain[] = DEFAULT_BRAINS
 ): CpuCycleResult {
   const context = assembleUniversalContext(input);
-
-  // Existing engine remains the behavioural authority. This is intentionally
-  // the only execution path in Phase 1.
   const interaction = processInteraction(input);
 
   const contributions = brains.map((brain) =>
     brain.contribute(input, context, interaction)
   );
 
-  const decision = reconcileCpuDecision(interaction, contributions);
+  const decision = reconcileCpuDecision(interaction, contributions, context);
 
   return {
     context,

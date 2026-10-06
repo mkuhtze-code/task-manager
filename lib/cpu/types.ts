@@ -19,6 +19,7 @@ import type {
   InteractionInput,
   InteractionResult,
 } from '@/lib/engine/interactionTypes';
+import type { ReconciledConflict, ReconciledOpportunity } from './reconcile/types';
 
 export type CpuBrainId =
   | 'speech'
@@ -172,6 +173,11 @@ export type CpuDecision = {
   confidence: Confidence;
   observations: CpuObservation[];
   relationships: CpuRelationshipCandidate[];
+  opportunities: ReconciledOpportunity[];
+  conflicts: ReconciledConflict[];
+  recommendedAction: EngineAction | null;
+  authority: InteractionResult['authority'];
+  explanation: string;
   evidence: LearningEvidence[];
   /** Existing result retained so callers can migrate incrementally. */
   interaction: InteractionResult;
