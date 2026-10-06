@@ -110,12 +110,28 @@ export async function signedUrlForTravelVaultFile(
   client: SupabaseClient,
   storagePath: string,
   expiresSec = 3600
-): Promise<string | null> {
+): Promise<{ url: string } | { error: string }> {
   const { data, error } = await client.storage
     .from(TRAVEL_VAULT_BUCKET)
     .createSignedUrl(storagePath, expiresSec);
-  if (error || !data?.signedUrl) return null;
-  return data.signedUrl;
+  if (error) {
+    const msg = error.message || 'Signed URL failed';
+    if (/bucket|not found/i.test(msg)) {
+      return {
+        error:
+          'Storage bucket travel-docs missing or blocked — run 20261006_travel_vault_storage.sql in Supabase',
+      };
+    }
+    if (/policy|permission|denied|row-level/i.test(msg)) {
+      return {
+        error:
+          'No permission to read this file — check storage RLS policies for travel-docs',
+      };
+    }
+    return { error: msg };
+  }
+  if (!data?.signedUrl) return { error: 'No download URL returned' };
+  return { url: data.signedUrl };
 }
 
 /** Best-effort delete; ignore missing objects. */
