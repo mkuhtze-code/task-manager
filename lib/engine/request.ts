@@ -149,6 +149,25 @@ function extractLocation(text: string): string | null {
   let location: string | null = afterAction?.[1]?.trim() ?? null;
 
   if (!location) {
+    /*
+     * Movement + destination + infinitive:
+     *   "go to Bunnings to grab 2 cartridges..."
+     *   "head to Mitre 10 to pick up screws"
+     *
+     * The first "to" is the destination marker; the second "to" introduces
+     * the purpose/action. Resolve the destination between those two markers
+     * instead of swallowing the action phrase into locationText.
+     */
+    const movementDestination = text.match(
+      /\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\s+(?:over\s+)?to\s+(.+?)\s+to\s+(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase|drop\s+off|deliver)\b/i
+    );
+
+    if (movementDestination?.[1]) {
+      location = movementDestination[1].trim();
+    }
+  }
+
+  if (!location) {
     // Fall back: first at/to/from that is not an infinitive marker.
     const re = /\b(?:at|to|from)\s+/gi;
     let m: RegExpExecArray | null;
@@ -161,10 +180,29 @@ function extractLocation(text: string): string | null {
       ) {
         continue;
       }
+
       const rest = text.slice(m.index + m[0].length);
+
+      /*
+       * If this destination is immediately followed later by a second
+       * infinitive "to <action>", stop at that boundary.
+       *
+       * This catches variants where the movement verb is not in the
+       * explicit movement list above.
+       */
+      const purposeBoundary = rest.match(
+        /^(.+?)\s+to\s+(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase|drop\s+off|deliver)\b/i
+      );
+
       const tail = rest.match(
         /^(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+\b(?:noon|midnight)\b|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\bbecause\b|\s+\bafter\b|$)/i
       );
+
+      if (purposeBoundary?.[1]) {
+        location = purposeBoundary[1].trim();
+        break;
+      }
+
       if (!tail?.[1]) continue;
       location = tail[1].trim();
       break;
