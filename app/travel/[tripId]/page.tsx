@@ -592,6 +592,8 @@ export default function TripDayView() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [tripToolsOpen, setTripToolsOpen] = useState(false);
+  const [captureMoreOpen, setCaptureMoreOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureText, setCaptureText] = useState('');
   const [captureLocation, setCaptureLocation] = useState('');
@@ -1417,24 +1419,18 @@ export default function TripDayView() {
             <h1 className="app-title" style={{ fontSize: 'var(--text-lg)', lineHeight: 1.15 }}>{trip.name}</h1>
           </div>
         </div>
-        <div className="app-header-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="app-header-right" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
             type="button"
-            className="meeting-pill"
-            onClick={() => setAccommodationSheetOpen(true)}
+            className="gear-btn"
+            aria-label="Trip tools"
+            onClick={() => setTripToolsOpen(true)}
+            style={{ fontSize: 22, lineHeight: 1, letterSpacing: 2 }}
           >
-            Stay
+            ···
           </button>
-          <button
-            type="button"
-            className="meeting-pill"
-            onClick={() => setLibraryOpen(true)}
-          >
-            Library
-          </button>
-          <GearMenu context="travel" userId={session?.user.id ?? null} />
         </div>
-            </div>
+      </div>
 
       {tripDays.length > 0 && (
         <div className="trip-day-strip" ref={dayStripRef} role="tablist" aria-label="Trip days">
@@ -1466,22 +1462,40 @@ export default function TripDayView() {
 
       {selectedDay && (
         <button
-          className="day-head"
+          type="button"
           onClick={() => setDaySheetOpen(true)}
           aria-expanded={daySheetOpen}
+          style={{
+            display: 'block',
+            width: '100%',
+            border: 'none',
+            background: 'transparent',
+            padding: '6px 16px 10px',
+            textAlign: 'center',
+            cursor: 'pointer',
+            color: 'var(--ink-soft)',
+            fontSize: 13,
+            lineHeight: 1.35,
+          }}
         >
-          <span className="day-head-left">
-            <span className="day-head-label">{fmtDayLabel(selectedDay.date).weekday} {fmtDayLabel(selectedDay.date).date}</span>
-            <span className="day-head-pos">Day {selectedDayIndex + 1} of {tripDays.length} · day detail</span>
-          </span>
-          <span className="day-head-right">
-            {activities.length > 0 && minutesLeftToday > 0 && (
-              <span className={overloaded ? 'day-head-fit over' : 'day-head-fit'}>
-                {overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(spareMins)} spare`}
-              </span>
-            )}
-            <span className="day-head-chev" aria-hidden="true"><ChevronIcon size={14} /></span>
-          </span>
+          {(() => {
+            const bits: string[] = [];
+            if (activities.length > 0 && minutesLeftToday > 0) {
+              bits.push(
+                overloaded
+                  ? `Over by ${fmtMins(-spareMins)}`
+                  : `Fits · ${fmtMins(spareMins)} spare`
+              );
+            } else if (activities.length === 0) {
+              bits.push('Nothing planned yet');
+            }
+            if (dayMeetingCount > 0) {
+              bits.push(
+                dayMeetingCount === 1 ? '1 meeting' : `${dayMeetingCount} meetings`
+              );
+            }
+            return bits.length ? bits.join(' · ') : 'Day detail';
+          })()}
         </button>
       )}
 
@@ -1507,31 +1521,17 @@ export default function TripDayView() {
             <div className="empty-state-title">
               Nothing planned for {selectedDay ? fmtDayLabel(selectedDay.date).weekday : 'this day'} yet
             </div>
-            <div className="empty-state-sub">Add your first stop — Dokkit works out the route and how the day fits.</div>
-            <button className="btn btn-steel" onClick={() => setCaptureOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <PlusIcon size={16} /> Add a stop
+            <div className="empty-state-sub">
+              Add your first stop — Dokkit works out the route and how the day fits.
+            </div>
+            <button
+              className="btn btn-steel"
+              onClick={() => setCaptureOpen(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <PlusIcon size={16} /> Add stop
             </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setVaultOpen(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            aria-label="Trip vault"
-          >
-            Vault
-          </button>
           </div>
-        )}
-
-        {selectedDay && activities.length > 0 && (selectedDay.base_lat != null || selectedDay.base_location_text) && (
-          <button className="stay-anchor" onClick={() => setAccommodationSheetOpen(true)}>
-            <span className="stay-anchor-icon"><BedIcon /></span>
-            <span className="stay-anchor-text">
-              <span className="stay-anchor-title">{selectedDay.base_location_text || 'Set where you are staying'}</span>
-              {selectedDay.base_location_text && <span className="stay-anchor-sub">your base for the day</span>}
-            </span>
-            <ChevronIcon size={14} />
-          </button>
         )}
 
         {selectedDay && selectedDay.base_lat != null && activities.length > 0 && (
@@ -1663,6 +1663,25 @@ export default function TripDayView() {
         })}
       </div>
 
+
+      <div style={{ padding: '4px 16px 72px', textAlign: 'center' }}>
+        <button
+          type="button"
+          onClick={() => setTripToolsOpen(true)}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--ink-faint)',
+            fontSize: 13,
+            padding: '8px 12px',
+            cursor: 'pointer',
+            letterSpacing: '0.04em',
+          }}
+        >
+          — Trip tools —
+        </button>
+      </div>
+
       {captureOpen && (
         <div className="sheet-backdrop" onClick={closeCapture}>
           <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
@@ -1672,78 +1691,20 @@ export default function TripDayView() {
                 <CloseIcon />
               </button>
             </div>
-            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 8px' }}>
-              A stop is a place you&apos;ll be — not a task to finish.
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px' }}>
+              A place you&apos;ll be — not a task list.
             </p>
-
-            <span className="settings-label">What kind of stop?</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-              {STOP_KIND_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={captureStopKind === opt.value ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
-                  onClick={() => {
-                    setCaptureStopKind(opt.value);
-                    if (opt.value === 'work') setCapturePresence('all_day');
-                    if (opt.value !== 'work') setCaptureJobId(null);
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            {captureStopKind === 'work' && (
-              <div style={{ marginBottom: 10 }}>
-                <span className="settings-label">Job (optional but recommended)</span>
-                <select
-                  value={captureJobId || ''}
-                  onChange={(e) => {
-                    const id = e.target.value || null;
-                    setCaptureJobId(id);
-                    const job = jobs.find((j) => j.id === id);
-                    if (job) {
-                      if (!captureText.trim()) setCaptureText(job.name);
-                      if (job.location_text) {
-                        setCaptureLocation(job.location_text);
-                        if (job.lat != null && job.lng != null) {
-                          setCaptureCoords({ lat: job.lat, lng: job.lng });
-                        }
-                      }
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    marginTop: 4,
-                    padding: '8px 10px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--line-strong)',
-                    background: 'var(--paper)',
-                    fontSize: 14,
-                  }}
-                >
-                  <option value="">No job linked</option>
-                  {jobs.map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.name}
-                      {j.client ? ` · ${j.client}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             <input
               type="text"
               value={captureText}
               onChange={(e) => setCaptureText(e.target.value)}
-              placeholder={captureStopKind === 'work' ? 'Site or job name' : 'Where / what is this stop?'}
+              placeholder="e.g. Supplier drop-off or Henderson site"
               autoFocus
             />
             <LocationAutocomplete
               value={captureLocation}
-              placeholder="Search for a place"
+              placeholder="Add location (optional)"
               onChange={setCaptureLocation}
               onPlaceSelected={(result) => {
                 setCaptureLocation(result.formattedAddress);
@@ -1751,44 +1712,127 @@ export default function TripDayView() {
               }}
             />
 
-            <span className="settings-label" style={{ marginTop: 4 }}>When are you there?</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-              {PRESENCE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={capturePresence === opt.value ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
-                  onClick={() => setCapturePresence(opt.value)}
-                  title={opt.hint}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={() => setCaptureMoreOpen((v) => !v)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--ink-soft)',
+                fontSize: 13,
+                padding: '8px 0',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              {captureMoreOpen ? 'Fewer options ▴' : 'More options ▾'}
+            </button>
 
-            {(capturePresence === 'duration' || capturePresence === 'fixed') && (
-              <div className="capture-row">
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span className="settings-label">About</span>
-                  <input type="text" value={captureEstimate} onChange={(e) => setCaptureEstimate(e.target.value)} placeholder="30m or 1.5h" />
+            {captureMoreOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 8 }}>
+                <span className="settings-label">What kind of stop?</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {STOP_KIND_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={
+                        captureStopKind === opt.value
+                          ? 'meeting-pill meeting-pill--primary'
+                          : 'meeting-pill'
+                      }
+                      onClick={() => {
+                        setCaptureStopKind(opt.value);
+                        if (opt.value === 'work') setCapturePresence('all_day');
+                        if (opt.value !== 'work') setCaptureJobId(null);
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
+
+                {captureStopKind === 'work' && (
+                  <div>
+                    <span className="settings-label">Job (optional)</span>
+                    <select
+                      value={captureJobId || ''}
+                      onChange={(e) => {
+                        const id = e.target.value || null;
+                        setCaptureJobId(id);
+                        const job = jobs.find((j) => j.id === id);
+                        if (job) {
+                          if (!captureText.trim()) setCaptureText(job.name);
+                          if (job.location_text) {
+                            setCaptureLocation(job.location_text);
+                            if (job.lat != null && job.lng != null) {
+                              setCaptureCoords({ lat: job.lat, lng: job.lng });
+                            }
+                          }
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        marginTop: 4,
+                        padding: '8px 10px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--line-strong)',
+                        background: 'var(--paper)',
+                        fontSize: 14,
+                      }}
+                    >
+                      <option value="">No job linked</option>
+                      {jobs.map((j) => (
+                        <option key={j.id} value={j.id}>
+                          {j.name}
+                          {j.client ? ` · ${j.client}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <span className="settings-label">When are you there?</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {PRESENCE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={
+                        capturePresence === opt.value
+                          ? 'meeting-pill meeting-pill--primary'
+                          : 'meeting-pill'
+                      }
+                      onClick={() => setCapturePresence(opt.value)}
+                      title={opt.hint}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {(capturePresence === 'duration' || capturePresence === 'fixed') && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span className="settings-label">About</span>
+                    <input
+                      type="text"
+                      value={captureEstimate}
+                      onChange={(e) => setCaptureEstimate(e.target.value)}
+                      placeholder="30m or 1.5h"
+                    />
+                  </div>
+                )}
+                {capturePresence === 'fixed' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span className="settings-label">At</span>
+                    <input
+                      type="time"
+                      value={captureFixedTime}
+                      onChange={(e) => setCaptureFixedTime(e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
-            )}
-            {capturePresence === 'fixed' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span className="settings-label">At</span>
-                <input type="time" value={captureFixedTime} onChange={(e) => setCaptureFixedTime(e.target.value)} />
-              </div>
-            )}
-            {capturePresence === 'all_day' && (
-              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
-                Counts as the full day window for capacity on this trip day.
-              </p>
-            )}
-            {capturePresence === 'work_hours' && (
-              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
-                Uses most of the day window — evening stops can still fit.
-              </p>
             )}
 
             {captureLocation.length > 0 && !captureCoords && (
@@ -1812,7 +1856,7 @@ export default function TripDayView() {
               </p>
             )}
             {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-            <button className="btn btn-steel" onClick={addActivity}>
+            <button className="btn btn-steel" onClick={addActivity} style={{ marginTop: 8, width: '100%' }}>
               {captureEngineMsg ? 'Add stop anyway' : 'Add stop'}
             </button>
           </div>
@@ -1964,6 +2008,94 @@ export default function TripDayView() {
           onOpenLibrary={() => { setDaySheetOpen(false); setLibraryOpen(true); }}
           onClose={() => setDaySheetOpen(false)}
         />
+      )}
+
+
+      {tripToolsOpen && (
+        <div className="sheet-backdrop" onClick={() => setTripToolsOpen(false)}>
+          <div
+            className="capture-sheet"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Trip tools"
+          >
+            <div className="task-detail-header">
+              <div className="settings-panel-title">Trip tools</div>
+              <button
+                type="button"
+                className="gear-btn"
+                onClick={() => setTripToolsOpen(false)}
+                aria-label="Close"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {[
+                {
+                  key: 'stay',
+                  label: 'Stay',
+                  sub: 'Hotels & where you base the day',
+                  run: () => {
+                    setTripToolsOpen(false);
+                    setAccommodationSheetOpen(true);
+                  },
+                },
+                {
+                  key: 'library',
+                  label: 'Library',
+                  sub: 'Guides, notes & research',
+                  run: () => {
+                    setTripToolsOpen(false);
+                    setLibraryOpen(true);
+                  },
+                },
+                {
+                  key: 'vault',
+                  label: 'Vault',
+                  sub: 'Bookings, tickets & files',
+                  run: () => {
+                    setTripToolsOpen(false);
+                    setVaultOpen(true);
+                  },
+                },
+                {
+                  key: 'map',
+                  label: 'Map',
+                  sub: 'Route & places for this day',
+                  run: () => {
+                    setTripToolsOpen(false);
+                    setMapOpen(true);
+                  },
+                },
+              ].map((item) => (
+                <li key={item.key}>
+                  <button
+                    type="button"
+                    onClick={item.run}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      border: 'none',
+                      borderBottom: '1px solid var(--line)',
+                      background: 'transparent',
+                      padding: '14px 4px',
+                      cursor: 'pointer',
+                      color: 'inherit',
+                    }}
+                  >
+                    <div style={{ fontSize: 16, fontWeight: 600 }}>{item.label}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 2 }}>{item.sub}</div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div style={{ marginTop: 12 }}>
+              <GearMenu context="travel" userId={session?.user.id ?? null} />
+            </div>
+          </div>
+        </div>
       )}
 
       <SurfaceNav
