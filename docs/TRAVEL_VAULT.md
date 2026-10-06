@@ -5,7 +5,7 @@
 1. **`travel_documents` table** — flights, bookings, tickets, emails, notes per trip (RLS by user).
 2. **`trips.intent`** — `work` | `personal`, default **work**.
 3. **`TravelVaultSheet`** — paste confirmation / email / speech → structured vault entry.
-4. **Trip detail** — **Vault** button next to Add stop.
+4. **Trip detail** — **Vault** is available through **Trip tools**; Add stop remains the single primary action.
 5. **Plan a trip** — defaults to **Work** intent and persists `intent` on create.
 6. **Engine travel context** — same speech/ANSWER capacity as jobs, scoped to the active trip day.
 7. **Auto flight → itinerary** — vault flights create a `activity_type: flight` stop on a matched trip day.
