@@ -212,3 +212,40 @@ export type EngineCycleResult = {
   evidence: LearningEvidence[];
   facts: string[];
 };
+
+export type TravelReasoningSlice = {
+  tripId: string;
+  tripName: string;
+  intent: 'work' | 'personal' | null;
+  dayId: string | null;
+  dayDate: string | null;
+  remainingMins: number | null;
+  plannedMins: number;
+  baseLocationText: string | null;
+};
+
+export type ReasoningContext = {
+  nowIso: string;
+  surfaceDate: string | null;
+  remainingMinsToday: number | null;
+  openTaskCount: number;
+  jobs: Array<{ id: string; name: string; locationText?: string | null }>;
+  meetings: Array<{ id: string; text: string; startAt?: string | null }>;
+  knownLocations: string[];
+  communicationHints: string[];
+  workingMemory: WorkingMemorySnapshot;
+  /** Present when reasoning on a travel / trip surface */
+  travel?: TravelReasoningSlice | null;
+};
+
+export type EngineCycleResult = {
+  meaningSummary: string;
+  request: EngineRequest;
+  workingMemory: WorkingMemorySnapshot;
+  plan: PlanProposal;
+  authority: AuthorityDecision;
+  action: EngineAction;
+  explanation: string;
+  evidence: LearningEvidence[];
+  facts: string[];
+};
