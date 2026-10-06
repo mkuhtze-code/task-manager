@@ -34,6 +34,31 @@ export function assembleUniversalContext(input: CpuInput): UniversalContext {
     input.workingMemory ??
     assembleContext({ workingMemory: undefined }).workingMemory;
 
+  // Context is assembled from information already supplied to the interaction.
+  // Do not invent world state or perform broad database reads here. Working
+  // memory is the first cheap cross-surface bridge; richer selectors can be
+  // added later behind an explicit context budget.
+  const memoryEntities = [
+    ...workingMemory.recentEntities,
+    ...workingMemory.recentJobs,
+    ...workingMemory.recentLocations,
+  ].map((item) => ({
+    id: item.id,
+    kind:
+      item.type === 'job'
+        ? 'job' as const
+        : item.type === 'location'
+          ? 'location' as const
+          : 'unknown' as const,
+    label: item.label,
+    metadata: {
+      source: item.source,
+      confidence: item.confidence,
+    },
+  }));
+
+  const currentFocus = ctx.currentFocus ?? workingMemory.currentFocus ?? null;
+
   const reasoning = assembleContext({
     nowIso: new Date().toISOString(),
     surfaceDate: ctx.surface ?? ctx.todayDate ?? null,
@@ -65,7 +90,7 @@ export function assembleUniversalContext(input: CpuInput): UniversalContext {
     interface: interfaceName,
     activity: ctx.activity ?? null,
     surface: ctx.surface ?? null,
-    currentFocus: ctx.currentFocus ?? null,
+    currentFocus,
 
     user: { id: input.userId },
 
@@ -73,7 +98,7 @@ export function assembleUniversalContext(input: CpuInput): UniversalContext {
       interface: interfaceName,
       surface: ctx.surface ?? null,
       activity: ctx.activity ?? null,
-      focus: ctx.currentFocus ?? null,
+      focus: currentFocus,
     },
 
     work: {
@@ -119,7 +144,7 @@ export function assembleUniversalContext(input: CpuInput): UniversalContext {
 
     memory: {
       working: workingMemory,
-      learned: [],
+      learned: memoryEntities,
     },
 
     relationships: [],
