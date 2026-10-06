@@ -159,7 +159,7 @@ const calendarBrain: CpuBrain = {
       return contribution('calendar', [observation('calendar', 'no_signal', 'calendar_context_not_available', 'high')]);
     }
     return contribution('calendar', [
-      observation('calendar', 'fact', `calendar_commitments=${context.commitments.calendar.commitments.length}`, 'high'),
+      observation('calendar', 'fact', `calendar_commitments=${(context.commitments.calendar.commitments ?? []).length}`, 'high'),
     ]);
   },
 };
