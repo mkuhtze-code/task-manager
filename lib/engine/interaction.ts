@@ -54,6 +54,7 @@ export type {
 } from './interactionTypes';
 import { answerFeasibility, actFitDecision } from './interactionAnswer';
 import type { TravelReasoningSlice } from './types';
+import { processCpuInteraction } from '@/lib/cpu';
 
 function travelSliceFromInput(input: InteractionInput): TravelReasoningSlice | null {
   const t = input.context.travel;
@@ -452,13 +453,9 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
 /**
  * Public compatibility entry point.
  *
- * Phase 5 routes the universal interaction contract through the Dokkit CPU.
- * The deterministic engine remains the CPU's core behavioural brain; this
- * wrapper preserves the existing API for tests and legacy consumers.
+ * Phase 5 routes all public interaction calls through the CPU. The CPU then
+ * invokes processInteractionCore as its deterministic behavioural brain.
  */
 export function processInteraction(input: InteractionInput): InteractionResult {
-  // Lazy import avoids a module cycle at evaluation time: CPU -> core engine.
-  // eslint/TypeScript cannot use require in this project, so the CPU imports
-  // processInteractionCore directly and public callers should use processCpuInteraction.
-  return processInteractionCore(input);
+  return processCpuInteraction(input).decision.interaction;
 }
