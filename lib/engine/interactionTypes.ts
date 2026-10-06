@@ -24,7 +24,7 @@ export type InteractionInput = {
     confidence?: Confidence;
   };
   context: {
-    /** e.g. 'capture' | 'today' | 'jobs' | 'voice' */
+    /** e.g. 'capture' | 'today' | 'jobs' | 'voice' | 'travel' */
     interface: string;
     activity?: string | null;
     surface?: string | null;
@@ -40,6 +40,24 @@ export type InteractionInput = {
     todayDate?: string;
     visitDurationMins?: number | null;
     travelMins?: number | null;
+    /**
+     * Active trip context when Capture / speech runs on a travel surface.
+     * remainingMins on the selected day feeds the same capacity path as remainingMinsToday.
+     */
+    travel?: {
+      tripId: string;
+      tripName: string;
+      intent?: 'work' | 'personal' | null;
+      dayId?: string | null;
+      dayDate?: string | null;
+      dayStartMins?: number | null;
+      dayEndMins?: number | null;
+      baseLocationText?: string | null;
+      activityCount?: number;
+      plannedMins?: number;
+      remainingMins?: number | null;
+      driveFromBaseMins?: number | null;
+    } | null;
   };
   priorRequest?: EngineRequest | null;
   workingMemory?: WorkingMemorySnapshot;
