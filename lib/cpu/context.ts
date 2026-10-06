@@ -33,10 +33,7 @@ export function assembleUniversalContext(input: CpuInput): UniversalContext {
 
   const workingMemory =
     input.workingMemory ??
-    assembleContext({
-      todayDate: undefined,
-      workingMemory: undefined,
-    }).workingMemory;
+    assembleContext({ workingMemory: undefined }).workingMemory;
 
   const reasoning = assembleContext({
     nowIso: new Date().toISOString(),
