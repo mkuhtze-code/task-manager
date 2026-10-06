@@ -29,11 +29,11 @@ export function emptyRequest(action: RequestAction = 'unknown'): EngineRequest {
   const now = new Date().toISOString();
 
   return {
-  id: id(),
-  action,
-  titleText: null,
-  objectText: null,
-  locationText: null,
+    id: id(),
+    action,
+    titleText: null,
+    objectText: null,
+    locationText: null,
     relatedJobText: null,
     relatedMeetingText: null,
     dateHint: null,
@@ -88,9 +88,7 @@ function normaliseTimeHint(value: string): string | null {
   if (raw === 'noon') return '12:00';
   if (raw === 'midnight') return '00:00';
 
-  const match = raw.match(
-    /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/
-  );
+  const match = raw.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
 
   if (!match) return null;
 
@@ -108,10 +106,7 @@ function normaliseTimeHint(value: string): string | null {
     hour += 12;
   }
 
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(
-    2,
-    '0'
-  )}`;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
 /**
@@ -136,24 +131,61 @@ function extractTimeHint(text: string): string | null {
  *   to 64 Grace James Road in Pukekohe at 12pm today
  *   from ABC Roofing today
  *
- * The important distinction is that "at" can introduce either a location
- * or a clock time. The parser therefore treats a clock expression as a
- * boundary rather than part of the location.
+ * Important:
+ * - "at" can introduce either a location or a clock time — clock forms are boundaries.
+ * - Infinitive "to" after need/want/have/going must not be treated as a place marker.
+ * - Prefer destination after movement verbs (drop off X to/at Y).
  */
 function extractLocation(text: string): string | null {
-  const match = text.match(
-    /\b(?:at|to|from)\s+(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+\b(?:noon|midnight)\b|\s+\b(?:today|tomorrow)\b|\s+\bbecause\b|\s+\bafter\b|$)/i
+  /**
+   * Destination after movement verb + object:
+   *   drop off clips to 64 Grace James Road in Pukekohe at 4pm today
+   * Must not treat infinitive "to" in "need to drop off…" as a place marker.
+   */
+  const afterAction = text.match(
+    /\b(?:drop\s+off|dropoff|deliver|take|leave|pick\s*up|pickup|grab|collect|get|fetch)\s+(?:the\s+|a\s+|an\s+)?(?:.+?)\s+(?:at|to|from)\s+(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+\b(?:noon|midnight)\b|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\bbecause\b|\s+\bafter\b|$)/i
   );
 
-  if (!match?.[1]) return null;
+  let location: string | null = afterAction?.[1]?.trim() ?? null;
 
-  let location = match[1]
-    .trim()
-    .replace(/[.,]+$/, '')
-    .trim();
+  if (!location) {
+    // Fall back: first at/to/from that is not an infinitive marker.
+    const re = /\b(?:at|to|from)\s+/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const prep = m[0].trim().toLowerCase();
+      const before = text.slice(Math.max(0, m.index - 28), m.index).toLowerCase();
+      if (
+        prep === 'to' &&
+        /\b(?:need|want|have|got|going|try|ought|able|supposed)\s+$/i.test(before)
+      ) {
+        continue;
+      }
+      const rest = text.slice(m.index + m[0].length);
+      const tail = rest.match(
+        /^(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+\b(?:noon|midnight)\b|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\bbecause\b|\s+\bafter\b|$)/i
+      );
+      if (!tail?.[1]) continue;
+      location = tail[1].trim();
+      break;
+    }
+  }
+
+  if (!location) return null;
+
+  location = location.replace(/[.,]+$/, '').trim();
 
   // Avoid treating "at the meeting" as a physical location.
   if (/^(?:the|a|an)\s+meeting$/i.test(location)) {
+    return null;
+  }
+
+  // Reject values that are still the action phrase, not a place.
+  if (
+    /^(?:drop\s+off|dropoff|deliver|pick\s*up|pickup|grab|collect|remind|need\s+to)\b/i.test(
+      location
+    )
+  ) {
     return null;
   }
 
@@ -201,9 +233,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     /\b(?:make|put|do)\s+that\b/i.test(lower) ||
     /\b(?:the\s+)?same\s+one\b/i.test(lower)
   ) {
-    out.isCorrection =
-      /^(?:no|sorry|i\s+meant)\b/i.test(text);
-
+    out.isCorrection = /^(?:no|sorry|i\s+meant)\b/i.test(text);
     out.isRefinement = true;
   }
 
@@ -213,9 +243,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 
   if (
     /\b(?:it|that|this|those|these)\b/i.test(lower) &&
-    !/\b(?:pick\s*up|drop\s*off|remind\s+me|start|create|make\s+a)\b/i.test(
-      lower
-    )
+    !/\b(?:pick\s*up|drop\s*off|remind\s+me|start|create|make\s+a)\b/i.test(lower)
   ) {
     out.isRefinement = true;
   }
@@ -230,24 +258,12 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     )
   ) {
     out.action = 'remind';
-  } else if (
-    /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(lower)
-  ) {
-    /*
-     * A concrete drop-off is fundamentally planned work.
-     * Normalise it directly to create_task rather than introducing a new
-     * action type solely for vocabulary.
-     */
+  } else if (/\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(lower)) {
     out.action = 'create_task';
+  } else if (/\b(?:pick\s*up|pickup|grab|collect|get|fetch)\b/i.test(lower)) {
+    out.action = out.action === 'remind' ? 'remind' : 'pickup';
   } else if (
-    /\b(?:pick\s*up|pickup|grab|collect|get|fetch)\b/i.test(lower)
-  ) {
-    out.action =
-      out.action === 'remind' ? 'remind' : 'pickup';
-  } else if (
-    /\b(?:put|move|chuck)\b.+\b(?:tomorrow|today|monday|tuesday)\b/i.test(
-      lower
-    )
+    /\b(?:put|move|chuck)\b.+\b(?:tomorrow|today|monday|tuesday)\b/i.test(lower)
   ) {
     out.action = 'move';
     out.isRefinement = true;
@@ -255,12 +271,6 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 
   // ---------------------------------------------------------------------------
   // Object
-  //
-  // Examples:
-  //   pick up the flashing
-  //   grab the flashing
-  //   drop off clips at 64 Grace James Road
-  //   deliver the plans to the office
   // ---------------------------------------------------------------------------
 
   const objectPatterns = [
@@ -276,25 +286,11 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 
     if (!match?.[1]) continue;
 
-    let objectText = match[1]
-      .trim()
-      .replace(/[.,]+$/, '')
-      .trim();
+    let objectText = match[1].trim().replace(/[.,]+$/, '').trim();
 
-    // Remove trailing temporal fragments if the sentence had no explicit
-    // boundary caught by the lookahead.
+    objectText = objectText.replace(/\s+\b(?:today|tomorrow)\b.*$/i, '').trim();
     objectText = objectText
-      .replace(
-        /\s+\b(?:today|tomorrow)\b.*$/i,
-        ''
-      )
-      .trim();
-
-    objectText = objectText
-      .replace(
-        /\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b.*$/i,
-        ''
-      )
+      .replace(/\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b.*$/i, '')
       .trim();
 
     if (objectText.length > 1 && objectText.length < 120) {
@@ -318,12 +314,8 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   // ---------------------------------------------------------------------------
 
   const job =
-    text.match(
-      /\b(?:on|for)\s+(?:the\s+)?([A-Z][\w\s-]{1,40}?)\s+job\b/i
-    ) ||
-    text.match(
-      /\busing\s+it\s+on\s+(?:the\s+)?([A-Z][\w\s-]{1,40})\b/i
-    );
+    text.match(/\b(?:on|for)\s+(?:the\s+)?([A-Z][\w\s-]{1,40}?)\s+job\b/i) ||
+    text.match(/\busing\s+it\s+on\s+(?:the\s+)?([A-Z][\w\s-]{1,40})\b/i);
 
   if (job?.[1]) {
     out.relatedJobText = job[1].trim();
@@ -493,17 +485,13 @@ export function applyUtteranceToRequest(
   const partialAction = partial.action ?? 'unknown';
 
   const hasTaskBind = !!existing?.constraints?.some(
-    (c) =>
-      c.axis === 'dependency' &&
-      c.value.startsWith('task:')
+    (c) => c.axis === 'dependency' && c.value.startsWith('task:')
   );
 
   const looksLikeNewCapture =
-    (
-      partialAction === 'remind' ||
+    (partialAction === 'remind' ||
       partialAction === 'pickup' ||
-      partialAction === 'create_task'
-    ) &&
+      partialAction === 'create_task') &&
     !!partial.objectText &&
     !partial.isRefinement &&
     !partial.isCorrection;
@@ -511,15 +499,13 @@ export function applyUtteranceToRequest(
   const continueActive =
     !!existing &&
     !looksLikeNewCapture &&
-    (
-      partial.isRefinement ||
+    (partial.isRefinement ||
       partial.isCorrection ||
       hasTaskBind ||
       mem.activeRequestId === existing.id ||
       partialAction === 'unknown' ||
       partialAction === existing.action ||
-      partialAction === 'move'
-    );
+      partialAction === 'move');
 
   const base =
     continueActive && existing
@@ -531,10 +517,7 @@ export function applyUtteranceToRequest(
 
   if (!continueActive) {
     base.action = partial.action ?? 'unknown';
-  } else if (
-    partial.action &&
-    partial.action !== 'unknown'
-  ) {
+  } else if (partial.action && partial.action !== 'unknown') {
     if (base.action === 'unknown') {
       base.action = partial.action;
     }
@@ -542,6 +525,9 @@ export function applyUtteranceToRequest(
 
   if (partial.objectText) {
     base.objectText = partial.objectText;
+    if (!base.titleText) {
+      base.titleText = partial.objectText;
+    }
   }
 
   if (partial.locationText) {
@@ -564,17 +550,11 @@ export function applyUtteranceToRequest(
     base.timeHint = partial.timeHint;
   }
 
-  if (
-    partial.urgency &&
-    partial.urgency !== 'none'
-  ) {
+  if (partial.urgency && partial.urgency !== 'none') {
     base.urgency = partial.urgency;
   }
 
-  if (
-    partial.urgency === 'none' &&
-    partial.isRefinement
-  ) {
+  if (partial.urgency === 'none' && partial.isRefinement) {
     base.urgency = 'none';
   }
 
@@ -596,14 +576,10 @@ export function applyUtteranceToRequest(
     );
   }
 
-  base.rawUtterances = [
-    ...base.rawUtterances,
-    raw.trim(),
-  ].slice(-12);
+  base.rawUtterances = [...base.rawUtterances, raw.trim()].slice(-12);
 
   base.updatedAt = new Date().toISOString();
 
-  // Confidence grows with meaningful structure.
   let score = 0;
 
   if (base.objectText) score += 1;
@@ -612,21 +588,10 @@ export function applyUtteranceToRequest(
   if (base.timeHint) score += 1;
   if (base.relatedJobText) score += 1;
 
-  base.confidence =
-    score >= 3
-      ? 'high'
-      : score >= 1
-        ? 'medium'
-        : 'low';
+  base.confidence = score >= 3 ? 'high' : score >= 1 ? 'medium' : 'low';
 
-  if (
-    base.action === 'remind' ||
-    base.action === 'pickup'
-  ) {
-    base.commitment =
-      base.urgency === 'high'
-        ? 'soft'
-        : 'weak';
+  if (base.action === 'remind' || base.action === 'pickup') {
+    base.commitment = base.urgency === 'high' ? 'soft' : 'weak';
   }
 
   return base;
@@ -641,40 +606,24 @@ export function applyUtteranceToRequest(
  *   create_task + check flashing -> check flashing
  */
 export function requestTaskText(req: EngineRequest): string {
-  const firstUtterance =
-    req.rawUtterances[0] ?? '';
+  const firstUtterance = req.rawUtterances[0] ?? '';
 
-  const lowerFirst =
-    firstUtterance.toLowerCase();
+  const lowerFirst = firstUtterance.toLowerCase();
 
-  const isDropOff =
-    /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(
-      lowerFirst
-    );
+  const isDropOff = /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(
+    lowerFirst
+  );
 
   const isPickup =
     req.action === 'pickup' ||
-    /\b(?:pick\s*up|pickup|grab|collect|get|fetch)\b/i.test(
-      lowerFirst
-    );
+    /\b(?:pick\s*up|pickup|grab|collect|get|fetch)\b/i.test(lowerFirst);
 
   const bits: string[] = [];
 
   if (isDropOff) {
-    bits.push(
-      req.objectText
-        ? `Drop off ${req.objectText}`
-        : 'Drop off'
-    );
-  } else if (
-    req.action === 'remind' ||
-    isPickup
-  ) {
-    bits.push(
-      req.objectText
-        ? `Pick up ${req.objectText}`
-        : 'Pick up'
-    );
+    bits.push(req.objectText ? `Drop off ${req.objectText}` : 'Drop off');
+  } else if (req.action === 'remind' || isPickup) {
+    bits.push(req.objectText ? `Pick up ${req.objectText}` : 'Pick up');
   } else if (req.objectText) {
     bits.push(req.objectText);
   } else if (firstUtterance) {
@@ -683,16 +632,9 @@ export function requestTaskText(req: EngineRequest): string {
     bits.push('Task');
   }
 
-  if (
-    req.locationText &&
-    !isDropOff &&
-    !isPickup
-  ) {
+  if (req.locationText && !isDropOff && !isPickup) {
     bits.push(`at ${req.locationText}`);
   }
 
-  return bits
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return bits.join(' ').replace(/\s+/g, ' ').trim();
 }
