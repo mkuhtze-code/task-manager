@@ -1,9 +1,8 @@
 /**
  * Universal Context assembly.
  *
- * This does not create a second context model. It wraps the existing
- * InteractionInput/ReasoningContext so every future brain sees the same
- * contextual envelope.
+ * Phase 2 promotes existing context into stable domain-shaped slices. It does
+ * not fetch new data, infer relationships, or mutate state.
  */
 
 import { assembleContext } from '@/lib/engine';
@@ -57,14 +56,80 @@ export function assembleUniversalContext(input: CpuInput): UniversalContext {
       : null,
   });
 
+  const todayDate = ctx.todayDate ?? reasoning.surfaceDate ?? null;
+  const meetings = ctx.meetings ?? [];
+  const jobs = ctx.jobs ?? [];
+
   return {
     nowIso: reasoning.nowIso,
     interface: interfaceName,
     activity: ctx.activity ?? null,
     surface: ctx.surface ?? null,
     currentFocus: ctx.currentFocus ?? null,
+
+    user: { id: input.userId },
+
+    current: {
+      interface: interfaceName,
+      surface: ctx.surface ?? null,
+      activity: ctx.activity ?? null,
+      focus: ctx.currentFocus ?? null,
+    },
+
+    work: {
+      today: {
+        date: todayDate,
+        remainingMins: ctx.remainingMinsToday ?? null,
+        openTaskCount: ctx.openTaskCount ?? 0,
+      },
+      tasks: {
+        knownCount: ctx.openTaskCount ?? 0,
+      },
+      jobs: {
+        items: jobs,
+      },
+    },
+
+    commitments: {
+      // Calendar integration is not yet part of InteractionInput. Do not
+      // pretend meeting data is calendar data.
+      calendar: {
+        available: false,
+        commitments: [],
+      },
+      meetings: {
+        items: meetings,
+      },
+    },
+
+    movement: {
+      location: {
+        currentText: null,
+        knownLocations: reasoning.knownLocations,
+      },
+      travel: reasoning.travel,
+      route: {
+        available: false,
+      },
+    },
+
+    collections: {
+      lists: [],
+    },
+
+    memory: {
+      working: workingMemory,
+      learned: [],
+    },
+
+    relationships: [],
+
+    constraints: {
+      remainingMinsToday: ctx.remainingMinsToday ?? null,
+      hasActiveTravel: Boolean(reasoning.travel),
+    },
+
     reasoning,
-    workingMemory,
     interaction: ctx,
   };
 }
