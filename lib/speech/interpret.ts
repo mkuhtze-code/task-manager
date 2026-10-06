@@ -849,12 +849,18 @@ export function interpretSpeech(
     );
 
   const commitmentStrength =
-    deriveCommitmentStrength(
-      statementType,
-      derived.certainty,
-      intent,
-      hasClearAction
-    );
+    /\?\s*$/.test(text) ||
+    /^(?:can|could|do|does|should|is|are|will|what|when|where|why|how)\b/i.test(text) ||
+    /\b(?:i\s+)?(?:do\s+not|don't|never)\s+(?:need|have|got)\s+to\b/i.test(text)
+      ? 'none'
+      : /\b(?:i\s+)?(?:need|have|got)\s+to\b|\b(?:i\s+)?must\b/i.test(text)
+        ? 'strong'
+        : deriveCommitmentStrength(
+            statementType,
+            derived.certainty,
+            intent,
+            hasClearAction
+          );
 
   const urgency =
     deriveUrgency(
