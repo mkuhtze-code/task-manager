@@ -26,8 +26,23 @@ export function answerFeasibility(
       facts.push(`base=${travelCtx.baseLocationText}`);
     }
   }
-  const remaining =
+  const meetings = input.context.meetings ?? [];
+  const meetingBlockMins = meetings.reduce((sum, m) => {
+    const d = m.durationMins;
+    return sum + (typeof d === 'number' && d > 0 ? d : 45);
+  }, 0);
+
+  let remaining =
     input.context.remainingMinsToday ?? travelCtx?.remainingMins ?? null;
+  // Trip day: meetings on this calendar day consume workable window (same day capacity).
+  if (onTrip && remaining != null && meetingBlockMins > 0) {
+    remaining = Math.max(0, remaining - meetingBlockMins);
+    facts.push(
+      `meetings_on_day=${meetings.length}`,
+      `meeting_block≈${meetingBlockMins}`
+    );
+  }
+
   const visit =
     input.context.visitDurationMins ??
     (cycle.request.objectText ? 45 : 30);
@@ -36,30 +51,43 @@ export function answerFeasibility(
   const roundTrip = onTrip ? travel : travel * 2;
   const needed = visit + roundTrip;
 
-  const meetings = input.context.meetings ?? [];
   const nowIso = new Date().toISOString();
   const nowMs = Date.parse(nowIso);
   const afternoonHint =
     /\bafternoon\b/i.test(utterance) || cycle.request.timeHint === 'afternoon';
+
+  // For trip days that are not "today", anchor "until meeting" to the day start so
+  // future-day meetings still pressure the answer instead of looking hours away from now.
+  let refMs = nowMs;
+  if (onTrip && travelCtx?.dayDate && travelCtx.dayDate !== nowIso.slice(0, 10)) {
+    const dayStartMins = travelCtx.dayStartMins ?? 8 * 60;
+    const [y, mo, d] = travelCtx.dayDate.split('-').map((n) => parseInt(n, 10));
+    refMs = new Date(y, mo - 1, d, Math.floor(dayStartMins / 60), dayStartMins % 60).getTime();
+  }
 
   let hardBlock: string | null = null;
   let minsToNextCommitment: number | null = null;
   for (const m of meetings) {
     if (!m.startAt) continue;
     const start = Date.parse(m.startAt);
-    if (start > nowMs) {
-      const minsUntil = Math.round((start - nowMs) / 60000);
+    if (Number.isNaN(start)) continue;
+    if (start > refMs) {
+      const minsUntil = Math.round((start - refMs) / 60000);
       if (minsToNextCommitment == null || minsUntil < minsToNextCommitment) {
         minsToNextCommitment = minsUntil;
       }
-      if (start - nowMs < 4 * 60 * 60 * 1000) {
+      if (minsUntil < 4 * 60) {
         if (minsUntil < needed + 15) {
           hardBlock = `Meeting "${m.text}" in ~${minsUntil} min`;
           facts.push(hardBlock);
         } else {
           facts.push(`Meeting "${m.text}" in ~${minsUntil} min — room after/before.`);
         }
+      } else {
+        facts.push(`Meeting "${m.text}" later that day (~${minsUntil} min from day start).`);
       }
+    } else if (onTrip) {
+      facts.push(`Meeting "${m.text}" already started or past on this day.`);
     }
   }
 
