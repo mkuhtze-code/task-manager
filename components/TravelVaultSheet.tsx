@@ -13,8 +13,10 @@ import { CloseIcon, PlusIcon, TrashIcon } from '@/components/icons';
 import {
   TRAVEL_DOC_TYPE_OPTIONS,
   buildFlightActivityDraft,
+  combineLocalDateAndTime,
   docTypeLabel,
   extractFlightSchedule,
+  formatVaultWhen,
   interpretTravelPaste,
   matchTripDayForFlight,
   type TravelDocType,
@@ -67,6 +69,10 @@ export default function TravelVaultSheet({
   const [file, setFile] = useState<File | null>(null);
   /** Expanded vault row id — full body / actions */
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  /** Event timing — date (YYYY-MM-DD) + local clocks HH:MM */
+  const [eventDate, setEventDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -97,6 +103,14 @@ export default function TravelVaultSheet({
     if (parsed.reference_code) setReference(parsed.reference_code);
     if (parsed.carrier) setCarrier(parsed.carrier);
     if (parsed.doc_type === 'flight') setAddToItinerary(true);
+    const sched = extractFlightSchedule(paste, {
+      tripDays,
+      todayYmd: new Date().toISOString().slice(0, 10),
+    });
+    if (sched.departTime) setStartTime(sched.departTime);
+    if (sched.arriveTime) setEndTime(sched.arriveTime);
+    if (sched.dateYmd) setEventDate(sched.dateYmd);
+    else if (tripDays.length === 1) setEventDate(tripDays[0].date);
   }
 
   function resetForm() {
@@ -108,6 +122,9 @@ export default function TravelVaultSheet({
     setDocType('note');
     setAddToItinerary(true);
     setFile(null);
+    setEventDate('');
+    setStartTime('');
+    setEndTime('');
   }
 
   async function saveDoc() {
@@ -125,13 +142,29 @@ export default function TravelVaultSheet({
 
     const bodyText = body.trim() || paste.trim() || null;
     const scheduleSource = bodyText || t;
-    const schedule =
+    let schedule =
       docType === 'flight'
         ? extractFlightSchedule(scheduleSource, {
             tripDays,
             todayYmd: new Date().toISOString().slice(0, 10),
           })
         : null;
+
+    // Explicit form times win over paste extraction
+    const formDate = eventDate.trim() || schedule?.dateYmd || null;
+    const formStart = startTime.trim() || schedule?.departTime || null;
+    const formEnd = endTime.trim() || schedule?.arriveTime || null;
+    if (schedule) {
+      schedule = {
+        ...schedule,
+        dateYmd: formDate,
+        departTime: formStart,
+        arriveTime: formEnd,
+      };
+    }
+
+    const starts_at = combineLocalDateAndTime(formDate, formStart);
+    const ends_at = combineLocalDateAndTime(formDate, formEnd);
 
     const location_text =
       schedule?.origin && schedule?.destination
@@ -143,12 +176,24 @@ export default function TravelVaultSheet({
     let matchedDay: TripDayRef | null = null;
 
     if (docType === 'flight' && addToItinerary && tripDays.length > 0) {
-      matchedDay = matchTripDayForFlight(tripDays, schedule?.dateYmd ?? null);
+      matchedDay = matchTripDayForFlight(tripDays, formDate);
       if (matchedDay) {
-        const draft = buildFlightActivityDraft(t, schedule!, {
-          carrier: carrier.trim() || null,
-          reference: reference.trim() || null,
-        });
+        const draft = buildFlightActivityDraft(
+          t,
+          schedule ?? {
+            flightNumber: null,
+            origin: null,
+            destination: null,
+            departTime: formStart,
+            arriveTime: formEnd,
+            dateYmd: formDate,
+            estimateMins: 150,
+          },
+          {
+            carrier: carrier.trim() || null,
+            reference: reference.trim() || null,
+          }
+        );
 
         const { data: existingActs } = await supabase
           .from('activities')
@@ -172,10 +217,10 @@ export default function TravelVaultSheet({
             drive_mins_to_next: draft.drive_mins_to_next,
             location_text: draft.location_text,
             order_index: maxOrder + 1,
-            time_type: draft.time_type,
-            fixed_time: draft.fixed_time,
+            time_type: formStart ? 'fixed' : draft.time_type,
+            fixed_time: formStart || draft.fixed_time,
             stop_kind: draft.stop_kind,
-            presence: draft.presence,
+            presence: formStart ? 'fixed' : draft.presence,
             status: draft.status,
           })
           .select('id')
@@ -189,6 +234,10 @@ export default function TravelVaultSheet({
         activityId = (actRow as { id: string }).id;
         tripDayId = matchedDay.id;
       }
+    } else if (formDate && tripDays.length > 0) {
+      // Link non-flight timed docs to a day when date is set
+      const day = matchTripDayForFlight(tripDays, formDate);
+      if (day) tripDayId = day.id;
     }
 
     let storagePath: string | null = null;
@@ -223,7 +272,8 @@ export default function TravelVaultSheet({
       reference_code: reference.trim() || null,
       carrier: carrier.trim() || null,
       location_text,
-      starts_at: null,
+      starts_at,
+      ends_at,
       trip_day_id: tripDayId,
       activity_id: activityId,
       storage_path: storagePath,
@@ -242,7 +292,7 @@ export default function TravelVaultSheet({
     if (activityId && matchedDay) {
       bits.push(
         `Flight on itinerary · ${matchedDay.date}${
-          schedule?.departTime ? ` at ${schedule.departTime}` : ''
+          formStart ? ` at ${formStart}` : ''
         }`
       );
       onItineraryChanged?.({
@@ -451,6 +501,60 @@ export default function TravelVaultSheet({
               placeholder="Air New Zealand"
             />
 
+            <label className="field-label">When</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {tripDays.length > 0 ? (
+                <select
+                  className="field-input"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Date (optional)</option>
+                  {tripDays.map((d) => (
+                    <option key={d.id} value={d.date}>
+                      {d.date}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className="field-input"
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                />
+              )}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <span className="field-label" style={{ fontSize: 11 }}>
+                    Starts
+                  </span>
+                  <input
+                    className="field-input"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span className="field-label" style={{ fontSize: 11 }}>
+                    Ends (optional)
+                  </span>
+                  <input
+                    className="field-input"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+                Flights, transfers, and bookings land on the itinerary at this time when you add
+                them as a stop.
+              </p>
+            </div>
+
             <label className="field-label">Notes / full text</label>
             <textarea
               className="field-input"
@@ -535,6 +639,11 @@ export default function TravelVaultSheet({
                       <span style={{ marginLeft: 6 }}>{open ? '▾' : '▸'}</span>
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{d.title}</div>
+                    {formatVaultWhen(d.starts_at, d.ends_at) ? (
+                      <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 2 }}>
+                        {formatVaultWhen(d.starts_at, d.ends_at)}
+                      </div>
+                    ) : null}
                     {d.carrier ? (
                       <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{d.carrier}</div>
                     ) : null}
