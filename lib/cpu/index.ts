@@ -13,6 +13,16 @@ import { coreBrain } from './brains';
 import { reconcileCpuDecision } from './reconcile';
 
 export type * from './types';
+export {
+  selectTodayContext,
+  selectJobsContext,
+  selectMeetingsContext,
+  selectCalendarContext,
+  selectTravelContext,
+  selectWorkingMemory,
+  selectCurrentFocus,
+  selectEntities,
+} from './context/selectors';
 
 const DEFAULT_BRAINS: CpuBrain[] = [coreBrain];
 
