@@ -49,6 +49,7 @@ type LearningEvidence,
 type WorkingMemorySnapshot,
 } from '@/lib/engine';
 import { runCaptureDock, loadPriorForDock } from '@/lib/engine/captureDock';
+import { executeCpuDecision } from '@/lib/cpu';
 import { MapPinIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
@@ -450,7 +451,7 @@ void applyListDock(next);
 
 }
 
-function tryDock() {
+async function tryDock() {
 const speechResult = speechStatus?.result ?? null;
 let collectionIntent = speechResult?.collection?.intent ?? null;
 
@@ -525,7 +526,55 @@ if (line && addTaskWithOverrides) {
       setCollectionFeedback(dock.message);
       confirmSpeechLearning();
       clearSpeechStatus();
-      addTaskWithOverrides(dock.overrides);
+      const execution = await executeCpuDecision(dock.cpuCycle, {
+        tasks: {
+          createTask: async (action) => {
+            await addTask({
+              text: action.text,
+              locationText: action.locationText,
+              jobId: action.jobId,
+              surfaceDate: action.surfaceDate,
+              estimateMins: action.estimateMins ?? undefined,
+              originalInput: dock.overrides.originalInput,
+              explanation: dock.overrides.explanation,
+              engineRequest: dock.overrides.engineRequest,
+              evidence: dock.overrides.evidence,
+              workingMemory: dock.overrides.workingMemory,
+            });
+            return null;
+          },
+          updateTask: async (action) => {
+            await addTask({
+              text: action.text,
+              locationText: action.locationText,
+              jobId: action.jobId,
+              surfaceDate: action.surfaceDate,
+              estimateMins: action.estimateMins ?? undefined,
+              originalInput: dock.overrides.originalInput,
+              explanation: dock.overrides.explanation,
+              updateTaskId: action.taskId,
+              engineRequest: dock.overrides.engineRequest,
+              evidence: dock.overrides.evidence,
+              workingMemory: dock.overrides.workingMemory,
+            });
+          },
+        },
+      });
+
+      if (execution.execution?.status === 'executed') {
+        return;
+      }
+
+      // The CPU must never silently lose a decided action. Preserve the old
+      // dock path only as a safety fallback if an executor is unavailable.
+      if (execution.execution?.status === 'unsupported') {
+        addTaskWithOverrides(dock.overrides);
+        return;
+      }
+
+      setCollectionFeedback(
+        execution.execution?.message || 'Could not complete that action.'
+      );
       return;
     }
 
