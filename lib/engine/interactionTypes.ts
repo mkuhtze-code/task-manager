@@ -34,7 +34,13 @@ export type InteractionInput = {
       label: string | null;
     } | null;
     jobs?: Array<{ id: string; name: string; locationText?: string | null }>;
-    meetings?: Array<{ id: string; text: string; startAt?: string | null }>;
+    meetings?: Array<{
+      id: string;
+      text: string;
+      startAt?: string | null;
+      /** Minutes blocked if known (trip-day capacity). */
+      durationMins?: number | null;
+    }>;
     remainingMinsToday?: number | null;
     openTaskCount?: number;
     todayDate?: string;
