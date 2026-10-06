@@ -16,8 +16,8 @@ export function reconcile(
   const relationships = reconcileRelationships(contributions);
   const conflicts = detectConflicts(contributions);
   const opportunities = detectOpportunities(context, interaction);
-  const rankedOpportunities = rankOpportunities(opportunities);
-  const surfaceOpportunity = selectSurfaceOpportunity(rankedOpportunities);
+  const rankedOpportunities = rankOpportunities(opportunities, { context, interaction });
+  const surfaceOpportunity = selectSurfaceOpportunity(rankedOpportunities, interaction);
 
   // Authority has already been decided by the existing engine. Phase 3 must
   // not recalculate or weaken it while the universal dispatcher is not yet in
