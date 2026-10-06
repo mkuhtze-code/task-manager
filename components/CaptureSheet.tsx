@@ -565,13 +565,6 @@ if (line && addTaskWithOverrides) {
         return;
       }
 
-      // The CPU must never silently lose a decided action. Preserve the old
-      // dock path only as a safety fallback if an executor is unavailable.
-      if (execution.execution?.status === 'unsupported') {
-        addTaskWithOverrides(dock.overrides);
-        return;
-      }
-
       setCollectionFeedback(
         execution.execution?.message || 'Could not complete that action.'
       );
