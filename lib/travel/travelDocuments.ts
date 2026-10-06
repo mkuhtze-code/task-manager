@@ -418,6 +418,50 @@ export function interpretTravelPaste(raw: string): Partial<TravelDocumentInsert>
   };
 }
 
+
+/**
+ * Build timestamptz-ish ISO from trip day (YYYY-MM-DD) + local clock HH:MM.
+ * Stored as local wall time without zone shift (append as local ISO).
+ */
+export function combineLocalDateAndTime(
+  dateYmd: string | null | undefined,
+  timeHm: string | null | undefined
+): string | null {
+  if (!dateYmd || !/^\d{4}-\d{2}-\d{2}$/.test(dateYmd)) return null;
+  if (!timeHm || !/^\d{1,2}:\d{2}$/.test(timeHm.trim())) return null;
+  const [hStr, mStr] = timeHm.trim().split(':');
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return `${dateYmd}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+}
+
+/** Display vault starts_at for list rows. */
+export function formatVaultWhen(
+  startsAt: string | null | undefined,
+  endsAt?: string | null
+): string | null {
+  if (!startsAt) return null;
+  const d = new Date(startsAt);
+  if (Number.isNaN(d.getTime())) {
+    // plain local ISO without Z
+    const m = startsAt.match(/(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
+    if (!m) return startsAt;
+    const clock = `${parseInt(m[2], 10) % 12 || 12}:${m[3]}${parseInt(m[2], 10) >= 12 ? 'p' : 'a'}`;
+    return `${m[1].slice(5)} · ${clock}`;
+  }
+  const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  if (endsAt) {
+    const e = new Date(endsAt);
+    if (!Number.isNaN(e.getTime())) {
+      const et = e.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      return `${date} · ${time}–${et}`;
+    }
+  }
+  return `${date} · ${time}`;
+}
+
 export function docTypeLabel(t: TravelDocType): string {
   return TRAVEL_DOC_TYPE_OPTIONS.find((o) => o.value === t)?.label ?? t;
 }
