@@ -7,6 +7,17 @@
 3. **`TravelVaultSheet`** — paste confirmation / email / speech → structured vault entry.
 4. **Trip detail** — **Vault** button next to Add stop.
 5. **Plan a trip** — defaults to **Work** intent and persists `intent` on create.
+6. **Engine travel context** — same speech/ANSWER capacity as jobs, scoped to the active trip day.
+
+## Engine travel context
+
+- `lib/travel/travelContext.ts` — day window + remaining mins from stops/drives
+- `InteractionInput.context.travel` + `ReasoningContext.travel`
+- `runCaptureDock` accepts `travel` + `interfaceName: 'travel'`
+- Trip detail **Add stop** runs `runCaptureDock` before insert:
+  - feasibility questions → **ANSWER** (no mutation; message in sheet)
+  - structured phrases → interpret location/job, then insert activity
+- ANSWER uses trip-day remaining capacity (same V3 fit path as work)
 
 ## Apply migration
 
@@ -16,10 +27,10 @@ Run in Supabase SQL editor (or your migration pipeline):
 
 ## Not yet (next)
 
-- Wire Capture / `processInteraction` with full travel context (active trip, days)
 - File upload to Storage on documents
 - Auto-create flight **activity** from vault flight
 - Native Travel shell
+- Continuous voice on trip surface (`speech_transcript` already supported by the contract)
 
 ## Product rule
 
