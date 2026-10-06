@@ -25,9 +25,10 @@ export function detectOpportunities(
     }
   }
 
-  if (request.relatedJobText && context.work.jobs.items.length > 0) {
+  const jobs = context.work.jobs.items ?? [];
+  if (request.relatedJobText && jobs.length > 0) {
     const needle = request.relatedJobText.toLowerCase();
-    const job = context.work.jobs.items.find((item) => item.name.toLowerCase().includes(needle) || needle.includes(item.name.toLowerCase()));
+    const job = jobs.find((item) => item.name.toLowerCase().includes(needle) || needle.includes(item.name.toLowerCase()));
     if (job) {
       opportunities.push({
         kind: 'job',
