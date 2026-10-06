@@ -1,6 +1,16 @@
 /**
  * Structured Request + constraint refinement.
- * Successive utterances update the same request when continuity holds.
+ *
+ * The request layer converts understood natural language into the stable
+ * EngineRequest contract consumed by the Personal Operating Engine.
+ *
+ * Important:
+ * - This is deterministic.
+ * - Do not add a second "intent engine" here.
+ * - Natural-language coverage should grow through structured fields rather
+ *   than an ever-growing collection of UI-specific special cases.
+ * - A concrete user request such as "drop off X at Y at 12pm today" should
+ *   become an executable create_task request.
  */
 
 import type {
@@ -17,6 +27,7 @@ function id(): string {
 
 export function emptyRequest(action: RequestAction = 'unknown'): EngineRequest {
   const now = new Date().toISOString();
+
   return {
     id: id(),
     action,
@@ -32,7 +43,6 @@ export function emptyRequest(action: RequestAction = 'unknown'): EngineRequest {
     consequence: null,
     constraints: [],
     rawUtterances: [],
-    titleText: null,
     confidence: 'low',
     updatedAt: now,
   };
@@ -45,13 +55,119 @@ function pushConstraint(
   confidence: Confidence,
   source: string
 ): Constraint[] {
-  const filtered = list.filter((c) => !(c.axis === axis && c.value === value));
-  return [...filtered, { axis, value, confidence, source }];
+  const filtered = list.filter(
+    (c) => !(c.axis === axis && c.value === value)
+  );
+
+  return [
+    ...filtered,
+    {
+      axis,
+      value,
+      confidence,
+      source,
+    },
+  ];
 }
 
 /**
- * Parse a natural utterance into request fields (deterministic heuristics).
- * Designed for the pickup / remind vertical slice; extends by constraints.
+ * Normalise common spoken / typed clock expressions.
+ *
+ * Examples:
+ *   12pm       -> 12:00
+ *   12 pm      -> 12:00
+ *   12:30pm    -> 12:30
+ *   12:30 pm   -> 12:30
+ *   noon       -> 12:00
+ *   midnight   -> 00:00
+ */
+function normaliseTimeHint(value: string): string | null {
+  const raw = value.trim().toLowerCase();
+
+  if (raw === 'noon') return '12:00';
+  if (raw === 'midnight') return '00:00';
+
+  const match = raw.match(
+    /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/
+  );
+
+  if (!match) return null;
+
+  let hour = Number(match[1]);
+  const minute = Number(match[2] ?? '00');
+  const meridiem = match[3];
+
+  if (hour < 1 || hour > 12 || minute < 0 || minute > 59) {
+    return null;
+  }
+
+  if (meridiem === 'am') {
+    if (hour === 12) hour = 0;
+  } else if (hour !== 12) {
+    hour += 12;
+  }
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(
+    2,
+    '0'
+  )}`;
+}
+
+/**
+ * Extract an explicit clock time from an utterance.
+ */
+function extractTimeHint(text: string): string | null {
+  const match = text.match(
+    /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm)|noon|midnight)\b/i
+  );
+
+  if (!match?.[1]) return null;
+
+  return normaliseTimeHint(match[1]);
+}
+
+/**
+ * Extract a location without accidentally swallowing a following time/date.
+ *
+ * Supported forms include:
+ *   at 64 Grace James Road
+ *   at 64 Grace James Road in Pukekohe
+ *   to 64 Grace James Road in Pukekohe at 12pm today
+ *   from ABC Roofing today
+ *
+ * The important distinction is that "at" can introduce either a location
+ * or a clock time. The parser therefore treats a clock expression as a
+ * boundary rather than part of the location.
+ */
+function extractLocation(text: string): string | null {
+  const match = text.match(
+    /\b(?:at|to|from)\s+(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+\b(?:noon|midnight)\b|\s+\b(?:today|tomorrow)\b|\s+\bbecause\b|\s+\bafter\b|$)/i
+  );
+
+  if (!match?.[1]) return null;
+
+  let location = match[1]
+    .trim()
+    .replace(/[.,]+$/, '')
+    .trim();
+
+  // Avoid treating "at the meeting" as a physical location.
+  if (/^(?:the|a|an)\s+meeting$/i.test(location)) {
+    return null;
+  }
+
+  if (location.length < 2 || location.length > 120) {
+    return null;
+  }
+
+  return location;
+}
+
+/**
+ * Parse a natural utterance into request fields.
+ *
+ * This is deliberately a semantic-to-request adapter, not a UI parser.
+ * The resulting EngineRequest is what the operating engine reasons over.
  */
 export function interpretRequestUtterance(raw: string): Partial<EngineRequest> & {
   isRefinement: boolean;
@@ -59,13 +175,24 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 } {
   const text = raw.replace(/\s+/g, ' ').trim();
   const lower = text.toLowerCase();
-  const out: Partial<EngineRequest> & { isRefinement: boolean; isCorrection: boolean } = {
+
+  const out: Partial<EngineRequest> & {
+    isRefinement: boolean;
+    isCorrection: boolean;
+  } = {
     isRefinement: false,
     isCorrection: false,
     constraints: [],
   };
 
-  // Corrections / refinements — structural, not phrase cookbook
+  if (!text) {
+    return out;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Corrections / refinements
+  // ---------------------------------------------------------------------------
+
   if (
     /^(?:no|actually|sorry|wait|i\s+meant)\b/i.test(text) ||
     /\bactually\b/i.test(lower) ||
@@ -73,78 +200,141 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     /\b(?:make|put|do)\s+that\b/i.test(lower) ||
     /\b(?:the\s+)?same\s+one\b/i.test(lower)
   ) {
-    out.isCorrection = /^(?:no|sorry|i\s+meant)\b/i.test(text);
+    out.isCorrection =
+      /^(?:no|sorry|i\s+meant)\b/i.test(text);
+
     out.isRefinement = true;
   }
 
+  // ---------------------------------------------------------------------------
   // Pronoun / anaphora toward prior request
-  if (
-    /\b(?:\bit\b|\bthat\b|\bthis\b|\bthose\b|\bthese\b)\b/i.test(lower) &&
-    !/\b(?:pick\s*up|remind\s+me|start|create|make\s+a)\b/i.test(lower)
-  ) {
-    out.isRefinement = true;
-  }
+  // ---------------------------------------------------------------------------
 
-  // Action class
   if (
-    /\b(?:have\s+i\s+got\s+time|do\s+i\s+have\s+time|can\s+i\s+(?:fit|make|go|see)|is\s+there\s+time|will\s+it\s+fit)\b/i.test(
+    /\b(?:it|that|this|those|these)\b/i.test(lower) &&
+    !/\b(?:pick\s*up|drop\s*off|remind\s+me|start|create|make\s+a)\b/i.test(
       lower
     )
   ) {
-    out.action = 'query';
-  } else if (/\b(?:remind\s+me|don(?:'t|’t)\s+let\s+me\s+forget|keep\s+that\s+in\s+mind)\b/i.test(lower)) {
+    out.isRefinement = true;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Action class
+  // ---------------------------------------------------------------------------
+
+  if (
+    /\b(?:remind\s+me|don(?:'t|’t)\s+let\s+me\s+forget|keep\s+that\s+in\s+mind)\b/i.test(
+      lower
+    )
+  ) {
     out.action = 'remind';
-  } else if (/\b(?:pick\s*up|grab|collect|get|fetch)\b/i.test(lower)) {
-    out.action = out.action === 'remind' ? 'remind' : 'pickup';
-  } else if (/\b(?:add|put|attach|link)\b.+(?:to|on)\b/i.test(lower)) {
+  } else if (
+    /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(lower)
+  ) {
+    /*
+     * A concrete drop-off is fundamentally planned work.
+     * Normalise it directly to create_task rather than introducing a new
+     * action type solely for vocabulary.
+     */
     out.action = 'create_task';
-  } else if (/\b(?:put|move|chuck)\b.+\b(?:tomorrow|today|monday|tuesday)\b/i.test(lower)) {
+  } else if (
+    /\b(?:pick\s*up|pickup|grab|collect|get|fetch)\b/i.test(lower)
+  ) {
+    out.action =
+      out.action === 'remind' ? 'remind' : 'pickup';
+  } else if (
+    /\b(?:put|move|chuck)\b.+\b(?:tomorrow|today|monday|tuesday)\b/i.test(
+      lower
+    )
+  ) {
     out.action = 'move';
     out.isRefinement = true;
   }
 
-  // Object: "pick up the flashing" / "grab the flashing"
-  const obj =
-    text.match(
-      /\b(?:pick\s*up|grab|collect|get|fetch|remind\s+me\s+to\s+(?:pick\s*up|grab|get)?)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?:\s+from\s+|\s+at\s+|\s+for\s+|$)/i
-    ) || text.match(/\b(?:remind\s+me\s+(?:about|to)\s+)(.+)$/i);
-  if (obj?.[1]) {
-    let o = obj[1].replace(/\s+from\s+.*$/i, '').trim();
-    o = o.replace(/\s+today\b.*$/i, '').trim();
-    if (o.length > 1 && o.length < 80) out.objectText = o;
-  }
+  // ---------------------------------------------------------------------------
+  // Object
+  //
+  // Examples:
+  //   pick up the flashing
+  //   grab the flashing
+  //   drop off clips at 64 Grace James Road
+  //   deliver the plans to the office
+  // ---------------------------------------------------------------------------
 
-  // Object: "add split September invoice to this job"
-  if (!out.objectText) {
-    const addObj = text.match(
-      /\b(?:add|put|attach|link)\s+(.+?)\s+(?:to|on)\s+(?:this\s+job|that\s+job|the\s+job|(?:the\s+)?[A-Z])/i
-    );
-    if (addObj?.[1]) {
-      const o = addObj[1].replace(/\s+/g, ' ').trim();
-      if (o.length > 1 && o.length < 80) out.objectText = o;
+  const objectPatterns = [
+    /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+
+    /\b(?:pick\s*up|pickup|grab|collect|get|fetch|remind\s+me\s+to\s+(?:pick\s*up|grab|get))\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:from|at|to|for)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+
+    /\b(?:remind\s+me\s+(?:about|to)\s+)(.+)$/i,
+  ];
+
+  for (const pattern of objectPatterns) {
+    const match = text.match(pattern);
+
+    if (!match?.[1]) continue;
+
+    let objectText = match[1]
+      .trim()
+      .replace(/[.,]+$/, '')
+      .trim();
+
+    // Remove trailing temporal fragments if the sentence had no explicit
+    // boundary caught by the lookahead.
+    objectText = objectText
+      .replace(
+        /\s+\b(?:today|tomorrow)\b.*$/i,
+        ''
+      )
+      .trim();
+
+    objectText = objectText
+      .replace(
+        /\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b.*$/i,
+        ''
+      )
+      .trim();
+
+    if (objectText.length > 1 && objectText.length < 120) {
+      out.objectText = objectText;
+      break;
     }
   }
 
-  // Location: from / at
-  const loc = text.match(/\b(?:from|at)\s+([A-Z][\w\s&'.-]{1,60})(?:\s|$|\.|,)/);
-  const locLoose = text.match(/\b(?:from|at)\s+(.+?)(?:\s+today|\s+tomorrow|\s+because|\s+after|$)/i);
-  if (loc?.[1]) out.locationText = loc[1].trim();
-  else if (locLoose?.[1] && !/^(?:the|a|an)\s/i.test(locLoose[1])) {
-    out.locationText = locLoose[1].trim().replace(/[.,]$/, '');
+  // ---------------------------------------------------------------------------
+  // Location
+  // ---------------------------------------------------------------------------
+
+  const location = extractLocation(text);
+
+  if (location) {
+    out.locationText = location;
   }
 
-  // Job link: "on the Henderson job" / "for Henderson" / "to this job" / named
+  // ---------------------------------------------------------------------------
+  // Job link
+  // ---------------------------------------------------------------------------
+
   const job =
-    text.match(/\b(?:on|for|to)\s+(?:the\s+)?([A-Z][\w][\w\s-]{0,40}?)\s+job\b/i) ||
-    text.match(/\busing\s+it\s+on\s+(?:the\s+)?([A-Z][\w][\w\s-]{0,40}?)\s+job\b/i) ||
-    text.match(/\busing\s+it\s+on\s+(?:the\s+)?([A-Z][\w][\w\s-]{0,40})\b/i);
-  if (job?.[1] && !/^(?:this|that|the)$/i.test(job[1])) {
-    out.relatedJobText = job[1].trim().replace(/\s+job$/i, '');
+    text.match(
+      /\b(?:on|for)\s+(?:the\s+)?([A-Z][\w\s-]{1,40}?)\s+job\b/i
+    ) ||
+    text.match(
+      /\busing\s+it\s+on\s+(?:the\s+)?([A-Z][\w\s-]{1,40})\b/i
+    );
+
+  if (job?.[1]) {
+    out.relatedJobText = job[1].trim();
   }
 
-  // Meeting: "after the meeting"
+  // ---------------------------------------------------------------------------
+  // Meeting
+  // ---------------------------------------------------------------------------
+
   if (/\bafter\s+(?:the\s+)?meeting\b/i.test(lower)) {
     out.relatedMeetingText = 'meeting';
+
     out.constraints = pushConstraint(
       out.constraints ?? [],
       'dependency',
@@ -154,16 +344,34 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     );
   }
 
-  // Temporal
+  // ---------------------------------------------------------------------------
+  // Temporal date
+  // ---------------------------------------------------------------------------
+
   if (/\btoday\b/i.test(lower)) {
     out.dateHint = 'today';
-    out.constraints = pushConstraint(out.constraints ?? [], 'temporal', 'today', 'high', 'utterance');
+
+    out.constraints = pushConstraint(
+      out.constraints ?? [],
+      'temporal',
+      'today',
+      'high',
+      'utterance'
+    );
   } else if (/\btomorrow\b/i.test(lower)) {
     out.dateHint = 'tomorrow';
-    out.constraints = pushConstraint(out.constraints ?? [], 'temporal', 'tomorrow', 'high', 'utterance');
+
+    out.constraints = pushConstraint(
+      out.constraints ?? [],
+      'temporal',
+      'tomorrow',
+      'high',
+      'utterance'
+    );
   } else if (/\bthis\s+afternoon\b/i.test(lower)) {
     out.dateHint = 'today';
     out.timeHint = 'afternoon';
+
     out.constraints = pushConstraint(
       out.constraints ?? [],
       'temporal',
@@ -173,6 +381,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     );
   } else if (/\bnext\s+week\b/i.test(lower)) {
     out.dateHint = 'next_week';
+
     out.constraints = pushConstraint(
       out.constraints ?? [],
       'temporal',
@@ -182,6 +391,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     );
   } else if (/\bwhenever\b/i.test(lower)) {
     out.flexibility = 'high';
+
     out.constraints = pushConstraint(
       out.constraints ?? [],
       'flexibility',
@@ -191,31 +401,71 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     );
   }
 
-  // Urgency / consequence
-  if (/\b(?:need\s+it\s+today|don(?:'t|’t)\s+let\s+me\s+forget|make\s+sure)\b/i.test(lower)) {
-    out.urgency = 'elevated';
-    out.constraints = pushConstraint(out.constraints ?? [], 'urgency', 'elevated', 'medium', 'utterance');
+  // Explicit clock time should be preserved independently of date.
+  const timeHint = extractTimeHint(text);
+
+  if (timeHint) {
+    out.timeHint = timeHint;
+
+    out.constraints = pushConstraint(
+      out.constraints ?? [],
+      'temporal',
+      `time:${timeHint}`,
+      'high',
+      'utterance'
+    );
   }
+
+  // ---------------------------------------------------------------------------
+  // Urgency / consequence
+  // ---------------------------------------------------------------------------
+
+  if (
+    /\b(?:need\s+it\s+today|don(?:'t|’t)\s+let\s+me\s+forget|make\s+sure)\b/i.test(
+      lower
+    )
+  ) {
+    out.urgency = 'elevated';
+
+    out.constraints = pushConstraint(
+      out.constraints ?? [],
+      'urgency',
+      'elevated',
+      'medium',
+      'utterance'
+    );
+  }
+
   if (/\bnot\s+urgent\b/i.test(lower)) {
     out.urgency = 'none';
     out.flexibility = 'high';
   }
+
   if (/\bbecause\b/i.test(lower)) {
-    const cons = text.match(/\bbecause\s+(.+)$/i);
-    if (cons?.[1]) {
-      out.consequence = cons[1].trim();
+    const consequence = text.match(/\bbecause\s+(.+)$/i);
+
+    if (consequence?.[1]) {
+      out.consequence = consequence[1].trim();
+
       out.constraints = pushConstraint(
         out.constraints ?? [],
         'consequence',
-        cons[1].trim().slice(0, 120),
+        consequence[1].trim().slice(0, 120),
         'medium',
         'utterance'
       );
     }
   }
 
+  // ---------------------------------------------------------------------------
   // Route opportunity language
-  if (/\b(?:heading\s+through|going\s+past|already\s+(?:going|heading)|on\s+the\s+way)\b/i.test(lower)) {
+  // ---------------------------------------------------------------------------
+
+  if (
+    /\b(?:heading\s+through|going\s+past|already\s+(?:going|heading)|on\s+the\s+way)\b/i.test(
+      lower
+    )
+  ) {
     out.constraints = pushConstraint(
       out.constraints ?? [],
       'location',
@@ -223,6 +473,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
       'medium',
       'utterance'
     );
+
     out.isRefinement = true;
   }
 
@@ -230,7 +481,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 }
 
 /**
- * Merge utterance interpretation into existing request or start a new one.
+ * Merge utterance interpretation into an existing request or start a new one.
  */
 export function applyUtteranceToRequest(
   existing: EngineRequest | null,
@@ -241,12 +492,17 @@ export function applyUtteranceToRequest(
   const partialAction = partial.action ?? 'unknown';
 
   const hasTaskBind = !!existing?.constraints?.some(
-    (c) => c.axis === 'dependency' && c.value.startsWith('task:')
+    (c) =>
+      c.axis === 'dependency' &&
+      c.value.startsWith('task:')
   );
+
   const looksLikeNewCapture =
-    (partialAction === 'remind' ||
+    (
+      partialAction === 'remind' ||
       partialAction === 'pickup' ||
-      partialAction === 'create_task') &&
+      partialAction === 'create_task'
+    ) &&
     !!partial.objectText &&
     !partial.isRefinement &&
     !partial.isCorrection;
@@ -254,95 +510,188 @@ export function applyUtteranceToRequest(
   const continueActive =
     !!existing &&
     !looksLikeNewCapture &&
-    partialAction !== 'query' &&
-    (partial.isRefinement ||
+    (
+      partial.isRefinement ||
       partial.isCorrection ||
       hasTaskBind ||
       mem.activeRequestId === existing.id ||
       partialAction === 'unknown' ||
       partialAction === existing.action ||
-      partialAction === 'move');
+      partialAction === 'move'
+    );
 
   const base =
     continueActive && existing
-      ? { ...existing, constraints: [...existing.constraints] }
+      ? {
+          ...existing,
+          constraints: [...existing.constraints],
+        }
       : emptyRequest(partialAction);
 
   if (!continueActive) {
     base.action = partial.action ?? 'unknown';
-  } else if (partial.action && partial.action !== 'unknown') {
-    if (base.action === 'unknown') base.action = partial.action;
+  } else if (
+    partial.action &&
+    partial.action !== 'unknown'
+  ) {
+    if (base.action === 'unknown') {
+      base.action = partial.action;
+    }
   }
 
-  const explicitRename =
-    !!partial.objectText &&
-    !partial.isRefinement &&
-    !/\b(?:it|that|this|those|these)\b/i.test(partial.objectText);
-
-  if (partial.objectText && (!continueActive || explicitRename)) {
+  if (partial.objectText) {
     base.objectText = partial.objectText;
   }
-  if (partial.locationText && (!continueActive || !partial.isRefinement)) {
+
+  if (partial.locationText) {
     base.locationText = partial.locationText;
   }
-  if (partial.relatedJobText) base.relatedJobText = partial.relatedJobText;
-  if (partial.relatedMeetingText) base.relatedMeetingText = partial.relatedMeetingText;
-  if (partial.dateHint) base.dateHint = partial.dateHint;
-  if (partial.timeHint) base.timeHint = partial.timeHint;
-  if (partial.urgency && partial.urgency !== 'none') base.urgency = partial.urgency;
-  if (partial.urgency === 'none' && partial.isRefinement) base.urgency = 'none';
-  if (partial.flexibility) base.flexibility = partial.flexibility;
-  if (partial.consequence) base.consequence = partial.consequence;
 
-  for (const c of partial.constraints ?? []) {
+  if (partial.relatedJobText) {
+    base.relatedJobText = partial.relatedJobText;
+  }
+
+  if (partial.relatedMeetingText) {
+    base.relatedMeetingText = partial.relatedMeetingText;
+  }
+
+  if (partial.dateHint) {
+    base.dateHint = partial.dateHint;
+  }
+
+  if (partial.timeHint) {
+    base.timeHint = partial.timeHint;
+  }
+
+  if (
+    partial.urgency &&
+    partial.urgency !== 'none'
+  ) {
+    base.urgency = partial.urgency;
+  }
+
+  if (
+    partial.urgency === 'none' &&
+    partial.isRefinement
+  ) {
+    base.urgency = 'none';
+  }
+
+  if (partial.flexibility) {
+    base.flexibility = partial.flexibility;
+  }
+
+  if (partial.consequence) {
+    base.consequence = partial.consequence;
+  }
+
+  for (const constraint of partial.constraints ?? []) {
     base.constraints = pushConstraint(
       base.constraints,
-      c.axis,
-      c.value,
-      c.confidence,
-      c.source
+      constraint.axis,
+      constraint.value,
+      constraint.confidence,
+      constraint.source
     );
   }
 
-  base.rawUtterances = [...base.rawUtterances, raw.trim()].slice(-12);
+  base.rawUtterances = [
+    ...base.rawUtterances,
+    raw.trim(),
+  ].slice(-12);
+
   base.updatedAt = new Date().toISOString();
 
+  // Confidence grows with meaningful structure.
   let score = 0;
+
   if (base.objectText) score += 1;
   if (base.locationText) score += 1;
   if (base.dateHint) score += 1;
+  if (base.timeHint) score += 1;
   if (base.relatedJobText) score += 1;
-  base.confidence = score >= 3 ? 'high' : score >= 1 ? 'medium' : 'low';
 
-  if (base.action === 'remind' || base.action === 'pickup') {
-    base.commitment = base.urgency === 'high' ? 'soft' : 'weak';
-  }
+  base.confidence =
+    score >= 3
+      ? 'high'
+      : score >= 1
+        ? 'medium'
+        : 'low';
 
-  if (!base.titleText && (base.objectText || base.action === 'remind' || base.action === 'pickup' || base.action === 'create_task')) {
-    base.titleText = composeTitle(base);
-  } else if (explicitRename && base.objectText) {
-    base.titleText = composeTitle(base);
+  if (
+    base.action === 'remind' ||
+    base.action === 'pickup'
+  ) {
+    base.commitment =
+      base.urgency === 'high'
+        ? 'soft'
+        : 'weak';
   }
 
   return base;
 }
 
-function composeTitle(req: Pick<EngineRequest, 'action' | 'objectText' | 'locationText'>): string {
+/**
+ * Build the human task text while preserving the user's actual action.
+ *
+ * Examples:
+ *   pickup + flashing -> Pick up flashing
+ *   create_task + drop off clips -> Drop off clips
+ *   create_task + check flashing -> check flashing
+ */
+export function requestTaskText(req: EngineRequest): string {
+  const firstUtterance =
+    req.rawUtterances[0] ?? '';
+
+  const lowerFirst =
+    firstUtterance.toLowerCase();
+
+  const isDropOff =
+    /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(
+      lowerFirst
+    );
+
+  const isPickup =
+    req.action === 'pickup' ||
+    /\b(?:pick\s*up|pickup|grab|collect|get|fetch)\b/i.test(
+      lowerFirst
+    );
+
   const bits: string[] = [];
-  if (req.action === 'remind' || req.action === 'pickup') {
-    bits.push(req.objectText ? `Pick up ${req.objectText}` : 'Pick up');
+
+  if (isDropOff) {
+    bits.push(
+      req.objectText
+        ? `Drop off ${req.objectText}`
+        : 'Drop off'
+    );
+  } else if (
+    req.action === 'remind' ||
+    isPickup
+  ) {
+    bits.push(
+      req.objectText
+        ? `Pick up ${req.objectText}`
+        : 'Pick up'
+    );
   } else if (req.objectText) {
     bits.push(req.objectText);
+  } else if (firstUtterance) {
+    bits.push(firstUtterance);
   } else {
     bits.push('Task');
   }
-  if (req.locationText) bits.push(`from ${req.locationText}`);
-  return bits.join(' ').replace(/\s+/g, ' ').trim();
-}
 
-export function requestTaskText(req: EngineRequest): string {
-  if (req.titleText && req.titleText.trim()) {
-    return req.titleText.trim();
+  if (
+    req.locationText &&
+    !isDropOff &&
+    !isPickup
+  ) {
+    bits.push(`at ${req.locationText}`);
   }
-  return composeTitle(req);
+
+  return bits
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
