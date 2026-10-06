@@ -53,13 +53,27 @@ export function decideAuthority(
   const conf: Confidence = req.confidence;
   const userDefault = opts?.userAutonomyDefault ?? 'suggest';
 
+  // A hard commitment is the strongest user instruction, not a request for
+  // confirmation. If the request is an executable capture, Dokkit must act.
+  // Capacity, fit, and opportunity reasoning may advise around it, but never
+  // revoke the user's chosen commitment.
   if (commitmentClass === 'HARD_COMMITMENT') {
+    if (isExecutableCapture(req) && conf !== 'low') {
+      return {
+        commitmentClass,
+        autonomy: 'act',
+        mayAct: true,
+        maySuggest: true,
+        reason: 'explicit_hard_commitment',
+      };
+    }
+
     return {
       commitmentClass,
       autonomy: 'ask',
       mayAct: false,
       maySuggest: true,
-      reason: 'hard_commitment_requires_user',
+      reason: 'hard_commitment_not_executable',
     };
   }
 
