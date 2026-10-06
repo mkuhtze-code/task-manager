@@ -29,10 +29,11 @@ export function emptyRequest(action: RequestAction = 'unknown'): EngineRequest {
   const now = new Date().toISOString();
 
   return {
-    id: id(),
-    action,
-    objectText: null,
-    locationText: null,
+  id: id(),
+  action,
+  titleText: null,
+  objectText: null,
+  locationText: null,
     relatedJobText: null,
     relatedMeetingText: null,
     dateHint: null,
