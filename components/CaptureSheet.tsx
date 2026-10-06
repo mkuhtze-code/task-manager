@@ -49,6 +49,7 @@ type LearningEvidence,
 type WorkingMemorySnapshot,
 } from '@/lib/engine';
 import { runCaptureDock, loadPriorForDock } from '@/lib/engine/captureDock';
+import { executeCpuDecision } from '@/lib/cpu';
 import { MapPinIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
@@ -450,7 +451,7 @@ void applyListDock(next);
 
 }
 
-function tryDock() {
+async function tryDock() {
 const speechResult = speechStatus?.result ?? null;
 let collectionIntent = speechResult?.collection?.intent ?? null;
 
@@ -525,7 +526,57 @@ if (line && addTaskWithOverrides) {
       setCollectionFeedback(dock.message);
       confirmSpeechLearning();
       clearSpeechStatus();
-      addTaskWithOverrides(dock.overrides);
+      const execution = await executeCpuDecision(dock.cpuCycle, {
+        tasks: {
+          createTask: async (action) => {
+            if (!addTaskWithOverrides) {
+              throw new Error('Capture task executor is not connected.');
+            }
+
+            addTaskWithOverrides({
+              text: action.text,
+              locationText: action.locationText,
+              jobId: action.jobId,
+              surfaceDate: action.surfaceDate,
+              estimateMins: action.estimateMins ?? undefined,
+              originalInput: dock.overrides.originalInput,
+              explanation: dock.overrides.explanation,
+              engineRequest: dock.overrides.engineRequest,
+              evidence: dock.overrides.evidence,
+              workingMemory: dock.overrides.workingMemory,
+            });
+
+            return null;
+          },
+          updateTask: async (action) => {
+            if (!addTaskWithOverrides) {
+              throw new Error('Capture task executor is not connected.');
+            }
+
+            addTaskWithOverrides({
+              text: action.text ?? dock.overrides.text,
+              locationText: action.locationText,
+              jobId: action.jobId,
+              surfaceDate: action.surfaceDate,
+              estimateMins: action.estimateMins ?? undefined,
+              originalInput: dock.overrides.originalInput,
+              explanation: dock.overrides.explanation,
+              updateTaskId: action.taskId,
+              engineRequest: dock.overrides.engineRequest,
+              evidence: dock.overrides.evidence,
+              workingMemory: dock.overrides.workingMemory,
+            });
+          },
+        },
+      });
+
+      if (execution.execution?.status === 'executed') {
+        return;
+      }
+
+      setCollectionFeedback(
+        execution.execution?.message || 'Could not complete that action.'
+      );
       return;
     }
 

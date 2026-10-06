@@ -4,6 +4,7 @@
  */
 
 import { processCpuInteraction } from '@/lib/cpu';
+import type { CpuCycleResult } from '@/lib/cpu';
 import { loadWorkingMemoryLocal, loadActiveRequestLocal } from './persist';
 import type {
   EngineRequest,
@@ -37,6 +38,7 @@ export type CaptureDockResult =
       overrides: CaptureDockOverrides;
       request: EngineRequest;
       message: string;
+      cpuCycle: CpuCycleResult;
     }
   | {
       kind: 'answer' | 'defer' | 'clarify';
@@ -148,6 +150,7 @@ export function runCaptureDock(input: CaptureDockInput): CaptureDockResult {
         kind: 'act_update',
         request: result.request,
         message: result.explanation || result.message,
+        cpuCycle: cpuResult,
         overrides: {
           text: action.text,
           locationText: action.locationText,
@@ -168,6 +171,7 @@ export function runCaptureDock(input: CaptureDockInput): CaptureDockResult {
         kind: 'act_create',
         request: result.request,
         message: result.explanation || result.message,
+        cpuCycle: cpuResult,
         overrides: {
           text: action.text,
           locationText: action.locationText,
