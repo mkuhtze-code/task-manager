@@ -14,12 +14,26 @@ export function answerFeasibility(
   input: InteractionInput
 ): InteractionAnswer {
   const facts: string[] = [...cycle.facts];
-  const remaining = input.context.remainingMinsToday;
+  const travelCtx = input.context.travel;
+  const onTrip = Boolean(travelCtx?.tripId);
+  if (onTrip && travelCtx) {
+    facts.push(
+      `travel_trip=${travelCtx.tripName}`,
+      travelCtx.dayDate ? `travel_day=${travelCtx.dayDate}` : 'travel_day=none',
+      `travel_planned≈${travelCtx.plannedMins ?? 0}`
+    );
+    if (travelCtx.baseLocationText) {
+      facts.push(`base=${travelCtx.baseLocationText}`);
+    }
+  }
+  const remaining =
+    input.context.remainingMinsToday ?? travelCtx?.remainingMins ?? null;
   const visit =
     input.context.visitDurationMins ??
     (cycle.request.objectText ? 45 : 30);
-  const travel = input.context.travelMins ?? 20;
-  const roundTrip = travel * 2;
+  // On a trip day, travel is already partly in planned drives; default lower leg cost.
+  const travel = input.context.travelMins ?? (onTrip ? 15 : 20);
+  const roundTrip = onTrip ? travel : travel * 2;
   const needed = visit + roundTrip;
 
   const meetings = input.context.meetings ?? [];
@@ -102,36 +116,48 @@ export function answerFeasibility(
   let fits: boolean | null = null;
   let textOut = '';
 
+  const dayLabel = onTrip
+    ? travelCtx?.dayDate
+      ? `on ${travelCtx.dayDate}`
+      : 'on this trip day'
+    : 'today';
+  const travelPhrase = onTrip
+    ? `~${roundTrip} min leg`
+    : `~${roundTrip} min round-trip`;
+
   if (remaining == null) {
     fits = null;
-    textOut =
-      'I do not have a clear remaining-capacity signal for today, so I cannot confirm a fit. Check your calendar and open work before committing.';
+    textOut = onTrip
+      ? 'I do not have a clear remaining-capacity signal for this trip day, so I cannot confirm a fit. Check the day window and planned stops.'
+      : 'I do not have a clear remaining-capacity signal for today, so I cannot confirm a fit. Check your calendar and open work before committing.';
     facts.push('remainingMinsToday unavailable');
   } else if (hardBlock && remaining < needed) {
     fits = false;
-    textOut = `Tight. ${hardBlock}, and you only have about ${remaining} minutes of workable time. A visit (~${visit} min) plus travel (~${roundTrip} min round-trip) needs roughly ${needed} minutes.`;
+    textOut = `Tight. ${hardBlock}, and you only have about ${remaining} minutes of workable time ${dayLabel}. A visit (~${visit} min) plus travel (${travelPhrase}) needs roughly ${needed} minutes.`;
   } else if (v3Fits === false || remaining < needed) {
     fits = false;
     const pushNote =
       fitState === 'protect' || fitState === 'blocked'
         ? ' Existing commitments should stay put unless you move them.'
-        : ' It would push other planned work.';
-    textOut = `Not comfortably. About ${remaining} minutes remain; a visit plus travel needs ~${needed} minutes.${pushNote}`;
+        : onTrip
+          ? ' It would push other stops on this day.'
+          : ' It would push other planned work.';
+    textOut = `Not comfortably. About ${remaining} minutes remain ${dayLabel}; a visit plus travel needs ~${needed} minutes.${pushNote}`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'over_capacity');
   } else if (remaining >= needed + 15 && (v3Fits === true || v3Fits === null)) {
     fits = true;
     const spare = remaining - needed;
     textOut = afternoonHint
-      ? `Yes. You can fit a visit this afternoon. After travel and ~${visit} minutes on site you should still have about ${spare} minutes of workable time when you get back.`
-      : `Yes. Roughly ${remaining} minutes remain; the visit needs about ${needed} minutes including travel, leaving ~${spare} minutes.`;
+      ? `Yes. You can fit a visit this afternoon ${dayLabel}. After travel and ~${visit} minutes on site you should still have about ${spare} minutes when you get back.`
+      : `Yes. Roughly ${remaining} minutes remain ${dayLabel}; the stop needs about ${needed} minutes including travel, leaving ~${spare} minutes.`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, `spare≈${spare}`);
   } else if (remaining >= needed) {
     fits = true;
-    textOut = `You can, but it is tight. About ${remaining} minutes remain and the visit plus travel is ~${needed} minutes — little buffer if anything overruns.`;
+    textOut = `You can, but it is tight. About ${remaining} minutes remain ${dayLabel} and the visit plus travel is ~${needed} minutes — little buffer if anything overruns.`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'tight_fit');
   } else {
     fits = false;
-    textOut = `Not comfortably. About ${remaining} minutes remain; a visit plus travel needs ~${needed} minutes. It would push other planned work.`;
+    textOut = `Not comfortably. About ${remaining} minutes remain ${dayLabel}; a visit plus travel needs ~${needed} minutes. It would push other planned work.`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'over_capacity');
   }
 
