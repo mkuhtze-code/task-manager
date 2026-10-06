@@ -1,0 +1,15 @@
+import type { EngineAction } from '@/lib/engine/types';
+export type UniversalAction =
+ | { kind:'create_task'; text:string; locationText?:string|null; jobId?:string|null; surfaceDate?:string|null; estimateMins?:number|null }
+ | { kind:'update_task'; taskId:string; text?:string; locationText?:string|null; jobId?:string|null; surfaceDate?:string|null; estimateMins?:number|null }
+ | { kind:'complete_task'; taskId:string } | { kind:'move_task'; taskId:string; surfaceDate:string|null } | { kind:'delete_task'; taskId:string }
+ | { kind:'create_list'; title:string; items?:string[]; jobId?:string|null; locationText?:string|null } | { kind:'append_list_item'; listId:string; items:string[] } | { kind:'update_list_item'; listId:string; itemId:string; text?:string; done?:boolean } | { kind:'complete_list_item'; listId:string; itemId:string }
+ | { kind:'create_job'; name:string; client?:string|null; locationText?:string|null } | { kind:'update_job'; jobId:string; name?:string; client?:string|null; locationText?:string|null } | { kind:'attach_to_job'; entityId:string; jobId:string }
+ | { kind:'create_meeting'; text:string; startAt?:string|null; durationMins?:number|null; jobId?:string|null } | { kind:'update_meeting'; meetingId:string; text?:string; startAt?:string|null; durationMins?:number|null; jobId?:string|null } | { kind:'attach_to_meeting'; entityId:string; meetingId:string }
+ | { kind:'create_travel_activity'; tripId:string; dayId?:string|null; text:string; startAt?:string|null; durationMins?:number|null; jobId?:string|null } | { kind:'update_travel_activity'; activityId:string; text?:string; startAt?:string|null; durationMins?:number|null; jobId?:string|null } | { kind:'attach_to_trip'; entityId:string; tripId:string; dayId?:string|null }
+ | { kind:'attach_to_job'; entityId:string; jobId:string } | { kind:'suggest'; message:string } | { kind:'ask'; message:string } | { kind:'answer'; message:string } | { kind:'defer'; message:string } | { kind:'navigate'; surface:string } | { kind:'noop'; message:string };
+export type ActionExecutionStatus='executed'|'presented'|'unsupported'|'failed';
+export type ActionExecutionResult={status:ActionExecutionStatus; action:UniversalAction; message:string; entityId?:string|null; error?:unknown};
+export function universalActionFromEngine(action:EngineAction):UniversalAction {
+ switch(action.kind){case'create_task':return{kind:'create_task',text:action.text,locationText:action.locationText,jobId:action.jobId,surfaceDate:action.surfaceDate,estimateMins:action.estimateMins};case'update_task':return{kind:'update_task',taskId:action.taskId,text:action.text,locationText:action.locationText,jobId:action.jobId,surfaceDate:action.surfaceDate,estimateMins:action.estimateMins};case'suggest':return{kind:'suggest',message:action.message};case'ask':return{kind:'ask',message:action.message};case'noop':return{kind:'noop',message:action.message};}
+}

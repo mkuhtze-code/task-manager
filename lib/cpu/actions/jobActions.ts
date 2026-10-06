@@ -1,0 +1,3 @@
+import type { UniversalAction } from './types';
+export type JobActionExecutor={createJob(a:Extract<UniversalAction,{kind:'create_job'}>):Promise<string|null>;updateJob?(a:Extract<UniversalAction,{kind:'update_job'}>):Promise<void>;attachToJob?(a:Extract<UniversalAction,{kind:'attach_to_job'}>):Promise<void>};
+export async function executeJobAction(a:UniversalAction,e:JobActionExecutor):Promise<string|null>{switch(a.kind){case'create_job':return e.createJob(a);case'update_job':if(!e.updateJob)throw new Error('update_job executor is not registered');await e.updateJob(a);return a.jobId;case'attach_to_job':if(!e.attachToJob)throw new Error('attach_to_job executor is not registered');await e.attachToJob(a);return a.entityId;default:return null;}}
