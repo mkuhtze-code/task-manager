@@ -28,6 +28,8 @@ export function reconcileCpuDecision(
     observations,
     relationships: reconciled?.relationships ?? relationships,
     opportunities: reconciled?.opportunities ?? [],
+    rankedOpportunities: reconciled?.rankedOpportunities ?? [],
+    surfaceOpportunity: reconciled?.surfaceOpportunity ?? null,
     conflicts: reconciled?.conflicts ?? [],
     recommendedAction: reconciled?.recommendedAction ?? interaction.action,
     authority: reconciled?.authority ?? interaction.authority,

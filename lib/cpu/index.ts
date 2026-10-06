@@ -14,6 +14,7 @@ import { reconcileCpuDecision } from './reconcile';
 
 export type * from './types';
 export type * from './reconcile/types';
+export type { RankedOpportunity, OpportunityDisposition } from './reconcile/opportunityRanker';
 export {
   selectTodayContext,
   selectJobsContext,
