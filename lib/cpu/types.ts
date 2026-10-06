@@ -174,6 +174,8 @@ export type CpuDecision = {
   observations: CpuObservation[];
   relationships: CpuRelationshipCandidate[];
   opportunities: ReconciledOpportunity[];
+  rankedOpportunities: import('./reconcile/opportunityRanker').RankedOpportunity[];
+  surfaceOpportunity: import('./reconcile/opportunityRanker').RankedOpportunity | null;
   conflicts: ReconciledConflict[];
   recommendedAction: EngineAction | null;
   authority: InteractionResult['authority'];
