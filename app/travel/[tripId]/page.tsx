@@ -616,7 +616,10 @@ export default function TripDayView() {
 
     const [travelSortMode, setTravelSortMode] = useState<TravelSortMode>('manual');
   const [daySheetOpen, setDaySheetOpen] = useState(false);
-  const [dayMeetingCount, setDayMeetingCount] = useState(0);
+  const [dayMeetings, setDayMeetings] = useState<
+    Array<{ id: string; text: string; startAt: string | null; durationMins?: number }>
+  >([]);
+  const dayMeetingCount = dayMeetings.length;
   const dayStripRef = useRef<HTMLDivElement | null>(null);
     const swipeRef = useRef<{ x: number; y: number; active: boolean } | null>(null);
   const [captureTimeType, setCaptureTimeType] = useState<'flexible' | 'fixed'>('flexible');
@@ -789,6 +792,7 @@ export default function TripDayView() {
       travelMins: selectedDay?.drive_from_base_mins ?? null,
       visitDurationMins: parseMins(captureEstimate) ?? 30,
       interfaceName: 'travel',
+      meetings: dayMeetings,
       travel: {
         tripId: travelCtx.tripId,
         tripName: travelCtx.tripName,
@@ -1353,10 +1357,10 @@ export default function TripDayView() {
   );
 
 
-  // Meetings on selected trip day (user-scoped).
+  // Meetings on selected trip day — full rows for capacity ANSWER + count for UI.
   useEffect(() => {
     if (!session?.user?.id || !selectedDay?.date) {
-      setDayMeetingCount(0);
+      setDayMeetings([]);
       return;
     }
     const uid = session.user.id;
@@ -1365,13 +1369,24 @@ export default function TripDayView() {
     void (async () => {
       const dayStart = `${dateStr}T00:00:00`;
       const dayEnd = `${dateStr}T23:59:59.999`;
-      const { count } = await supabase
+      const { data } = await supabase
         .from('meetings')
-        .select('id', { count: 'exact', head: true })
+        .select('id, text, start_time, duration_mins')
         .eq('user_id', uid)
         .gte('start_time', dayStart)
-        .lte('start_time', dayEnd);
-      if (!cancelled) setDayMeetingCount(count ?? 0);
+        .lte('start_time', dayEnd)
+        .order('start_time', { ascending: true })
+        .limit(20);
+      if (cancelled) return;
+      const rows = (data || []).map(
+        (m: { id: string; text: string; start_time: string | null; duration_mins?: number }) => ({
+          id: m.id,
+          text: m.text,
+          startAt: m.start_time,
+          durationMins: m.duration_mins ?? 45,
+        })
+      );
+      setDayMeetings(rows);
     })();
     return () => {
       cancelled = true;
