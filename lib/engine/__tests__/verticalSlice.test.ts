@@ -116,3 +116,53 @@ describe('request interpretation', () => {
     expect(b.flexibility).toBe('high');
   });
 });
+
+it('understands a concrete drop-off with address, time and today as executable work', () => {
+  const r = runEngineCycle({
+    utterance:
+      'I need to drop off clips to 64 Grace James Road in Pukekohe at 12pm today',
+    todayDate: '2026-10-06',
+    context: {
+      nowIso: '2026-10-06T09:00:00+13:00',
+      surfaceDate: '2026-10-06',
+      remainingMinsToday: 480,
+      openTaskCount: 3,
+      jobs: [],
+      meetings: [],
+      knownLocations: [],
+      communicationHints: [],
+    },
+  });
+
+  expect(r.request.action).toBe('create_task');
+
+  expect(r.request.objectText).toBe('clips');
+
+  expect(r.request.locationText?.toLowerCase()).toContain(
+    '64 grace james road'
+  );
+
+  expect(r.request.locationText?.toLowerCase()).toContain(
+    'pukekohe'
+  );
+
+  expect(r.request.dateHint).toBe('today');
+
+  expect(r.request.timeHint).toBe('12:00');
+
+  expect(r.request.confidence).toBe('high');
+
+  expect(r.authority.mayAct).toBe(true);
+
+  expect(r.action.kind).toBe('create_task');
+
+  if (r.action.kind === 'create_task') {
+    expect(r.action.text).toBe('Drop off clips');
+
+    expect(r.action.locationText?.toLowerCase()).toContain(
+      '64 grace james road'
+    );
+
+    expect(r.action.surfaceDate).toBe('2026-10-06');
+  }
+});
