@@ -86,7 +86,7 @@ export default function GearMenu({
                 Patterns
               </Link>
               <Link href="/preferences" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-                Preferences
+                Settings
               </Link>
             </>
           )}
