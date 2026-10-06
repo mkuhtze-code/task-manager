@@ -632,7 +632,11 @@ export default function TravelHome() {
         </div>
       )}
 
-      <SurfaceNav active="travel" />
+      <SurfaceNav
+        active="travel"
+        onAdd={!createOpen && trips.length > 0 ? openCreate : undefined}
+        addLabel="Plan a trip"
+      />
     </div>
   );
 }
