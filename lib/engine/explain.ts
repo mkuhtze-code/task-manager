@@ -22,6 +22,9 @@ export function explainDecision(input: {
   }
 
   for (const f of facts) {
+    if (authority.commitmentClass === 'HARD_COMMITMENT' && /capacity|minutes|tight|tomorrow morning/i.test(f)) {
+      continue;
+    }
     if (/job:/i.test(f)) parts.push(f);
     else if (/meeting/i.test(f)) parts.push(f);
     else if (/route/i.test(f)) parts.push(f);
@@ -29,7 +32,13 @@ export function explainDecision(input: {
     else if (/today|tomorrow|date/i.test(f)) parts.push(f);
   }
 
-  if (plan.summary) parts.push(plan.summary);
+  if (
+    plan.summary &&
+    !(authority.commitmentClass === 'HARD_COMMITMENT' &&
+      /today looks tight|consider tomorrow morning/i.test(plan.summary))
+  ) {
+    parts.push(plan.summary);
+  }
 
   if (authority.mayAct && authority.autonomy === 'act') {
     parts.push('Acting within your usual autonomy for new requests.');
