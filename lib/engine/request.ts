@@ -505,6 +505,14 @@ export function applyUtteranceToRequest(
 ): EngineRequest {
   const partial = interpretRequestUtterance(raw);
   const partialAction = partial.action ?? 'unknown';
+  const normalisedRaw = raw.replace(/\s+/g, ' ').trim();
+  const lowerRaw = normalisedRaw.toLowerCase();
+  const isQuestion =
+    /\?\s*$/.test(normalisedRaw) ||
+    /^(?:can|could|do|does|should|is|are|will|what|when|where|why|how)\b/i.test(lowerRaw);
+  const isNegatedCommitment =
+    /\b(?:i\s+)?(?:do\s+not|don't|never)\s+(?:need|have|got)\s+to\b/i.test(lowerRaw) ||
+    /\bnot\s+(?:need|have|got)\s+to\b/i.test(lowerRaw);
 
   const hasTaskBind = !!existing?.constraints?.some(
     (c) => c.axis === 'dependency' && c.value.startsWith('task:')
