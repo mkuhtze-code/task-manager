@@ -189,30 +189,6 @@ export type LearningEvidence = {
   payload: Record<string, unknown>;
 };
 
-export type ReasoningContext = {
-  nowIso: string;
-  surfaceDate: string | null;
-  remainingMinsToday: number | null;
-  openTaskCount: number;
-  jobs: Array<{ id: string; name: string; locationText?: string | null }>;
-  meetings: Array<{ id: string; text: string; startAt?: string | null }>;
-  knownLocations: string[];
-  communicationHints: string[];
-  workingMemory: WorkingMemorySnapshot;
-};
-
-export type EngineCycleResult = {
-  meaningSummary: string;
-  request: EngineRequest;
-  workingMemory: WorkingMemorySnapshot;
-  plan: PlanProposal;
-  authority: AuthorityDecision;
-  action: EngineAction;
-  explanation: string;
-  evidence: LearningEvidence[];
-  facts: string[];
-};
-
 export type TravelReasoningSlice = {
   tripId: string;
   tripName: string;
