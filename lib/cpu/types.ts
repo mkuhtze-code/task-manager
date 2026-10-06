@@ -56,6 +56,13 @@ export type CpuInput = InteractionInput & {
   };
 };
 
+export type ContextEntity = {
+  id: string;
+  kind: 'task' | 'job' | 'meeting' | 'list' | 'trip' | 'location' | 'person' | 'request' | 'unknown';
+  label: string;
+  metadata?: Record<string, string | number | boolean | null>;
+};
+
 export type UniversalContext = {
   nowIso: string;
   interface: CpuInterface;
@@ -63,14 +70,57 @@ export type UniversalContext = {
   surface: string | null;
   currentFocus: InteractionInput['context']['currentFocus'] | null;
 
-  /** Existing engine context, preserved as the source of truth in Phase 1. */
+  user: { id: string | null };
+
+  current: {
+    interface: CpuInterface;
+    surface: string | null;
+    activity: string | null;
+    focus: InteractionInput['context']['currentFocus'] | null;
+  };
+
+  work: {
+    today: {
+      date: string | null;
+      remainingMins: number | null;
+      openTaskCount: number;
+    };
+    tasks: { knownCount: number };
+    jobs: { items: InteractionInput['context']['jobs'] };
+  };
+
+  commitments: {
+    calendar: {
+      available: boolean;
+      commitments: InteractionInput['context']['meetings'];
+    };
+    meetings: { items: InteractionInput['context']['meetings'] };
+  };
+
+  movement: {
+    location: {
+      currentText: string | null;
+      knownLocations: string[];
+    };
+    travel: ReasoningContext['travel'];
+    route: { available: boolean };
+  };
+
+  collections: { lists: ContextEntity[] };
+
+  memory: {
+    working: WorkingMemorySnapshot;
+    learned: ContextEntity[];
+  };
+
+  relationships: ContextEntity[];
+
+  constraints: {
+    remainingMinsToday: number | null;
+    hasActiveTravel: boolean;
+  };
+
   reasoning: ReasoningContext;
-
-  /** Existing working memory snapshot. */
-  workingMemory: WorkingMemorySnapshot;
-
-  /** Original interaction context, retained for adapters that need fields not
-   * yet promoted into ReasoningContext. */
   interaction: InteractionInput['context'];
 };
 
