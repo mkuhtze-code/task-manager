@@ -17,6 +17,8 @@ export type ReconciledOpportunity = {
 };
 
 export type ReconciledDecision = {
+  rankedOpportunities: import('./opportunityRanker').RankedOpportunity[];
+  surfaceOpportunity: import('./opportunityRanker').RankedOpportunity | null;
   primaryIntent: EngineRequest;
   relevantEntities: string[];
   relationships: CpuRelationshipCandidate[];
