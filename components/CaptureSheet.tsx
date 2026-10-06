@@ -529,7 +529,11 @@ if (line && addTaskWithOverrides) {
       const execution = await executeCpuDecision(dock.cpuCycle, {
         tasks: {
           createTask: async (action) => {
-            await addTask({
+            if (!addTaskWithOverrides) {
+              throw new Error('Capture task executor is not connected.');
+            }
+
+            addTaskWithOverrides({
               text: action.text,
               locationText: action.locationText,
               jobId: action.jobId,
@@ -541,11 +545,16 @@ if (line && addTaskWithOverrides) {
               evidence: dock.overrides.evidence,
               workingMemory: dock.overrides.workingMemory,
             });
+
             return null;
           },
           updateTask: async (action) => {
-            await addTask({
-              text: action.text,
+            if (!addTaskWithOverrides) {
+              throw new Error('Capture task executor is not connected.');
+            }
+
+            addTaskWithOverrides({
+              text: action.text ?? dock.overrides.text,
               locationText: action.locationText,
               jobId: action.jobId,
               surfaceDate: action.surfaceDate,
