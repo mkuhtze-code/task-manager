@@ -6,7 +6,7 @@
  * the common CPU contribution contract.
  */
 
-import type { CpuBrain, CpuBrainContribution, CpuInput, UniversalContext } from './types';
+import type { CpuBrain, CpuBrainContribution, CpuInput, CpuObservation, UniversalContext } from './types';
 import type { InteractionResult } from '@/lib/engine/interactionTypes';
 
 function coreContribution(
@@ -14,7 +14,7 @@ function coreContribution(
   _context: UniversalContext,
   interaction: InteractionResult
 ): CpuBrainContribution {
-  const observations = [
+  const observations: CpuObservation[] = [
     {
       brain: 'thinking' as const,
       kind: 'decision' as const,
