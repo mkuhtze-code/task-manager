@@ -135,34 +135,149 @@ it('understands a concrete drop-off with address, time and today as executable w
   });
 
   expect(r.request.action).toBe('create_task');
-
   expect(r.request.objectText).toBe('clips');
-
-  expect(r.request.locationText?.toLowerCase()).toContain(
-    '64 grace james road'
-  );
-
-  expect(r.request.locationText?.toLowerCase()).toContain(
-    'pukekohe'
-  );
-
+  expect(r.request.locationText?.toLowerCase()).toContain('64 grace james road');
+  expect(r.request.locationText?.toLowerCase()).toContain('pukekohe');
   expect(r.request.dateHint).toBe('today');
-
   expect(r.request.timeHint).toBe('12:00');
-
   expect(r.request.confidence).toBe('high');
-
   expect(r.authority.mayAct).toBe(true);
-
   expect(r.action.kind).toBe('create_task');
-
   if (r.action.kind === 'create_task') {
     expect(r.action.text).toBe('Drop off clips');
-
-    expect(r.action.locationText?.toLowerCase()).toContain(
-      '64 grace james road'
-    );
-
+    expect(r.action.locationText?.toLowerCase()).toContain('64 grace james road');
     expect(r.action.surfaceDate).toBe('2026-10-06');
   }
+});
+
+describe('explicit schedule vs capacity — dock eligibility', () => {
+  const dropOff =
+    'i need to drop off clips to 64 Grace James Road in Pukekohe at 4pm today';
+
+  it('explicit time + tight Today remains dockable with capacity warning', () => {
+    const r = runEngineCycle({
+      utterance: dropOff,
+      todayDate: '2026-10-06',
+      context: {
+        remainingMinsToday: 10,
+        openTaskCount: 8,
+        jobs: [],
+        meetings: [],
+      },
+    });
+
+    expect(r.request.action).toBe('create_task');
+    expect(r.request.objectText).toBe('clips');
+    expect(r.request.locationText?.toLowerCase()).toContain('64 grace james road');
+    expect(r.request.dateHint).toBe('today');
+    expect(r.request.timeHint).toBe('16:00');
+    expect(r.authority.mayAct).toBe(true);
+    expect(r.action.kind).toBe('create_task');
+    if (r.action.kind === 'create_task') {
+      expect(r.action.surfaceDate).toBe('2026-10-06');
+      expect(r.action.text.toLowerCase()).toContain('clips');
+    }
+    expect(r.plan.steps.some((s) => s.kind === 'place')).toBe(true);
+    const capacityWarn = r.plan.steps.find(
+      (s) => s.kind === 'suggest' && s.reason === 'capacity_low'
+    );
+    expect(capacityWarn).toBeTruthy();
+    if (capacityWarn && capacityWarn.kind === 'suggest') {
+      expect(capacityWarn.message).toMatch(/tight/i);
+    }
+  });
+
+  it('explicit time + normal capacity is dockable without capacity block', () => {
+    const r = runEngineCycle({
+      utterance: 'drop off clips to 64 Grace James Road at 4pm today',
+      todayDate: '2026-10-06',
+      context: {
+        remainingMinsToday: 240,
+        openTaskCount: 2,
+        jobs: [],
+        meetings: [],
+      },
+    });
+
+    expect(r.authority.mayAct).toBe(true);
+    expect(r.action.kind).toBe('create_task');
+    if (r.action.kind === 'create_task') {
+      expect(r.action.surfaceDate).toBe('2026-10-06');
+    }
+    expect(r.request.timeHint).toBe('16:00');
+    expect(
+      r.plan.steps.some((s) => s.kind === 'suggest' && s.reason === 'capacity_low')
+    ).toBe(false);
+  });
+
+  it('no explicit clock time still runs timing/capacity path', () => {
+    const r = runEngineCycle({
+      utterance: 'i need to drop off clips to 64 Grace James Road',
+      todayDate: '2026-10-06',
+      context: {
+        remainingMinsToday: 120,
+        openTaskCount: 2,
+        jobs: [],
+        meetings: [],
+      },
+    });
+
+    expect(r.request.objectText).toBe('clips');
+    expect(r.request.locationText?.toLowerCase()).toContain('grace james');
+    expect(r.request.timeHint).toBeNull();
+    expect(r.request.dateHint).toBeNull();
+  });
+
+  it('explicit tomorrow preserves dockability and timing', () => {
+    const r = runEngineCycle({
+      utterance: 'drop off clips to 64 Grace James Road at 9am tomorrow',
+      todayDate: '2026-10-06',
+      context: {
+        remainingMinsToday: 5,
+        openTaskCount: 10,
+        jobs: [],
+        meetings: [],
+      },
+    });
+
+    expect(r.request.dateHint).toBe('tomorrow');
+    expect(r.request.timeHint).toBe('09:00');
+    expect(r.authority.mayAct).toBe(true);
+    expect(r.action.kind).toBe('create_task');
+  });
+
+  it('genuinely thin request stays non-dockable', () => {
+    const r = runEngineCycle({
+      utterance: 'maybe something later',
+      todayDate: '2026-10-06',
+      context: {
+        remainingMinsToday: 200,
+        openTaskCount: 1,
+        jobs: [],
+        meetings: [],
+      },
+    });
+
+    expect(r.authority.mayAct).toBe(false);
+    expect(r.action.kind).not.toBe('create_task');
+  });
+
+  it('explicit 4pm today is not replaced under capacity pressure', () => {
+    const r = runEngineCycle({
+      utterance: dropOff,
+      todayDate: '2026-10-06',
+      context: {
+        remainingMinsToday: 8,
+        openTaskCount: 12,
+        jobs: [],
+        meetings: [],
+      },
+    });
+
+    expect(r.request.timeHint).toBe('16:00');
+    expect(r.request.dateHint).toBe('today');
+    if (r.action.kind === 'create_task') {
+      expect(r.action.surfaceDate).toBe('2026-10-06');
+    }
+  });
 });
