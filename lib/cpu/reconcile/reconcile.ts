@@ -3,6 +3,7 @@ import type { InteractionResult } from '@/lib/engine/interactionTypes';
 import { detectConflicts } from './conflicts';
 import { maxConfidence } from './confidence';
 import { detectOpportunities } from './opportunities';
+import { rankOpportunities, selectSurfaceOpportunity } from './opportunityRanker';
 import { reconcileRelationships } from './relationships';
 import type { ReconciledDecision } from './types';
 
@@ -15,6 +16,8 @@ export function reconcile(
   const relationships = reconcileRelationships(contributions);
   const conflicts = detectConflicts(contributions);
   const opportunities = detectOpportunities(context, interaction);
+  const rankedOpportunities = rankOpportunities(opportunities);
+  const surfaceOpportunity = selectSurfaceOpportunity(rankedOpportunities);
 
   // Authority has already been decided by the existing engine. Phase 3 must
   // not recalculate or weaken it while the universal dispatcher is not yet in
@@ -30,7 +33,7 @@ export function reconcile(
     ...opportunities.map((o) => o.confidence),
   ]);
 
-  const opportunityText = opportunities.map((o) => o.message).join(' ');
+  const opportunityText = surfaceOpportunity?.message ?? '';
   const explanation = opportunityText
     ? [interaction.explanation, opportunityText].filter(Boolean).join(' ').trim()
     : interaction.explanation;
@@ -40,6 +43,8 @@ export function reconcile(
     relevantEntities: relationships.flatMap((r) => [r.sourceId, r.targetId]),
     relationships,
     opportunities,
+    rankedOpportunities,
+    surfaceOpportunity,
     conflicts,
     recommendedAction,
     confidence,
