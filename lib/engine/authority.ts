@@ -1,6 +1,10 @@
 /**
  * Authority boundary — when Dokkit may act vs only suggest/ask.
  * Maps commitment class + confidence → autonomy decision.
+ *
+ * Capacity / fit analysis answers "does this fit comfortably?" — never
+ * "is the user allowed to choose this time?". Explicit date/time on a
+ * structured request is a user commitment: Dock must remain allowed.
  */
 
 import type {
@@ -9,6 +13,11 @@ import type {
   Confidence,
   EngineRequest,
 } from './types';
+
+/** Explicit clock or day the user stated (not inferred capacity advice). */
+export function hasExplicitSchedule(req: EngineRequest): boolean {
+  return !!(req.dateHint || req.timeHint);
+}
 
 export function classifyCommitment(req: EngineRequest): CommitmentClass {
   if (req.commitment === 'hard') return 'HARD_COMMITMENT';
@@ -20,9 +29,21 @@ export function classifyCommitment(req: EngineRequest): CommitmentClass {
   return 'SUGGESTED_WORK';
 }
 
+function isExecutableCapture(req: EngineRequest): boolean {
+  return (
+    !!req.objectText &&
+    (req.action === 'create_task' ||
+      req.action === 'pickup' ||
+      req.action === 'remind')
+  );
+}
+
 /**
  * Safe default: new requests may create a task (act) when structured enough,
  * but never rearrange hard commitments. Suggestions preferred when thin.
+ *
+ * Explicit user timing (dateHint / timeHint) on an executable capture is
+ * dockable: capacity warnings stay advisory via plan suggest steps.
  */
 export function decideAuthority(
   req: EngineRequest,
@@ -39,6 +60,23 @@ export function decideAuthority(
       mayAct: false,
       maySuggest: true,
       reason: 'hard_commitment_requires_user',
+    };
+  }
+
+  // Explicit schedule + meaningful object: user already decided when.
+  // Capacity may still warn; it must not revoke mayAct.
+  if (isExecutableCapture(req) && hasExplicitSchedule(req) && conf !== 'low') {
+    return {
+      commitmentClass:
+        commitmentClass === 'SOFT_COMMITMENT'
+          ? 'SOFT_COMMITMENT'
+          : req.dateHint && req.objectText
+            ? 'PLANNED_WORK'
+            : 'NEW_REQUEST',
+      autonomy: 'act',
+      mayAct: true,
+      maySuggest: true,
+      reason: 'explicit_schedule_commitment',
     };
   }
 
@@ -67,6 +105,26 @@ export function decideAuthority(
       mayAct: false,
       maySuggest: true,
       reason: 'new_request_thin',
+    };
+  }
+
+  if (commitmentClass === 'PLANNED_WORK') {
+    // Date + object without the early explicit-schedule path (e.g. low conf).
+    if (conf !== 'low' && req.objectText) {
+      return {
+        commitmentClass,
+        autonomy: 'act',
+        mayAct: true,
+        maySuggest: true,
+        reason: 'planned_work_structured',
+      };
+    }
+    return {
+      commitmentClass,
+      autonomy: 'ask',
+      mayAct: false,
+      maySuggest: true,
+      reason: 'planned_work_thin',
     };
   }
 
