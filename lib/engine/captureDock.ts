@@ -50,6 +50,21 @@ export type CaptureDockResult =
       request: EngineRequest | null;
     };
 
+export type CaptureDockTravelContext = {
+  tripId: string;
+  tripName: string;
+  intent?: 'work' | 'personal' | null;
+  dayId?: string | null;
+  dayDate?: string | null;
+  dayStartMins?: number | null;
+  dayEndMins?: number | null;
+  baseLocationText?: string | null;
+  activityCount?: number;
+  plannedMins?: number;
+  remainingMins?: number | null;
+  driveFromBaseMins?: number | null;
+};
+
 export type CaptureDockInput = {
   line: string;
   userId: string | null;
@@ -64,6 +79,9 @@ export type CaptureDockInput = {
   meetings?: Array<{ id: string; text: string; startAt?: string | null }>;
   travelMins?: number | null;
   visitDurationMins?: number | null;
+  /** When Capture runs on a trip page */
+  interfaceName?: string;
+  travel?: CaptureDockTravelContext | null;
 };
 
 /**
@@ -81,6 +99,12 @@ export function runCaptureDock(input: CaptureDockInput): CaptureDockResult {
       ? input.jobs.find((j) => j.id === input.captureJobId) ?? null
       : null;
 
+  const travelRemaining = input.travel?.remainingMins ?? null;
+  const remaining =
+    input.remainingMinsToday != null
+      ? input.remainingMinsToday
+      : travelRemaining;
+
   const result = processInteraction({
     userId: input.userId,
     input: {
@@ -90,10 +114,10 @@ export function runCaptureDock(input: CaptureDockInput): CaptureDockResult {
     priorRequest: input.priorRequest,
     workingMemory: loadWorkingMemoryLocal(input.userId),
     context: {
-      interface: 'capture',
-      surface: input.captureSurfaceDate || null,
+      interface: input.interfaceName ?? (input.travel ? 'travel' : 'capture'),
+      surface: input.captureSurfaceDate || input.travel?.dayDate || null,
       todayDate: today,
-      remainingMinsToday: input.remainingMinsToday,
+      remainingMinsToday: remaining,
       openTaskCount: input.openTaskCount,
       jobs: input.jobs.map((j) => ({
         id: j.id,
@@ -103,6 +127,7 @@ export function runCaptureDock(input: CaptureDockInput): CaptureDockResult {
       meetings: input.meetings,
       travelMins: input.travelMins ?? null,
       visitDurationMins: input.visitDurationMins ?? null,
+      travel: input.travel ?? null,
       currentFocus: focusJob
         ? { kind: 'job', id: focusJob.id, label: focusJob.name }
         : null,
