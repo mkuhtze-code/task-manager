@@ -1,6 +1,5 @@
 import type { UniversalContext, CpuBrainContribution } from '../types';
 import type { InteractionResult } from '@/lib/engine/interactionTypes';
-import { decideAuthority } from '@/lib/engine/authority';
 import { detectConflicts } from './conflicts';
 import { maxConfidence } from './confidence';
 import { detectOpportunities } from './opportunities';
@@ -16,12 +15,14 @@ export function reconcile(
   const relationships = reconcileRelationships(contributions);
   const conflicts = detectConflicts(contributions);
   const opportunities = detectOpportunities(context, interaction);
-  const authority = decideAuthority(interaction.request);
 
-  // The existing engine's action remains authoritative until the universal
-  // dispatcher exists. Opportunities can explain or suggest; they cannot veto
-  // an explicit user commitment.
+  // Authority has already been decided by the existing engine. Phase 3 must
+  // not recalculate or weaken it while the universal dispatcher is not yet in
+  // place. In particular, capacity/opportunity signals never veto a user's
+  // explicit commitment.
+  const authority = interaction.authority;
   const recommendedAction = authority.mayAct ? interaction.action : null;
+
   const confidence = maxConfidence([
     interaction.confidence,
     ...observations.map((o) => o.confidence),
@@ -29,8 +30,9 @@ export function reconcile(
     ...opportunities.map((o) => o.confidence),
   ]);
 
-  const explanation = opportunities.length > 0
-    ? `${interaction.explanation} ${opportunities.map((o) => o.message).join(' ')}`.trim()
+  const opportunityText = opportunities.map((o) => o.message).join(' ');
+  const explanation = opportunityText
+    ? [interaction.explanation, opportunityText].filter(Boolean).join(' ').trim()
     : interaction.explanation;
 
   return {
