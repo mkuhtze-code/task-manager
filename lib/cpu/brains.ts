@@ -242,7 +242,6 @@ export const DEFAULT_BRAINS: CpuBrain[] = [
   calendarBrain,
   locationBrain,
   memoryBrain,
-  thinkingBrain,
   learningBrain,
   authorityBrain,
 ];
