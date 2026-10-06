@@ -2091,9 +2091,7 @@ export default function TripDayView() {
                 </li>
               ))}
             </ul>
-            <div style={{ marginTop: 12 }}>
-              <GearMenu context="travel" userId={session?.user.id ?? null} />
-            </div>
+
           </div>
         </div>
       )}
