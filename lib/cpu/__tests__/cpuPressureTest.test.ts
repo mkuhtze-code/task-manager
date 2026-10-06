@@ -44,6 +44,7 @@ describe('Dokkit CPU pressure test — Phase 10', () => {
           },
         });
 
+        expect(cpu.decision.authority.commitmentClass).toBe('HARD_COMMITMENT');
         expect(cpu.decision.authority.mayAct).not.toBe(false);
         if (cpu.decision.authority.commitmentClass === 'HARD_COMMITMENT') {
           expect(cpu.decision.authority.mayAct).toBe(true);
