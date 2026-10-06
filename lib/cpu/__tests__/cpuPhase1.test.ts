@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { processCpuInteraction } from '../index';
+import { processCpuInteraction, selectTodayContext, selectCalendarContext } from '../index';
 
 describe('Dokkit CPU Phase 1', () => {
   it('preserves the existing explicit-schedule action path', () => {
@@ -27,6 +27,13 @@ describe('Dokkit CPU Phase 1', () => {
     expect(result.decision.action?.locationText).toContain('Grace James Road');
     expect(result.decision.observations.some((o) => o.brain === 'thinking')).toBe(true);
     expect(result.context.interface).toBe('capture');
+    expect(selectTodayContext(result.context)).toEqual({
+      date: '2026-10-07',
+      remainingMins: 10,
+      openTaskCount: 3,
+    });
+    expect(result.context.user.id).toBe('cpu-test');
+    expect(result.context.work.jobs.items).toEqual([]);
   });
 
   it('does not invent cross-surface relationships yet', () => {
@@ -48,6 +55,10 @@ describe('Dokkit CPU Phase 1', () => {
 
     expect(result.decision.outcome).toBeDefined();
     expect(result.decision.relationships).toEqual([]);
+    expect(selectCalendarContext(result.context)).toEqual({
+      available: false,
+      commitments: [],
+    });
   });
 
   it('supports speech, Android and future Auto clients through the same façade', () => {
