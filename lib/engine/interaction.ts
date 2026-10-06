@@ -124,7 +124,7 @@ function clarifyFromAmbiguity(
 }
 
 /** Primary entry — one interaction cycle. */
-export function processInteraction(input: InteractionInput): InteractionResult {
+export function processInteractionCore(input: InteractionInput): InteractionResult {
   const text = input.input.text.replace(/\s+/g, ' ').trim();
   const userId = input.userId;
 
@@ -446,4 +446,19 @@ export function processInteraction(input: InteractionInput): InteractionResult {
     cycle,
     confidence: cycle.request.confidence,
   };
+}
+
+
+/**
+ * Public compatibility entry point.
+ *
+ * Phase 5 routes the universal interaction contract through the Dokkit CPU.
+ * The deterministic engine remains the CPU's core behavioural brain; this
+ * wrapper preserves the existing API for tests and legacy consumers.
+ */
+export function processInteraction(input: InteractionInput): InteractionResult {
+  // Lazy import avoids a module cycle at evaluation time: CPU -> core engine.
+  // eslint/TypeScript cannot use require in this project, so the CPU imports
+  // processInteractionCore directly and public callers should use processCpuInteraction.
+  return processInteractionCore(input);
 }
