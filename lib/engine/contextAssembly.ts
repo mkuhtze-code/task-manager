@@ -15,6 +15,7 @@ export type ContextInputs = {
   knownLocations?: string[];
   communicationHints?: string[];
   workingMemory?: WorkingMemorySnapshot;
+  travel?: ReasoningContext['travel'];
 };
 
 export function assembleContext(inputs: ContextInputs = {}): ReasoningContext {
@@ -29,6 +30,7 @@ export function assembleContext(inputs: ContextInputs = {}): ReasoningContext {
     knownLocations: inputs.knownLocations ?? [],
     communicationHints: inputs.communicationHints ?? [],
     workingMemory: inputs.workingMemory ?? emptyWorkingMemory(),
+    travel: inputs.travel ?? null,
   };
 }
 
