@@ -4,6 +4,7 @@
  * Trip vault — store flights, bookings, tickets, emails, notes on a trip.
  * Work-oriented by default; independent travel evidence store.
  * Flights can auto-create an itinerary activity on a matching trip day.
+ * Optional file attach → Supabase Storage (travel-docs).
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -20,6 +21,11 @@ import {
   type TravelDocument,
   type TripDayRef,
 } from '@/lib/travel/travelDocuments';
+import {
+  removeTravelVaultFile,
+  signedUrlForTravelVaultFile,
+  uploadTravelVaultFile,
+} from '@/lib/travel/travelVaultStorage';
 
 type Props = {
   tripId: string;
@@ -58,6 +64,7 @@ export default function TravelVaultSheet({
   /** Default on for flights — put a stop on the itinerary */
   const [addToItinerary, setAddToItinerary] = useState(true);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -90,10 +97,24 @@ export default function TravelVaultSheet({
     if (parsed.doc_type === 'flight') setAddToItinerary(true);
   }
 
+  function resetForm() {
+    setPaste('');
+    setTitle('');
+    setBody('');
+    setReference('');
+    setCarrier('');
+    setDocType('note');
+    setAddToItinerary(true);
+    setFile(null);
+  }
+
   async function saveDoc() {
-    const t = title.trim() || (paste.trim() ? interpretTravelPaste(paste).title : '');
+    const t =
+      title.trim() ||
+      (paste.trim() ? interpretTravelPaste(paste).title : '') ||
+      (file ? file.name.replace(/\.[^.]+$/, '') : '');
     if (!t) {
-      setError('Give this a short title');
+      setError('Give this a short title (or attach a file)');
       return;
     }
     setSaving(true);
@@ -168,35 +189,57 @@ export default function TravelVaultSheet({
       }
     }
 
-    const { data: docRow, error: err } = await supabase
-      .from('travel_documents')
-      .insert({
-        user_id: userId,
-        trip_id: tripId,
-        doc_type: docType,
-        title: t,
-        body: bodyText,
-        reference_code: reference.trim() || null,
-        carrier: carrier.trim() || null,
-        location_text,
-        starts_at: null,
-        trip_day_id: tripDayId,
-        activity_id: activityId,
-        source: paste.trim() ? 'paste' : 'manual',
-      })
-      .select('id')
-      .single();
+    let storagePath: string | null = null;
+    let originalFilename: string | null = null;
+    if (file) {
+      const up = await uploadTravelVaultFile(supabase, {
+        userId,
+        tripId,
+        file,
+      });
+      if (!up.ok) {
+        setSaving(false);
+        setError(up.error);
+        return;
+      }
+      storagePath = up.storagePath;
+      originalFilename = up.originalFilename;
+    }
+
+    const source = file
+      ? 'upload'
+      : paste.trim()
+        ? 'paste'
+        : 'manual';
+
+    const { error: err } = await supabase.from('travel_documents').insert({
+      user_id: userId,
+      trip_id: tripId,
+      doc_type: docType,
+      title: t,
+      body: bodyText,
+      reference_code: reference.trim() || null,
+      carrier: carrier.trim() || null,
+      location_text,
+      starts_at: null,
+      trip_day_id: tripDayId,
+      activity_id: activityId,
+      storage_path: storagePath,
+      original_filename: originalFilename,
+      source,
+    });
 
     setSaving(false);
     if (err) {
-      // Activity may already exist — leave it; user can delete from itinerary
+      if (storagePath) await removeTravelVaultFile(supabase, storagePath);
       setError(err.message);
       return;
     }
 
+    const bits: string[] = [];
     if (activityId && matchedDay) {
-      setStatusMsg(
-        `Flight added to itinerary · ${matchedDay.date}${
+      bits.push(
+        `Flight on itinerary · ${matchedDay.date}${
           schedule?.departTime ? ` at ${schedule.departTime}` : ''
         }`
       );
@@ -206,28 +249,37 @@ export default function TravelVaultSheet({
         dayDate: matchedDay.date,
       });
     } else if (docType === 'flight' && addToItinerary && tripDays.length === 0) {
-      setStatusMsg('Saved to vault — no trip days yet, so nothing on the itinerary.');
-    } else if (docType === 'flight' && !addToItinerary) {
-      setStatusMsg('Saved to vault only (not on itinerary).');
+      bits.push('Saved — no trip days yet, so nothing on the itinerary');
     }
+    if (storagePath) bits.push(`File attached: ${originalFilename}`);
+    if (bits.length) setStatusMsg(bits.join(' · '));
 
-    void docRow;
     setAdding(false);
-    setPaste('');
-    setTitle('');
-    setBody('');
-    setReference('');
-    setCarrier('');
-    setDocType('note');
-    setAddToItinerary(true);
+    resetForm();
     await load();
   }
 
-  async function removeDoc(id: string, label: string, linkedActivityId: string | null) {
+  async function openAttachment(doc: TravelDocument) {
+    if (!doc.storage_path) return;
+    const url = await signedUrlForTravelVaultFile(supabase, doc.storage_path);
+    if (!url) {
+      setError('Could not open file — try again or re-upload');
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  async function removeDoc(
+    id: string,
+    label: string,
+    linkedActivityId: string | null,
+    storagePath: string | null
+  ) {
     const msg = linkedActivityId
       ? `Remove “${label}” from the vault? The itinerary flight stop will stay unless you delete it separately.`
       : `Remove “${label}” from this trip vault?`;
     if (!confirm(msg)) return;
+    if (storagePath) await removeTravelVaultFile(supabase, storagePath);
     await supabase.from('travel_documents').delete().eq('id', id);
     setDocs((prev) => prev.filter((d) => d.id !== id));
   }
@@ -290,6 +342,36 @@ export default function TravelVaultSheet({
                 Read paste into fields
               </button>
             ) : null}
+
+            <label className="field-label">Attach file (optional)</label>
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.txt,.eml,.doc,.docx,application/pdf,image/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                setFile(f);
+                if (f && !title.trim()) {
+                  setTitle(f.name.replace(/\.[^.]+$/, '').slice(0, 80));
+                }
+              }}
+            />
+            {file ? (
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
+                {file.name} · {(file.size / 1024).toFixed(0)} KB
+                <button
+                  type="button"
+                  className="btn-text"
+                  style={{ marginLeft: 8 }}
+                  onClick={() => setFile(null)}
+                >
+                  Clear
+                </button>
+              </p>
+            ) : (
+              <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: 0 }}>
+                PDF, image, text, or Word · max 10 MB
+              </p>
+            )}
 
             <label className="field-label">Type</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -383,6 +465,7 @@ export default function TravelVaultSheet({
                 onClick={() => {
                   setAdding(false);
                   setError('');
+                  resetForm();
                 }}
               >
                 Cancel
@@ -395,7 +478,7 @@ export default function TravelVaultSheet({
           <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>Loading…</p>
         ) : docs.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.4 }}>
-            Nothing stored yet. Paste a booking confirmation or add a flight ref.
+            Nothing stored yet. Paste a confirmation, attach a PDF, or add a flight ref.
           </p>
         ) : (
           <ul
@@ -424,6 +507,7 @@ export default function TravelVaultSheet({
                       {docTypeLabel(d.doc_type)}
                       {d.reference_code ? ` · ${d.reference_code}` : ''}
                       {d.activity_id ? ' · on itinerary' : ''}
+                      {d.storage_path ? ' · file' : ''}
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{d.title}</div>
                     {d.carrier ? (
@@ -433,6 +517,16 @@ export default function TravelVaultSheet({
                       <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
                         {d.location_text}
                       </div>
+                    ) : null}
+                    {d.original_filename ? (
+                      <button
+                        type="button"
+                        className="btn-text"
+                        style={{ fontSize: 12, marginTop: 4, padding: 0 }}
+                        onClick={() => openAttachment(d)}
+                      >
+                        Open {d.original_filename}
+                      </button>
                     ) : null}
                     {d.body ? (
                       <div
@@ -453,7 +547,9 @@ export default function TravelVaultSheet({
                     type="button"
                     className="gear-btn"
                     aria-label={`Remove ${d.title}`}
-                    onClick={() => removeDoc(d.id, d.title, d.activity_id)}
+                    onClick={() =>
+                      removeDoc(d.id, d.title, d.activity_id, d.storage_path)
+                    }
                   >
                     <TrashIcon />
                   </button>
