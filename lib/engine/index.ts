@@ -19,6 +19,7 @@ export type {
   PlanProposal,
   PlanStep,
   ReasoningContext,
+  TravelReasoningSlice,
   RequestAction,
   WorkingMemorySnapshot,
   AuthorityDecision,
@@ -106,4 +107,5 @@ export type {
   CaptureDockResult,
   CaptureDockOverrides,
   CaptureDockJob,
+  CaptureDockTravelContext,
 } from './captureDock';
