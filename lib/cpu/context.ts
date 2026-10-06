@@ -5,7 +5,7 @@
  * not fetch new data, infer relationships, or mutate state.
  */
 
-import { assembleContext } from '@/lib/engine';
+import { assembleContext } from '@/lib/engine/contextAssembly';
 import type { CpuInput, CpuInterface, UniversalContext } from './types';
 
 function normalizeInterface(value: string | undefined): CpuInterface {

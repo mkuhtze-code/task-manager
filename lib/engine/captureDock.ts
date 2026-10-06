@@ -3,7 +3,7 @@
  * Keeps CaptureSheet thin: it is a consumer of the interaction contract.
  */
 
-import { processInteraction } from './interaction';
+import { processCpuInteraction } from '@/lib/cpu';
 import { loadWorkingMemoryLocal, loadActiveRequestLocal } from './persist';
 import type {
   EngineRequest,
@@ -110,7 +110,7 @@ export function runCaptureDock(input: CaptureDockInput): CaptureDockResult {
       ? input.remainingMinsToday
       : travelRemaining;
 
-  const result = processInteraction({
+  const cpuResult = processCpuInteraction({
     userId: input.userId,
     input: {
       type: input.inputType ?? 'text',
@@ -138,6 +138,8 @@ export function runCaptureDock(input: CaptureDockInput): CaptureDockResult {
         : null,
     },
   });
+
+  const result = cpuResult.decision.interaction;
 
   if (result.outcome === 'ACT' && result.action) {
     const action = result.action;

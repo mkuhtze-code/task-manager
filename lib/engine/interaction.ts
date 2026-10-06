@@ -124,7 +124,7 @@ function clarifyFromAmbiguity(
 }
 
 /** Primary entry — one interaction cycle. */
-export function processInteraction(input: InteractionInput): InteractionResult {
+export function processInteractionCore(input: InteractionInput): InteractionResult {
   const text = input.input.text.replace(/\s+/g, ' ').trim();
   const userId = input.userId;
 
@@ -446,4 +446,16 @@ export function processInteraction(input: InteractionInput): InteractionResult {
     cycle,
     confidence: cycle.request.confidence,
   };
+}
+
+
+/**
+ * Legacy compatibility entry point.
+ *
+ * New product surfaces should enter through processCpuInteraction. This
+ * function remains available for engine-level tests and lower-level callers;
+ * it executes the deterministic core directly so the CPU does not recurse.
+ */
+export function processInteraction(input: InteractionInput): InteractionResult {
+  return processInteractionCore(input);
 }

@@ -6,7 +6,7 @@
  * opportunities, conflicts and authority into one decision.
  */
 
-import { processInteraction } from '@/lib/engine';
+import { processInteractionCore } from '@/lib/engine/interaction';
 import type { CpuBrain, CpuCycleResult, CpuInput } from './types';
 import { assembleUniversalContext } from './context';
 import { coreBrain } from './brains';
@@ -32,7 +32,7 @@ export function processCpuInteraction(
   brains: CpuBrain[] = DEFAULT_BRAINS
 ): CpuCycleResult {
   const context = assembleUniversalContext(input);
-  const interaction = processInteraction(input);
+  const interaction = processInteractionCore(input);
 
   const contributions = brains.map((brain) =>
     brain.contribute(input, context, interaction)
