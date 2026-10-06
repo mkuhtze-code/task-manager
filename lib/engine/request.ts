@@ -267,6 +267,12 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   ) {
     out.action = 'move';
     out.isRefinement = true;
+  } else if (/\b(?:i\s+)?(?:need|have|got)\s+to\s+/i.test(lower)) {
+    // "I need to call the client tomorrow" is an executable task request,
+    // not an unknown intent. Keep this generic so the CPU can reason over
+    // communication, checks, site work, and other non-movement tasks without
+    // adding a verb-specific branch for every possible task.
+    out.action = 'create_task';
   }
 
   // ---------------------------------------------------------------------------
@@ -279,6 +285,10 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     /\b(?:pick\s*up|pickup|grab|collect|get|fetch|remind\s+me\s+to\s+(?:pick\s*up|grab|get))\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:from|at|to|for)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     /\b(?:remind\s+me\s+(?:about|to)\s+)(.+)$/i,
+
+    // Generic explicit commitment: preserve the complete task phrase for
+    // executable requests such as "I need to call the client tomorrow".
+    /\b(?:i\s+)?(?:need|have|got)\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
   ];
 
   for (const pattern of objectPatterns) {
@@ -589,6 +599,25 @@ export function applyUtteranceToRequest(
   if (base.relatedJobText) score += 1;
 
   base.confidence = score >= 3 ? 'high' : score >= 1 ? 'medium' : 'low';
+
+  // Explicit "need/have/got to" language is a user commitment. When it has
+  // enough structure to execute, mark it hard so capacity/opportunity logic
+  // cannot later downgrade or veto the user's chosen commitment.
+  const explicitCommitment =
+    /\b(?:i\s+)?(?:need|have|got)\s+to\s+/i.test(raw) ||
+    /\b(?:i\s+)?must\s+/i.test(raw);
+
+  if (
+    explicitCommitment &&
+    base.objectText &&
+    (base.action === 'create_task' ||
+      base.action === 'pickup' ||
+      base.action === 'remind') &&
+    base.confidence !== 'low'
+  ) {
+    base.commitment = 'hard';
+    base.flexibility = 'low';
+  }
 
   if (base.action === 'remind' || base.action === 'pickup') {
     base.commitment = base.urgency === 'high' ? 'soft' : 'weak';
