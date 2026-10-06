@@ -196,16 +196,6 @@ const memoryBrain: CpuBrain = {
   },
 };
 
-const thinkingBrain: CpuBrain = {
-  id: 'thinking',
-  contribute(_input, context, interaction) {
-    return contribution('thinking', [
-      observation('thinking', 'decision', `confidence=${interaction.confidence}`, interaction.confidence),
-      observation('thinking', 'constraint', `surface=${context.current.surface ?? 'none'}`, 'high'),
-    ]);
-  },
-};
-
 const learningBrain: CpuBrain = {
   id: 'learning',
   contribute(_input, _context, interaction) {
