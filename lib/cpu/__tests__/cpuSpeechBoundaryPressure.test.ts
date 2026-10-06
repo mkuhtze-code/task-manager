@@ -58,7 +58,7 @@ describe('speech → CPU boundary torture test', () => {
     {
       name: 'defer remains non-executable in speech layer',
       text: 'When I get back, remind me to call John',
-      mustNotCreateTask: false,
+      mustNotCreateTask: true,
     },
   ];
 
