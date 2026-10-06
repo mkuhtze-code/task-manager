@@ -19,7 +19,6 @@ import type {
   InteractionInput,
   InteractionResult,
 } from '@/lib/engine/interactionTypes';
-import type { ReconciledConflict, ReconciledOpportunity } from './reconcile/types';
 
 export type CpuBrainId =
   | 'speech'
