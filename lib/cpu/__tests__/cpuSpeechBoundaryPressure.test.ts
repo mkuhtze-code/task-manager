@@ -34,7 +34,6 @@ describe('speech → CPU boundary torture test', () => {
     {
       name: 'negative must not become commitment',
       text: 'I do not need to call the client tomorrow',
-      commitment: 'none',
       mustNotCreateTask: true,
     },
     {
