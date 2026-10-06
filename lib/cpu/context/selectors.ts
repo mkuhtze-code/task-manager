@@ -6,7 +6,7 @@
  * selectors instead of reaching into UI-specific context directly.
  */
 
-import type { ContextEntity, UniversalContext } from './types';
+import type { ContextEntity, UniversalContext } from '../types';
 
 export function selectTodayContext(context: UniversalContext) {
   return context.work.today;
