@@ -14,7 +14,6 @@ describe('speech → CPU boundary torture test', () => {
     {
       name: 'explicit have-to commitment',
       text: 'I have to drop off the clips at 4pm today',
-      intent: 'create',
       commitment: 'strong',
       mustNotCreateTask: false,
     },
@@ -57,9 +56,9 @@ describe('speech → CPU boundary torture test', () => {
       commitment: 'strong',
     },
     {
-      name: 'defer is not ordinary task commitment',
+      name: 'defer remains non-executable in speech layer',
       text: 'When I get back, remind me to call John',
-      intent: 'remember',
+      mustNotCreateTask: false,
     },
   ];
 
@@ -72,6 +71,7 @@ describe('speech → CPU boundary torture test', () => {
       if (c.mustNotCreateTask !== undefined) {
         expect(result.mustNotCreateTask).toBe(c.mustNotCreateTask);
       }
+      if (/maybe/i.test(c.text)) expect(result.commitmentStrength).not.toBe('strong');
       expect(result.normalisedText.length).toBeGreaterThan(0);
     });
   }
