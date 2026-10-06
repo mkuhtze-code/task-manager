@@ -1872,7 +1872,14 @@ export default function TripDayView() {
           tripId={tripId}
           tripName={trip.name}
           userId={session.user.id}
+          tripDays={tripDays.map((d) => ({ id: d.id, date: d.date }))}
           onClose={() => setVaultOpen(false)}
+          onItineraryChanged={async ({ tripDayId, dayDate }) => {
+            setSelectedDayId(tripDayId);
+            await loadActivities(tripDayId);
+            // surface date if user jumped days
+            void dayDate;
+          }}
         />
       )}
 
