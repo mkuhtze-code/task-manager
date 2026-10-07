@@ -89,6 +89,20 @@ describe('Dokkit CPU Phase 3 — reconciliation', () => {
     expect(result.target?.reasons).toContain('focus_match');
   });
 
+  it('blocks ambiguous current-context job references at the interaction boundary', () => {
+    const result = processCpuInteraction(
+      input('update that job', {
+        jobs: [
+          { id: 'job-1', name: 'Smith renovation' },
+          { id: 'job-2', name: 'Jones renovation' },
+        ],
+      })
+    );
+    expect(result.decision.outcome).toBe('CLARIFY');
+    expect(result.decision.recommendedAction).toBeNull();
+    expect(result.decision.message).toBe('Which one did you mean?');
+  });
+
   it('does not guess between similarly plausible jobs', () => {
     const result = resolveContextReference(
       input('update that job', {
