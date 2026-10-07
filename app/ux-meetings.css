@@ -370,3 +370,8 @@ html[data-theme='dark'] .meeting-row.pressure-now {
     transition: none;
   }
 }
+
+/* Shared featured-object treatment: quiet, not a competing status badge. */
+.meetings-featured-label { padding: 0; background: transparent; color: var(--ink-faint); }
+.meetings-featured { box-shadow: none; border-color: var(--line); }
+.meetings-featured:hover { box-shadow: none; border-color: var(--line-strong); }
