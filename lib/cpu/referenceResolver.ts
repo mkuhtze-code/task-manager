@@ -185,7 +185,7 @@ export function resolveContextReference(
       return {
         status: 'resolved',
         phrase,
-        target: dated[0].c,
+        target: dated[0],
         candidates: candidates.slice(0, 5),
         reason: 'explicit_recency_reference',
       };
