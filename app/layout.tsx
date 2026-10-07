@@ -26,6 +26,7 @@ import './pill-reveal.css';
 import './travel-aware.css';
 import './ux-world-class-instrument.css';
 import './ux-capture-paper.css';
+import './ux-today-product.css';
 import DokkitSplash from '@/components/DokkitSplash';
 import AppChrome from '@/components/AppChrome';
 import AppProviders from '@/components/providers/AppProviders';
