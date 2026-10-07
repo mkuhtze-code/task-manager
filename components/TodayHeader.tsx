@@ -259,9 +259,9 @@ export function TodayHeader(props: {
         <div className="desk-today-bar">
           <div className="desk-today-orient">
             <div className="desk-today-identity">
-              <span className="desk-today-kicker">Today</span>
-              <h1 className="desk-today-title">{weekdayLabel}</h1>
-              <span className="desk-today-date">{dateOnlyLabel}</span>
+              <span className="desk-today-kicker">Day</span>
+              <h1 className="desk-today-title">Today</h1>
+              <span className="desk-today-date">{weekdayLabel} · {dateOnlyLabel}</span>
             </div>
 
             <div
