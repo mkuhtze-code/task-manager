@@ -8325,3 +8325,52 @@ select:-webkit-autofill {
     min-height: 48px;
   }
 }
+
+
+/* Shared relational context: one quiet line, not another badge system. */
+.context-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0;
+  min-width: 0;
+  margin-top: 3px;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  overflow: hidden;
+}
+.context-line-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.context-line-item > :last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.context-line-separator {
+  flex: 0 0 auto;
+  margin: 0 6px;
+  color: var(--line-strong);
+}
+.context-line-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.context-line-link:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.context-line-current {
+  color: var(--text-tertiary);
+}
+.task-card-context {
+  max-width: min(100%, 420px);
+}
+.desk-job-card-context {
+  margin-top: 8px;
+}
