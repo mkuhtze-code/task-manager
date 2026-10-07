@@ -412,7 +412,7 @@ export default function TravelHome() {
             <Link href="/" className="back-link" aria-label="Back to today">
               <BackIcon />
             </Link>
-            <div className="travel-mobile-identity">
+            <div className="travel-mobile-identity surface-mobile-identity">
               <h1 className="app-title">Travel</h1>
               <p className="travel-mobile-pulse">
                 Movement through time and place
