@@ -1,3 +1,35 @@
+
+/* Shared surface identity: Jobs uses the same two-line orientation as the
+   other projections while keeping the job itself visually primary. */
+.jobs-mobile-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.jobs-mobile-identity .app-title {
+  margin: 0;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.jobs-mobile-pulse {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink-faint, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(68vw, 22rem);
+}
+
+.jobs-sep {
+  margin: 0 5px;
+  opacity: 0.55;
+}
+
 /* Job mobile navigation — switcher + section tabs
    V2: semantic tokens, refined hierarchy */
 
