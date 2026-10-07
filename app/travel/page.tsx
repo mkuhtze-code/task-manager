@@ -349,14 +349,13 @@ export default function TravelHome() {
               <span className="trip-row-dates mono">
                 {fmtDateRange(tr.start_date, tr.end_date)}
               </span>
-              {row && row.dayCount > 1 ? (
-                <span className="trip-meta">{row.dayCount} days</span>
-              ) : null}
-              {stops != null && stops > 0 ? (
-                <span className="trip-meta">
-                  {stops} stop{stops === 1 ? '' : 's'}
-                </span>
-              ) : null}
+              <ContextLine
+                className="trip-row-context"
+                items={[
+                  ...(row?.dayCount && row.dayCount > 1 ? [{ label: `${row.dayCount} days` }] : []),
+                  ...(stops != null && stops > 0 ? [{ label: `${stops} stop${stops === 1 ? '' : 's'}` }] : []),
+                ]}
+              />
             </div>
           </div>
           <div className="trip-row-aside">
