@@ -1205,14 +1205,7 @@ export function requestTaskText(req: EngineRequest): string {
   }
 
   return bits.join(' ').replace(/\s+/g, ' ').trim();
-},
-      'i'
-    )
-  )?.[1]?.trim();
-
-  if (!afterVerb) {
-    return { personText: null, purposeText: null, subjectText: null };
-  }
+}
 
   const personMatch = afterVerb.match(
     /^(.+?)(?=\s+(?:to|about|regarding|on|for)\s+)/i
