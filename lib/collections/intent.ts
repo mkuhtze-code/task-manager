@@ -360,6 +360,28 @@ export function detectCollectionIntent(
     };
   }
 
+  // --- COMPOUND CREATE + APPEND: "start a grocery list and add milk to it" ---
+  // Treat this as one atomic list creation with initial items. This preserves
+  // the user's two-step meaning without routing the second clause through the
+  // active-list continuation heuristic before the list exists.
+  const compoundCreate = raw.match(
+    /^(?:start|create|make|new|open|begin|setup|set\s*up)\s+(?:me\s+|us\s+)?(?:a\s+|an\s+|my\s+|the\s+)?(.+?)\s+lists?\s+and\s+(?:add|put|include|stick|throw)\s+(.+?)\s+(?:to|on|onto)\s+(?:it|the\s+list|my\s+list|that\s+list|this\s+list)$/i
+  );
+  if (compoundCreate) {
+    const title = cleanListTitle(compoundCreate[1]);
+    const items = itemsFromText(compoundCreate[2]);
+    return withContextLink(
+      {
+        type: 'create_collection',
+        title,
+        collectionType: inferCollectionType(title),
+        items,
+        ...high(['compound_create_append']),
+      },
+      ctx
+    );
+  }
+
   // --- CREATE: "I need a packing list" ---
   const needBare = raw.match(NEED_LIST_BARE_RE);
   if (needBare) {
