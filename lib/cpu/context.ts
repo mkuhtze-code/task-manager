@@ -9,6 +9,7 @@ import { assembleContext } from '@/lib/engine/contextAssembly';
 import type { CpuInput, CpuInterface, UniversalContext } from './types';
 import type { SituationModel } from './types';
 import type { InteractionResult } from '@/lib/engine/interactionTypes';
+import { emptyBeliefGraph, type BeliefGraph } from './beliefs';
 
 function normalizeInterface(value: string | undefined): CpuInterface {
   switch (value) {
@@ -26,7 +27,7 @@ function normalizeInterface(value: string | undefined): CpuInterface {
   }
 }
 
-export function assembleUniversalContext(input: CpuInput, interaction?: InteractionResult): UniversalContext {
+export function assembleUniversalContext(input: CpuInput, interaction?: InteractionResult, beliefs: BeliefGraph = emptyBeliefGraph()): UniversalContext {
   const ctx = input.context;
   const interfaceName = normalizeInterface(
     input.cpu?.interface ?? ctx.interface
@@ -203,11 +204,13 @@ export function assembleUniversalContext(input: CpuInput, interaction?: Interact
     memory: contextBase.memory,
     constraints: contextBase.constraints,
     confidence: interaction?.confidence ?? 'low',
+    beliefs,
   };
 
   const context: UniversalContext = {
     ...contextBase,
     situation,
+    beliefs,
   };
 
   return context;
