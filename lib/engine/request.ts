@@ -331,6 +331,10 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   const objectPatterns = [
     /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
+    // Movement + purpose: "go to Bunnings and grab two cartridges".
+    // The object belongs after the purpose verb, not after the destination.
+    /\b(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:from|at|to|for)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+
     /\b(?:pick\s*up|pickup|grab|collect|get|fetch|remind\s+me\s+to\s+(?:pick\s*up|grab|get))\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:from|at|to|for)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     /\b(?:remind\s+me\s+(?:about|to)\s+)(.+)$/i,
