@@ -223,6 +223,13 @@
   cursor: pointer;
 }
 
+/* Shared object emphasis: relationships are part of the object, not badges. */
+.context-line-link:focus-visible {
+  outline: 2px solid var(--steel, #1e6be6);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* Surface depth — shared disclosure */
 .surface-depth {
   display: flex;
