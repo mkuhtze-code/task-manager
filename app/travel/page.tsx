@@ -415,6 +415,8 @@ export default function TravelHome() {
             <div className="travel-mobile-identity">
               <h1 className="app-title">Travel</h1>
               <p className="travel-mobile-pulse">
+                Movement through time and place
+                <span className="travel-sep">·</span>
                 {surface.pulseTitle}
                 {surface.pulseMeta ? (
                   <>
