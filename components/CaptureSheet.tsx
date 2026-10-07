@@ -453,19 +453,26 @@ void applyListDock(next);
 
 async function tryDock() {
 const speechResult = speechStatus?.result ?? null;
-let collectionIntent = speechResult?.collection?.intent ?? null;
 
-// Always re-detect from the current capture line. Speech understanding can
-// miss list phrasing; the field text is authoritative at dock time.
+// The capture field is authoritative at Dock time.
+// Speech classification is an interpretation aid, not a persistent mode.
+// In particular, an active list must never turn an explicit new task into
+// another list item just because the speech result carried a collection
+// interpretation from the active-list context.
+let collectionIntent: CollectionIntent | null = null;
+
 if (taskText.trim()) {
   const ctx = buildCollectionContext();
   const detected = detectCaptureCollection(taskText.trim(), ctx);
   const fallback = detectListIntent(taskText.trim(), listTasks);
-  const intent = detected?.intent ?? fallback;
+  collectionIntent = detected?.intent ?? fallback;
+}
 
-  if (intent) {
-    collectionIntent = intent;
-  }
+// Only use a speech-only collection result when there is no current capture
+// text to classify. This prevents stale/over-eager collection classification
+// from blocking an explicit task capture.
+if (!taskText.trim() && speechResult?.collection?.intent) {
+  collectionIntent = speechResult.collection.intent;
 }
 
 const isListIntent =
