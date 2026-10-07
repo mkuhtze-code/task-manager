@@ -119,15 +119,10 @@ function planForRequest(
     });
     facts.push('Placed for today per your constraint.');
 
-    const remaining = ctx.remainingMinsToday;
-    if (remaining != null && remaining < 15) {
-      steps.push({
-        kind: 'suggest',
-        message: 'Today looks tight; consider tomorrow morning.',
-        reason: 'capacity_low',
-      });
-      facts.push(`Only about ${remaining} minutes remain on the day.`);
-    }
+    // Capacity is advisory only. Feasibility is evaluated through the
+    // shared V3 fit path attached to the interaction result. Do not create
+    // a competing plan-level capacity warning here; doing so makes ACT and
+    // ANSWER tell different stories.
   } else if (req.dateHint === 'tomorrow') {
     steps.push({
       kind: 'place',
