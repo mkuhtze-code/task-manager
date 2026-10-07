@@ -193,7 +193,51 @@ function extractCompoundSemantic(text: string, primaryVerb: string | null): {
     new RegExp(
       '^.*?\\b' +
         escapedVerb +
-        '\\s+(.+)
+        '\\s+(.+)$',
+      'i'
+    )
+  )?.[1]?.trim();
+
+  if (!afterVerb) {
+    return { personText: null, purposeText: null, subjectText: null };
+  }
+
+  const personMatch = afterVerb.match(
+    /^(.+?)(?=\s+(?:to|about|regarding|on|for)\s+)/i
+  );
+
+  const personText = (personMatch?.[1] ?? afterVerb)
+    .replace(/[.,]+$/, '')
+    .trim();
+
+  const remainder = personMatch
+    ? afterVerb.slice(personMatch[0].length).trim()
+    : null;
+
+  if (!remainder) {
+    return {
+      personText: personText || null,
+      purposeText: null,
+      subjectText: null,
+    };
+  }
+
+  const purpose = remainder
+    .replace(/\s+(?:for|at)\s+[A-Z][A-Za-z0-9' .-]{1,80}\s*$/i, '')
+    .replace(/[.,]+$/, '')
+    .trim();
+
+  const subjectMatch = purpose.match(
+    /^(?:to\s+)?(?:get|grab|pick\s*up|collect|fetch|check|inspect|confirm|ask|find\s+out|find)\s+(?:the\s+|a\s+|an\s+)?(.+)$/i
+  );
+
+  return {
+    personText: personText || null,
+    purposeText: purpose || null,
+    subjectText: subjectMatch?.[1]?.trim() || purpose || null,
+  };
+}
+
 function extractDateHint(text: string): string | null {
   const matches = Array.from(
     text.matchAll(
