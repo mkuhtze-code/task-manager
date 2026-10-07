@@ -176,11 +176,6 @@ function upsertBelief(
 function requestEvidence(
   request: EngineRequest,
   evidence: LearningEvidence[],
-  field: keyof Pick<
-    EngineRequest,
-    'objectText' | 'locationText' | 'relatedJobText' | 'relatedMeetingText' |
-    'dateHint' | 'timeHint' | 'urgency' | 'flexibility' | 'commitment'
-  >
 ): EvidenceRef | null {
   const matching = evidence.filter((e) => e.requestId === request.id);
   const ref = matching
