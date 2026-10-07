@@ -60,7 +60,6 @@ function fmtDur(mins: number): string {
 
 export default function DesktopMeetingsHeader({
   pulseTitle,
-  pulseMeta,
   pulseAttention = false,
   depthRead,
   consequenceLine = null,
