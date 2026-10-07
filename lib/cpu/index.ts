@@ -11,8 +11,11 @@ import type { CpuBrain, CpuCycleResult, CpuInput } from './types';
 import { assembleUniversalContext } from './context';
 import { DEFAULT_BRAINS } from './brains';
 import { reconcileCpuDecision } from './reconcile';
+import { loadBeliefGraphLocal, saveBeliefGraphLocal } from './beliefPersist';
+import { updateBeliefGraph } from './beliefs';
 
 export type * from './types';
+export type { Belief, BeliefGraph, EvidenceRef, EvidenceStrength } from './beliefs';
 export type * from './reconcile/types';
 export type { RankedOpportunity, OpportunityDisposition } from './reconcile/opportunityRanker';
 export {
@@ -34,7 +37,15 @@ export function processCpuInteraction(
   // the canonical request + authority for this cycle. This closes the former
   // context-before-understanding gap without changing execution semantics.
   const interaction = processInteractionCore(input);
-  const context = assembleUniversalContext(input, interaction);
+  const previousBeliefs = input.dryRun ? undefined : loadBeliefGraphLocal(input.userId);
+  const beliefs = updateBeliefGraph(
+    previousBeliefs ?? { version: 1, updatedAt: new Date(0).toISOString(), beliefs: [] },
+    input.userId,
+    interaction.request,
+    interaction.evidence
+  );
+  if (!input.dryRun) saveBeliefGraphLocal(beliefs, input.userId);
+  const context = assembleUniversalContext(input, interaction, beliefs);
 
   const contributions = brains.map((brain) =>
     brain.contribute(input, context, interaction)
