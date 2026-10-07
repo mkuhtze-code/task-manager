@@ -91,9 +91,7 @@ export default function DesktopMeetingsHeader({
       { key: 'past', label: 'Past', count: filterCounts.past },
     ];
 
-  const showFeatured =
-    Boolean(featuredTitle && nextMeetingId) &&
-    (pulseAttention || featuredPhase === 'Happening' || featuredPhase === 'Soon');
+  const showFeatured = Boolean(featuredTitle && nextMeetingId);
 
   return (
     <header className="surface-header desk-meetings-workspace-header meetings-maybach-header">
