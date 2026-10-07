@@ -94,7 +94,7 @@ function memoryCandidates(mem: WorkingMemorySnapshot): ContextReferenceCandidate
   if (mem.currentFocus.id && mem.currentFocus.label) {
     out.push({
       id: mem.currentFocus.id,
-      kind: mem.currentFocus.kind === 'list' ? 'task' : mem.currentFocus.kind,
+      kind: mem.currentFocus.kind === 'list' ? 'task' : (mem.currentFocus.kind === 'none' ? 'unknown' : mem.currentFocus.kind),
       label: mem.currentFocus.label,
       score: 1,
       reasons: ['current_focus'],
