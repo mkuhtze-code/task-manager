@@ -60,6 +60,31 @@ describe('resolveJobAndLocation', () => {
     }
   });
 
+  it('silently resolves an exact full job name even when fuzzy matching would drop the road suffix', () => {
+    const parts = parseThought('call Jordan for Angela Place', TODAY);
+    const jobs: Job[] = [
+      job({ id: 'angela', name: 'Angela Place' }),
+      job({ id: 'angela-other', name: 'Angela House' }),
+    ];
+    const res = resolveJobAndLocation(parts, jobs);
+    expect(res.state).toBe('known');
+    if (res.state === 'known') {
+      expect(res.candidate.jobId).toBe('angela');
+      expect(res.candidate.matchedField).toBe('name');
+    }
+  });
+
+  it('silently resolves an exact full street-named job', () => {
+    const parts = parseThought('drive to 14 Smith Street to inspect the roof', TODAY);
+    const jobs: Job[] = [
+      job({ id: 'smith', name: '14 Smith Street' }),
+      job({ id: 'smith-other', name: 'Smith Road' }),
+    ];
+    const res = resolveJobAndLocation(parts, jobs);
+    expect(res.state).toBe('known');
+    if (res.state === 'known') expect(res.candidate.jobId).toBe('smith');
+  });
+
   it('shows choices when several Belgium Road jobs match', () => {
     const parts = parseThought('Belgium Rd tomorrow to measure Rainwater Head', TODAY);
     const jobs: Job[] = [
