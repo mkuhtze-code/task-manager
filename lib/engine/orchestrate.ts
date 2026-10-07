@@ -326,26 +326,43 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     mem
   );
 
-  if (
-    resolvedReference?.status === 'resolved' &&
-    resolvedReference.item.type === 'task'
-  ) {
-    const alreadyBound = request.constraints.some(
-      (c) => c.axis === 'dependency' && c.value === `task:${resolvedReference!.item.id}`
-    );
-    if (!alreadyBound) {
+  if (resolvedReference?.status === 'resolved') {
+    if (resolvedReference.item.type === 'task') {
+      const alreadyBound = request.constraints.some(
+        (c) => c.axis === 'dependency' && c.value === `task:${resolvedReference!.item.id}`
+      );
+      if (!alreadyBound) {
+        request = {
+          ...request,
+          constraints: [
+            ...request.constraints,
+            {
+              axis: 'dependency',
+              value: `task:${resolvedReference.item.id}`,
+              confidence: 'high',
+              source: 'context_reference',
+            },
+          ],
+        };
+      }
+    } else if (
+      resolvedReference.item.type === 'location' &&
+      !request.locationText
+    ) {
       request = {
         ...request,
+        locationText: resolvedReference.item.label,
         constraints: [
           ...request.constraints,
           {
-            axis: 'dependency',
-            value: `task:${resolvedReference.item.id}`,
+            axis: 'location',
+            value: resolvedReference.item.label,
             confidence: 'high',
             source: 'context_reference',
           },
         ],
       };
+      facts.push(`Inherited location: ${resolvedReference.item.label}.`);
     }
   }
 
