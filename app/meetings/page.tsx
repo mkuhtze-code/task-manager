@@ -357,7 +357,7 @@ export default function MeetingsHome() {
       <Link
         key={m.id}
         href={`/meetings/${m.id}`}
-        className={`meeting-row pressure-${pressure}`}
+        className={`meeting-row surface-object pressure-${pressure}`}
       >
         <div className="meeting-row-main">
           <div className="meeting-row-top">
@@ -477,7 +477,7 @@ export default function MeetingsHome() {
           {featured && featuredRow && (featuredRow.pressure === 'now' || featuredRow.pressure === 'soon') ? (
             <Link
               href={`/meetings/${featured.id}`}
-              className="meetings-featured meetings-featured-mobile"
+              className="meetings-featured surface-object surface-object-featured meetings-featured-mobile"
             >
               <div className="meetings-featured-label">
                 {featuredRow.phase === 'live' ? 'Now' : 'Next'}
