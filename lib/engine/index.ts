@@ -3,6 +3,8 @@
  * Thin orchestration over existing intelligence; no LLM.
  */
 
+export type { SemanticInterpretation, SemanticReference, SemanticSpeechAct, SemanticInterpretationContext } from './semanticInterpreter';
+
 export type {
   AutonomyLevel,
   CommitmentClass,
@@ -44,6 +46,8 @@ export {
   resolveReference,
 } from './references';
 export type { ReferenceResolution } from './references';
+
+export { interpretSemanticInput } from './semanticInterpreter';
 
 export {
   emptyRequest,
