@@ -948,7 +948,27 @@ export function requestTaskText(req: EngineRequest): string {
   }
 
   if (req.locationText && !isDropOff && !isPickup) {
+    /*
+     * Location is already semantically present in the object when the user
+     * said things like "check the flashings for James Street".
+     * Keep the location binding, but do not repeat it in the task title.
+     */
+    const object = (req.objectText ?? '').trim();
+    const location = req.locationText.trim();
+    const escaped = location.replace(/[.*+?^$()|[\\]{}]/g, '\\  if (req.locationText && !isDropOff && !isPickup) {
     bits.push(`at ${req.locationText}`);
+  }');
+    const alreadyInObject =
+      new RegExp('(?:\\b(?:at|to|from|for|about)\\s+)' + escaped + '\\s*
+
+  return bits.join(' ').replace(/\s+/g, ' ').trim();
+}
+, 'i').test(object) ||
+      object.toLowerCase() === location.toLowerCase();
+
+    if (!alreadyInObject) {
+      bits.push(`at ${location}`);
+    }
   }
 
   return bits.join(' ').replace(/\s+/g, ' ').trim();
