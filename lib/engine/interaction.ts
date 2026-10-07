@@ -326,17 +326,17 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
         ? forcedJobName
         : cycle.request.relatedJobText,
     objectText:
-      !cycle.request.objectText && addPat.objectText
+      !request.objectText && addPat.objectText
         ? addPat.objectText
-        : cycle.request.objectText,
+        : request.objectText,
     action:
       cycle.request.action === 'unknown' && addPat.objectText
         ? 'create_task'
         : cycle.request.action,
     confidence:
-      cycle.request.confidence === 'low' && addPat.objectText
+      request.confidence === 'low' && addPat.objectText
         ? 'medium'
-        : cycle.request.confidence,
+        : request.confidence,
   };
 
   if (
@@ -395,12 +395,12 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
       outcome: 'ACT',
       message:
         cycle.explanation ||
-        `Add "${addPat.objectText || cycle.request.objectText}"`,
+        `Add "${addPat.objectText || request.objectText}"`,
       action,
       answer: null,
       deferred: null,
       clarify: null,
-      request: cycle.request,
+      request,
       workingMemory: cycle.workingMemory,
       authority: {
         ...cycle.authority,
@@ -432,7 +432,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
       answer: null,
       deferred: null,
       clarify: { question: action.message, candidates: [] },
-      request: cycle.request,
+      request,
       workingMemory: cycle.workingMemory,
       authority: cycle.authority,
       evidence: cycle.evidence,
@@ -450,7 +450,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
     answer: null,
     deferred: null,
     clarify: null,
-    request: cycle.request,
+    request,
     workingMemory: cycle.workingMemory,
     authority: cycle.authority,
     evidence: cycle.evidence,
