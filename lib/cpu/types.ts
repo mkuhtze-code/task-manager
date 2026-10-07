@@ -21,6 +21,7 @@ import type {
 } from '@/lib/engine/interactionTypes';
 import type { ReconciledConflict, ReconciledOpportunity } from './reconcile/types';
 import type { BeliefGraph } from './beliefs';
+import type { ContextReferenceResolution } from './referenceResolver';
 
 export type CpuBrainId =
   | 'speech'
@@ -83,12 +84,14 @@ export type SituationModel = {
   constraints: UniversalContext['constraints'];
   confidence: Confidence;
   beliefs: BeliefGraph;
+  references: ContextReferenceResolution;
 };
 
 export type UniversalContext = {
   /** Canonical cognitive state. Specialist brains should prefer this over parallel slices. */
   situation: SituationModel;
   beliefs: BeliefGraph;
+  references: ContextReferenceResolution;
   nowIso: string;
   interface: CpuInterface;
   activity: string | null;
