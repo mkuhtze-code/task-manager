@@ -91,7 +91,6 @@ export default function DesktopTravelHeader({
           <div className="surface-identity">
             <span className="surface-kicker">Place / Motion</span>
             <h1 className="surface-title">Travel</h1>
-            <span className="surface-lede">Movement changes the shape of the day.</span>
           </div>
           <div
             className={
@@ -101,35 +100,8 @@ export default function DesktopTravelHeader({
           >
             <div className="surface-pulse-body">
               <span className="surface-pulse-title">{pulseTitle}</span>
-              <span className="surface-pulse-meta">{pulseMeta}</span>
             </div>
           </div>
-        </div>
-
-        <div className="surface-context" aria-label="Travel context">
-          {activeCount > 0 ? (
-            <span className="surface-context-bit">
-              <span className="surface-context-emphasis">
-                {activeCount} active
-              </span>
-            </span>
-          ) : (
-            <span className="surface-context-bit surface-context-quiet">
-              Nothing in motion
-            </span>
-          )}
-          {nextRelative ? (
-            <span className="surface-context-bit">
-              <span className="surface-context-dot">·</span>
-              <span className="surface-context-next">{nextRelative}</span>
-            </span>
-          ) : null}
-          {upcomingCount > 0 && activeCount === 0 ? (
-            <span className="surface-context-bit">
-              <span className="surface-context-dot">·</span>
-              {upcomingCount} ahead
-            </span>
-          ) : null}
         </div>
 
         <div className="surface-header-actions">
