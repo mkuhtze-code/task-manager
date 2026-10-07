@@ -31,6 +31,11 @@ const REFERENCE_RE =
   /\b(this|that|it|these|those|the\s+last\s+one|the\s+other\s+one|the\s+previous\s+(?:one|task|job)|the\s+job|that\s+job|the\s+meeting|there|here)\b/i;
 
 function phraseFor(text: string): string | null {
+  // Location deixis is more specific than the generic pronoun in phrases
+  // such as "do it there". Resolve the location cue rather than the earlier
+  // "it", otherwise a task focus can incorrectly win.
+  const locationPhrase = text.match(/\b(there|here)\b/i)?.[1];
+  if (locationPhrase) return locationPhrase.toLowerCase();
   return text.match(REFERENCE_RE)?.[1].toLowerCase() ?? null;
 }
 
