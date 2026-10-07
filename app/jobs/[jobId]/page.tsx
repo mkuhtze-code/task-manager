@@ -819,7 +819,7 @@ export default function JobDetailPage() {
           )}
         </div>
         <div className="app-header-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {session?.user?.id && (
+          {isDesktop && session?.user?.id && (
             <JobTripPill userId={session.user.id} />
           )}
           {isDesktop && job && (
