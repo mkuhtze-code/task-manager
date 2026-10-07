@@ -535,3 +535,255 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 }
 .today-header-summary-toggle{border-radius:10px!important}
 .today-commitment{background:var(--paper)!important;border-color:var(--line)!important}
+
+
+/* ==========================================================================
+   DOKKIT MAKEOVER — visual identity pass
+   This is intentionally bolder than the foundational grammar above.
+   The system stays quiet; the hierarchy becomes unmistakable.
+   ========================================================================== */
+:root{
+  --dk-orange:#f26a21;
+  --dk-orange-soft:#fff0e6;
+  --dk-blue:#2451d4;
+  --dk-ink:#14232d;
+  --dk-display:clamp(28px,2.5vw,40px);
+}
+
+/* Surface headers become an arrival moment, not a settings strip. */
+.surface-header{
+  padding:22px 28px 20px!important;
+  border-bottom:1px solid var(--line)!important;
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb,var(--dk-orange) 7%,var(--paper)) 0,
+      var(--paper) 34%)!important;
+  overflow:hidden;
+}
+.surface-header::before{
+  content:'';
+  display:block;
+  position:absolute;
+  left:0;
+  top:0;
+  width:6px;
+  height:100%;
+  background:var(--dk-orange);
+}
+.surface-header-bar{
+  max-width:var(--dk-max)!important;
+  grid-template-columns:minmax(240px,auto) minmax(160px,1fr) auto!important;
+  column-gap:28px!important;
+  min-height:72px;
+}
+.surface-header-orient{gap:18px!important}
+.surface-identity{gap:4px!important}
+.surface-kicker{
+  font-family:var(--font-label)!important;
+  font-size:10px!important;
+  letter-spacing:.14em!important;
+  color:var(--dk-orange)!important;
+}
+.surface-title{
+  font-size:var(--dk-display)!important;
+  line-height:1!important;
+  font-weight:800!important;
+  letter-spacing:-.045em!important;
+}
+.surface-lede{font-size:12px!important;color:var(--ink-soft)!important}
+.surface-pulse{
+  min-height:48px!important;
+  padding:7px 14px!important;
+  border:1px solid var(--line-strong)!important;
+  border-radius:12px!important;
+  background:var(--paper-raised)!important;
+  box-shadow:0 2px 8px rgba(var(--shadow-rgb),.05)!important;
+}
+.surface-pulse::before{
+  content:'';
+  width:7px;
+  height:7px;
+  flex:0 0 7px;
+  border-radius:50%;
+  background:var(--dk-orange);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--dk-orange) 12%,transparent);
+}
+.surface-pulse.is-attention::before{background:var(--hazard)}
+.surface-pulse-title{font-size:13px!important;font-weight:750!important}
+.surface-pulse-meta{font-size:10px!important}
+.surface-header-actions .btn-steel{
+  min-height:44px!important;
+  padding:0 17px!important;
+  border-radius:11px!important;
+  font-weight:750!important;
+  box-shadow:0 2px 0 color-mix(in srgb,var(--steel-dark) 70%,transparent)!important;
+}
+.surface-header-controls{
+  max-width:var(--dk-max)!important;
+  margin-top:18px!important;
+  padding-top:13px!important;
+  border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)!important;
+}
+
+/* The object field gets a little more presence. */
+.meeting-list,.trip-list-maybach,.job-list{
+  gap:14px!important;
+}
+.task-card.surface-object,.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{
+  border-radius:16px!important;
+  background:var(--paper-raised)!important;
+  box-shadow:0 1px 0 rgba(var(--shadow-rgb),.025),0 8px 22px rgba(var(--shadow-rgb),.035)!important;
+  transition:transform .18s var(--ease),border-color .18s var(--ease),box-shadow .18s var(--ease)!important;
+}
+.task-card.surface-object:hover,.desk-job-card.surface-object:hover,.meeting-row.surface-object:hover,.trip-row-maybach.surface-object:hover,.job-row:hover{
+  transform:translateY(-3px)!important;
+  border-color:color-mix(in srgb,var(--dk-orange) 36%,var(--line-strong))!important;
+  box-shadow:0 10px 28px rgba(var(--shadow-rgb),.09)!important;
+}
+.meeting-row.pressure-now,.trip-row-maybach.pressure-now{
+  border-color:color-mix(in srgb,var(--dk-orange) 60%,var(--line))!important;
+  box-shadow:inset 4px 0 0 var(--dk-orange),0 8px 24px rgba(var(--shadow-rgb),.06)!important;
+}
+.surface-object-title,.task-card .task-text,.desk-job-card-name,.meeting-row-name,.trip-row-name,.job-row-name{
+  font-size:16px!important;
+  font-weight:700!important;
+  letter-spacing:-.02em!important;
+}
+.surface-object-time,.meeting-row-time,.trip-row-time{
+  font-family:var(--font-digital)!important;
+  font-size:11px!important;
+  letter-spacing:-.01em!important;
+}
+.surface-object-state,.meeting-row-state,.trip-row-state,.job-row-next{
+  color:var(--ink-soft)!important;
+}
+.context-line-link:hover{color:var(--dk-orange)!important;text-decoration:none!important}
+
+/* Desktop workspace becomes a gallery of useful objects. */
+@media (min-width:701px){
+  html[data-surface='desktop'] .meetings-workspace,
+  html[data-surface='desktop'] .travel-workspace,
+  html[data-surface='desktop'] .jobs-workspace{
+    padding:30px 40px 72px!important;
+    background:
+      radial-gradient(circle at 92% 0%,color-mix(in srgb,var(--dk-orange) 5%,transparent),transparent 28rem);
+  }
+}
+
+/* Mobile: keep the makeover visible instead of shrinking it into nothing. */
+@media (max-width:700px){
+  .surface-header{
+    padding:18px 16px 16px!important;
+    background:
+      linear-gradient(90deg,
+        color-mix(in srgb,var(--dk-orange) 8%,var(--paper)) 0,
+        var(--paper) 70%)!important;
+  }
+  .surface-header::before{width:4px}
+  .surface-header-bar{min-height:64px!important;column-gap:12px!important}
+  .surface-title{font-size:28px!important}
+  .surface-pulse{min-height:42px!important;padding:6px 10px!important}
+  .surface-pulse-body{min-width:0}
+  .surface-header-actions .btn-steel{min-height:40px!important;padding:0 13px!important}
+  .meeting-list,.trip-list-maybach,.job-list{gap:10px!important}
+  .task-card.surface-object,.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{
+    border-radius:14px!important;
+  }
+}
+
+/* Today gets the strongest identity because it is the whole system in one view. */
+.desk-today-saas{
+  position:relative!important;
+  overflow:hidden!important;
+  border:1px solid var(--line)!important;
+  border-radius:20px!important;
+  background:
+    radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 7%,transparent),transparent 28rem),
+    var(--paper-raised)!important;
+  box-shadow:0 12px 36px rgba(var(--shadow-rgb),.08)!important;
+}
+.desk-today-saas::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:6px;
+  background:linear-gradient(var(--dk-orange),var(--dk-blue));
+}
+.desk-today-title{
+  font-size:clamp(30px,3vw,46px)!important;
+  font-weight:800!important;
+  letter-spacing:-.055em!important;
+}
+.desk-today-kicker{
+  color:var(--dk-orange)!important;
+  font-family:var(--font-label)!important;
+  letter-spacing:.14em!important;
+}
+.desk-today-fit{
+  border-radius:14px!important;
+  border:1px solid var(--line)!important;
+  background:var(--paper)!important;
+}
+.desk-today-fit.is-fit{
+  border-color:color-mix(in srgb,var(--dk-blue) 30%,var(--line))!important;
+}
+.desk-today-dock-pill{
+  background:var(--dk-orange)!important;
+  border-color:var(--dk-orange)!important;
+  color:#fff!important;
+  font-weight:800!important;
+}
+.desk-today-dock-pill:hover{filter:brightness(.96);transform:translateY(-1px)}
+.today-header-card{
+  position:relative!important;
+  overflow:hidden!important;
+  border-radius:18px!important;
+  box-shadow:0 8px 24px rgba(var(--shadow-rgb),.06)!important;
+}
+.today-header-card::before{
+  content:'';
+  position:absolute;
+  left:0;top:0;bottom:0;width:4px;
+  background:linear-gradient(var(--dk-orange),var(--dk-blue));
+}
+.today-header-summary-title{font-weight:750!important}
+.today-commitment{
+  border-radius:10px!important;
+  box-shadow:0 1px 4px rgba(var(--shadow-rgb),.04)!important;
+}
+
+/* Nav is now a product signature rather than a generic tab bar. */
+.surface-nav.surface-nav-tabs{
+  border-top:1px solid var(--line-strong)!important;
+  background:color-mix(in srgb,var(--paper) 97%,transparent)!important;
+}
+.surface-tab.current{
+  color:var(--dk-orange)!important;
+  background:color-mix(in srgb,var(--dk-orange) 8%,var(--paper-raised))!important;
+}
+.surface-tab.current::after{background:var(--dk-orange)!important;width:22px!important;height:3px!important}
+.surface-add{
+  background:var(--dk-orange)!important;
+  border-color:var(--dk-orange)!important;
+  font-weight:800!important;
+  box-shadow:0 3px 0 color-mix(in srgb,var(--dk-orange) 72%,#000)!important;
+}
+.surface-add:hover{transform:translateY(-2px)!important}
+
+/* Dark mode keeps the same orange/blue DNA without turning neon. */
+html[data-theme='dark'] .surface-header{
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb,var(--dk-orange) 8%,var(--paper)) 0,
+      var(--paper) 36%)!important;
+}
+html[data-theme='dark'] .desk-today-saas{
+  background:
+    radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 10%,transparent),transparent 28rem),
+    var(--paper-raised)!important;
+}
+html[data-theme='dark'] .surface-tab.current{
+  background:color-mix(in srgb,var(--dk-orange) 10%,var(--paper-raised))!important;
+}
