@@ -9,6 +9,7 @@ import {
 } from '@/lib/travelPresence';
 import { localDateStr as travelLocalDateStr } from '@/lib/travelContext';
 import { TaskCard } from '@/components/TaskCard';
+import ContextLine from '@/components/ContextLine';
 import { TravelLeg } from '@/components/TravelLeg';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
@@ -2739,6 +2740,22 @@ export function TodayPage() {
       />
 
 
+
+      {!isDesktop && (travelImpact.workStopCount > 0 || (geoAware && hasRoute)) ? (
+        <ContextLine
+          className="today-system-context"
+          label="Today connections"
+          items={[
+            { label: 'Travel', href: '/travel' },
+            ...(travelImpact.workStopCount > 0
+              ? [{ label: travelImpact.summaryLabel ?? String(travelImpact.workStopCount) + ' work stops' }]
+              : []),
+            ...(geoAware && hasRoute && routeDriveMins > 0
+              ? [{ label: '~' + fmtMins(routeDriveMins) + ' driving' }]
+              : []),
+          ]}
+        />
+      ) : null}
 
       {!isDesktop && (
         <div className="live-day-strip" aria-label="Remaining day">
