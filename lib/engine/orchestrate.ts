@@ -17,6 +17,7 @@ import { assembleContext, resolveJobName, resolveLocationAgainstJobs } from './c
 import { explainDecision } from './explain';
 import { containsReference, resolveReference } from './references';
 import { applyUtteranceToRequest, requestTaskText } from './request';
+import { interpretSemanticInput } from './semanticInterpreter';
 import {
   emptyWorkingMemory,
   makeMemoryItem,
@@ -274,6 +275,13 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     })
   );
 
+  const semantic = interpretSemanticInput(input.utterance, {
+    workingMemory: mem,
+    currentFocus: mem.currentFocus,
+    jobs: input.context?.jobs ?? [],
+    meetings: input.context?.meetings ?? [],
+  });
+
   // Reference resolution enriches the same request/memory path. Current
   // jobs/meetings are ephemeral candidates; a resolved task reference becomes
   // an explicit dependency so the action layer has a concrete target.
@@ -461,6 +469,7 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     .join(' · ');
 
   return {
+    semantic,
     meaningSummary,
     request,
     workingMemory: mem,
