@@ -1045,6 +1045,142 @@ html[data-theme='dark'] .surface-tab.current{
   }
 }
 
+
+/* ==========================================================================
+   DOKKIT MAKEOVER III — the day becomes a signature
+   The day rail is always visible on desktop. Depth remains available for detail.
+   ========================================================================== */
+.desk-today-rail{
+  position:relative;
+  margin:0 22px 0;
+  padding:15px 0 16px;
+  border-top:1px solid color-mix(in srgb,var(--line) 75%,transparent);
+  border-bottom:1px solid color-mix(in srgb,var(--line) 75%,transparent);
+}
+.desk-today-rail-head,
+.desk-today-rail-foot{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:14px;
+  font-size:10px;
+  color:var(--ink-faint);
+}
+.desk-today-rail-head{
+  margin-bottom:9px;
+  font-family:var(--font-label);
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.desk-today-rail-head .mono{
+  justify-self:end;
+  font-family:var(--font-digital);
+  letter-spacing:0;
+  text-transform:none;
+  font-size:11px;
+}
+.desk-today-rail-label{color:var(--dk-orange);font-weight:800}
+.desk-today-rail-track{
+  position:relative;
+  height:14px;
+  border-radius:999px;
+  background:color-mix(in srgb,var(--line) 70%,var(--paper));
+  box-shadow:inset 0 1px 2px rgba(var(--shadow-rgb),.14);
+  overflow:visible;
+}
+.desk-today-rail-elapsed{
+  position:absolute;
+  inset:0 auto 0 0;
+  border-radius:999px 0 0 999px;
+  background:var(--dk-blue);
+}
+.desk-today-rail-load{
+  position:absolute;
+  top:0;
+  height:100%;
+  border-radius:0 999px 999px 0;
+  background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+}
+.desk-today-rail-load.is-over{background:var(--danger)}
+.desk-today-rail-fixed{
+  position:absolute;
+  top:-3px;
+  height:20px;
+  min-width:3px;
+  border-radius:3px;
+  background:var(--ink);
+  opacity:.8;
+}
+.desk-today-rail-now{
+  position:absolute;
+  top:-6px;
+  width:3px;
+  height:26px;
+  border-radius:3px;
+  background:var(--dk-orange);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--dk-orange) 14%,transparent);
+}
+.desk-today-rail-foot{
+  margin-top:9px;
+  font-size:10px;
+}
+.desk-today-rail-foot strong{
+  justify-self:center;
+  font-size:11px;
+  font-weight:750;
+  color:var(--ink-soft);
+}
+.desk-today-rail-foot span:last-child{justify-self:end}
+@media (max-width:700px){
+  .desk-today-rail{display:none!important}
+}
+
+/* Make the four lenses feel like four instruments cut from the same machine. */
+@media (min-width:701px){
+  .meetings-workspace,
+  .travel-workspace,
+  .jobs-workspace{
+    position:relative;
+  }
+  .meetings-workspace::before,
+  .travel-workspace::before,
+  .jobs-workspace::before{
+    content:'';
+    position:absolute;
+    left:40px;
+    right:40px;
+    top:0;
+    height:1px;
+    background:linear-gradient(90deg,var(--dk-orange),transparent 38%,var(--dk-blue) 78%,transparent);
+    opacity:.55;
+    pointer-events:none;
+  }
+  .meeting-section:first-child .meeting-section-header,
+  .trip-section:first-child .trip-section-header{
+    padding-top:4px!important;
+  }
+  html[data-surface='desktop'] .desk-jobs-grid{
+    position:relative;
+  }
+  html[data-surface='desktop'] .desk-jobs-grid::before{
+    content:'WORK';
+    position:absolute;
+    left:0;
+    top:-18px;
+    font-family:var(--font-label);
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.2em;
+    color:var(--dk-orange);
+  }
+}
+
+/* Dark mode: preserve the instrument silhouette. */
+html[data-theme='dark'] .desk-today-rail-track{
+  background:color-mix(in srgb,var(--line) 58%,var(--paper));
+}
+html[data-theme='dark'] .desk-today-rail-fixed{background:var(--ink)}
+
 /* Dark mode: use the same engineering cues, not louder colour. */
 html[data-theme='dark'] .desk-depth-track{
   background:color-mix(in srgb,var(--line) 65%,var(--paper))!important;
