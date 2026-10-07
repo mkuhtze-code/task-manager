@@ -79,11 +79,6 @@ export default function DesktopJobsHeader({
         ? 'surface-pulse is-clear'
         : 'surface-pulse';
 
-  const contextBits: string[] = [];
-  if (openCount > 0) contextBits.push(`${openCount} open`);
-  if (doneCount > 0) contextBits.push(`${doneCount} done`);
-  if (spotlightJobName) contextBits.push(spotlightJobName);
-
   const workRead =
     activeTodayCount > 0
       ? 'Work is moving on live jobs today.'
@@ -105,6 +100,7 @@ export default function DesktopJobsHeader({
           <div className="surface-pulse-body">
             <span className="surface-pulse-title">{pulseTitle}</span>
           </div>
+        </div>
         </div>
 
         <div className="surface-header-actions">
