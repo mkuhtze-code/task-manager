@@ -253,7 +253,7 @@ describe('Dokkit CPU Phase 3 — reconciliation', () => {
     expect(result.facts).toContain('Inherited location: Smith Street.');
   });
 
-  it('uses the same resolver for Android Auto
+  it('uses the same resolver for Android Auto', () => {
     let mem = emptyWorkingMemory('today');
     mem = setFocus(mem, { kind: 'task', id: 'task-1', label: 'Pick up flashing' });
     const auto = input('move it to tomorrow', { interface: 'android_auto' });
