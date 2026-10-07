@@ -95,7 +95,7 @@ export function looksLikeImplicitItem(text: string): boolean {
   // fall through to normal task capture instead of becoming a list item.
   if (
     /\b(need to|have to|should|must|please|remind|schedule|meeting)\b/i.test(t) ||
-    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|go|head|drive|travel|take|drop\s*off|deliver|pick\s*up|grab|collect|get|fetch)\b/i.test(t)
+    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|move|reschedule|postpone|go|head|drive|travel|take|drop\s*off|deliver|pick\s*up|grab|collect|get|fetch)\b/i.test(t)
   ) {
     return false;
   }
