@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { processCpuInteraction } from '../index';
+import { processCpuInteraction, resolveContextReference } from '../index';
+import type { CpuInput } from '../types';
+import { emptyWorkingMemory, makeMemoryItem, setFocus } from '@/lib/engine/workingMemory';
+
+function input(text: string, overrides: Partial<CpuInput['context']> = {}): CpuInput {
+  return {
+    userId: 'phase3-test',
+    input: { type: 'text', text },
+    context: { interface: 'capture', surface: 'today', todayDate: '2026-10-08', jobs: [], meetings: [], ...overrides },
+    dryRun: true,
+  };
+}
 
 describe('Dokkit CPU Phase 3 — reconciliation', () => {
   it('keeps an explicit user commitment actionable even when capacity is tight', () => {
