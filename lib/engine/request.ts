@@ -159,7 +159,7 @@ function extractLocation(text: string): string | null {
      * instead of swallowing the action phrase into locationText.
      */
     const movementDestination = text.match(
-      /\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\s+(?:over\s+)?to\s+(.+?)\s+to\s+(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase|drop\s+off|deliver)\b/i
+      /\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\s+(?:over\s+)?to\s+(.+?)\s+(?:to|and|for)\s+(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase|drop\s+off|deliver)\b/i
     );
 
     if (movementDestination?.[1]) {
