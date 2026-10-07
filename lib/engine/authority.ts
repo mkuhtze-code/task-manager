@@ -79,7 +79,7 @@ export function decideAuthority(
 
   // Explicit schedule + meaningful object: user already decided when.
   // Capacity may still warn; it must not revoke mayAct.
-  if (isExecutableCapture(req) && hasExplicitSchedule(req) && conf !== 'low') {
+  if (isExecutableCapture(req) && hasExplicitSchedule(req)) {
     return {
       commitmentClass:
         commitmentClass === 'SOFT_COMMITMENT'
