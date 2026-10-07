@@ -8384,3 +8384,13 @@ select:-webkit-autofill {
   margin-left: 8px;
   vertical-align: middle;
 }
+
+/* Today uses the shared relational line to show that meetings and travel
+   are part of the same day object, not separate status widgets. */
+.today-commitment-context,
+.desk-today-commitment-context {
+  margin-top: 2px;
+}
+.today-system-context {
+  margin: 0 var(--space-page, 16px) 4px;
+}
