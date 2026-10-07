@@ -473,9 +473,6 @@ export default function TravelHome() {
               </div>
             </Link>
           ) : null}
-          {surface.consequenceLine ? (
-            <p className="travel-mobile-consequence">{surface.consequenceLine}</p>
-          ) : null}
           <div className="surface-filters" role="tablist" aria-label="Filters">
             {(
               [
