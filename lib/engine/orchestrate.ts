@@ -279,8 +279,9 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
   // an explicit dependency so the action layer has a concrete target.
   let resolvedReference: ReturnType<typeof resolveReference> | null = null;
   if (containsReference(input.utterance)) {
+    const context = input.context;
     const contextReferents = [
-      ...(input.context.jobs ?? []).map((job) => ({
+      ...(context?.jobs ?? []).map((job) => ({
         id: job.id,
         type: 'job' as const,
         label: job.name,
@@ -290,7 +291,7 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
         confidence: 'medium' as const,
         relationships: {},
       })),
-      ...(input.context.meetings ?? []).map((meeting) => ({
+      ...(context?.meetings ?? []).map((meeting) => ({
         id: meeting.id,
         type: 'meeting' as const,
         label: meeting.text,
