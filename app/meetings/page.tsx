@@ -361,13 +361,13 @@ export default function MeetingsHome() {
       >
         <div className="meeting-row-main">
           <div className="meeting-row-top">
-            <span className="meeting-row-name">{m.text}</span>
+            <span className="meeting-row-name surface-object-title">{m.text}</span>
             {m.source === 'outlook' ? (
               <span className="meeting-source-tag">outlook</span>
             ) : null}
           </div>
           <div className="meeting-row-sub">
-            <span className="meeting-window mono">
+            <span className="meeting-window surface-object-time mono">
               {fmtMeetingWindow(m.start_time, m.duration_mins)}
             </span>
             {job || m.location_text ? (
