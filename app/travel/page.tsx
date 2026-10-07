@@ -346,42 +346,34 @@ export default function TravelHome() {
             <div className="trip-row-top">
               <span className="trip-row-name surface-object-title">{tr.name}</span>
             </div>
-            <div className="trip-row-sub">
-              <span className="trip-row-dates surface-object-time mono">
-                {fmtDateRange(tr.start_date, tr.end_date)}
-              </span>
-              <ContextLine
-                className="trip-row-context"
-                items={[
-                  ...(row?.dayCount && row.dayCount > 1 ? [{ label: `${row.dayCount} days` }] : []),
-                  ...(stops != null && stops > 0 ? [{ label: `${stops} stop${stops === 1 ? '' : 's'}` }] : []),
-                ]}
-              />
+            <div className="trip-row-time surface-object-time mono">
+              {fmtDateRange(tr.start_date, tr.end_date)}
+              {row?.relativeLine ? (
+                <>
+                  <span className="trip-row-state-sep" aria-hidden="true"> · </span>
+                  <span className={pressure === 'now' || pressure === 'soon' ? 'trip-row-relative is-urgent' : 'trip-row-relative'}>
+                    {row.relativeLine}
+                  </span>
+                </>
+              ) : null}
             </div>
-          </div>
-          <div className="trip-row-aside">
-            {row?.relativeLine ? (
-              <span
-                className={`trip-relative${
-                  pressure === 'now' || pressure === 'soon' ? ' is-urgent' : ''
-                }`}
-              >
-                {row.relativeLine}
-              </span>
-            ) : null}
-            {row?.phaseLabel ? (
-              <span className={`trip-phase phase-${row.phase}`}>
-                {row.phaseLabel}
-              </span>
+            <ContextLine
+              className="trip-row-context"
+              items={[
+                ...(row?.dayCount && row.dayCount > 1 ? [{ label: `${row.dayCount} days` }] : []),
+                ...(stops != null && stops > 0 ? [{ label: `${stops} stop${stops === 1 ? '' : 's'}` }] : []),
+              ]}
+            />
+            {(row?.phaseLabel || stops != null) ? (
+              <div className="trip-row-state surface-object-state">
+                {row?.phaseLabel ? <span>{row.phaseLabel}</span> : null}
+                {row?.phaseLabel && stops != null ? <span aria-hidden="true"> · </span> : null}
+                {stops != null ? <span>{stops} stop{stops === 1 ? '' : 's'}</span> : null}
+              </div>
             ) : null}
           </div>
         </Link>
-        <button
-          type="button"
-          className="trip-row-delete"
-          onClick={(e) => deleteTrip(tr.id, e)}
-          aria-label={`Delete ${tr.name}`}
-        >
+        <button type="button" className="trip-row-delete" onClick={(e) => deleteTrip(tr.id, e)} aria-label={`Delete ${tr.name}`}>
           <TrashIcon />
         </button>
       </div>
@@ -466,12 +458,13 @@ export default function TravelHome() {
               href={`/travel/${featured.id}`}
               className="travel-featured surface-object surface-object-featured travel-featured-mobile"
             >
-              <div className="travel-featured-label">
-                {featuredRow.phase === 'active' ? 'Now' : 'Next'}
-              </div>
               <div className="travel-featured-body">
                 <span className="travel-featured-title">{featured.name}</span>
-                <span className="travel-featured-meta">{featuredRow.relativeLine}</span>
+                <span className="travel-featured-time surface-object-time mono">
+                  {fmtDateRange(featured.start_date, featured.end_date)}
+                  <span aria-hidden="true"> · </span>
+                  {featuredRow.phase === 'active' ? 'Now' : 'Next'}
+                </span>
               </div>
             </Link>
           ) : null}
