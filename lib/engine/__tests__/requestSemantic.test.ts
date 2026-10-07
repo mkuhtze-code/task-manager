@@ -9,6 +9,28 @@ import { emptyWorkingMemory } from '../workingMemory';
 const INPUT =
   'I need to go to Bunnings to grab 2 cartridges of clear Sika MS and 2 sausages of Sika White MS';
 
+describe('information-gathering versus pickup semantics', () => {
+  it('treats "get measurements" as a task, not a pickup', () => {
+    const parsed = interpretRequestUtterance(
+      'I need to call Jordan to get the measurements for the downpipes for Angela Place'
+    );
+    expect(parsed.action).toBe('create_task');
+    expect(parsed.locationText).toBe('Angela Place');
+    expect(parsed.objectText).toBe(
+      'call Jordan to get the measurements for the downpipes for Angela Place'
+    );
+  });
+
+  it('still treats "get screws" as a pickup', () => {
+    const parsed = interpretRequestUtterance(
+      'I need to go to Bunnings to get 2 boxes of screws'
+    );
+    expect(parsed.action).toBe('pickup');
+    expect(parsed.locationText).toBe('Bunnings');
+    expect(parsed.objectText).toBe('2 boxes of screws');
+  });
+});
+
 describe('material errand semantic extraction', () => {
   it('extracts the destination without swallowing the purpose phrase', () => {
     const parsed = interpretRequestUtterance(INPUT);
