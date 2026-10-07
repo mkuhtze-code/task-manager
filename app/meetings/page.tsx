@@ -422,6 +422,8 @@ export default function MeetingsHome() {
             <div className="meetings-mobile-identity">
               <h1 className="app-title">Meetings</h1>
               <p className="meetings-mobile-pulse">
+                Conversations in time
+                <span className="meetings-sep">·</span>
                 {surface.pulseTitle}
                 {surface.pulseMeta ? (
                   <>
