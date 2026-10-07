@@ -399,54 +399,6 @@ function extractLocation(text: string): string | null {
     }
   }
 
-  if (!location) {
-    /*
-     * Semantic location pass: choose the last meaningful place-introducing
-     * preposition, then cut at temporal/clausal boundaries. This mirrors
-     * normal language interpretation: "at 4pm today about Angela Place"
-     * contains a time at first, but the later "about Angela Place" is the
-     * actual task context.
-     */
-    const candidates = [...text.matchAll(/\b(?:at|to|from|for|about)\s+/gi)];
-    for (let i = candidates.length - 1; i >= 0; i -= 1) {
-      const marker = candidates[i];
-      const prep = marker[0].trim().toLowerCase();
-      const tail = text.slice((marker.index ?? 0) + marker[0].length);
-      if (/^(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|noon|midnight)\b/i.test(tail.trim())) continue;
-      if (prep === 'to' && /^(?:get|grab|pick\s*up|pickup|collect|fetch|buy|purchase|check|inspect|measure|review|confirm|ask|tell|arrange|see|find|find\s+out|look\s+at)\b/i.test(tail.trim())) continue;
-
-      let candidate = tail
-        .replace(/\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b.*$/i, '')
-        .replace(/\s+(?:noon|midnight)\b.*$/i, '')
-        .replace(/\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i, '')
-        .replace(/\s+(?:because|although|but|and\s+(?:then|i|we|they))\b.*$/i, '')
-        .replace(/\s+(?:is|are|was|were)\s+(?:wrong|right|correct|available|ready|late|missing|damaged|fine)\b.*$/i, '')
-        .replace(/\s+(?:on|after|before)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|the\s+meeting)\b.*$/i, '')
-        .replace(/[.,]+$/, '')
-        .trim();
-
-      // "the quote at Angela Place" -> the actual place is after "at".
-      const nestedAt = candidate.match(/^.+?\s+at\s+(.+)$/i);
-      if (nestedAt?.[1]) candidate = nestedAt[1].trim();
-
-      if (candidate.length < 2 || candidate.length > 120) continue;
-      if (/^(?:4pm|12pm|noon|midnight|the\s+quote|the\s+measurements|the\s+flashing)$/i.test(candidate)) continue;
-
-      location = candidate;
-      break;
-    }
-  }
-
-  if (!location) {
-    // Procurement source beats a trailing job-purpose phrase:
-    // "Get 6 lengths of gutter from the supplier for Smith Road" -> supplier.
-    const physicalSource = text.match(
-      /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\b/i
-    );
-    if (physicalSource?.[1]) {
-      location = physicalSource[1].trim();
-    }
-  }
 
   if (!location) {
     /*
