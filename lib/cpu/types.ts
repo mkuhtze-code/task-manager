@@ -21,6 +21,7 @@ import type {
 } from '@/lib/engine/interactionTypes';
 import type { ReconciledConflict, ReconciledOpportunity } from './reconcile/types';
 import type { BeliefGraph } from './beliefs';
+import type { BehaviorObservation } from './behavior';
 import type { ContextReferenceResolution } from './referenceResolver';
 
 export type CpuBrainId =
@@ -48,6 +49,8 @@ export type CpuInterface =
   | 'unknown';
 
 export type CpuInput = InteractionInput & {
+  /** Real user behaviour observed after or around an interaction. */
+  behavior?: BehaviorObservation[];
   /**
    * Optional CPU metadata. Existing InteractionInput remains the canonical
    * input contract and is never mutated.
