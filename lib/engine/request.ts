@@ -305,7 +305,7 @@ function extractLocation(text: string): string | null {
     }
   }
 
-
+  if (!location) {
     const re = /\b(?:at|to|from|for)\s+/gi;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
