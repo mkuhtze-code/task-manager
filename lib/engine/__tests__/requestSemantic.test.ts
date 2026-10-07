@@ -45,13 +45,14 @@ describe('material errand semantic extraction', () => {
     expect(parsed.objectText).toBe('2 cartridges of clear Sika MS');
   });
 
-  it('handles spoken movement phrasing with a for-purpose boundary', () => {
+  it('handles spoken movement phrasing with an and-purpose pickup', () => {
     const parsed = interpretRequestUtterance(
-      'I need to head to Mitre 10 for 2 boxes of screws'
+      'I need to head to Mitre 10 and get 2 boxes of screws'
     );
 
-    expect(parsed.action).toBe('create_task');
+    expect(parsed.action).toBe('pickup');
     expect(parsed.locationText).toBe('Mitre 10');
+    expect(parsed.objectText).toBe('2 boxes of screws');
   });
 
   it('does not regress ordinary destination extraction', () => {
