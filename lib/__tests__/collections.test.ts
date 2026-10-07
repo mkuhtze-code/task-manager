@@ -83,6 +83,21 @@ describe('detectCollectionIntent', () => {
     expect(i?.type).toBe('append_collection');
   });
 
+  it('does not treat explicit imperative tasks as implicit items', () => {
+    for (const phrase of [
+      'call John about the Smith Street flashing',
+      'check flashings for Smith Street',
+      'fix the leaking gutter',
+      'send the quote to John',
+    ]) {
+      const i = detectCollectionIntent(phrase, {
+        activeCollectionId: 'c1',
+        msSinceLastActivity: 60_000,
+      });
+      expect(i).toBeNull();
+    }
+  });
+
   it('does not treat need-to tasks as implicit items', () => {
     const i = detectCollectionIntent('Need to call the plumber about the leak.', {
       activeCollectionId: 'c1',
