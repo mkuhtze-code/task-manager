@@ -340,6 +340,23 @@ export function TodayHeader(props: {
           </div>
         </div>
 
+        <div className="desk-today-instrument" aria-label="Today instrument">
+          <div className="desk-today-now">
+            <span className="desk-today-now-kicker">Now</span>
+            <strong className="desk-today-now-value">{isWorkDay ? fmtMins(Math.max(minutesLeftToday, 0)) : '—'}</strong>
+            <span className="desk-today-now-label">{isWorkDay ? 'working time left' : 'outside working day'}</span>
+          </div>
+          <div className="desk-today-capacity">
+            <div className="desk-today-capacity-head"><span>Capacity</span><strong className={overloaded ? 'is-over-text' : undefined}>{overloaded ? ('Over by ' + fmtMins(overBy)) : (fmtMins(Math.max(usable, 0)) + ' usable')}</strong></div>
+            <div className="desk-today-capacity-track" aria-hidden="true"><span className={overloaded ? 'is-over' : ''} style={{ width: Math.min(100, Math.max(0, planned > 0 && usable > 0 ? (planned / usable) * 100 : 0)) + '%' }} /></div>
+            <div className="desk-today-capacity-meta mono"><span>{fmtMins(planned)} planned</span>{fixed > 0 ? <span>{fmtMins(fixed)} fixed</span> : null}{travel > 0 ? <span>~{fmtMins(travel)} travel</span> : null}</div>
+          </div>
+          <div className="desk-today-next">
+            <span className="desk-today-next-kicker">Next</span>
+            <strong>{dayDepth?.fitsNow?.[0] ?? deskContext?.nextCommitment?.title ?? 'Your next move'}</strong>
+            <span>{deskContext?.nextCommitment ? deskContext.nextCommitment.when : overloaded ? 'Needs reshaping' : dayRead}</span>
+          </div>
+        </div>
         <div className="desk-today-rail" aria-label="Today's shape">
           <div className="desk-today-rail-head">
             <span className="desk-today-rail-label">Today's shape</span>
