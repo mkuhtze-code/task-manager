@@ -3007,8 +3007,9 @@ export function TodayPage() {
             jobId: t.job_id,
             jobName: jobs.find((j) => j.id === t.job_id)?.name ?? null,
           }))}
-          addTaskWithOverrides={(o) => {
-            void addTask(o);
+          addTaskWithOverrides={async (o) => {
+            await addTask(o);
+            return null;
           }}
           remainingMinsToday={Math.max(0, minutesLeftToday - remainingWorkMins)}
           dockMeetings={[
