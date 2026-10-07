@@ -2264,3 +2264,159 @@ html[data-theme='dark'] .desk-job-card:first-child{
     radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 17%,transparent),transparent 36%),
     linear-gradient(125deg,color-mix(in srgb,var(--dk-orange) 11%,var(--paper-raised)),var(--paper-raised) 58%)!important;
 }
+
+
+/* ==========================================================================
+   TODAY COCKPIT — Make the whole day the hero object.
+   ========================================================================== */
+@media (min-width:701px){
+  .desk-today-instrument{
+    display:grid;
+    grid-template-columns:minmax(190px,.8fr) minmax(300px,1.5fr) minmax(220px,.95fr);
+    gap:0;
+    margin:22px 0 0;
+    border:1px solid color-mix(in srgb,var(--dk-blue) 20%,var(--line));
+    border-radius:20px;
+    overflow:hidden;
+    background:
+      radial-gradient(circle at 12% 0%,color-mix(in srgb,var(--dk-orange) 11%,transparent),transparent 32%),
+      linear-gradient(110deg,color-mix(in srgb,var(--paper-raised) 94%,var(--dk-orange)),var(--paper-raised) 48%,color-mix(in srgb,var(--paper-raised) 94%,var(--dk-blue)));
+    box-shadow:0 16px 38px rgba(15,23,42,.09);
+  }
+
+  .desk-today-now,
+  .desk-today-capacity,
+  .desk-today-next{
+    min-height:154px;
+    padding:24px 26px;
+  }
+
+  .desk-today-capacity,
+  .desk-today-next{
+    border-left:1px solid color-mix(in srgb,var(--dk-blue) 13%,var(--line));
+  }
+
+  .desk-today-now{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+
+  .desk-today-now-kicker,
+  .desk-today-next-kicker{
+    color:var(--dk-orange);
+    font:900 9px/1 var(--font-label,inherit);
+    letter-spacing:.2em;
+    text-transform:uppercase;
+  }
+
+  .desk-today-now-value{
+    display:block;
+    margin-top:9px;
+    font-size:clamp(42px,5vw,68px);
+    line-height:.9;
+    letter-spacing:-.065em;
+    font-weight:900;
+  }
+
+  .desk-today-now-label{
+    margin-top:9px;
+    color:var(--ink-soft);
+    font-size:11px;
+  }
+
+  .desk-today-capacity{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+
+  .desk-today-capacity-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    font-weight:800;
+  }
+
+  .desk-today-capacity-head strong{
+    font-size:12px;
+    letter-spacing:0;
+    text-transform:none;
+  }
+
+  .desk-today-capacity-track{
+    height:16px;
+    margin:16px 0 10px;
+    border-radius:999px;
+    background:color-mix(in srgb,var(--ink) 8%,transparent);
+    overflow:hidden;
+  }
+
+  .desk-today-capacity-track span{
+    display:block;
+    height:100%;
+    min-width:3px;
+    border-radius:inherit;
+    background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+  }
+
+  .desk-today-capacity-track span.is-over{
+    background:var(--dk-orange);
+  }
+
+  .desk-today-capacity-meta{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    color:var(--ink-soft);
+    font-size:10px;
+  }
+
+  .desk-today-next{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+
+  .desk-today-next strong{
+    margin-top:10px;
+    font-size:18px;
+    line-height:1.12;
+    letter-spacing:-.025em;
+  }
+
+  .desk-today-next > span:last-child{
+    margin-top:8px;
+    color:var(--ink-soft);
+    font-size:11px;
+    line-height:1.4;
+  }
+
+  .desk-today-rail{
+    margin-top:14px!important;
+  }
+
+  .desk-today-rail-track{
+    height:18px!important;
+    border-radius:999px!important;
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dk-blue) 10%,transparent);
+  }
+
+  .desk-today-rail-now{
+    width:3px!important;
+    box-shadow:0 0 0 5px color-mix(in srgb,var(--dk-orange) 12%,transparent),0 0 16px color-mix(in srgb,var(--dk-orange) 40%,transparent)!important;
+  }
+
+  .desk-today-rail-label{
+    color:var(--dk-blue)!important;
+    font-weight:850!important;
+  }
+}
+
+@media (max-width:700px){
+  .desk-today-instrument{display:none}
+}
