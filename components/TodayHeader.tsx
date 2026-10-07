@@ -340,6 +340,40 @@ export function TodayHeader(props: {
           </div>
         </div>
 
+        <div className="desk-today-rail" aria-label="Today's shape">
+          <div className="desk-today-rail-head">
+            <span className="desk-today-rail-label">Today's shape</span>
+            <span className="mono">{fmtClock(workStart)} — {fmtClock(workEnd)}</span>
+          </div>
+          <div className="desk-today-rail-track" role="img" aria-label="Current workday shape">
+            <div className="desk-today-rail-elapsed" style={{ width: `${nowPercent * 100}%` }} />
+            <div
+              className={['desk-today-rail-load', overloaded ? 'is-over' : ''].join(' ')}
+              style={{
+                left: `${nowPercent * 100}%`,
+                width: `${planWidthPercent * 100}%`,
+              }}
+            />
+            {markers.map((m, i) => (
+              <div
+                key={`rail-${m.label}-${i}`}
+                className="desk-today-rail-fixed"
+                title={m.label}
+                style={{
+                  left: `${m.startPct * 100}%`,
+                  width: `${Math.max((m.endPct - m.startPct) * 100, 0.8)}%`,
+                }}
+              />
+            ))}
+            <div className="desk-today-rail-now" style={{ left: `${nowPercent * 100}%` }} />
+          </div>
+          <div className="desk-today-rail-foot">
+            <span>{isWorkDay ? `${fmtMins(minutesLeftToday)} left` : 'Off day'}</span>
+            <strong>{overloaded ? `Over by ${fmtMins(overBy)}` : dayRead}</strong>
+            <span>{isWorkDay ? `${fmtMins(Math.max(usable, 0))} usable` : `${fmtMins(remainingWorkMins)} carrying`}</span>
+          </div>
+        </div>
+
         {capacityOpen ? (
           <div className="desk-today-depth" aria-label="Day depth">
             <p className="desk-depth-read">{dayRead}</p>
