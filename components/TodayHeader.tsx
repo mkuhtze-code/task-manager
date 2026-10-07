@@ -644,72 +644,72 @@ export function TodayHeader(props: {
         .filter(Boolean)
         .join(' ')}
     >
-      <div className="today-header-top-row">
-        <button
-          type="button"
-          className="today-header-summary-toggle"
-          onClick={() => setCapacityOpen((v) => !v)}
-          aria-expanded={capacityOpen}
-          aria-label="Toggle today's details"
-        >
-          <span className="today-header-date-block">
-            <span className="today-header-weekday">{weekdayLabel}</span>
-            <span className="today-header-date">{dateOnlyLabel}</span>
-          </span>
-
-          <span className="today-header-summary-state">
-            {isWorkDay ? (
-              <>
-                <span
-                  className={
-                    overloaded
-                      ? 'header-fit-icon over'
-                      : 'header-fit-icon fits'
-                  }
-                >
-                  {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
-                </span>
-
-                <span className="today-header-summary-copy">
-                  <span className="today-header-summary-title">
-                    {overloaded
-                      ? `Over by ${fmtMins(overBy)}`
-                      : remainingWorkMins > 0
-                        ? `${fmtMins(remainingWorkMins)} planned`
-                        : 'Nothing timed'}
-                  </span>
-                  <span className="today-header-summary-meta">
-                    {fmtMins(minutesLeftToday)} time left
-                  </span>
-                </span>
-              </>
-            ) : (
-              <span className="today-header-summary-copy">
-                <span className="today-header-summary-title">
-                  Off
-                </span>
-                <span className="today-header-summary-meta">
-                  {fmtMins(remainingWorkMins)} carrying forward
-                </span>
-              </span>
-            )}
-
-            <span
-              className={
-                capacityOpen
-                  ? 'today-capacity-chevron open'
-                  : 'today-capacity-chevron'
-              }
-              aria-hidden="true"
-            >
-              <ChevronIcon size={14} />
-            </span>
-          </span>
-        </button>
-
-        <div className="today-header-top-right">
-          <GearMenu userId={userId} />
+      <div className={[
+        'mobile-today-cockpit',
+        overloaded ? 'is-over' : '',
+        !isWorkDay ? 'is-off' : '',
+      ].filter(Boolean).join(' ')} aria-label="Today cockpit">
+        <div className="mobile-today-cockpit-top">
+          <div className="mobile-today-cockpit-brand">
+            <span className="mobile-today-cockpit-kicker">Today</span>
+            <span className="mobile-today-cockpit-date">{weekdayLabel} · {dateOnlyLabel}</span>
+          </div>
+          <div className="mobile-today-cockpit-actions">
+            <GearMenu userId={userId} />
+            {onDockIt ? (
+              <button type="button" className="mobile-today-dock" onClick={(e) => { e.stopPropagation(); onDockIt(); }}>
+                <span aria-hidden="true">+</span> Dock it
+              </button>
+            ) : null}
+          </div>
         </div>
+
+        <div className="mobile-today-cockpit-readout">
+          <div className="mobile-today-cockpit-time">
+            <strong className="mono">{isWorkDay ? fmtMins(Math.max(minutesLeftToday, 0)) : '—'}</strong>
+            <span>{isWorkDay ? 'working time left' : 'outside working day'}</span>
+          </div>
+          <div className="mobile-today-cockpit-fit">
+            <span className={overloaded ? 'mobile-today-fit-dot over' : 'mobile-today-fit-dot'} aria-hidden="true" />
+            <strong>{!isWorkDay ? 'OFF DAY' : overloaded ? 'DOES NOT FIT' : remainingWorkMins > 0 ? 'FITS' : 'CLEAR'}</strong>
+            <span>{overloaded ? (overBy ? fmtMins(overBy) : '0m') + ' over' : fmtMins(remainingCapacity) + ' buffer'}</span>
+          </div>
+        </div>
+
+        {isWorkDay ? (
+          <div className="mobile-today-capacity" aria-label="Remaining capacity">
+            <div className="mobile-today-capacity-head">
+              <span>TIME SHAPE</span>
+              <span className="mono">{fmtMins(remainingWorkMins)} on plate</span>
+            </div>
+            <div className="mobile-today-capacity-track" aria-hidden="true">
+              <span
+                className={overloaded ? 'is-over' : ''}
+                style={{ width: (Math.min(100, Math.max(0, minutesLeftToday > 0 ? (remainingWorkMins / minutesLeftToday) * 100 : 0))) + '%' }}
+              />
+              <i style={{ left: (Math.min(100, Math.max(0, nowPercent * 100))) + '%' }} />
+            </div>
+            <div className="mobile-today-capacity-foot">
+              <span>{fmtClock(workStart)}</span>
+              <strong>{overloaded ? '+' + fmtMins(overBy) + ' to reshape' : fmtMins(remainingCapacity) + ' spare'}</strong>
+              <span>{fmtClock(workEnd)}</span>
+            </div>
+          </div>
+        ) : null}
+
+        {deskContext?.nextCommitment ? (
+          <div className="mobile-today-next">
+            <span className="mobile-today-next-kicker">NEXT FIXED TIME</span>
+            <strong>{deskContext.nextCommitment.title}</strong>
+            <span>{deskContext.nextCommitment.when}</span>
+          </div>
+        ) : commitments.length > 0 ? (
+          <div className="mobile-today-next">
+            <span className="mobile-today-next-kicker">FIXED TIME AHEAD</span>
+            <strong>{commitments[0].title}</strong>
+            <span>{commitmentWindow(commitments[0])}</span>
+          </div>
+        ) : null}
       </div>
 
       <div className={[
