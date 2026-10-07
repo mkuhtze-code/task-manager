@@ -208,8 +208,8 @@ export function answerFeasibility(
 }
 
 /**
- * Light fit Decision for ACT — same V3 path as ANSWER, no second architecture.
- * Does not block ACT; attaches DecisionTrace so authority is auditable.
+ * Light fit Decision for ACT — deliberately reuses the exact same V3
+ * feasibility path as ANSWER. ACT must never make a second capacity decision.
  */
 export function actFitDecision(
   cycle: EngineCycleResult,
@@ -220,70 +220,11 @@ export function actFitDecision(
   decisionTrace: DecisionTrace | null;
   facts: string[];
 } {
-  const facts: string[] = [];
-  const remaining = input.context.remainingMinsToday;
-  if (remaining == null) {
-    return { fitState: null, decision: null, decisionTrace: null, facts: ['act_fit:no_remaining'] };
-  }
-
-  const estimate =
-    (cycle.action.kind === 'create_task' || cycle.action.kind === 'update_task'
-      ? cycle.action.estimateMins
-      : null) ?? 30;
-  const travel = input.context.travelMins ?? 0;
-  const capacityMins = Math.max(estimate, 15) + travel;
-
-  const meetings = input.context.meetings ?? [];
-  const nowMs = Date.now();
-  let minsToNextCommitment: number | null = null;
-  for (const m of meetings) {
-    if (!m.startAt) continue;
-    const start = Date.parse(m.startAt);
-    if (start > nowMs) {
-      const minsUntil = Math.round((start - nowMs) / 60000);
-      if (minsToNextCommitment == null || minsUntil < minsToNextCommitment) {
-        minsToNextCommitment = minsUntil;
-      }
-    }
-  }
-
-  const fitDecision = decideTaskFit({
-    capacityMins,
-    remainingWindowMins: remaining,
-    sameDayRate: null,
-    protectFromCarry: false,
-    dueToday: true,
-    hasIntendedTime: !!cycle.request.timeHint,
-    isActive: false,
-    behaviour: null,
-    clusterBehaviour: null,
-    duration: null,
-    calendar: {
-      remainingWindowMins: remaining,
-      minsToNextCommitment,
-      meetingDensity: meetings.length > 0 ? Math.min(1, meetings.length / 4) : 0,
-    },
-    softFloorMins: estimate,
-  });
-
-  facts.push(`v3_fit=${fitDecision.fit}`, `v3_confidence=${fitDecision.confidence}`);
-  for (const reason of fitDecision.reasons.slice(0, 4)) {
-    facts.push(`v3:${reason}`);
-  }
-
-  const decision = decisionFromFit(fitDecision, {
-    typedEstimateMins: capacityMins,
-    contextAt: new Date().toISOString(),
-    evidenceIds: facts.slice(0, 8).map((f, i) => `act-${i}-${f.slice(0, 24)}`),
-  });
-  const decisionTrace = traceFromFit(fitDecision, decision, {
-    typedEstimateMins: capacityMins,
-  });
-
+  const answer = answerFeasibility('', cycle, input);
   return {
-    fitState: fitDecision.fit,
-    decision,
-    decisionTrace,
-    facts,
+    fitState: answer.fitState ?? null,
+    decision: answer.decision ?? null,
+    decisionTrace: answer.decisionTrace ?? null,
+    facts: answer.evidence,
   };
 }
