@@ -217,7 +217,7 @@ function actionFromPlan(
   const isRefinement =
     req.rawUtterances.length > 1 &&
     /^(?:actually|sorry|no[, ]|i\\s+need\\s+it|make\\s+that|put\\s+that|move\\s+(?:it|that)|change\\s+(?:it|that)|update\\s+(?:it|that)|add\\s+(?:that|this)|on\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|tomorrow|today)\\b/i.test(
-      input.utterance.trim()
+      req.rawUtterances.at(-1)?.trim() ?? ''
     );
   if (boundTaskId && isRefinement) {
     return {
