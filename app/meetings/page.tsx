@@ -427,7 +427,7 @@ export default function MeetingsHome() {
             </Link>
             <div className="meetings-mobile-identity surface-mobile-identity">
               <h1 className="app-title">Meetings</h1>
-              <p className="meetings-mobile-pulse">
+              <p className="meetings-mobile-pulse surface-mobile-pulse">
                 Conversations in time
                 <span className="meetings-sep">·</span>
                 {surface.pulseTitle}
