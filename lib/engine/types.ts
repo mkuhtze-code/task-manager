@@ -216,6 +216,8 @@ export type ReasoningContext = {
 };
 
 export type EngineCycleResult = {
+  /** Structured semantic interpretation produced before reasoning/execution. */
+  semantic: import('./semanticInterpreter').SemanticInterpretation;
   meaningSummary: string;
   request: EngineRequest;
   workingMemory: WorkingMemorySnapshot;
