@@ -108,7 +108,7 @@ userId?: string | null;
 listOps?: TaskListOps | null;
 listTasks?: ListTaskCandidate[];
 /** When set, dock may pass engine-structured fields instead of only the text line. */
-addTaskWithOverrides?: (o: EngineDockOverrides) => void;
+addTaskWithOverrides?: (o: EngineDockOverrides) => void | Promise<string | null>;
 /** Remaining capacity today (mins) for engine planning. */
 remainingMinsToday?: number | null;
 /** Timed meetings / calendar for ANSWER feasibility. */
@@ -540,7 +540,7 @@ if (line && addTaskWithOverrides) {
               throw new Error('Capture task executor is not connected.');
             }
 
-            addTaskWithOverrides({
+            return (await addTaskWithOverrides({
               text: action.text,
               locationText: action.locationText,
               jobId: action.jobId,
@@ -551,16 +551,14 @@ if (line && addTaskWithOverrides) {
               engineRequest: dock.overrides.engineRequest,
               evidence: dock.overrides.evidence,
               workingMemory: dock.overrides.workingMemory,
-            });
-
-            return null;
+            })) ?? null;
           },
           updateTask: async (action) => {
             if (!addTaskWithOverrides) {
               throw new Error('Capture task executor is not connected.');
             }
 
-            addTaskWithOverrides({
+            await addTaskWithOverrides({
               text: action.text ?? dock.overrides.text,
               locationText: action.locationText,
               jobId: action.jobId,
