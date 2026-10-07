@@ -142,6 +142,34 @@ export function extractDurationHint(text: string): number | null {
   return rounded > 0 && rounded <= 24 * 60 ? rounded : null;
 }
 
+
+/**
+ * Identify the user's primary task verb, not a nested purpose verb.
+ *
+ * Examples:
+ *   "I need to call Jordan to get the measurements" -> call
+ *   "I need to pick up the screws" -> pick up
+ *   "I need to get the measurements" -> get
+ *
+ * This is deliberately anchored to the primary task position so a nested
+ * "get/grab/pick up" cannot overwrite an explicit leading action such as
+ * "call" or "email".
+ */
+function extractPrimaryTaskVerb(text: string): string | null {
+  const match = text.match(
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|deliver|take|leave|remind|schedule)\\b/i
+  );
+  return match?.[1]?.toLowerCase() ?? null;
+}
+
+function isPhysicalPickupVerb(verb: string | null): boolean {
+  return !!verb && /^(?:pick\\s*up|pickup|grab|collect|fetch)$/.test(verb);
+}
+
+function isDropOffVerb(verb: string | null): boolean {
+  return !!verb && /^(?:drop\\s+off|dropoff|deliver|take|leave)$/.test(verb);
+}
+
 function extractDateHint(text: string): string | null {
   const matches = Array.from(
     text.matchAll(
@@ -537,9 +565,20 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   // ---------------------------------------------------------------------------
 
   const objectPatterns = [
+    /*
+     * PRIMARY ACTION FIRST.
+     *
+     * A compound request such as:
+     *   "I need to call Jordan to get the measurements for the downpipes"
+     * must bind to CALL. Do not let the nested "get" pattern below steal
+     * "the measurements" and turn the whole task into a pickup.
+     */
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)\s*(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+
     /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
-    // Movement + purpose: "go to Bunnings and grab two cartridges".
+    // Movement / physical collection. This intentionally comes AFTER
+    // explicit primary-action parsing so nested "get" does not win.
     /\b(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:from|at|to|for)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     /\b(?:remind\s+me\s+(?:about|to)\s+)(.+)$/i,
@@ -547,7 +586,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     // Generic explicit commitment: preserve the complete task phrase.
     /\b(?:i\s+)?(?:need|have|got)\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
-    // Bare imperative: "call John", "check flashings", "send the quote".
+    // Bare imperative fallback.
     /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
   ];
@@ -987,19 +1026,58 @@ export function applyUtteranceToRequest(
  */
 export function requestTaskText(req: EngineRequest): string {
   const firstUtterance = req.rawUtterances[0] ?? '';
-  const lowerFirst = firstUtterance.toLowerCase();
+  const primaryVerb = extractPrimaryTaskVerb(firstUtterance);
 
-  const isDropOff = /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(lowerFirst);
+  /*
+   * Never infer PICK UP merely because the sentence contains "get", "grab",
+   * etc. Those verbs are frequently nested purposes:
+   *   "call Jordan to get measurements"
+   *   "email Sarah to get the quote"
+   *
+   * The primary verb is authoritative for task wording.
+   */
+  const isDropOff =
+    req.action === 'create_task'
+      ? isDropOffVerb(primaryVerb)
+      : false;
+
   const isPickup =
     req.action === 'pickup' ||
-    /\b(?:pick\s*up|pickup|grab|collect|get|fetch)\b/i.test(lowerFirst);
+    isPhysicalPickupVerb(primaryVerb);
 
   const bits: string[] = [];
 
   if (isDropOff) {
     bits.push(req.objectText ? `Drop off ${req.objectText}` : 'Drop off');
-  } else if (req.action === 'remind' || isPickup) {
+  } else if (isPickup) {
     bits.push(req.objectText ? `Pick up ${req.objectText}` : 'Pick up');
+  } else if (primaryVerb && req.objectText) {
+    const displayVerb = primaryVerb
+      .replace(/\bcall\b/i, 'Call')
+      .replace(/\bring\b/i, 'Ring')
+      .replace(/\bphone\b/i, 'Phone')
+      .replace(/\bemail\b/i, 'Email')
+      .replace(/\btext\b/i, 'Text')
+      .replace(/\bmessage\b/i, 'Message')
+      .replace(/\bcontact\b/i, 'Contact')
+      .replace(/\bcheck\b/i, 'Check')
+      .replace(/\binspect\b/i, 'Inspect')
+      .replace(/\bconfirm\b/i, 'Confirm')
+      .replace(/\bask\b/i, 'Ask')
+      .replace(/\btell\b/i, 'Tell')
+      .replace(/\bmeet\b/i, 'Meet')
+      .replace(/\bget\b/i, 'Get')
+      .replace(/\bbuy\b/i, 'Buy')
+      .replace(/\bpurchase\b/i, 'Purchase')
+      .replace(/\bmeasure\b/i, 'Measure')
+      .replace(/\bfix\b/i, 'Fix')
+      .replace(/\brepair\b/i, 'Repair')
+      .replace(/\bcheck\b/i, 'Check')
+      .replace(/\bfollow\\s*up\b/i, 'Follow up');
+
+    bits.push(`${displayVerb} ${req.objectText}`);
+  } else if (req.action === 'remind' && req.objectText) {
+    bits.push(`Remind me ${req.objectText}`);
   } else if (req.objectText) {
     bits.push(req.objectText);
   } else if (firstUtterance) {
