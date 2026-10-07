@@ -485,7 +485,7 @@ export default function JobsHome() {
 
             <div className="jobs-mobile-identity surface-mobile-identity">
               <h1 className="app-title">Jobs</h1>
-              <p className="jobs-mobile-pulse">
+              <p className="jobs-mobile-pulse surface-mobile-pulse">
                 Work across days
                 <span className="jobs-sep">·</span>
                 {activeTodayCount} on Today
