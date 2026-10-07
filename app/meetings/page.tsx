@@ -425,7 +425,7 @@ export default function MeetingsHome() {
             <Link href="/" className="back-link" aria-label="Back to today">
               <BackIcon />
             </Link>
-            <div className="meetings-mobile-identity">
+            <div className="meetings-mobile-identity surface-mobile-identity">
               <h1 className="app-title">Meetings</h1>
               <p className="meetings-mobile-pulse">
                 Conversations in time
