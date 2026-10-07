@@ -53,51 +53,28 @@
   color: var(--ink-soft, #64748b);
 }
 
-/* Featured */
-
+/* Featured object: Travel emphasis within universal object grammar. */
 .travel-featured {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 16px;
   margin: 10px 20px 4px;
-  padding: 12px 16px;
-  border-radius: 14px;
-  border: 1px solid var(--line-strong, #cbd5e1);
-  background: var(--paper, #fff);
-  text-decoration: none;
-  color: inherit;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.travel-featured:hover {
-  border-color: rgba(30, 107, 230, 0.45);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
-}
-
-.travel-featured:focus-visible {
-  outline: 2px solid var(--steel, #1e6be6);
-  outline-offset: 2px;
 }
 
 .travel-featured-mobile {
   margin: 0;
-  grid-template-columns: auto 1fr;
 }
 
 .travel-featured-label {
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--steel-dark, #1e40af);
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: rgba(30, 107, 230, 0.08);
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--ink-faint, #94a3b8);
 }
 
 .travel-featured-body {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -121,17 +98,7 @@
 }
 
 .travel-featured-cta {
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--steel, #1e6be6);
-}
-
-.travel-consequence {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 550;
-  line-height: 1.4;
-  color: var(--ink-soft, #64748b);
+  display: none;
 }
 
 /* Workspace */
@@ -350,8 +317,3 @@ html[data-surface='desktop'] .travel-shell > .surface-nav,
 html[data-surface='desktop'] .travel-shell > nav.surface-nav {
   display: none;
 }
-
-/* Shared featured-object treatment: quiet, not a competing status badge. */
-.travel-featured-label { padding: 0; background: transparent; color: var(--ink-faint); }
-.travel-featured { box-shadow: none; border-color: var(--line); }
-.travel-featured:hover { box-shadow: none; border-color: var(--line-strong); }
