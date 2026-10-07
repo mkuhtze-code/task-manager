@@ -54,151 +54,204 @@ function fmtMins(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-function dimClass(level: Confidence): string {
-  return `patterns-dim is-${level}`;
+function confScore(c: Confidence): number {
+  return c === 'high' ? 1 : c === 'medium' ? 0.55 : 0.2;
 }
 
-/** Three-segment confidence indicator: sample · effect · consistency */
-function ConfidenceStrip({ visual }: { visual: PatternVisual }) {
-  const { dims } = visual;
+/** Overall strength 0–1 from confidence dimensions */
+function overallStrength(v: PatternVisual): number {
   return (
-    <div className="patterns-conf-strip" aria-label="Evidence strength">
-      <span className={dimClass(dims.sampleStrength)} title="Sample size">
-        n
-      </span>
-      <span className={dimClass(dims.effectStrength)} title="Effect size">
-        fx
-      </span>
-      <span className={dimClass(dims.consistencyStrength)} title="Consistency">
-        c
-      </span>
+    (confScore(v.dims.sampleStrength) +
+      confScore(v.dims.effectStrength) +
+      confScore(v.dims.consistencyStrength)) /
+    3
+  );
+}
+
+function typeKind(card: PatternCard): {
+  kind: string;
+  icon: string;
+  color: string;
+} {
+  const t = `${card.type} ${card.semanticType}`.toLowerCase();
+  if (t.includes('estimate') || t.includes('calibration') || t.includes('duration'))
+    return { kind: 'estimate', icon: '⏱', color: 'var(--pk-est)' };
+  if (t.includes('carry') || t.includes('overnight') || t.includes('persistence'))
+    return { kind: 'carry', icon: '→', color: 'var(--pk-carry)' };
+  if (t.includes('time_of_day') || t.includes('temporal') || t.includes('period'))
+    return { kind: 'time', icon: '◷', color: 'var(--pk-time)' };
+  if (t.includes('lifecycle') || t.includes('stale'))
+    return { kind: 'lifecycle', icon: '↺', color: 'var(--pk-life)' };
+  if (t.includes('cluster') || t.includes('context'))
+    return { kind: 'cluster', icon: '◎', color: 'var(--pk-cluster)' };
+  return { kind: 'other', icon: '·', color: 'var(--pk-other)' };
+}
+
+/* ── Strength ring (SVG) ── */
+function StrengthRing({
+  value,
+  size = 44,
+  color,
+}: {
+  value: number;
+  size?: number;
+  color: string;
+}) {
+  const r = (size - 6) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.min(1, Math.max(0, value));
+  const dash = pct * c;
+  return (
+    <svg
+      className="pk-ring"
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      aria-hidden="true"
+    >
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="var(--pk-track)"
+        strokeWidth={5}
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={5}
+        strokeLinecap="round"
+        strokeDasharray={`${dash} ${c - dash}`}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    </svg>
+  );
+}
+
+/* ── Dim bars (sample / effect / consistency) ── */
+function DimBars({ visual }: { visual: PatternVisual }) {
+  const items: { key: string; level: Confidence; label: string }[] = [
+    { key: 'n', level: visual.dims.sampleStrength, label: 'n' },
+    { key: 'fx', level: visual.dims.effectStrength, label: 'fx' },
+    { key: 'c', level: visual.dims.consistencyStrength, label: 'c' },
+  ];
+  return (
+    <div className="pk-dims" aria-label="Evidence dimensions">
+      {items.map((it) => (
+        <div key={it.key} className="pk-dim">
+          <div className="pk-dim-track">
+            <div
+              className={`pk-dim-fill is-${it.level}`}
+              style={{ height: `${confScore(it.level) * 100}%` }}
+            />
+          </div>
+          <span className="pk-dim-lbl">{it.label}</span>
+        </div>
+      ))}
     </div>
   );
 }
 
-/** Horizontal ratio scale for estimate calibration (0.5 ← 1.0 → 1.5+) */
-function RatioScale({ ratio, bias }: { ratio: number; bias: string | null }) {
-  // Map ratio onto 0–100% where 1.0 sits at 50%
+/* ── Ratio gauge for calibration ── */
+function RatioGauge({ ratio, bias }: { ratio: number; bias: string | null }) {
   const clamped = Math.min(2, Math.max(0.25, ratio));
   const pct = ((clamped - 0.25) / 1.75) * 100;
   return (
-    <div className="patterns-ratio" aria-label={`Median ratio ${ratio.toFixed(2)}`}>
-      <div className="patterns-ratio-track">
-        <span className="patterns-ratio-mid" />
+    <div className="pk-ratio" aria-label={`Ratio ${ratio.toFixed(2)}`}>
+      <div className="pk-ratio-track">
+        <span className="pk-ratio-zone left" />
+        <span className="pk-ratio-zone mid" />
+        <span className="pk-ratio-zone right" />
+        <span className="pk-ratio-center" />
         <span
-          className={`patterns-ratio-marker bias-${bias ?? 'balanced'}`}
+          className={`pk-ratio-dot bias-${bias ?? 'balanced'}`}
           style={{ left: `${pct}%` }}
         />
       </div>
-      <div className="patterns-ratio-labels">
-        <span>0.5×</span>
-        <span className="patterns-ratio-value mono">{ratio.toFixed(2)}×</span>
+      <div className="pk-ratio-nums">
+        <span>½</span>
+        <span className="pk-ratio-val">{ratio.toFixed(2)}×</span>
         <span>2×</span>
       </div>
     </div>
   );
 }
 
-/** Simple filled proportion bar */
-function ProportionBar({
-  value,
-  label,
-}: {
-  value: number;
-  label: string | null;
-}) {
+/* ── Proportion arc / bar ── */
+function PropGauge({ value, label }: { value: number; label: string | null }) {
   const pct = Math.round(Math.min(1, Math.max(0, value)) * 100);
   return (
-    <div className="patterns-prop" aria-label={`${pct}% ${label ?? ''}`}>
-      <div className="patterns-prop-track">
-        <div className="patterns-prop-fill" style={{ width: `${pct}%` }} />
+    <div className="pk-prop" aria-label={`${pct}%`}>
+      <div className="pk-prop-track">
+        <div className="pk-prop-fill" style={{ width: `${pct}%` }} />
       </div>
-      <span className="patterns-prop-meta mono">
-        {pct}%{label ? ` ${label}` : ''}
-      </span>
+      <span className="pk-prop-pct">{pct}%</span>
+      {label ? <span className="pk-prop-lbl">{label}</span> : null}
     </div>
   );
 }
 
-/** Time-of-day / period distribution as proportional segments */
-function PeriodStrip({ periods }: { periods: { label: string; ratio: number }[] }) {
+/* ── Period distribution as equal-height columns ── */
+function PeriodCols({
+  periods,
+}: {
+  periods: { label: string; ratio: number }[];
+}) {
   const top = periods.slice(0, 4);
+  const max = Math.max(...top.map((p) => p.ratio), 0.01);
   return (
-    <div className="patterns-periods" aria-label="Period distribution">
-      <div className="patterns-periods-bar">
-        {top.map((p) => (
-          <span
-            key={p.label}
-            className="patterns-period-seg"
-            style={{ flexGrow: Math.max(0.04, p.ratio) }}
-            title={`${p.label}: ${Math.round(p.ratio * 100)}%`}
-          />
-        ))}
-      </div>
-      <div className="patterns-periods-legend">
-        {top.map((p) => (
-          <span key={p.label} className="patterns-period-legend-item">
-            <span className="mono">{Math.round(p.ratio * 100)}%</span> {p.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StatusBadges({ card }: { card: PatternCard }) {
-  const badges: { key: string; label: string; tone: string }[] = [];
-  if (card.staleness === 'stale') {
-    badges.push({ key: 'stale', label: 'May be out of date', tone: 'warn' });
-  }
-  if (card.visual.contradictionStatus === 'partial') {
-    badges.push({ key: 'contra-p', label: 'Some conflict', tone: 'warn' });
-  } else if (card.visual.contradictionStatus === 'full') {
-    badges.push({ key: 'contra-f', label: 'Contradicted', tone: 'alert' });
-  }
-  if (card.visual.directionBias && card.visual.directionBias !== 'balanced') {
-    badges.push({
-      key: 'bias',
-      label: card.visual.directionBias === 'over' ? 'Over' : 'Under',
-      tone: 'info',
-    });
-  }
-  if (card.visual.recencyDays != null && card.visual.recencyDays <= 7) {
-    badges.push({ key: 'fresh', label: 'Recent', tone: 'ok' });
-  }
-  if (badges.length === 0) return null;
-  return (
-    <div className="patterns-badges">
-      {badges.map((b) => (
-        <span key={b.key} className={`patterns-badge tone-${b.tone}`}>
-          {b.label}
-        </span>
+    <div className="pk-periods" aria-label="Period distribution">
+      {top.map((p) => (
+        <div key={p.label} className="pk-period-col" title={`${p.label}: ${Math.round(p.ratio * 100)}%`}>
+          <div className="pk-period-bar-wrap">
+            <div
+              className="pk-period-bar"
+              style={{ height: `${(p.ratio / max) * 100}%` }}
+            />
+          </div>
+          <span className="pk-period-pct">{Math.round(p.ratio * 100)}</span>
+          <span className="pk-period-name">{shortPeriod(p.label)}</span>
+        </div>
       ))}
     </div>
   );
 }
 
-function PatternVisuals({ card }: { card: PatternCard }) {
-  const v = card.visual;
-  const hasRatio = v.medianRatio != null && v.medianRatio > 0;
-  const hasProp = v.proportion != null;
-  const hasPeriods = v.periods != null && v.periods.length > 0;
+function shortPeriod(label: string): string {
+  const l = label.toLowerCase();
+  if (l.includes('morning') || l === 'am') return 'AM';
+  if (l.includes('afternoon') || l === 'pm') return 'PM';
+  if (l.includes('evening') || l.includes('night')) return 'Eve';
+  if (l.includes('midday') || l.includes('noon')) return 'Noon';
+  return label.slice(0, 4);
+}
 
+/* ── Status dots ── */
+function StatusDots({ card }: { card: PatternCard }) {
+  const dots: { key: string; tone: string; title: string }[] = [];
+  if (card.staleness === 'stale')
+    dots.push({ key: 'stale', tone: 'warn', title: 'May be out of date' });
+  if (card.visual.contradictionStatus === 'partial')
+    dots.push({ key: 'cp', tone: 'warn', title: 'Some conflict' });
+  if (card.visual.contradictionStatus === 'full')
+    dots.push({ key: 'cf', tone: 'alert', title: 'Contradicted' });
+  if (card.visual.recencyDays != null && card.visual.recencyDays <= 7)
+    dots.push({ key: 'fresh', tone: 'ok', title: 'Recent evidence' });
+  if (dots.length === 0) return null;
   return (
-    <div className="patterns-visuals">
-      <ConfidenceStrip visual={v} />
-      {hasRatio ? (
-        <RatioScale ratio={v.medianRatio!} bias={v.directionBias} />
-      ) : null}
-      {hasProp && !hasRatio ? (
-        <ProportionBar value={v.proportion!} label={v.proportionLabel} />
-      ) : null}
-      {hasPeriods ? <PeriodStrip periods={v.periods!} /> : null}
-      <StatusBadges card={card} />
+    <div className="pk-status-dots">
+      {dots.map((d) => (
+        <span key={d.key} className={`pk-dot tone-${d.tone}`} title={d.title} />
+      ))}
     </div>
   );
 }
 
+/* ── Card ── */
 function PatternCardView({
   card,
   expanded,
@@ -208,149 +261,169 @@ function PatternCardView({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const { kind, icon, color } = typeKind(card);
+  const strength = overallStrength(card.visual);
+  const v = card.visual;
+  const hasRatio = v.medianRatio != null && v.medianRatio > 0;
+  const hasProp = v.proportion != null;
+  const hasPeriods = v.periods != null && v.periods.length > 0;
+
   return (
     <article
       className={[
-        'patterns-card',
+        'pk-card',
+        `kind-${kind}`,
         card.bucket === 'emerging' ? 'is-emerging' : 'is-established',
         expanded ? 'is-expanded' : '',
       ]
         .filter(Boolean)
         .join(' ')}
+      style={{ ['--pk-accent' as string]: color }}
     >
-      <div className="patterns-card-main">
-        <h3 className="patterns-card-statement">{card.statement}</h3>
-        <p className="patterns-card-meta">
-          {card.sampleSize > 0 ? (
-            <span>
-              {card.sampleSize} example{card.sampleSize === 1 ? '' : 's'}
-            </span>
-          ) : null}
-          {card.sampleSize > 0 ? <span className="patterns-dot">·</span> : null}
-          <span>{card.confidenceLabel}</span>
-          {card.medianMins != null && card.medianMins > 0 ? (
-            <>
-              <span className="patterns-dot">·</span>
-              <span className="mono">~{fmtMins(card.medianMins)}</span>
-            </>
-          ) : null}
-        </p>
+      <button type="button" className="pk-card-hit" onClick={onToggle} aria-expanded={expanded}>
+        <div className="pk-card-left">
+          <div className="pk-ring-wrap">
+            <StrengthRing value={strength} color={color} />
+            <span className="pk-type-icon">{icon}</span>
+          </div>
+          <DimBars visual={v} />
+        </div>
 
-        <PatternVisuals card={card} />
+        <div className="pk-card-body">
+          <div className="pk-card-top">
+            <h3 className="pk-statement">{card.statement}</h3>
+            <StatusDots card={card} />
+          </div>
 
-        <p className="patterns-card-consequence">{card.consequence}</p>
-      </div>
+          <div className="pk-card-metrics">
+            {card.sampleSize > 0 ? (
+              <span className="pk-metric">
+                <span className="pk-metric-num">{card.sampleSize}</span>
+                <span className="pk-metric-unit">n</span>
+              </span>
+            ) : null}
+            {card.medianMins != null && card.medianMins > 0 ? (
+              <span className="pk-metric">
+                <span className="pk-metric-num">{fmtMins(card.medianMins)}</span>
+              </span>
+            ) : null}
+            {v.recencyDays != null ? (
+              <span className="pk-metric muted">
+                <span className="pk-metric-num">
+                  {v.recencyDays < 1 ? '0' : Math.round(v.recencyDays)}
+                </span>
+                <span className="pk-metric-unit">d</span>
+              </span>
+            ) : null}
+          </div>
 
-      <button
-        type="button"
-        className="patterns-card-why"
-        aria-expanded={expanded}
-        onClick={onToggle}
-      >
-        {expanded ? 'Hide evidence' : 'Why I think this'}
+          <div className="pk-card-viz">
+            {hasRatio ? (
+              <RatioGauge ratio={v.medianRatio!} bias={v.directionBias} />
+            ) : null}
+            {hasProp && !hasRatio ? (
+              <PropGauge value={v.proportion!} label={v.proportionLabel} />
+            ) : null}
+            {hasPeriods ? <PeriodCols periods={v.periods!} /> : null}
+          </div>
+        </div>
       </button>
 
       {expanded ? (
-        <div className="patterns-card-evidence" id={`pattern-ev-${card.id}`}>
-          <h4 className="patterns-evidence-title">Why I think this</h4>
-          <p className="patterns-evidence-detail">{card.confidenceDetail}</p>
-          {card.detail ? (
-            <p className="patterns-evidence-detail">{card.detail}</p>
-          ) : null}
-          <dl className="patterns-evidence-dl">
-            {card.sampleSize > 0 ? (
+        <div className="pk-card-detail">
+          <p className="pk-detail-line">{card.confidenceDetail}</p>
+          {card.detail ? <p className="pk-detail-line">{card.detail}</p> : null}
+          <div className="pk-detail-grid">
+            {v.effectMagnitude != null ? (
               <div>
-                <dt>Observed examples</dt>
-                <dd className="mono">{card.sampleSize}</dd>
+                <span className="pk-dg-lbl">effect</span>
+                <span className="pk-dg-val">{(v.effectMagnitude * 100).toFixed(0)}%</span>
               </div>
             ) : null}
-            {card.visual.effectMagnitude != null ? (
+            {v.consistency != null ? (
               <div>
-                <dt>Effect magnitude</dt>
-                <dd className="mono">
-                  {(card.visual.effectMagnitude * 100).toFixed(0)}%
-                </dd>
+                <span className="pk-dg-lbl">consist</span>
+                <span className="pk-dg-val">{(v.consistency * 100).toFixed(0)}%</span>
               </div>
             ) : null}
-            {card.visual.consistency != null ? (
-              <div>
-                <dt>Consistency</dt>
-                <dd className="mono">
-                  {(card.visual.consistency * 100).toFixed(0)}%
-                </dd>
-              </div>
-            ) : null}
-            {card.visual.recencyDays != null ? (
-              <div>
-                <dt>Last supporting data</dt>
-                <dd className="mono">
-                  {card.visual.recencyDays < 1
-                    ? 'today'
-                    : `${Math.round(card.visual.recencyDays)}d ago`}
-                </dd>
-              </div>
-            ) : null}
-            {card.medianMins != null && card.medianMins > 0 ? (
-              <div>
-                <dt>Typical actual time</dt>
-                <dd className="mono">~{fmtMins(card.medianMins)}</dd>
-              </div>
-            ) : null}
-            <div>
-              <dt>Pattern</dt>
-              <dd>
-                {card.staleness === 'stale'
-                  ? 'May be out of date'
-                  : card.bucket === 'established'
-                    ? 'Stable enough to rely on'
-                    : 'Still developing'}
-              </dd>
-            </div>
             {card.clusterLabel ? (
               <div>
-                <dt>Related work</dt>
-                <dd>{card.clusterLabel}</dd>
+                <span className="pk-dg-lbl">cluster</span>
+                <span className="pk-dg-val">{card.clusterLabel}</span>
               </div>
             ) : null}
             {card.location ? (
               <div>
-                <dt>Place</dt>
-                <dd>{card.location}</dd>
+                <span className="pk-dg-lbl">place</span>
+                <span className="pk-dg-val">{card.location}</span>
               </div>
             ) : null}
-          </dl>
-          <h4 className="patterns-evidence-title">What Dokkit does with it</h4>
-          <p className="patterns-evidence-detail">{card.consequence}</p>
+          </div>
+          <p className="pk-detail-use">{card.consequence}</p>
         </div>
       ) : null}
     </article>
   );
 }
 
+/* ── Recurring cluster row ── */
 function RecurringItem({ item }: { item: RecurringWorkItem }) {
   return (
-    <li className="patterns-recurring-item">
-      <div className="patterns-recurring-top">
-        <span className="patterns-recurring-label">{item.label}</span>
-        <span className="patterns-recurring-meta">
-          {item.medianMins != null && item.medianMins > 0 ? (
-            <span className="mono">Usually ~{fmtMins(item.medianMins)}</span>
-          ) : null}
-          <span className="mono">
-            {item.sampleSize} example{item.sampleSize === 1 ? '' : 's'}
-          </span>
-          {item.location ? (
-            <span className="patterns-recurring-place">{item.location}</span>
-          ) : null}
-        </span>
-      </div>
-      <div className="patterns-recurring-bar" aria-hidden="true">
+    <li className="pk-rec-item">
+      <div className="pk-rec-bar-bg">
         <div
-          className="patterns-recurring-fill"
+          className="pk-rec-bar"
           style={{ width: `${Math.round(item.relativeStrength * 100)}%` }}
         />
       </div>
+      <div className="pk-rec-content">
+        <span className="pk-rec-label">{item.label}</span>
+        <div className="pk-rec-nums">
+          {item.medianMins != null && item.medianMins > 0 ? (
+            <span className="pk-rec-time">{fmtMins(item.medianMins)}</span>
+          ) : null}
+          <span className="pk-rec-n">{item.sampleSize}</span>
+          {item.location ? (
+            <span className="pk-rec-place">{item.location}</span>
+          ) : null}
+        </div>
+      </div>
     </li>
+  );
+}
+
+/* ── Model health rings in aside ── */
+function ModelHealth({ model }: { model: ReturnType<typeof buildPatternSurfaceModel> }) {
+  const total = model.modelStatus.establishedCount + model.modelStatus.emergingCount;
+  const estPct = total > 0 ? model.modelStatus.establishedCount / total : 0;
+  return (
+    <div className="pk-health">
+      <div className="pk-health-rings">
+        <div className="pk-health-item">
+          <StrengthRing value={estPct || 0.05} size={52} color="var(--pk-est)" />
+          <span className="pk-health-num">{model.modelStatus.establishedCount}</span>
+          <span className="pk-health-lbl">solid</span>
+        </div>
+        <div className="pk-health-item">
+          <StrengthRing
+            value={total > 0 ? model.modelStatus.emergingCount / Math.max(total, 1) : 0.05}
+            size={52}
+            color="var(--pk-time)"
+          />
+          <span className="pk-health-num">{model.modelStatus.emergingCount}</span>
+          <span className="pk-health-lbl">rising</span>
+        </div>
+        <div className="pk-health-item">
+          <StrengthRing
+            value={Math.min(1, model.modelStatus.completedTasks / 40)}
+            size={52}
+            color="var(--pk-cluster)"
+          />
+          <span className="pk-health-num">{model.modelStatus.completedTasks}</span>
+          <span className="pk-health-lbl">done</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -362,7 +435,6 @@ export default function Analytics() {
   const [allTasks, setAllTasks] = useState<CompletedTask[]>([]);
   const [allSubtasks, setAllSubtasks] = useState<SubtaskItem[]>([]);
   const [userTimezone, setUserTimezone] = useState<string | null>(null);
-  /** 'recent' = last 60 days for ranking context; 'all' = full history */
   const [evidenceScope, setEvidenceScope] = useState<'recent' | 'all'>('all');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -388,7 +460,7 @@ export default function Analytics() {
 
     if (taskErr) {
       console.error(taskErr);
-      setError("Patterns couldn't load — tap to retry");
+      setError("Couldn't load — tap to retry");
       setLoading(false);
       return;
     }
@@ -517,17 +589,13 @@ export default function Analytics() {
       <div className="app-shell patterns-shell">
         <div className="app-header">
           <div className="app-header-left">
-            <button
-              className="back-link"
-              onClick={() => router.push('/')}
-              aria-label="Back"
-            >
+            <button className="back-link" onClick={() => router.push('/')} aria-label="Back">
               <BackIcon />
             </button>
             <h1 className="app-title">Patterns</h1>
           </div>
         </div>
-        <p className="patterns-sign-in">Sign in to see your patterns.</p>
+        <p className="pk-sign-in">Sign in to see patterns.</p>
       </div>
     );
   }
@@ -539,127 +607,74 @@ export default function Analytics() {
 
   return (
     <div className="app-shell patterns-shell">
-      <header className="patterns-header surface-header">
-        <div className="patterns-header-bar">
-          <div className="patterns-header-orient">
-            <button
-              type="button"
-              className="back-link patterns-back"
-              onClick={() => router.push('/')}
-              aria-label="Back to Today"
-            >
-              <BackIcon />
-            </button>
-            <div className="surface-identity">
-              <span className="surface-kicker">Understanding</span>
-              <h1 className="surface-title">Patterns</h1>
+      <header className="pk-header">
+        <div className="pk-header-row">
+          <button
+            type="button"
+            className="back-link pk-back"
+            onClick={() => router.push('/')}
+            aria-label="Back to Today"
+          >
+            <BackIcon />
+          </button>
+          <div className="pk-title-block">
+            <span className="pk-kicker">Understanding</span>
+            <h1 className="pk-title">Patterns</h1>
+          </div>
+          <div className="pk-header-right">
+            <div className="pk-scope">
+              <button
+                type="button"
+                className={evidenceScope === 'all' ? 'pk-scope-btn active' : 'pk-scope-btn'}
+                onClick={() => setEvidenceScope('all')}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={evidenceScope === 'recent' ? 'pk-scope-btn active' : 'pk-scope-btn'}
+                onClick={() => setEvidenceScope('recent')}
+              >
+                60d
+              </button>
             </div>
-          </div>
-          <div className="patterns-header-lede">
-            <p className="patterns-lede-title">How Dokkit learns from reality</p>
-            <p className="patterns-lede-body">
-              Dokkit looks for repeatable patterns in the work you actually do. It
-              only relies strongly on a pattern when there is enough evidence to
-              make it useful.
-            </p>
-          </div>
-          <div className="patterns-header-actions">
             <GearMenu userId={session?.user.id ?? null} />
           </div>
-        </div>
-
-        <div className="patterns-model-strip" aria-label="Dokkit understanding">
-          <span>
-            Based on{' '}
-            <strong className="mono">{model.modelStatus.completedTasks}</strong>{' '}
-            completed task
-            {model.modelStatus.completedTasks === 1 ? '' : 's'}
-          </span>
-          {model.modelStatus.establishedCount + model.modelStatus.emergingCount >
-          0 ? (
-            <>
-              <span className="patterns-dot">·</span>
-              <span>
-                <strong className="mono">
-                  {model.modelStatus.establishedCount}
-                </strong>{' '}
-                established
-              </span>
-              <span className="patterns-dot">·</span>
-              <span>
-                <strong className="mono">
-                  {model.modelStatus.emergingCount}
-                </strong>{' '}
-                emerging
-              </span>
-            </>
-          ) : null}
-          <span className="patterns-scope">
-            <button
-              type="button"
-              className={
-                evidenceScope === 'all'
-                  ? 'patterns-scope-btn active'
-                  : 'patterns-scope-btn'
-              }
-              onClick={() => setEvidenceScope('all')}
-            >
-              All evidence
-            </button>
-            <button
-              type="button"
-              className={
-                evidenceScope === 'recent'
-                  ? 'patterns-scope-btn active'
-                  : 'patterns-scope-btn'
-              }
-              onClick={() => setEvidenceScope('recent')}
-            >
-              Last 60 days
-            </button>
-          </span>
         </div>
       </header>
 
       {error ? (
-        <button
-          type="button"
-          className="recalc-error"
-          onClick={() => void loadData()}
-          disabled={loading}
-        >
+        <button type="button" className="recalc-error" onClick={() => void loadData()} disabled={loading}>
           {error}
         </button>
       ) : null}
 
       {loading ? (
-        <div className="patterns-loading" aria-busy="true">
-          <div className="patterns-skeleton" />
-          <div className="patterns-skeleton short" />
-          <div className="patterns-skeleton" />
+        <div className="pk-loading" aria-busy="true">
+          <div className="pk-skel" />
+          <div className="pk-skel short" />
+          <div className="pk-skel" />
         </div>
       ) : (
-        <div className="patterns-layout">
-          <div className="patterns-primary">
+        <div className="pk-layout">
+          <div className="pk-main">
             {!hasAny ? (
-              <section className="patterns-empty">
-                <h2 className="patterns-section-title">
-                  I&apos;m still learning how your work behaves
-                </h2>
-                <p>
-                  You don&apos;t need to configure anything. Keep using Dokkit
-                  normally — complete work, capture what comes up — and patterns
-                  appear when there is enough evidence.
-                </p>
+              <section className="pk-empty">
+                <div className="pk-empty-rings">
+                  <StrengthRing value={0.08} size={64} color="var(--pk-track)" />
+                </div>
+                <p>Still gathering evidence. Keep completing work.</p>
               </section>
             ) : null}
 
             {model.established.length > 0 ? (
-              <section className="patterns-section" aria-labelledby="noticed-h">
-                <h2 id="noticed-h" className="patterns-section-title">
-                  What Dokkit has noticed
-                </h2>
-                <div className="patterns-card-list">
+              <section className="pk-section">
+                <div className="pk-sec-head">
+                  <span className="pk-sec-dot solid" />
+                  <h2 className="pk-sec-title">Established</h2>
+                  <span className="pk-sec-count">{model.established.length}</span>
+                </div>
+                <div className="pk-card-list">
                   {model.established.map((card) => (
                     <PatternCardView
                       key={card.id}
@@ -673,15 +688,13 @@ export default function Analytics() {
             ) : null}
 
             {model.emerging.length > 0 ? (
-              <section className="patterns-section" aria-labelledby="emerging-h">
-                <h2 id="emerging-h" className="patterns-section-title">
-                  Still emerging
-                </h2>
-                <p className="patterns-section-note">
-                  Interesting signals — not strong enough to materially change
-                  decisions yet.
-                </p>
-                <div className="patterns-card-list">
+              <section className="pk-section">
+                <div className="pk-sec-head">
+                  <span className="pk-sec-dot rising" />
+                  <h2 className="pk-sec-title">Emerging</h2>
+                  <span className="pk-sec-count">{model.emerging.length}</span>
+                </div>
+                <div className="pk-card-list">
                   {model.emerging.map((card) => (
                     <PatternCardView
                       key={card.id}
@@ -695,11 +708,13 @@ export default function Analytics() {
             ) : null}
 
             {model.recurringWork.length > 0 ? (
-              <section className="patterns-section" aria-labelledby="repeat-h">
-                <h2 id="repeat-h" className="patterns-section-title">
-                  Work that repeats
-                </h2>
-                <ul className="patterns-recurring">
+              <section className="pk-section">
+                <div className="pk-sec-head">
+                  <span className="pk-sec-dot cluster" />
+                  <h2 className="pk-sec-title">Repeats</h2>
+                  <span className="pk-sec-count">{model.recurringWork.length}</span>
+                </div>
+                <ul className="pk-rec-list">
                   {model.recurringWork.map((item) => (
                     <RecurringItem key={item.id} item={item} />
                   ))}
@@ -708,34 +723,28 @@ export default function Analytics() {
             ) : null}
           </div>
 
-          <aside className="patterns-aside" aria-label="Dokkit's understanding">
-            <div className="patterns-trust-panel">
-              <h2 className="patterns-section-title">Dokkit&apos;s understanding</h2>
-              <dl className="patterns-trust-dl">
-                <div>
-                  <dt>Established patterns</dt>
-                  <dd className="mono">{model.modelStatus.establishedCount}</dd>
-                </div>
-                <div>
-                  <dt>Emerging signals</dt>
-                  <dd className="mono">{model.modelStatus.emergingCount}</dd>
-                </div>
-                <div>
-                  <dt>Completed work</dt>
-                  <dd className="mono">{model.modelStatus.completedTasks}</dd>
-                </div>
-              </dl>
-              <p className="patterns-trust-note">
-                Based on what you&apos;ve completed and changed in Dokkit. Weak
-                evidence stays weak — Dokkit does not invent certainty.
-              </p>
-              <div className="patterns-legend">
-                <span className="patterns-legend-title">Evidence dims</span>
-                <div className="patterns-legend-row">
-                  <span className="patterns-dim is-high">n</span> sample
-                  <span className="patterns-dim is-high">fx</span> effect
-                  <span className="patterns-dim is-high">c</span> consistency
-                </div>
+          <aside className="pk-aside">
+            <ModelHealth model={model} />
+            <div className="pk-legend">
+              <div className="pk-leg-row">
+                <span className="pk-leg-icon" style={{ color: 'var(--pk-est)' }}>⏱</span>
+                <span>estimates</span>
+              </div>
+              <div className="pk-leg-row">
+                <span className="pk-leg-icon" style={{ color: 'var(--pk-carry)' }}>→</span>
+                <span>carry</span>
+              </div>
+              <div className="pk-leg-row">
+                <span className="pk-leg-icon" style={{ color: 'var(--pk-time)' }}>◷</span>
+                <span>timing</span>
+              </div>
+              <div className="pk-leg-row">
+                <span className="pk-leg-icon" style={{ color: 'var(--pk-life)' }}>↺</span>
+                <span>lifecycle</span>
+              </div>
+              <div className="pk-leg-row">
+                <span className="pk-leg-icon" style={{ color: 'var(--pk-cluster)' }}>◎</span>
+                <span>clusters</span>
               </div>
             </div>
           </aside>
