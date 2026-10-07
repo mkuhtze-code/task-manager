@@ -16,6 +16,8 @@ import { updateBeliefGraph } from './beliefs';
 
 export type * from './types';
 export type { Belief, BeliefGraph, EvidenceRef, EvidenceStrength } from './beliefs';
+export { resolveContextReference } from './referenceResolver';
+export type { ContextReferenceResolution, ContextReferenceCandidate, ContextReferenceStatus } from './referenceResolver';
 export type * from './reconcile/types';
 export type { RankedOpportunity, OpportunityDisposition } from './reconcile/opportunityRanker';
 export {
