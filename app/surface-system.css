@@ -933,3 +933,367 @@ html[data-theme='dark'] .surface-object:hover {
     padding-right: 40px !important;
   }
 }
+
+
+/* ==========================================================================
+   WHOLE SYSTEM VISUAL SYSTEM — object-first redesign
+   One canvas. One object grammar. Four lenses.
+   ========================================================================== */
+
+:root {
+  --surface-object-radius: 12px;
+  --surface-object-padding-x: 16px;
+  --surface-object-padding-y: 15px;
+  --surface-object-gap: 12px;
+}
+
+/* The workspace is the canvas; objects sit on it rather than inside
+   nested list containers. */
+.meetings-workspace,
+.travel-workspace,
+.jobs-workspace {
+  background: transparent;
+}
+
+.meeting-section,
+.trip-section {
+  width: 100%;
+}
+
+/* Section labels are wayfinding, not UI panels. */
+.meeting-section-header,
+.trip-section-header {
+  min-height: 24px;
+  padding-top: 0 !important;
+  padding-bottom: 8px !important;
+}
+
+.meeting-section-title,
+.trip-section-title {
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+  letter-spacing: .09em !important;
+  text-transform: uppercase;
+  color: var(--ink-faint) !important;
+}
+
+.meeting-section-lede,
+.trip-section-lede {
+  font-size: 11px !important;
+  color: var(--ink-faint) !important;
+}
+
+/* --------------------------------------------------------------------------
+   THE OBJECT
+   -------------------------------------------------------------------------- */
+
+.task-card.surface-object,
+.desk-job-card.surface-object,
+.meeting-row.surface-object,
+.trip-row-maybach.surface-object {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--surface-object-radius) !important;
+  background: var(--paper-raised) !important;
+  box-shadow: none !important;
+  color: var(--ink) !important;
+}
+
+.task-card.surface-object:hover,
+.desk-job-card.surface-object:hover,
+.meeting-row.surface-object:hover,
+.trip-row-maybach.surface-object:hover {
+  border-color: var(--line-strong) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.task-card.surface-object:focus-within,
+.desk-job-card.surface-object:focus-visible,
+.meeting-row.surface-object:focus-visible,
+.trip-row-maybach.surface-object:focus-within {
+  border-color: color-mix(in srgb, var(--steel) 48%, var(--line)) !important;
+}
+
+.surface-object-title,
+.task-card .task-text,
+.desk-job-card-name,
+.meeting-row-name,
+.trip-row-name,
+.meetings-featured-title,
+.travel-featured-title {
+  font-size: 15px !important;
+  line-height: 1.3 !important;
+  font-weight: 650 !important;
+  letter-spacing: -.012em !important;
+  color: var(--ink) !important;
+}
+
+.surface-object-time,
+.meeting-row-time,
+.trip-row-time,
+.desk-job-card-state {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  font-weight: 550 !important;
+  color: var(--ink-soft) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.surface-object-state {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
+/* --------------------------------------------------------------------------
+   MEETINGS — a proper object, not a row
+   -------------------------------------------------------------------------- */
+
+.meeting-list {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)) !important;
+  gap: 10px !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.meeting-row.surface-object {
+  display: block !important;
+  min-height: 112px !important;
+  padding: var(--surface-object-padding-y) var(--surface-object-padding-x) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--surface-object-radius) !important;
+  text-decoration: none !important;
+}
+
+.meeting-row-main {
+  display: block !important;
+  width: 100%;
+}
+
+.meeting-row-top {
+  min-height: 20px;
+}
+
+.meeting-row-time {
+  margin-top: 5px !important;
+}
+
+.meeting-row-context {
+  display: flex !important;
+  margin: 3px 0 0 !important;
+}
+
+.meeting-row-state {
+  margin-top: 11px !important;
+  padding-top: 9px !important;
+  border-top: 1px solid var(--line) !important;
+  color: var(--ink-soft) !important;
+}
+
+.meeting-row-aside {
+  display: none !important;
+}
+
+.meeting-row.pressure-now,
+.meeting-row.pressure-soon,
+.meeting-row.pressure-open {
+  background: var(--paper-raised) !important;
+  box-shadow: none !important;
+}
+
+.meeting-row.pressure-now {
+  border-color: color-mix(in srgb, var(--steel) 38%, var(--line)) !important;
+}
+
+.meeting-row-relative.is-urgent {
+  color: var(--steel-dark, var(--steel)) !important;
+}
+
+.meeting-loop-chip,
+.meeting-capture-chip {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--ink-soft) !important;
+  font-size: 12px !important;
+  font-weight: 550 !important;
+}
+
+.meeting-loop-chip::before {
+  content: '';
+}
+
+.meeting-source-tag {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: .02em !important;
+  text-transform: none !important;
+  color: var(--ink-faint) !important;
+}
+
+/* --------------------------------------------------------------------------
+   TRAVEL — same object, with place/movement as its character
+   -------------------------------------------------------------------------- */
+
+.trip-list-maybach {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)) !important;
+  gap: 10px !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.trip-row-maybach.surface-object {
+  display: block !important;
+  position: relative;
+  min-height: 112px !important;
+  padding: var(--surface-object-padding-y) 48px var(--surface-object-padding-y) var(--surface-object-padding-x) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--surface-object-radius) !important;
+  background: var(--paper-raised) !important;
+}
+
+.trip-row-maybach.surface-object .trip-row-link {
+  display: block !important;
+  padding: 0 !important;
+}
+
+.trip-row-main {
+  display: block !important;
+  width: 100%;
+}
+
+.trip-row-time {
+  margin-top: 5px !important;
+}
+
+.trip-row-context {
+  display: flex !important;
+  margin: 3px 0 0 !important;
+}
+
+.trip-row-state {
+  margin-top: 11px !important;
+  padding-top: 9px !important;
+  border-top: 1px solid var(--line) !important;
+}
+
+.trip-row-aside {
+  display: none !important;
+}
+
+.trip-row-maybach.pressure-now,
+.trip-row-maybach.pressure-soon {
+  background: var(--paper-raised) !important;
+  box-shadow: none !important;
+}
+
+.trip-row-maybach.pressure-now {
+  border-color: color-mix(in srgb, var(--steel) 38%, var(--line)) !important;
+}
+
+.trip-row-delete {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 7px !important;
+  opacity: .4;
+}
+
+.trip-row-delete:hover {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   FEATURED OBJECTS — not a separate component visually
+   -------------------------------------------------------------------------- */
+
+.meetings-featured,
+.travel-featured {
+  display: block !important;
+  min-height: 68px !important;
+  margin: 0 0 10px !important;
+  padding: 12px 16px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--surface-object-radius) !important;
+  background: var(--paper-raised) !important;
+  box-shadow: none !important;
+}
+
+.meetings-featured-body,
+.travel-featured-body {
+  display: block !important;
+}
+
+.meetings-featured-label,
+.travel-featured-label {
+  display: none !important;
+}
+
+.meetings-featured-time,
+.travel-featured-time {
+  display: block;
+  margin-top: 3px;
+}
+
+/* --------------------------------------------------------------------------
+   DESKTOP — same object field as Jobs
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 701px) {
+  html[data-surface='desktop'] .meetings-workspace,
+  html[data-surface='desktop'] .travel-workspace {
+    width: 100%;
+    max-width: none !important;
+    padding: 20px 28px 48px !important;
+    box-sizing: border-box;
+  }
+
+  html[data-surface='desktop'] .meeting-section,
+  html[data-surface='desktop'] .trip-section {
+    width: 100%;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+
+  html[data-surface='desktop'] .meeting-list,
+  html[data-surface='desktop'] .trip-list-maybach {
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)) !important;
+    gap: 12px !important;
+  }
+}
+
+/* Mobile does not become a different component. It simply becomes one
+   column with slightly tighter geometry. */
+@media (max-width: 700px) {
+  .meeting-list,
+  .trip-list-maybach {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .meeting-row.surface-object,
+  .trip-row-maybach.surface-object {
+    min-height: 0 !important;
+    padding-top: 13px !important;
+    padding-bottom: 13px !important;
+  }
+
+  .trip-row-maybach.surface-object {
+    padding-right: 44px !important;
+  }
+}
+
+html[data-theme='dark'] .meeting-row.surface-object,
+html[data-theme='dark'] .trip-row-maybach.surface-object,
+html[data-theme='dark'] .meetings-featured,
+html[data-theme='dark'] .travel-featured {
+  background: var(--paper-raised, #111827) !important;
+}
