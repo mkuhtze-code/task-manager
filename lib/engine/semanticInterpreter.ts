@@ -16,7 +16,7 @@ import type {
   WorkingMemorySnapshot,
 } from './types';
 import { interpretRequestUtterance } from './request';
-import { resolveReference, containsReference } from './references';
+import { resolveReference, containsReference, extractReferencePhrase } from './references';
 
 export type SemanticSpeechAct =
   | 'request'
@@ -141,19 +141,42 @@ export function interpretSemanticInput(
       extraReferents: contextReferents,
     });
 
-    reference = {
-      phrase: normalizedText.match(/\b(this|that|it|these|those|the\s+last\s+one|the\s+other\s+one|the\s+previous\s+(?:one|task|job)|the\s+job|that\s+job|the\s+meeting|there|here)\b/i)?.[1]?.toLowerCase() ?? normalizedText,
-      status: resolved.status,
-      targetId: resolved.item?.id ?? null,
-      targetKind: resolved.item?.type ?? null,
-      targetLabel: resolved.item?.label ?? null,
-      candidates: resolved.candidates.map((candidate) => ({
-        id: candidate.id,
-        kind: candidate.type,
-        label: candidate.label,
-      })),
-      reason: resolved.reason,
-    };
+    const phrase = extractReferencePhrase(normalizedText) ?? normalizedText;
+    if (resolved.status === 'resolved') {
+      reference = {
+        phrase,
+        status: 'resolved',
+        targetId: resolved.item.id,
+        targetKind: resolved.item.type,
+        targetLabel: resolved.item.label,
+        candidates: [],
+        reason: resolved.reason,
+      };
+    } else if (resolved.status === 'ambiguous') {
+      reference = {
+        phrase,
+        status: 'ambiguous',
+        targetId: null,
+        targetKind: null,
+        targetLabel: null,
+        candidates: resolved.candidates.map((candidate) => ({
+          id: candidate.id,
+          kind: candidate.type,
+          label: candidate.label,
+        })),
+        reason: resolved.reason,
+      };
+    } else {
+      reference = {
+        phrase,
+        status: 'unknown',
+        targetId: null,
+        targetKind: null,
+        targetLabel: null,
+        candidates: [],
+        reason: resolved.reason,
+      };
+    }
   }
 
   const evidence: string[] = [];
