@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import GearMenu from '@/components/GearMenu';
 import { ChevronIcon, FitCheckIcon, FitWarnIcon } from '@/components/icons';
@@ -176,75 +176,6 @@ export function TodayHeader(props: {
                 ? 'Your afternoon is getting tighter.'
                 : 'Your day is on track.');
 
-    const contextBits: ReactNode[] = [];
-    if (deskContext?.mode === 'task') {
-      contextBits.push(
-        <span key="sel" className="desk-ctx-bit desk-ctx-bit-strong">
-          {deskContext.taskActive ? 'Running' : 'Selected'}
-          {typeof deskContext.taskRemainingMins === 'number' &&
-          deskContext.taskEstimateMins &&
-          deskContext.taskEstimateMins > 0
-            ? ` · ${fmtMins(deskContext.taskRemainingMins)} left`
-            : ' · untimed'}
-        </span>
-      );
-      if (deskContext.taskJobName) {
-        contextBits.push(
-          <span key="job" className="desk-ctx-bit" title={deskContext.taskJobName}>
-            {deskContext.taskJobName}
-          </span>
-        );
-      }
-      if (deskContext.taskPlace) {
-        contextBits.push(
-          <span key="place" className="desk-ctx-bit" title={deskContext.taskPlace}>
-            {deskContext.taskPlace}
-          </span>
-        );
-      }
-    } else {
-      const open = deskContext?.openCount ?? 0;
-      const timed = deskContext?.timedCount ?? 0;
-      contextBits.push(
-        <span key="open" className="desk-ctx-bit">
-          <strong className="mono">{open}</strong> open
-          {timed > 0 ? (
-            <>
-              {' '}
-              · <strong className="mono">{timed}</strong> timed
-            </>
-          ) : null}
-        </span>
-      );
-      if (deskContext?.nextCommitment) {
-        contextBits.push(
-          <span
-            key="next"
-            className="desk-ctx-bit"
-            title={deskContext.nextCommitment.title}
-          >
-            Next <strong className="mono">{deskContext.nextCommitment.when}</strong>{' '}
-            {deskContext.nextCommitment.title}
-          </span>
-        );
-      }
-      if ((deskContext?.jobsWithOpen ?? 0) > 0) {
-        contextBits.push(
-          <span key="jobs" className="desk-ctx-bit">
-            <strong className="mono">{deskContext!.jobsWithOpen}</strong>{' '}
-            {deskContext!.jobsWithOpen === 1 ? 'job' : 'jobs'}
-          </span>
-        );
-      }
-      if (deskContext?.travelSummary) {
-        contextBits.push(
-          <span key="travel" className="desk-ctx-bit">
-            {deskContext.travelSummary}
-          </span>
-        );
-      }
-    }
-
     return (
       <div
         className={[
@@ -264,55 +195,6 @@ export function TodayHeader(props: {
               <span className="desk-today-date">{weekdayLabel} · {dateOnlyLabel}</span>
             </div>
 
-            <div
-              className={[
-                'desk-today-fit',
-                overloaded ? 'is-over' : 'is-fit',
-              ].join(' ')}
-            >
-              <span className="desk-today-fit-icon" aria-hidden="true">
-                {overloaded ? <FitWarnIcon /> : <FitCheckIcon />}
-              </span>
-              <div className="desk-today-fit-body">
-                <strong className="desk-today-fit-title">{fitTitle}</strong>
-                {isWorkDay ? (
-                  <span className="desk-today-fit-metrics mono">
-                    {planned > 0 ? (
-                      <span>{fmtMins(planned)} planned</span>
-                    ) : (
-                      <span>Nothing timed</span>
-                    )}
-                    <span className="desk-today-fit-sep" aria-hidden>
-                      ·
-                    </span>
-                    <span>{fmtMins(Math.max(usable, 0))} usable</span>
-                    {overloaded ? (
-                      <>
-                        <span className="desk-today-fit-sep" aria-hidden>
-                          ·
-                        </span>
-                        <span className="is-over-text">
-                          over by {fmtMins(overBy)}
-                        </span>
-                      </>
-                    ) : null}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          <div className="desk-today-context" aria-label="Day context">
-            {contextBits.map((bit, i) => (
-              <span key={i} className="desk-ctx-wrap">
-                {i > 0 ? (
-                  <span className="desk-ctx-dot" aria-hidden>
-                    ·
-                  </span>
-                ) : null}
-                {bit}
-              </span>
-            ))}
           </div>
 
           <div className="desk-today-bar-right">
@@ -347,9 +229,23 @@ export function TodayHeader(props: {
             <span className="desk-today-now-label">{isWorkDay ? 'working time left' : 'outside working day'}</span>
           </div>
           <div className="desk-today-capacity">
-            <div className="desk-today-capacity-head"><span>Capacity</span><strong className={overloaded ? 'is-over-text' : undefined}>{overloaded ? ('Over by ' + fmtMins(overBy)) : (fmtMins(Math.max(usable, 0)) + ' usable')}</strong></div>
-            <div className="desk-today-capacity-track" aria-hidden="true"><span className={overloaded ? 'is-over' : ''} style={{ width: Math.min(100, Math.max(0, planned > 0 && usable > 0 ? (planned / usable) * 100 : 0)) + '%' }} /></div>
-            <div className="desk-today-capacity-meta mono"><span>{fmtMins(planned)} planned</span>{fixed > 0 ? <span>{fmtMins(fixed)} fixed</span> : null}{travel > 0 ? <span>~{fmtMins(travel)} travel</span> : null}</div>
+            <div className="desk-today-capacity-head">
+              <span>Load</span>
+              <strong className={overloaded ? 'is-over-text' : undefined}>
+                {overloaded ? `Over by ${fmtMins(overBy)}` : `${fmtMins(Math.max(usable, 0))} usable`}
+              </strong>
+            </div>
+            <div className="desk-today-capacity-track" aria-hidden="true">
+              <span
+                className={overloaded ? 'is-over' : ''}
+                style={{ width: Math.min(100, Math.max(0, planned > 0 && usable > 0 ? (planned / usable) * 100 : 0)) + '%' }}
+              />
+            </div>
+            <div className="desk-today-capacity-meta mono">
+              <span>{fmtMins(planned)} planned</span>
+              {fixed > 0 ? <span>{fmtMins(fixed)} fixed</span> : null}
+              {travel > 0 ? <span>~{fmtMins(travel)} travel</span> : null}
+            </div>
           </div>
           <div className="desk-today-next">
             <span className="desk-today-next-kicker">Next</span>
@@ -385,9 +281,9 @@ export function TodayHeader(props: {
             <div className="desk-today-rail-now" style={{ left: `${nowPercent * 100}%` }} />
           </div>
           <div className="desk-today-rail-foot">
-            <span>{isWorkDay ? `${fmtMins(minutesLeftToday)} left` : 'Off day'}</span>
+            <span>{fmtClock(workStart)}</span>
             <strong>{overloaded ? `Over by ${fmtMins(overBy)}` : dayRead}</strong>
-            <span>{isWorkDay ? `${fmtMins(Math.max(usable, 0))} usable` : `${fmtMins(remainingWorkMins)} carrying`}</span>
+            <span>{fmtClock(workEnd)}</span>
           </div>
         </div>
 
