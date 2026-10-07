@@ -177,7 +177,7 @@ export default function DesktopMeetingsHeader({
       {showFeatured && nextMeetingId ? (
         <Link
           href={`/meetings/${nextMeetingId}`}
-          className="meetings-featured"
+          className="meetings-featured surface-object surface-object-featured"
           aria-label={`Open ${featuredTitle}`}
         >
           <div className="meetings-featured-label">
