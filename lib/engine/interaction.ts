@@ -317,14 +317,27 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
     }
   }
 
-  if (forcedJobName && !cycle.request.relatedJobText) {
-    cycle.request.relatedJobText = forcedJobName;
-  }
-  if (addPat.objectText) {
-    if (!cycle.request.objectText) cycle.request.objectText = addPat.objectText;
-    if (cycle.request.action === 'unknown') cycle.request.action = 'create_task';
-    if (cycle.request.confidence === 'low') cycle.request.confidence = 'medium';
-  }
+  // Keep the orchestrated cycle immutable. Special capture patterns can enrich
+  // the request returned to the surface, but never mutate cycle.request.
+  const request: EngineRequest = {
+    ...cycle.request,
+    relatedJobText:
+      !cycle.request.relatedJobText && forcedJobName
+        ? forcedJobName
+        : cycle.request.relatedJobText,
+    objectText:
+      !cycle.request.objectText && addPat.objectText
+        ? addPat.objectText
+        : cycle.request.objectText,
+    action:
+      cycle.request.action === 'unknown' && addPat.objectText
+        ? 'create_task'
+        : cycle.request.action,
+    confidence:
+      cycle.request.confidence === 'low' && addPat.objectText
+        ? 'medium'
+        : cycle.request.confidence,
+  };
 
   if (
     addPat.objectText &&
@@ -335,7 +348,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
     action = {
       kind: 'create_task',
       text: addPat.objectText,
-      locationText: cycle.request.locationText,
+      locationText: request.locationText,
       jobId: forcedJobId,
       surfaceDate: null,
       estimateMins: 15,
@@ -344,11 +357,11 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
 
   if (!input.dryRun) {
     saveWorkingMemoryLocal(cycle.workingMemory, userId);
-    saveActiveRequestLocal(cycle.request, userId);
+    saveActiveRequestLocal(request, userId);
     appendEvidenceLocal(cycle.evidence, userId);
   }
 
-  if (isQueryUtterance(text) || cycle.request.action === 'query') {
+  if (isQueryUtterance(text) || request.action === 'query') {
     const answer = answerFeasibility(text, cycle, input);
     return {
       outcome: 'ANSWER',
@@ -357,7 +370,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
       answer,
       deferred: null,
       clarify: null,
-      request: cycle.request,
+      request,
       workingMemory: cycle.workingMemory,
       authority: cycle.authority,
       evidence: cycle.evidence,
@@ -374,7 +387,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
   const canAct =
     (action.kind === 'create_task' || action.kind === 'update_task') &&
     (cycle.authority.mayAct || (!!addPat.objectText && !!forcedJobId)) &&
-    (!!cycle.request.objectText || !!addPat.objectText);
+    (!!request.objectText || !!addPat.objectText);
 
   if (canAct) {
     const actFit = actFitDecision(cycle, input);
@@ -404,7 +417,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
       ],
       explanation: cycle.explanation,
       cycle,
-      confidence: cycle.request.confidence,
+      confidence: request.confidence,
       decision: actFit.decision,
       decisionTrace: actFit.decisionTrace,
       fitState: actFit.fitState,
@@ -426,7 +439,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
       facts: cycle.facts,
       explanation: cycle.explanation,
       cycle,
-      confidence: cycle.request.confidence,
+      confidence: request.confidence,
     };
   }
 
@@ -444,7 +457,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
     facts: cycle.facts,
     explanation: cycle.explanation,
     cycle,
-    confidence: cycle.request.confidence,
+    confidence: request.confidence,
   };
 }
 
