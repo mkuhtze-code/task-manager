@@ -264,7 +264,33 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
   }
 
   if (containsReference(text) && mem) {
-    const ref = resolveReference(text, mem);
+    // Current context is evidence for reference resolution, not a new memory
+    // system. Supply current jobs/meetings as ephemeral candidates so phrases
+    // such as "update that job" can be clarified even when those entities have
+    // not yet entered working memory.
+    const contextReferents = [
+      ...(input.context.jobs ?? []).map((job) => ({
+        id: job.id,
+        type: 'job' as const,
+        label: job.name,
+        source: 'current_context',
+        timestamp: new Date().toISOString(),
+        salience: 0.55,
+        confidence: 'medium' as const,
+        relationships: {},
+      })),
+      ...(input.context.meetings ?? []).map((meeting) => ({
+        id: meeting.id,
+        type: 'meeting' as const,
+        label: meeting.text,
+        source: 'current_context',
+        timestamp: new Date().toISOString(),
+        salience: 0.55,
+        confidence: 'medium' as const,
+        relationships: {},
+      })),
+    ];
+    const ref = resolveReference(text, mem, { extraReferents: contextReferents });
     if (ref.status === 'ambiguous') {
       const cycleStub = runEngineCycle({
         utterance: text,
