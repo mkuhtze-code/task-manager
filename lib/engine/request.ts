@@ -390,6 +390,16 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     out.action = 'create_task';
   }
 
+  } else if (
+    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\\s*up)\\b/i.test(
+      lower
+    )
+  ) {
+    // Bare imperative captures are new requests, not refinements of the
+    // previous request. "call John" must not inherit a previously bound task.
+    out.action = 'create_task';
+  }
+
   // ---------------------------------------------------------------------------
   // Object
   // ---------------------------------------------------------------------------
@@ -407,6 +417,9 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     // executable requests such as "I need to call the client tomorrow".
     /\b(?:i\s+)?(?:need|have|got)\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
   ];
+
+    // Bare imperative: "call John", "check flashings", "send the quote".
+    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\\s*up)\\s+(.+?)(?=\\s+\\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b|\\s+\\b\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)\\b|$)/i,
 
   for (const pattern of objectPatterns) {
     if (isQuestion || isNegatedCommitment) break;
