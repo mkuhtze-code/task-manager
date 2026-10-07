@@ -217,7 +217,7 @@ export function updateBeliefGraph(
   for (const field of fields) {
     const value = request[field];
     if (value === null || value === undefined || value === '') continue;
-    const ref = requestEvidence(request, evidence, field);
+    const ref = requestEvidence(request, evidence);
     if (!ref) continue;
     graph = upsertBelief(
       graph,
