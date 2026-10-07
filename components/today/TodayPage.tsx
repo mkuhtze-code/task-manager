@@ -2741,39 +2741,6 @@ export function TodayPage() {
 
 
 
-      {!isDesktop && (travelImpact.workStopCount > 0 || (geoAware && hasRoute)) ? (
-        <ContextLine
-          className="today-system-context"
-          label="Today connections"
-          items={[
-            { label: 'Travel', href: '/travel' },
-            ...(travelImpact.workStopCount > 0
-              ? [{ label: travelImpact.summaryLabel ?? String(travelImpact.workStopCount) + ' work stops' }]
-              : []),
-            ...(geoAware && hasRoute && routeDriveMins > 0
-              ? [{ label: '~' + fmtMins(routeDriveMins) + ' driving' }]
-              : []),
-          ]}
-        />
-      ) : null}
-
-      {!isDesktop && (
-        <div className="live-day-strip" aria-label="Remaining day">
-          <span className="live-day-strip-main">
-            <strong className="mono">{fmtMins(Math.max(taskCapacity, 0))}</strong> available
-            <span className="live-day-sep">·</span>
-            <strong className="mono">{fmtMins(liveDayPlan.plannedTaskMins)}</strong> planned
-          </span>
-          {liveDayPlan.overflowIds.length > 0 ? (
-            <span className="live-day-strip-note">
-              {liveDayPlan.overflowIds.length} likely later
-            </span>
-          ) : (
-            <span className="live-day-strip-note">{liveDayPlan.dayRead}</span>
-          )}
-        </div>
-      )}
-
 <div className="task-list">
       {dockSummary && (
         <div
