@@ -274,23 +274,79 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     })
   );
 
-  // Reference resolution (does not block request parse)
+  // Reference resolution enriches the same request/memory path. Current
+  // jobs/meetings are ephemeral candidates; a resolved task reference becomes
+  // an explicit dependency so the action layer has a concrete target.
+  let resolvedReference: ReturnType<typeof resolveReference> | null = null;
   if (containsReference(input.utterance)) {
-    const ref = resolveReference(input.utterance, mem);
+    const contextReferents = [
+      ...(input.context.jobs ?? []).map((job) => ({
+        id: job.id,
+        type: 'job' as const,
+        label: job.name,
+        source: 'current_context',
+        timestamp: new Date().toISOString(),
+        salience: 0.55,
+        confidence: 'medium' as const,
+        relationships: {},
+      })),
+      ...(input.context.meetings ?? []).map((meeting) => ({
+        id: meeting.id,
+        type: 'meeting' as const,
+        label: meeting.text,
+        source: 'current_context',
+        timestamp: new Date().toISOString(),
+        salience: 0.55,
+        confidence: 'medium' as const,
+        relationships: {},
+      })),
+    ];
+    resolvedReference = resolveReference(input.utterance, mem, {
+      extraReferents: contextReferents,
+    });
     evidenceList.push(
-      evidence('reference_resolved', null, { status: ref.status, reason: ref.reason })
+      evidence('reference_resolved', null, {
+        status: resolvedReference.status,
+        reason: resolvedReference.reason,
+      })
     );
-    if (ref.status === 'resolved') {
-      facts.push(`Resolved “${ref.item.label}” (${ref.reason}).`);
-      mem = remember(mem, { ...ref.item, salience: Math.min(1, ref.item.salience + 0.1) });
+    if (resolvedReference.status === 'resolved') {
+      facts.push(`Resolved “${resolvedReference.item.label}” (${resolvedReference.reason}).`);
+      mem = remember(mem, {
+        ...resolvedReference.item,
+        salience: Math.min(1, resolvedReference.item.salience + 0.1),
+      });
     }
   }
 
-  const request = applyUtteranceToRequest(
+  let request = applyUtteranceToRequest(
     input.priorRequest ?? null,
     input.utterance,
     mem
   );
+
+  if (
+    resolvedReference?.status === 'resolved' &&
+    resolvedReference.item.type === 'task'
+  ) {
+    const alreadyBound = request.constraints.some(
+      (c) => c.axis === 'dependency' && c.value === `task:${resolvedReference!.item.id}`
+    );
+    if (!alreadyBound) {
+      request = {
+        ...request,
+        constraints: [
+          ...request.constraints,
+          {
+            axis: 'dependency',
+            value: `task:${resolvedReference.item.id}`,
+            confidence: 'high',
+            source: 'context_reference',
+          },
+        ],
+      };
+    }
+  }
 
   mem = setActiveRequest(mem, request.id);
   // Prefer task focus when this request is already bound to a docked task.
