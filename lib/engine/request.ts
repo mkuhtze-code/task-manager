@@ -206,6 +206,34 @@ function extractCompoundSemantic(text: string, primaryVerb: string | null): {
     return { personText: null, purposeText: null, subjectText: null };
   }
 
+
+function extractCompoundSemantic(text: string, primaryVerb: string | null): {
+  personText: string | null;
+  purposeText: string | null;
+  subjectText: string | null;
+} {
+  if (!primaryVerb) {
+    return { personText: null, purposeText: null, subjectText: null };
+  }
+
+  const communicationVerb =
+    /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up)$/.test(
+      primaryVerb
+    );
+
+  if (!communicationVerb) {
+    return { personText: null, purposeText: null, subjectText: null };
+  }
+
+  const escapedVerb = primaryVerb.replace(/\s+/g, '\\s+');
+  const afterVerb = text.match(
+    new RegExp('^.*?\\b' + escapedVerb + '\\s+(.+)$', 'i')
+  )?.[1]?.trim();
+
+  if (!afterVerb) {
+    return { personText: null, purposeText: null, subjectText: null };
+  }
+
   const personMatch = afterVerb.match(
     /^(.+?)(?=\s+(?:to|about|regarding|on|for)\s+)/i
   );
@@ -241,6 +269,7 @@ function extractCompoundSemantic(text: string, primaryVerb: string | null): {
     subjectText: subjectMatch?.[1]?.trim() || purpose || null,
   };
 }
+
 
 function extractDateHint(text: string): string | null {
   const matches = Array.from(
