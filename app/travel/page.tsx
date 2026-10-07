@@ -341,7 +341,7 @@ export default function TravelHome() {
 
     return (
       <div key={tr.id} className={`trip-row-maybach pressure-${pressure}`}>
-        <Link href={`/travel/${tr.id}`} className="trip-row-link">
+        <Link href={`/travel/${tr.id}`} className="trip-row-link surface-object">
           <div className="trip-row-main">
             <div className="trip-row-top">
               <span className="trip-row-name">{tr.name}</span>
@@ -464,7 +464,7 @@ export default function TravelHome() {
           (featuredRow.pressure === 'now' || featuredRow.pressure === 'soon') ? (
             <Link
               href={`/travel/${featured.id}`}
-              className="travel-featured travel-featured-mobile"
+              className="travel-featured surface-object surface-object-featured travel-featured-mobile"
             >
               <div className="travel-featured-label">
                 {featuredRow.phase === 'active' ? 'Now' : 'Next'}
