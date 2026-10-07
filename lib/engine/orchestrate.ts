@@ -213,8 +213,13 @@ function actionFromPlan(
   // A task binding belongs to a refinement chain, not to every future
   // utterance. Once the user starts a new explicit request, the old bound
   // task must stop being executable context.
-  const boundTaskId = req.isRefinement ? taskIdFromConstraints(req) : null;
-  if (boundTaskId) {
+  const boundTaskId = taskIdFromConstraints(req);
+  const isRefinement =
+    req.rawUtterances.length > 1 &&
+    /^(?:actually|sorry|no[, ]|i\\s+need\\s+it|make\\s+that|put\\s+that|move\\s+(?:it|that)|change\\s+(?:it|that)|update\\s+(?:it|that)|add\\s+(?:that|this)|on\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|tomorrow|today)\\b/i.test(
+      input.utterance.trim()
+    );
+  if (boundTaskId && isRefinement) {
     return {
       kind: 'update_task',
       taskId: boundTaskId,
@@ -227,7 +232,7 @@ function actionFromPlan(
   }
 
   const focus = _ctx.workingMemory?.currentFocus;
-  if (req.isRefinement && focus?.kind === 'task' && focus.id && req.rawUtterances.length > 1) {
+  if (isRefinement && focus?.kind === 'task' && focus.id && req.rawUtterances.length > 1) {
     return {
       kind: 'update_task',
       taskId: focus.id,
