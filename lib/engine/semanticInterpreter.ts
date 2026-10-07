@@ -41,6 +41,11 @@ export type SemanticInterpretation = {
   normalizedText: string;
   speechAct: SemanticSpeechAct;
   intent: EngineRequest['action'];
+  /** Explicit semantic frame preserved before task-title rendering. */
+  primaryVerb: string | null;
+  personText: string | null;
+  purposeText: string | null;
+  subjectText: string | null;
   objectText: string | null;
   locationText: string | null;
   dateHint: string | null;
@@ -184,6 +189,10 @@ export function interpretSemanticInput(
   if (parsed.action && parsed.action !== 'unknown') {
     evidence.push(`intent:${parsed.action}`);
   }
+  if (parsed.primaryVerb) evidence.push(`primary_verb:${parsed.primaryVerb}`);
+  if (parsed.personText) evidence.push('person:explicit');
+  if (parsed.purposeText) evidence.push('purpose:explicit');
+  if (parsed.subjectText) evidence.push('subject:explicit');
   if (parsed.objectText) evidence.push('object:explicit');
   if (parsed.locationText) evidence.push('location:explicit');
   if (parsed.dateHint) evidence.push(`date:${parsed.dateHint}`);
@@ -201,6 +210,10 @@ export function interpretSemanticInput(
     normalizedText,
     speechAct: speechActFor(normalizedText, parsed),
     intent: parsed.action ?? 'unknown',
+    primaryVerb: parsed.primaryVerb ?? null,
+    personText: parsed.personText ?? null,
+    purposeText: parsed.purposeText ?? null,
+    subjectText: parsed.subjectText ?? null,
     objectText: parsed.objectText ?? null,
     locationText: parsed.locationText ?? null,
     dateHint: parsed.dateHint ?? null,
