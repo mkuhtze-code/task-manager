@@ -757,6 +757,8 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     // Movement is a real top-level action. Preserve the destination and the
     // purpose clause separately instead of treating "go to X to buy Y" as
     // one giant object or accidentally making X the thing to buy.
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(?:go|head|drive|travel|walk|return)(?:\s+over)?\s+to\s+.+?\s+to\s+(?:grab|pick\s*up|pickup|collect|fetch|get|buy|purchase)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+
     /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(?:go|head|drive|travel|walk|return)(?:\s+over)?\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     // Polite imperative forms are still requests, not observations.
@@ -807,17 +809,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
       .trim();
 
     if (objectText.length > 1 && objectText.length < 120) {
-      const communicationVerb =
-        primaryVerb &&
-        /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up)$/.test(
-          primaryVerb
-        );
-
-      out.objectText =
-        communicationVerb &&
-        !new RegExp('^' + primaryVerb.replace(/\s+/g, '\\s+') + '\\b', 'i').test(objectText)
-          ? `${primaryVerb} ${objectText}`
-          : objectText;
+      out.objectText = objectText;
       break;
     }
   }
