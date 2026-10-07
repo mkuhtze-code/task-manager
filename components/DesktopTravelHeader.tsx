@@ -82,13 +82,7 @@ export default function DesktopTravelHeader({
     { key: 'all', label: 'All', count: allCount },
   ];
 
-  const showFeatured =
-    Boolean(featuredTitle && nextTripId) &&
-    (pulseAttention ||
-      featuredPhase === 'In motion' ||
-      featuredPhase === 'Final day' ||
-      featuredPhase === 'Tomorrow' ||
-      featuredPhase === 'Starts today');
+  const showFeatured = Boolean(featuredTitle && nextTripId);
 
   return (
     <header className="surface-header desk-surface-workspace-header travel-maybach-header">
