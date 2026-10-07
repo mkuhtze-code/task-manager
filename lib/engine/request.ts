@@ -213,7 +213,7 @@ function extractCompoundSemantic(text: string, primaryVerb: string | null): {
   }
 
   const personMatch = afterVerb.match(
-    /^(.+?)(?=\s+(?:to|about|regarding|on|for)\s+)/i
+    /^(.+?)(?=\s+(?:to|about|regarding|on|for|with)\s+)/i
   );
 
   const personText = (personMatch?.[1] ?? afterVerb)
@@ -685,6 +685,14 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   ) {
     out.action = 'move';
     out.isRefinement = true;
+  } else if (
+    primaryVerb &&
+    /^(?:go|head|drive|travel|walk|return)$/.test(primaryVerb) &&
+    /\b(?:grab|pick\s*up|pickup|collect|fetch)\b/i.test(lower)
+  ) {
+    // "Drive to the supplier to collect the brackets" is semantically a
+    // pickup. Movement is the route, collection is the actionable outcome.
+    out.action = 'pickup';
   } else if (primaryVerb) {
     // Any explicit top-level imperative is a task unless it is a question.
     out.action = 'create_task';
@@ -1207,6 +1215,16 @@ export function requestTaskText(req: EngineRequest): string {
 
   if (isDropOff) {
     bits.push(req.objectText ? `Drop off ${req.objectText}` : 'Drop off');
+  } else if (isPickup && isMovement && req.locationText) {
+    const location = req.locationText.trim();
+    const purpose = (req.objectText ?? '')
+      .replace(new RegExp('^' + location.replace(/[.*+?^$()|[\\]{}]/g, '\\  if (isDropOff) {
+    bits.push(req.objectText ? `Drop off ${req.objectText}` : 'Drop off');
+  } else if (isPickup) {
+    bits.push(req.objectText ? `Pick up ${req.objectText}` : 'Pick up');
+  } else if (isMovement && req.locationText) {') + '\\s+to\\s+', 'i'), '')
+      .trim();
+    bits.push(purpose ? `Pick up ${purpose} from ${location}` : `Pick up from ${location}`);
   } else if (isPickup) {
     bits.push(req.objectText ? `Pick up ${req.objectText}` : 'Pick up');
   } else if (isMovement && req.locationText) {
