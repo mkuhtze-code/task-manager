@@ -333,14 +333,14 @@ const cases: Case[] = [
     "Deliver the paperwork to 12 Queen Street.",
     "create_task",
     "12 Queen Street",
-    "drop off"
+    "deliver"
   ],
   [
     "dropoff",
     "Take the materials to Smith Road on Monday.",
     "create_task",
     "Smith Road",
-    "drop off"
+    "take"
   ],
   [
     "dropoff",
