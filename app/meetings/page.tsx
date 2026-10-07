@@ -482,11 +482,6 @@ export default function MeetingsHome() {
               </div>
             </Link>
           ) : null}
-          {surface.consequenceLine ? (
-            <p className="meetings-mobile-consequence">
-              {surface.consequenceLine}
-            </p>
-          ) : null}
           <div className="surface-filters" role="tablist" aria-label="Filters">
             {(
               [
