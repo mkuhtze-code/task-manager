@@ -787,3 +787,268 @@ html[data-theme='dark'] .desk-today-saas{
 html[data-theme='dark'] .surface-tab.current{
   background:color-mix(in srgb,var(--dk-orange) 10%,var(--paper-raised))!important;
 }
+
+
+/* ==========================================================================
+   DOKKIT MAKEOVER II — the silhouette
+   Less "SaaS card grid". More instrument / workshop / machine.
+   ========================================================================== */
+
+.surface-header-controls{
+  position:relative;
+}
+.surface-header-controls::after{
+  content:'';
+  position:absolute;
+  right:0;
+  bottom:-1px;
+  width:96px;
+  height:3px;
+  background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+  border-radius:3px 0 0 3px;
+}
+
+/* Section labels become navigation landmarks. */
+.meeting-section-header,.trip-section-header{
+  display:flex!important;
+  align-items:baseline!important;
+  gap:10px!important;
+  padding:8px 2px 10px!important;
+}
+.meeting-section-title,.trip-section-title{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-family:var(--font-label)!important;
+  font-size:10px!important;
+  letter-spacing:.16em!important;
+  color:var(--ink)!important;
+}
+.meeting-section-title::before,.trip-section-title::before{
+  content:'';
+  width:18px;
+  height:3px;
+  border-radius:2px;
+  background:var(--dk-orange);
+}
+.meeting-section-lede,.trip-section-lede{
+  margin-left:0!important;
+  font-size:11px!important;
+}
+
+/* Every object gets a tiny piece of visual engineering. */
+.meeting-row.surface-object,
+.trip-row-maybach.surface-object,
+.desk-job-card.surface-object,
+.job-row,
+.task-card.surface-object{
+  position:relative;
+  isolation:isolate;
+}
+.meeting-row.surface-object::before,
+.trip-row-maybach.surface-object::before,
+.desk-job-card.surface-object::before,
+.job-row::before,
+.task-card.surface-object::before{
+  content:'';
+  position:absolute;
+  z-index:-1;
+  left:14px;
+  right:14px;
+  top:-1px;
+  height:3px;
+  border-radius:0 0 3px 3px;
+  background:var(--line-strong);
+  transition:left .18s var(--ease),right .18s var(--ease),background .18s var(--ease);
+}
+.meeting-row.surface-object:hover::before,
+.trip-row-maybach.surface-object:hover::before,
+.desk-job-card.surface-object:hover::before,
+.job-row:hover::before,
+.task-card.surface-object:hover::before{
+  left:24px;
+  right:24px;
+  background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+}
+
+/* Jobs: the first work object earns a little more real estate. */
+@media (min-width:1000px){
+  html[data-surface='desktop'] .desk-jobs-grid{
+    grid-template-columns:repeat(12,minmax(0,1fr))!important;
+    gap:16px!important;
+  }
+  html[data-surface='desktop'] .desk-jobs-grid > *{
+    grid-column:span 4;
+  }
+  html[data-surface='desktop'] .desk-jobs-grid > :first-child{
+    grid-column:span 6;
+    grid-row:span 2;
+  }
+  html[data-surface='desktop'] .desk-jobs-grid > :first-child .desk-job-card.surface-object{
+    min-height:248px!important;
+    padding:22px 22px!important;
+  }
+  html[data-surface='desktop'] .desk-jobs-grid > :first-child .desk-job-card-name{
+    font-size:22px!important;
+    line-height:1.12!important;
+  }
+  html[data-surface='desktop'] .desk-jobs-grid > :first-child .desk-job-card-state{
+    margin-top:22px!important;
+    padding-top:14px!important;
+  }
+}
+
+/* Meetings: live conversations physically step forward. */
+.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now{
+  min-height:148px!important;
+  padding:20px 20px!important;
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb,var(--dk-orange) 7%,var(--paper-raised)),
+      var(--paper-raised) 58%)!important;
+}
+.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now .meeting-row-name{
+  font-size:20px!important;
+}
+.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now .meeting-row-time{
+  margin-top:9px!important;
+  font-size:12px!important;
+}
+.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now::before{
+  height:5px;
+  background:var(--dk-orange);
+}
+
+/* Travel: routes get a directional spine rather than looking like records. */
+.trip-row-maybach.surface-object::after{
+  content:'';
+  position:absolute;
+  left:var(--dk-pad-x);
+  bottom:14px;
+  width:52px;
+  height:2px;
+  background:linear-gradient(90deg,var(--dk-blue) 0 55%,var(--dk-orange) 55%);
+  border-radius:2px;
+  opacity:.75;
+}
+.trip-row-maybach.pressure-now::after{
+  width:78px;
+  background:linear-gradient(90deg,var(--dk-orange) 0 62%,var(--dk-blue) 62%);
+}
+.trip-row-maybach.surface-object .trip-row-delete{
+  border:1px solid transparent!important;
+  background:transparent!important;
+}
+
+/* Today: make the existing depth rail look like a machine readout. */
+.desk-today-depth{
+  position:relative!important;
+  margin-top:18px!important;
+  padding:20px 22px 22px!important;
+  border-top:1px solid var(--line)!important;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb,var(--paper) 76%,var(--dk-blue) 24%),
+      var(--paper) 18%)!important;
+}
+.desk-depth-day{
+  padding:14px 0 4px!important;
+}
+.desk-depth-track{
+  position:relative!important;
+  height:12px!important;
+  margin-top:9px!important;
+  border-radius:99px!important;
+  background:color-mix(in srgb,var(--line) 72%,var(--paper))!important;
+  box-shadow:inset 0 1px 2px rgba(var(--shadow-rgb),.12)!important;
+  overflow:visible!important;
+}
+.desk-depth-track-elapsed{
+  height:100%!important;
+  border-radius:99px 0 0 99px!important;
+  background:var(--dk-blue)!important;
+}
+.desk-depth-track-load{
+  height:100%!important;
+  border-radius:0 99px 99px 0!important;
+  background:linear-gradient(90deg,var(--dk-orange),color-mix(in srgb,var(--dk-orange) 55%,var(--dk-blue)))!important;
+}
+.desk-depth-track-load.is-over{background:var(--danger)!important}
+.desk-depth-track-fixed{
+  top:-3px!important;
+  height:18px!important;
+  border-radius:3px!important;
+  background:var(--ink)!important;
+  opacity:.78!important;
+}
+.desk-depth-track-now{
+  top:-5px!important;
+  width:3px!important;
+  height:22px!important;
+  border-radius:3px!important;
+  background:var(--dk-orange)!important;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--dk-orange) 13%,transparent)!important;
+}
+.desk-depth-now-label{
+  color:var(--dk-orange)!important;
+  font-weight:800!important;
+  letter-spacing:.08em!important;
+  text-transform:uppercase;
+}
+
+/* The primary Today action gets a proper ignition-button treatment. */
+.desk-today-dock-pill{
+  position:relative!important;
+  min-height:46px!important;
+  padding:0 19px!important;
+  border-radius:12px!important;
+  letter-spacing:-.01em;
+  box-shadow:0 3px 0 color-mix(in srgb,var(--dk-orange) 70%,#000),0 8px 18px color-mix(in srgb,var(--dk-orange) 18%,transparent)!important;
+}
+.desk-today-dock-pill::after{
+  content:'';
+  position:absolute;
+  top:7px;
+  right:8px;
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:#fff;
+  opacity:.72;
+}
+
+/* Mobile object hierarchy remains obvious at thumb size. */
+@media (max-width:700px){
+  .meeting-section-header,.trip-section-header{
+    padding:10px 0 8px!important;
+  }
+  .meeting-section-title,.trip-section-title{
+    font-size:9px!important;
+  }
+  .meeting-section-lede,.trip-section-lede{
+    display:none;
+  }
+  .meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now{
+    min-height:128px!important;
+    padding:17px 16px!important;
+  }
+  .meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now .meeting-row-name{
+    font-size:18px!important;
+  }
+  .trip-row-maybach.surface-object::after{
+    left:14px;
+    bottom:10px;
+  }
+  .desk-today-depth{
+    padding:16px!important;
+  }
+}
+
+/* Dark mode: use the same engineering cues, not louder colour. */
+html[data-theme='dark'] .desk-depth-track{
+  background:color-mix(in srgb,var(--line) 65%,var(--paper))!important;
+}
+html[data-theme='dark'] .surface-header-controls::after{
+  opacity:.9;
+}
