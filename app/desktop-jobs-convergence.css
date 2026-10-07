@@ -2,6 +2,20 @@
    DOKKIT — JOBS / DESKTOP SURFACE CONVERGENCE
    ========================================================================== */
 
+/* Shared desktop header geometry: the surface header and its controls align
+   to the same readable rail as the workspace body. */
+html[data-surface='desktop'] .desk-jobs-workspace-header > .surface-header-bar,
+html[data-surface='desktop'] .desk-surface-workspace-header > .surface-header-bar,
+html[data-surface='desktop'] .desk-jobs-workspace-header > .surface-header-controls,
+html[data-surface='desktop'] .desk-surface-workspace-header > .surface-controls,
+html[data-surface='desktop'] .desk-surface-workspace-header > .travel-featured,
+html[data-surface='desktop'] .desk-surface-workspace-header > .meetings-featured {
+  width: 100%;
+  max-width: 1500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 html[data-surface='desktop'] .desk-jobs-workspace-header {
   display: block;
   flex-shrink: 0;
