@@ -708,7 +708,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
       out.action = 'create_task';
     } else if (
       /\b(?:from|at)\s+(?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office)\b/i.test(lower) &&
-      !/\bfor\s+(?:[A-Z0-9][A-Za-z0-9' .-]{1,80})$/i.test(text)
+      !/\bfor\s+(?:the\s+)?[A-Z0-9][A-Za-z0-9' .-]{1,80}\.?$/i.test(text)
     ) {
       out.action = 'pickup';
     } else {
