@@ -2462,8 +2462,11 @@ html[data-theme='dark'] .desk-job-card:first-child{
    The parent card used to clip sticky descendants with overflow:hidden.
    Keep clipping on the cockpit itself, not on its scroll ancestor. */
 @media (max-width:700px){
+  /* The cockpit must stick to the page scroll, not to the short header card.
+     Keeping the legacy card box here makes the old header visible behind it
+     and also limits sticky positioning to the card's height. */
   .today-header-card{
-    overflow:visible!important;
+    display:contents!important;
   }
 
   .mobile-today-cockpit{
