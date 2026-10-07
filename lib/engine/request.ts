@@ -283,31 +283,39 @@ function extractLocation(text: string): string | null {
        */
       if (prep === 'for') {
         /*
-         * "for" is intentionally conservative because it often introduces
-         * purpose/recipient language ("call John for the quote"). However,
-         * a place-like noun phrase is strong contextual location evidence:
-         * "call Mike for James Street", "check the flashing for Queen Street".
-         *
-         * Only accept it when either:
-         *  - the preceding action is location-oriented, or
-         *  - the candidate itself has a street/address/place shape.
-         *
-         * This keeps "for the quote", "for Sarah", etc. out of locationText.
+         * "for" can mean purpose/recipient ("call Jordan for the quote")
+         * or a job/location ("for Angela Place"). Prefer the final "for"
+         * whose remainder is strongly place-like when nested "for" phrases
+         * occur, e.g. "measurements for the downpipes for Angela Place".
          */
         const restAfterFor = text.slice(m.index + m[0].length);
         const placeLike =
-          /\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq|road)\b/i.test(
+          /\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)\b/i.test(
             restAfterFor
           ) ||
           /^\d+\s+[A-Za-z0-9][^,]{2,80}$/i.test(restAfterFor.trim());
 
         if (
+          !placeLike &&
           !/\b(?:check|inspect|fix|repair|visit|go|head|drive|work|working|deliver|drop\s+off|take|leave|pick\s*up|collect|get|fetch)\b/i.test(
             before
-          ) &&
-          !placeLike
+          )
         ) {
           continue;
+        }
+
+        const nestedPlace = restAfterFor.match(
+          /\bfor\s+(.+?)(?=\s*(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|$)/i
+        );
+
+        if (
+          nestedPlace?.[1] &&
+          /\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)\b/i.test(
+            nestedPlace[1]
+          )
+        ) {
+          location = nestedPlace[1].trim();
+          break;
         }
       }
       if (
@@ -316,6 +324,18 @@ function extractLocation(text: string): string | null {
       ) {
         continue;
       }
+
+      // In "call Jordan to get measurements for Angela Place", this "to"
+      // introduces the purpose/action rather than a destination.
+      if (
+        prep === 'to' &&
+        /^(?:get|grab|pick\s*up|pickup|collect|fetch|buy|purchase|check|inspect|measure|review|confirm|ask|tell)\b/i.test(
+          text.slice(m.index + m[0].length).trim()
+        )
+      ) {
+        continue;
+      }
+
 
       const rest = text.slice(m.index + m[0].length);
 
@@ -922,13 +942,9 @@ export function applyUtteranceToRequest(
  */
 export function requestTaskText(req: EngineRequest): string {
   const firstUtterance = req.rawUtterances[0] ?? '';
-
   const lowerFirst = firstUtterance.toLowerCase();
 
-  const isDropOff = /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(
-    lowerFirst
-  );
-
+  const isDropOff = /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(lowerFirst);
   const isPickup =
     req.action === 'pickup' ||
     /\b(?:pick\s*up|pickup|grab|collect|get|fetch)\b/i.test(lowerFirst);
@@ -948,11 +964,6 @@ export function requestTaskText(req: EngineRequest): string {
   }
 
   if (req.locationText && !isDropOff && !isPickup) {
-    /*
-     * Location is already semantically present in the object when the user
-     * said things like "check the flashings for James Street".
-     * Keep the location binding, but do not repeat it in the task title.
-     */
     const object = (req.objectText ?? '').trim();
     const location = req.locationText.trim();
     const escaped = location.replace(/[.*+?^$()|[\\]{}]/g, '\\$&');
@@ -962,16 +973,6 @@ export function requestTaskText(req: EngineRequest): string {
         '(?:\\b(?:at|to|from|for|about)\\s+)' + escaped + '\\s*$',
         'i'
       ).test(object) ||
-      object.toLowerCase() === location.toLowerCase();
-
-    if (!alreadyInObject) {
-      bits.push(`at ${location}`);
-    }
-  }
-
-  return bits.join(' ').replace(/\s+/g, ' ').trim();
-}
-, 'i').test(object) ||
       object.toLowerCase() === location.toLowerCase();
 
     if (!alreadyInObject) {
