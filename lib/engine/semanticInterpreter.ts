@@ -92,10 +92,10 @@ function confidenceFor(
   if (reference?.status === 'ambiguous') return 'low';
   if (parsed.confidence === 'high') return 'high';
   if (reference?.status === 'resolved') {
-    return parsed.confidence === 'low' ? 'medium' : parsed.confidence;
+    return parsed.confidence === 'low' || !parsed.confidence ? 'medium' : parsed.confidence;
   }
   if (parsed.action && parsed.action !== 'unknown' && parsed.objectText) return 'medium';
-  return parsed.confidence;
+  return parsed.confidence ?? 'low';
 }
 
 /**
