@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { CheckIcon, MapPinIcon } from '@/components/icons';
+import ContextLine from '@/components/ContextLine';
 import type { Job } from '@/lib/jobTypes';
 import type { Task } from '@/lib/taskTypes';
 
@@ -71,12 +72,14 @@ export default function DesktopJobCard({
         )}
       </div>
 
-      {job.location_text && (
-        <div className="desk-job-card-location">
-          <MapPinIcon size={13} />
-          <span>{job.location_text}</span>
-        </div>
-      )}
+      <ContextLine
+        className="desk-job-card-context"
+        items={[
+          { label: 'Jobs', current: true },
+          ...(todayCount > 0 ? [{ label: todayCount === 1 ? 'Today · 1 task' : `Today · ${todayCount} tasks`, href: '/' }] : []),
+          ...(job.location_text ? [{ label: job.location_text }] : []),
+        ]}
+      />
 
       <div className="desk-job-card-state">
         <div className="desk-job-card-state-item">
