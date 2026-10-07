@@ -221,6 +221,20 @@ function addToLeadingQuantity(text: string, amount: string): string {
  * - Infinitive "to" after need/want/have/going must not be treated as a place marker.
  * - Prefer destination after movement verbs (drop off X to/at Y).
  */
+function stripExplicitDurationPhrase(text: string): string {
+  return text
+    .replace(
+      /\s*(?:,?\s*(?:for|give(?:\s+me)?|take|about|around)\s+)?(?:half\s+an?\s+hour|an?\s+half\s+hour)\b.*$/i,
+      ''
+    )
+    .replace(
+      /\s*(?:,?\s*(?:for|give(?:\s+me)?|take|about|around)\s+)?\d+(?:\.\d+)?\s*(?:minutes?|mins?|m|hours?|hrs?|h)\b.*$/i,
+      ''
+    )
+    .replace(/\s*,\s*$/, '')
+    .trim();
+}
+
 function extractLocation(text: string): string | null {
   /**
    * Destination after movement verb + object:
@@ -313,6 +327,8 @@ function extractLocation(text: string): string | null {
 
   if (!location) return null;
 
+  // Duration phrases must never leak into location semantics.
+  location = stripExplicitDurationPhrase(location);
   location = location.replace(/[.,]+$/, '').trim();
 
   // Avoid treating "at the meeting" as a physical location.
@@ -460,6 +476,9 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     if (!match?.[1]) continue;
 
     let objectText = match[1].trim().replace(/[.,]+$/, '').trim();
+
+    // Duration is a semantic modifier, not part of the task object.
+    objectText = stripExplicitDurationPhrase(objectText);
 
     objectText = objectText.replace(/\s+\b(?:today|tomorrow)\b.*$/i, '').trim();
     objectText = objectText
