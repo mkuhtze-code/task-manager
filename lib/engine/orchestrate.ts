@@ -185,7 +185,8 @@ function actionFromPlan(
   req: EngineRequest,
   plan: PlanProposal,
   mayAct: boolean,
-  _ctx: ReasoningContext
+  _ctx: ReasoningContext,
+  currentUtterance: string
 ): EngineAction {
   if (!mayAct) {
     const ask = plan.steps.find((s) => s.kind === 'ask');
@@ -216,8 +217,8 @@ function actionFromPlan(
   const boundTaskId = taskIdFromConstraints(req);
   const isRefinement =
     req.rawUtterances.length > 1 &&
-    /^(?:actually|sorry|no[, ]|i\\s+need\\s+it|make\\s+that|put\\s+that|move\\s+(?:it|that)|change\\s+(?:it|that)|update\\s+(?:it|that)|add\\s+(?:that|this)|on\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|tomorrow|today)\\b/i.test(
-      req.rawUtterances.at(-1)?.trim() ?? ''
+    /^(?:actually|sorry|no[, ]|i\s+need\s+it|make\s+that|put\s+that|move\s+(?:it|that)|change\s+(?:it|that)|update\s+(?:it|that)|add\s+(?:that|this)|on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|tomorrow|today)\b/i.test(
+      currentUtterance.trim()
     );
   if (boundTaskId && isRefinement) {
     return {
@@ -353,7 +354,7 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
 
   const plan = planForRequest(request, ctx, input.todayDate, facts);
   const authority = decideAuthority(request);
-  const action = actionFromPlan(request, plan, authority.mayAct, ctx);
+  const action = actionFromPlan(request, plan, authority.mayAct, ctx, input.utterance);
   const explanation = explainDecision({
     request,
     plan,
