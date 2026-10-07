@@ -1,4 +1,8 @@
-/* Travel overview — Maybach craft. Movement surface, same calm as Meetings/Today. */
+/* Travel overview — one shared surface grammar, with place-specific content. */
+
+.travel-featured-label { padding: 0; background: transparent; color: var(--ink-faint, #64748b); }
+.travel-featured { box-shadow: none; border-color: var(--line); }
+.travel-featured:hover { box-shadow: none; border-color: var(--line-strong); }
 
 .travel-shell {
   min-height: 100%;
