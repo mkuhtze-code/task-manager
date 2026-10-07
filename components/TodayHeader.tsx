@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import GearMenu from '@/components/GearMenu';
 import { ChevronIcon, FitCheckIcon, FitWarnIcon } from '@/components/icons';
+import ContextLine from '@/components/ContextLine';
 
 export type DeskDayDepth = {
   /** Clock time left until work end. */
@@ -54,6 +55,9 @@ export function TodayHeader(props: {
     start_at: string;
     end_at: string;
     all_day: boolean;
+    href?: string;
+    kind?: 'meeting' | 'calendar';
+    jobLabel?: string | null;
   }>;
   onRealityCheck?: () => void;
   showRealityCheck?: boolean;
@@ -557,6 +561,15 @@ export function TodayHeader(props: {
                       <span className="desk-today-commitment-when mono">
                         {commitmentWindow(c)}
                       </span>
+                      {c.kind === 'meeting' ? (
+                        <ContextLine
+                          className="desk-today-commitment-context"
+                          items={[
+                            { label: 'Meeting', href: c.href },
+                            ...(c.jobLabel ? [{ label: c.jobLabel }] : []),
+                          ]}
+                        />
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -673,6 +686,15 @@ export function TodayHeader(props: {
               >
                 {commitmentWindow(c)}
               </span>
+              {c.kind === 'meeting' ? (
+                <ContextLine
+                  className="today-commitment-context"
+                  items={[
+                    { label: 'Meeting', href: c.href },
+                    ...(c.jobLabel ? [{ label: c.jobLabel }] : []),
+                  ]}
+                />
+              ) : null}
             </span>
           ))}
         </div>
