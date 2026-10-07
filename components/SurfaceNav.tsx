@@ -109,19 +109,9 @@ export default function SurfaceNav({
   const { entitlements } = useEntitlements();
   const isPro = entitlements.isPro;
 
-  const ordered = (() => {
-    if (!sectionOrder?.length) return ALL_ITEMS;
-    const byKey = new Map(ALL_ITEMS.map((i) => [i.key, i]));
-    const out: typeof ALL_ITEMS = [];
-    for (const k of sectionOrder) {
-      const item = byKey.get(k);
-      if (item) out.push(item);
-    }
-    for (const i of ALL_ITEMS) {
-      if (!out.includes(i)) out.push(i);
-    }
-    return out;
-  })();
+  // The four lenses are Dokkit's stable map. Personalisation may change
+  // emphasis elsewhere, but must not move the user's landmarks.
+  const ordered = ALL_ITEMS;
 
   useEffect(() => {
     recordSurfaceVisitQuiet(active);
