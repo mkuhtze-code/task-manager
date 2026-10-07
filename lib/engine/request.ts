@@ -438,6 +438,17 @@ function extractLocation(text: string): string | null {
   }
 
   if (!location) {
+    // Procurement source beats a trailing job-purpose phrase:
+    // "Get 6 lengths of gutter from the supplier for Smith Road" -> supplier.
+    const physicalSource = text.match(
+      /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\b/i
+    );
+    if (physicalSource?.[1]) {
+      location = physicalSource[1].trim();
+    }
+  }
+
+  if (!location) {
     /*
      * Strong final job/place phrase:
      *   "measurements for the downpipes for Angela Place"
@@ -578,7 +589,10 @@ function extractLocation(text: string): string | null {
 
   // Duration phrases must never leak into location semantics.
   location = stripExplicitDurationPhrase(location);
-  location = location.replace(/[.,]+$/, '').trim();
+  location = location
+    .replace(/\s+(?:on|after|before)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i, '')
+    .replace(/[?.,]+$/, '')
+    .trim();
 
   // Avoid treating "at the meeting" as a physical location.
   if (/^(?:the|a|an)\s+meeting$/i.test(location)) {
@@ -1261,7 +1275,7 @@ export function requestTaskText(req: EngineRequest): string {
     bits.push(`Remind me ${req.objectText.replace(/^remind\s+me\s+/i, '')}`);
   } else if (isDropOff) {
     const dropVerb =
-      primaryVerb === 'deliver' ? 'Deliver' :
+      primaryVerb === 'deliver' ? 'Drop off' :
       primaryVerb === 'take' ? 'Take' :
       primaryVerb === 'leave' ? 'Leave' : 'Drop off';
     bits.push(req.objectText ? `${dropVerb} ${req.objectText}` : dropVerb);
