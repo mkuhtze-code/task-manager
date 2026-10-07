@@ -1,4 +1,8 @@
-/* Meetings — Maybach craft. Domain surface, same calm as Today. */
+/* Meetings — one shared surface grammar, with conversation-specific content. */
+
+.meetings-featured-label { padding: 0; background: transparent; color: var(--ink-faint, #64748b); }
+.meetings-featured { box-shadow: none; border-color: var(--line); }
+.meetings-featured:hover { box-shadow: none; border-color: var(--line-strong); }
 
 .meetings-shell {
   min-height: 100%;
