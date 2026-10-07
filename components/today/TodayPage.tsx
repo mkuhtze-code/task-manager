@@ -2504,11 +2504,37 @@ export function TodayPage() {
     routeDriveMins +
     travelBlockedMins;
 
-  const activeCommitments = calendarEvents
-    .filter((e) => new Date(e.end_at).getTime() > now.getTime())
-    .sort(
-      (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
-    );
+  // Today is the integrator: manual meetings and calendar commitments are
+  // represented together so the day shows the same time object the Meetings
+  // surface owns, rather than silently treating meetings as capacity only.
+  const activeCommitments = [
+    ...calendarEvents
+      .filter((e) => new Date(e.end_at).getTime() > now.getTime())
+      .map((e) => ({
+        ...e,
+        kind: 'calendar' as const,
+      })),
+    ...todayMeetings
+      .filter((m) => m.source !== 'outlook' && Boolean(m.start_time))
+      .map((m) => {
+        const start = new Date(m.start_time!);
+        const end = new Date(start.getTime() + m.duration_mins * 60000);
+        return {
+          id: `meeting-${m.id}`,
+          title: m.text || 'Meeting',
+          start_at: start.toISOString(),
+          end_at: end.toISOString(),
+          all_day: false,
+          href: `/meetings/${m.id}`,
+          kind: 'meeting' as const,
+          jobLabel: m.job_id
+            ? jobs.find((j) => j.id === m.job_id)?.name ?? null
+            : null,
+        };
+      }),
+  ].sort(
+    (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+  );
 
   const overloaded = isWorkDay && minutesLeftToday > 0 && remainingWorkMins > minutesLeftToday;
 
