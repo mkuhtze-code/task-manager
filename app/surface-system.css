@@ -2458,13 +2458,22 @@ html[data-theme='dark'] .desk-job-card:first-child{
   .mobile-today-cockpit.is-off .mobile-today-cockpit-time strong{font-size:44px}
 }
 
-/* Mobile Today cockpit: persistent instrument, not a collapsible header. */
+/* Mobile Today cockpit: persistent instrument, not a collapsible header.
+   The parent card used to clip sticky descendants with overflow:hidden.
+   Keep clipping on the cockpit itself, not on its scroll ancestor. */
 @media (max-width:700px){
+  .today-header-card{
+    overflow:visible!important;
+  }
+
   .mobile-today-cockpit{
     position:sticky;
     top:0;
-    z-index:24;
+    z-index:40;
     isolation:isolate;
+    box-shadow:
+      0 12px 28px rgba(var(--shadow-rgb),.12),
+      0 1px 0 color-mix(in srgb,var(--dk-blue) 12%,transparent);
   }
   .mobile-today-cockpit::after{
     content:'';
