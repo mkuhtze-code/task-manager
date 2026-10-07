@@ -308,6 +308,50 @@ describe('Integration Pass 1 — adversarial / fail-safe', () => {
 });
 
 
+describe('Integration Pass 1 — capture interpretation boundaries', () => {
+  it('keeps a destination clean when movement is followed by a purpose phrase', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: {
+        type: 'text',
+        text: 'I need to go to Bunnings to grab 2 cartridges of clear Sika MS and 2 sausages of Sika White MS',
+      },
+      context: baseContext,
+    });
+
+    expect(r.outcome).toBe('ACT');
+    expect(r.action?.kind).toBe('create_task');
+    expect(r.action?.locationText).toBe('Bunnings');
+    expect(r.action?.text).toMatch(/2 cartridges of clear Sika MS/i);
+    expect(r.action?.text).toMatch(/2 sausages of Sika White MS/i);
+    expect(r.action?.locationText).not.toMatch(/to grab/i);
+  });
+
+  it('preserves explicit tomorrow scheduling without capacity veto', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: {
+        type: 'speech_transcript',
+        text: 'I need to drop off the clips to Grace James Road at 9am tomorrow',
+      },
+      context: {
+        ...baseContext,
+        remainingMinsToday: 1,
+      },
+    });
+
+    expect(r.outcome).toBe('ACT');
+    expect(r.authority.mayAct).toBe(true);
+    expect(r.request.dateHint).toBe('tomorrow');
+    expect(r.request.timeHint).toBe('09:00');
+    expect(r.action?.kind).toBe('create_task');
+  });
+});
+
+
+
 describe('Integration Pass 1 — shared fit authority', () => {
   it('uses the same V3 fit decision for ACT and ANSWER', async () => {
     const { runEngineCycle } = await import('../orchestrate');
