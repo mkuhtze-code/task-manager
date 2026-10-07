@@ -37,7 +37,14 @@ function prefersType(phrase: string): MemoryItem['type'][] | null {
 export function resolveReference(
   text: string,
   mem: WorkingMemorySnapshot,
-  opts?: { preferTypes?: MemoryItem['type'][] }
+  opts?: {
+    preferTypes?: MemoryItem['type'][];
+    /**
+     * Ephemeral referents supplied by the current surface/context.
+     * These are candidates only; they are not persisted into working memory.
+     */
+    extraReferents?: MemoryItem[];
+  }
 ): ReferenceResolution {
   const phrase = extractReferencePhrase(text);
   if (!phrase) {
@@ -45,7 +52,7 @@ export function resolveReference(
   }
 
   const prefer = opts?.preferTypes ?? prefersType(phrase);
-  let pool = allReferents(mem);
+  let pool = [...(opts?.extraReferents ?? []), ...allReferents(mem)];
 
   // Focus boost
   if (mem.currentFocus.id && mem.currentFocus.label) {
