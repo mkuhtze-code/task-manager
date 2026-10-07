@@ -214,6 +214,32 @@ describe('Integration Pass 1 — reference resolution', () => {
 });
 
 describe('Integration Pass 1 — adversarial / fail-safe', () => {
+  it('treats a speech-style feasibility question without punctuation as a query', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: { type: 'speech_transcript', text: 'have I got time to get to Henderson this afternoon' },
+      context: baseContext,
+    });
+
+    expect(r.outcome).toBe('ANSWER');
+    expect(r.answer).not.toBeNull();
+  });
+
+  it('does not turn an explicit scheduled stop into a capacity veto', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: { type: 'speech_transcript', text: 'drop the clips at Grace James Road at 4 today' },
+      context: { ...baseContext, remainingMinsToday: 5 },
+    });
+
+    expect(r.outcome).toBe('ACT');
+    expect(r.authority.mayAct).toBe(true);
+    expect(r.action?.kind).toBe('create_task');
+  });
+
+
   it('does not create a task for pure feasibility questions', () => {
     const r = processInteraction({
       userId: 'u1',
