@@ -58,6 +58,12 @@ export function oneShotGate(params: {
  * Post-dock summaries were removed from Today. Capture feedback belongs in
  * the capture surface, not as stale confirmation text on the main screen.
  */
-export function formatDockSummary(): string {
+export function formatDockSummary(_params: {
+  text: string;
+  surfaceDate: string | null;
+  intendedTime: string | null;
+  locationText: string | null;
+  jobName: string | null;
+}): string {
   return '';
 }
