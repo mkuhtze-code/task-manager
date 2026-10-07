@@ -17,6 +17,7 @@ import {
   StopIcon,
 } from '@/components/icons';
 import { TaskInfo } from '@/components/TaskInfo';
+import ContextLine from '@/components/ContextLine';
 
 export function TaskCard(props: {
   task: Task;
@@ -183,10 +184,14 @@ export function TaskCard(props: {
           aria-label={`${t.text} — ${expanded ? 'collapse' : 'expand'}`}
         >
           <div className="task-text">{t.text}</div>
-          {jobLabel ? (
-            <div className="task-card-job" title={jobLabel}>
-              {jobLabel}
-            </div>
+          {jobLabel || t.location_text ? (
+            <ContextLine
+              className="task-card-context"
+              items={[
+                ...(jobLabel ? [{ label: jobLabel, href: t.job_id ? `/jobs/${t.job_id}` : undefined }] : []),
+                ...(t.location_text ? [{ label: t.location_text }] : []),
+              ]}
+            />
           ) : null}
           {fitLabel ? (
             <div className="task-fit-line" title={fitReason ?? undefined}>
