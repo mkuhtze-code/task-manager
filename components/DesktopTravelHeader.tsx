@@ -89,8 +89,9 @@ export default function DesktopTravelHeader({
       <div className="surface-header-bar">
         <div className="surface-header-orient">
           <div className="surface-identity">
-            <span className="surface-kicker">Place</span>
+            <span className="surface-kicker">Place / Motion</span>
             <h1 className="surface-title">Travel</h1>
+            <span className="surface-lede">Movement changes the shape of the day.</span>
           </div>
           <div
             className={
