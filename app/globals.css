@@ -8371,6 +8371,16 @@ select:-webkit-autofill {
 .task-card-context {
   max-width: min(100%, 420px);
 }
-.desk-job-card-context {
+ .desk-job-card-context {
   margin-top: 8px;
+}
+.meeting-detail-context {
+  margin-top: 5px;
+}
+.meeting-row-context,
+.trip-row-context {
+  display: inline-flex;
+  margin-top: 0;
+  margin-left: 8px;
+  vertical-align: middle;
 }
