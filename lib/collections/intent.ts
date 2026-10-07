@@ -191,7 +191,7 @@ function withContextLink(
 
 function looksLikeStandaloneTask(text: string): boolean {
   return (
-    /\b(need to|have to|should|must|schedule|call|ring|phone|email|text|message|contact|meet|finish|write|send|buy|fix|repair|inspect|check|book|pay|pick up|grab|collect|get|fetch|deliver|drop off|take|go|head|drive|travel|visit|order|clean|measure|install|remove|replace|update|change|review|confirm|ask|tell|chase|follow up)\b/i.test(
+    /\b(need to|have to|should|must|schedule|call|ring|phone|email|text|message|contact|meet|finish|write|send|buy|fix|repair|inspect|check|book|pay|pick up|grab|collect|get|fetch|deliver|drop off|take|go|head|drive|travel|visit|order|clean|measure|install|remove|replace|update|change|move|reschedule|postpone|review|confirm|ask|tell|chase|follow up)\b/i.test(
       text
     ) && !/\blists?\b/i.test(text)
   );
