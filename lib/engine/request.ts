@@ -267,7 +267,45 @@ function extractLocation(text: string): string | null {
   }
 
   if (!location) {
-    // Fall back: first at/to/from that is not an infinitive marker.
+    /*
+     * Strong final job/place phrase:
+     *   "measurements for the downpipes for Angela Place"
+     *
+     * There can be multiple "for" prepositions. Do not capture everything
+     * after the first one. Choose the LAST "for" whose remainder is a
+     * place-shaped phrase, because that is the job/location boundary.
+     */
+    const forMatches = [...text.matchAll(/\bfor\s+/gi)];
+    for (let i = forMatches.length - 1; i >= 0; i -= 1) {
+      const match = forMatches[i];
+      const candidate = text.slice(
+        (match.index ?? 0) + match[0].length
+      ).trim();
+
+      const cleanedCandidate = candidate
+        .replace(
+          /\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b.*$/i,
+          ''
+        )
+        .replace(
+          /\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i,
+          ''
+        )
+        .replace(/\s*,\s*$/, '')
+        .trim();
+
+      if (
+        /^(?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)$/i.test(
+          cleanedCandidate
+        )
+      ) {
+        location = cleanedCandidate;
+        break;
+      }
+    }
+  }
+
+
     const re = /\b(?:at|to|from|for)\s+/gi;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
