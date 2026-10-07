@@ -72,32 +72,28 @@ export default function DesktopJobCard({
         )}
       </div>
 
-      <ContextLine
-        className="desk-job-card-context"
-        items={[
-          { label: 'Jobs', current: true },
-          ...(todayCount > 0 ? [{ label: todayCount === 1 ? 'Today · 1 task' : `Today · ${todayCount} tasks`, href: '/' }] : []),
-          ...(job.location_text ? [{ label: job.location_text }] : []),
-        ]}
-      />
+      {todayCount > 0 || job.location_text ? (
+        <ContextLine
+          className="desk-job-card-context"
+          items={[
+            ...(todayCount > 0
+              ? [{ label: todayCount === 1 ? 'Today · 1 task' : `Today · ${todayCount} tasks`, href: '/' }]
+              : []),
+            ...(job.location_text ? [{ label: job.location_text }] : []),
+          ]}
+        />
+      ) : null}
 
-      <div className="desk-job-card-state">
-        <div className="desk-job-card-state-item">
-          <strong className="mono">{openTasks}</strong>
-          <span>open</span>
-        </div>
-
-        <div className="desk-job-card-state-item">
-          <strong className="mono">{completedTasks}</strong>
-          <span>done</span>
-        </div>
-
-        {todayCount > 0 && (
-          <div className="desk-job-card-state-item today">
-            <strong className="mono">{todayCount}</strong>
-            <span>today</span>
-          </div>
-        )}
+      <div className="desk-job-card-state surface-object-time">
+        <span className="mono">{openTasks}</span> open
+        <span aria-hidden="true"> · </span>
+        <span className="mono">{completedTasks}</span> done
+        {todayCount > 0 ? (
+          <>
+            <span aria-hidden="true"> · </span>
+            <span className="mono">{todayCount}</span> today
+          </>
+        ) : null}
       </div>
 
       {next && !done && (
