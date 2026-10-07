@@ -91,8 +91,12 @@ export function itemsFromText(raw: string, source = 'speech'): CollectionItemInp
 export function looksLikeImplicitItem(text: string): boolean {
   const t = collapseWhitespace(text);
   if (!t) return false;
-  // Avoid sentences that look like full tasks
-  if (/\b(need to|have to|should|must|please|remind|schedule|meeting)\b/i.test(t)) {
+  // Active-list context is not a mode. Explicit task language must always
+  // fall through to normal task capture instead of becoming a list item.
+  if (
+    /\b(need to|have to|should|must|please|remind|schedule|meeting)\b/i.test(t) ||
+    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|go|head|drive|travel|take|drop\s*off|deliver|pick\s*up|grab|collect|get|fetch)\b/i.test(t)
+  ) {
     return false;
   }
   // Done-state utterances are completions, never new items
