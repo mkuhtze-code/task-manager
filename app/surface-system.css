@@ -2483,3 +2483,177 @@ html[data-theme='dark'] .desk-job-card:first-child{
     flex:0 0 auto;
   }
 }
+
+
+/* ==========================================================================
+   CLARITY PASS — high signal, low noise
+   Dokkit absorbs complexity; the surface should not narrate it.
+   ========================================================================== */
+
+:root{
+  --dk-type-floor:11px;
+  --dk-meta-readable:12px;
+}
+
+.surface-lede,
+.surface-context{
+  display:none!important;
+}
+
+.surface-pulse-meta{
+  display:none!important;
+}
+
+.surface-pulse{
+  min-width:0!important;
+}
+
+.surface-pulse-title{
+  font-size:13px!important;
+  line-height:1.2!important;
+}
+
+.surface-kicker{
+  font-size:11px!important;
+  letter-spacing:.11em!important;
+}
+
+.meeting-section-title,
+.trip-section-title,
+.desk-job-card-section-label{
+  font-size:11px!important;
+  letter-spacing:.12em!important;
+}
+
+.surface-object-time,
+.meeting-row-time,
+.trip-row-time,
+.desk-job-card-state,
+.job-row-meta,
+.surface-object-context,
+.task-card-context,
+.desk-job-card-context,
+.meeting-row-context,
+.trip-row-context{
+  font-size:var(--dk-meta-readable)!important;
+  line-height:1.4!important;
+}
+
+.meeting-row-relative,
+.trip-row-relative{
+  font-size:12px!important;
+}
+
+.meeting-source-tag,
+.meetings-featured-label,
+.travel-featured-label,
+.desk-today-now-kicker,
+.desk-today-next-kicker,
+.mobile-today-cockpit-kicker,
+.mobile-today-cockpit-time span,
+.mobile-today-cockpit-fit strong,
+.mobile-today-cockpit-fit>span:last-child,
+.mobile-today-capacity-head,
+.mobile-today-capacity-head .mono,
+.mobile-today-capacity-foot,
+.mobile-today-capacity-foot strong,
+.mobile-today-next-kicker{
+  font-size:11px!important;
+}
+
+.desk-today-rail-label,
+.desk-today-rail-foot span,
+.desk-today-capacity-head,
+.desk-today-capacity-meta,
+.desk-today-now-label,
+.desk-today-next>span:last-child{
+  font-size:12px!important;
+}
+
+.desk-today-capacity-head strong{
+  font-size:13px!important;
+}
+
+.desk-today-next strong{
+  font-size:19px!important;
+}
+
+.mobile-today-cockpit-date{
+  font-size:12px!important;
+}
+
+.mobile-today-cockpit-time span{
+  letter-spacing:.06em!important;
+}
+
+.mobile-today-next strong{
+  font-size:14px!important;
+}
+
+@media (min-width:701px){
+  html[data-surface='desktop'] .surface-header{
+    padding-bottom:16px!important;
+  }
+
+  html[data-surface='desktop'] .surface-header-controls{
+    margin-top:14px!important;
+    padding-top:11px!important;
+  }
+
+  html[data-surface='desktop'] .surface-pulse{
+    min-height:46px!important;
+    padding:7px 13px!important;
+  }
+
+  html[data-surface='desktop'] .surface-pulse-title{
+    font-size:14px!important;
+  }
+
+  html[data-surface='desktop'] .surface-filter-btn{
+    font-size:13px!important;
+  }
+
+  html[data-surface='desktop'] .meeting-row.surface-object,
+  html[data-surface='desktop'] .trip-row-maybach.surface-object{
+    min-height:122px!important;
+  }
+
+  html[data-surface='desktop'] .meeting-row.pressure-now,
+  html[data-surface='desktop'] .trip-row-maybach.pressure-now{
+    min-height:148px!important;
+  }
+
+  html[data-surface='desktop'] .desk-job-card.surface-object{
+    min-height:164px!important;
+  }
+
+  html[data-surface='desktop'] .desk-job-card:first-child{
+    min-height:250px!important;
+  }
+
+  .desk-today-now-label,
+  .desk-today-next>span:last-child{
+    max-width:24ch;
+  }
+}
+
+@media (max-width:700px){
+  .surface-header{
+    padding-bottom:12px!important;
+  }
+
+  .surface-pulse{
+    min-height:36px!important;
+  }
+
+  .surface-pulse-title{
+    font-size:13px!important;
+  }
+
+  .meeting-row.surface-object,
+  .job-row,
+  .trip-row-maybach.surface-object{
+    padding-top:13px!important;
+    padding-bottom:13px!important;
+  }
+}
