@@ -1,4 +1,34 @@
-/* Full four-tab mobile surface nav — replaces rail / switcher / ⋯ */
+/* Full four-tab mobile surface nav — the stable map of the whole system. */
+
+.surface-mobile-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.surface-mobile-identity .app-title {
+  margin: 0;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.surface-mobile-pulse {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.3;
+  color: var(--text-tertiary, var(--ink-faint, #94a3b8));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(68vw, 22rem);
+}
+
+.surface-mobile-sep {
+  margin: 0 5px;
+  opacity: 0.55;
+}
 
 .surface-nav.surface-nav-tabs {
   display: flex;
