@@ -232,6 +232,47 @@ export function resolveJobAndLocation(
     return { state: 'none', candidates: [] };
   }
 
+  // An explicit full job/location phrase is stronger than fuzzy token
+  // matching. In particular, road suffixes such as "Place" and "Street" are
+  // intentionally STOPWORDS for fuzzy matching, but they are meaningful when
+  // the user has actually typed the complete entity name. Without this
+  // boundary, "Angela Place" can collapse to "Angela" and become falsely
+  // ambiguous with other jobs containing Angela.
+  const normalizedQuery = normalizeMatchText(querySource).join(' ');
+  const exactNameJobs = jobs.filter(
+    (job) => normalizeMatchText(job.name).join(' ') === normalizedQuery,
+  );
+  if (exactNameJobs.length === 1) {
+    const job = exactNameJobs[0];
+    return {
+      state: 'known',
+      candidate: {
+        jobId: job.id,
+        jobName: job.name,
+        locationText: job.location_text ?? null,
+        lat: job.lat,
+        lng: job.lng,
+        matchedField: 'name',
+        score: 1,
+      },
+      candidates: [],
+    };
+  }
+  if (exactNameJobs.length > 1) {
+    return {
+      state: 'choose',
+      candidates: exactNameJobs.map((job) => ({
+        jobId: job.id,
+        jobName: job.name,
+        locationText: job.location_text ?? null,
+        lat: job.lat,
+        lng: job.lng,
+        matchedField: 'name' as const,
+        score: 1,
+      })),
+    };
+  }
+
   const candidates: JobLocationCandidate[] = [];
 
   for (const job of jobs) {
