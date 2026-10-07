@@ -306,3 +306,44 @@ describe('Integration Pass 1 — adversarial / fail-safe', () => {
     expect(r.action).toBeNull();
   });
 });
+
+
+describe('Integration Pass 1 — shared fit authority', () => {
+  it('uses the same V3 fit decision for ACT and ANSWER', async () => {
+    const { runEngineCycle } = await import('../orchestrate');
+    const { answerFeasibility, actFitDecision } = await import('../interactionAnswer');
+
+    const input = {
+      userId: 'u1',
+      dryRun: true,
+      input: { type: 'text' as const, text: 'Go see Henderson' },
+      context: {
+        ...baseContext,
+        remainingMinsToday: 55,
+        travelMins: 25,
+        visitDurationMins: 45,
+        currentFocus: { kind: 'job' as const, id: 'j-henderson', label: 'Henderson' },
+      },
+    };
+
+    const cycle = runEngineCycle({
+      utterance: input.input.text,
+      todayDate: input.context.todayDate,
+      context: {
+        jobs: input.context.jobs,
+        meetings: input.context.meetings,
+        remainingMinsToday: input.context.remainingMinsToday,
+        openTaskCount: input.context.openTaskCount,
+      },
+    });
+
+    const answer = answerFeasibility(input.input.text, cycle, input);
+    const act = actFitDecision(cycle, input);
+
+    expect(act.fitState).toBe(answer.fitState);
+    expect(act.decision?.fit).toBe(answer.decision?.fit);
+    expect(act.decision?.effectiveCapacityMins).toBe(answer.decision?.effectiveCapacityMins);
+    expect(act.decisionTrace).not.toBeNull();
+    expect(answer.decisionTrace).not.toBeNull();
+  });
+});
