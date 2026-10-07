@@ -1203,21 +1203,6 @@ export function requestTaskText(req: EngineRequest): string {
 }
 
 
-function extractDateHint(text: string): string | null {
-  const matches = Array.from(
-    text.matchAll(
-      /\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|this\s+afternoon|next\s+week)\b/gi
-    )
-  );
-
-  const last = matches.at(-1)?.[1]?.toLowerCase().replace(/\s+/g, ' ');
-  if (!last) return null;
-
-  if (last === 'this afternoon') return 'today';
-  if (last === 'next week') return 'next_week';
-  return last;
-}
-
 function extractQuantityCorrection(text: string): string | null {
   const match = text.match(
     /\b(?:make|change|set)\s+(?:that|it)\s+(?:to\s+)?(\d+)\b/i
