@@ -335,8 +335,6 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     // The object belongs after the purpose verb, not after the destination.
     /\b(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:from|at|to|for)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
-    /\b(?:pick\s*up|pickup|grab|collect|get|fetch|remind\s+me\s+to\s+(?:pick\s*up|grab|get))\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:from|at|to|for)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
-
     /\b(?:remind\s+me\s+(?:about|to)\s+)(.+)$/i,
 
     // Generic explicit commitment: preserve the complete task phrase for
