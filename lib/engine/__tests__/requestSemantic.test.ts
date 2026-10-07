@@ -66,3 +66,102 @@ describe('material errand semantic extraction', () => {
     expect(parsed.dateHint).toBe('today');
   });
 });
+
+
+describe('spoken correction and refinement', () => {
+  it('uses the final time when the user corrects themselves in one utterance', () => {
+    const parsed = interpretRequestUtterance(
+      'drop off clips at 64 Grace James Road at 8am, no wait 9am'
+    );
+
+    expect(parsed.timeHint).toBe('09:00');
+  });
+
+  it('uses the final date when the user corrects themselves in one utterance', () => {
+    const parsed = interpretRequestUtterance(
+      'drop off clips at 64 Grace James Road today, no wait tomorrow'
+    );
+
+    expect(parsed.dateHint).toBe('tomorrow');
+  });
+
+  it('changes an existing quantity without losing the existing request context', () => {
+    const first = 'I need to go to Bunnings to grab 2 cartridges of clear Sika MS';
+    const initial = applyUtteranceToRequest(
+      emptyRequest(),
+      first,
+      emptyWorkingMemory()
+    );
+
+    const corrected = applyUtteranceToRequest(
+      initial,
+      'actually, make that 3',
+      { ...emptyWorkingMemory(), activeRequestId: initial.id }
+    );
+
+    expect(corrected.action).toBe('pickup');
+    expect(corrected.locationText).toBe('Bunnings');
+    expect(corrected.objectText).toBe('3 cartridges of clear Sika MS');
+    expect(corrected.rawUtterances).toEqual([first, 'actually, make that 3']);
+  });
+
+  it('overrides time and date while preserving the active request', () => {
+    const first = 'I need to drop off clips to 64 Grace James Road in Pukekohe at 4pm today';
+    const initial = applyUtteranceToRequest(
+      emptyRequest(),
+      first,
+      emptyWorkingMemory()
+    );
+
+    const corrected = applyUtteranceToRequest(
+      initial,
+      'no, 5pm tomorrow',
+      { ...emptyWorkingMemory(), activeRequestId: initial.id }
+    );
+
+    expect(corrected.objectText).toBe('clips');
+    expect(corrected.locationText).toBe('64 Grace James Road in Pukekohe');
+    expect(corrected.timeHint).toBe('17:00');
+    expect(corrected.dateHint).toBe('tomorrow');
+  });
+
+  it('increments a simple existing quantity for a spoken "more" correction', () => {
+    const first = 'I need to go to Bunnings to grab 2 cartridges of clear Sika MS';
+    const initial = applyUtteranceToRequest(
+      emptyRequest(),
+      first,
+      emptyWorkingMemory()
+    );
+
+    const corrected = applyUtteranceToRequest(
+      initial,
+      'and grab 2 more',
+      { ...emptyWorkingMemory(), activeRequestId: initial.id }
+    );
+
+    expect(corrected.action).toBe('pickup');
+    expect(corrected.locationText).toBe('Bunnings');
+    expect(corrected.objectText).toBe('4 cartridges of clear Sika MS');
+  });
+
+  it('does not treat an unrelated new pickup as a correction', () => {
+    const first = 'I need to go to Bunnings to grab 2 cartridges of clear Sika MS';
+    const initial = applyUtteranceToRequest(
+      emptyRequest(),
+      first,
+      emptyWorkingMemory()
+    );
+
+    const next = applyUtteranceToRequest(
+      initial,
+      'I need to go to Mitre 10 to get 2 boxes of screws',
+      emptyWorkingMemory()
+    );
+
+    expect(next.locationText).toBe('Mitre 10');
+    expect(next.objectText).toBe('2 boxes of screws');
+    expect(next.rawUtterances).toEqual([
+      'I need to go to Mitre 10 to get 2 boxes of screws',
+    ]);
+  });
+});
