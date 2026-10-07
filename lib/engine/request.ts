@@ -160,6 +160,10 @@ function extractObjectReplacement(text: string): string | null {
 }
 
 function extractCorrectionLocation(text: string): string | null {
+  if (/^(?:actually[,:]?\s*)?(?:make|change|set)\s+(?:it|that)\b/i.test(text)) {
+    return null;
+  }
+
   const match = text.match(
     /^(?:no|actually|sorry|i\s+meant)[,\s]+(?:the\s+)?(?:location\s+is\s+)?(.+?)\s*$/i
   );
