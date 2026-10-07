@@ -100,8 +100,8 @@ export default function DesktopMeetingsHeader({
       <div className="surface-header-bar">
         <div className="surface-header-orient">
           <div className="surface-identity">
-            <span className="surface-kicker">Meetings</span>
-            <h1 className="surface-title">Conversations</h1>
+            <span className="surface-kicker">People</span>
+            <h1 className="surface-title">Meetings</h1>
           </div>
           <div
             className={
