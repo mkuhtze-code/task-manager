@@ -657,3 +657,54 @@ html[data-theme='dark'] .surface-object:hover {
     transition: none !important;
   }
 }
+
+
+/* Final hierarchy pass: Jobs carries one quiet state sentence, not a mini dashboard. */
+.desk-job-card.surface-object .desk-job-card-state {
+  margin-top: 10px !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+  display: block !important;
+}
+
+.desk-job-card.surface-object .desk-job-card-next {
+  margin-top: 10px !important;
+  padding-top: 10px !important;
+  border-top: 1px solid var(--line) !important;
+}
+
+.desk-job-card.surface-object .desk-job-card-section {
+  margin-top: 10px !important;
+  padding-top: 10px !important;
+  border-top: 1px solid var(--line) !important;
+}
+
+.desk-job-card.surface-object .desk-job-card-chips {
+  gap: 6px !important;
+}
+
+.desk-job-card.surface-object .desk-job-card-chip {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  color: var(--ink-soft) !important;
+}
+
+.desk-job-card.surface-object .desk-job-card-chip + .desk-job-card-chip::before {
+  content: ' · ';
+  margin-right: 6px;
+  color: var(--ink-faint);
+}
+
+.desk-job-card.surface-object .desk-job-card-section-label,
+.desk-job-card.surface-object .desk-job-card-quiet {
+  font-size: 11px !important;
+  color: var(--ink-faint) !important;
+}
+
+.desk-job-card.surface-object .desk-job-card-next-text {
+  margin-left: 6px;
+  font-size: 12px !important;
+  color: var(--ink-soft) !important;
+}
