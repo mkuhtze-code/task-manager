@@ -159,9 +159,20 @@ export function extractDurationHint(text: string): number | null {
  * "get/grab/pick up" cannot overwrite an explicit leading action such as
  * "call" or "email".
  */
+function normaliseSpeechLead(text: string): string {
+  return text
+    .replace(/^\s*(?:um+|uh+|er+|erm+)\b[,:-]?\s*/i, '')
+    .replace(/^(?:\s*(?:i\s+need\s+to|i\s+have\s+to|i\s+got\s+to))\s*,?\s*(?:um+|uh+|er+|erm+)\b[,:-]?\s*/i, (m) =>
+      m.replace(/\b(?:um+|uh+|er+|erm+)\b[,:-]?\s*$/i, '')
+    )
+    .replace(/^(?:\s*(?:actually|okay|ok|right|well))\s*[,:-]?\s*/i, '')
+    .replace(/^\s*(?:please|can\s+you|could\s+you|would\s+you)\s+/i, '');
+}
+
 function extractPrimaryTaskVerb(text: string): string | null {
-  const match = text.match(
-    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|deliver|take|leave|remind|schedule)\b/i
+  const candidate = normaliseSpeechLead(text);
+  const match = candidate.match(
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|deliver|take|leave|remind|schedule|go|head|drive|travel|walk|return)\b/i
   );
   return match?.[1]?.toLowerCase() ?? null;
 }
@@ -358,6 +369,44 @@ function extractLocation(text: string): string | null {
 
     if (movementDestination?.[1]) {
       location = movementDestination[1].trim();
+    }
+  }
+
+  if (!location) {
+    /*
+     * Semantic location pass: choose the last meaningful place-introducing
+     * preposition, then cut at temporal/clausal boundaries. This mirrors
+     * normal language interpretation: "at 4pm today about Angela Place"
+     * contains a time at first, but the later "about Angela Place" is the
+     * actual task context.
+     */
+    const candidates = [...text.matchAll(/\b(?:at|to|from|for|about)\s+/gi)];
+    for (let i = candidates.length - 1; i >= 0; i -= 1) {
+      const marker = candidates[i];
+      const prep = marker[0].trim().toLowerCase();
+      const tail = text.slice((marker.index ?? 0) + marker[0].length);
+      if (/^(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|noon|midnight)\b/i.test(tail.trim())) continue;
+      if (prep === 'to' && /^(?:get|grab|pick\s*up|pickup|collect|fetch|buy|purchase|check|inspect|measure|review|confirm|ask|tell|arrange|see|find|find\s+out|look\s+at)\b/i.test(tail.trim())) continue;
+
+      let candidate = tail
+        .replace(/\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b.*$/i, '')
+        .replace(/\s+(?:noon|midnight)\b.*$/i, '')
+        .replace(/\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i, '')
+        .replace(/\s+(?:because|although|but|and\s+(?:then|i|we|they))\b.*$/i, '')
+        .replace(/\s+(?:is|are|was|were)\s+(?:wrong|right|correct|available|ready|late|missing|damaged|fine)\b.*$/i, '')
+        .replace(/\s+(?:on|after|before)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|the\s+meeting)\b.*$/i, '')
+        .replace(/[.,]+$/, '')
+        .trim();
+
+      // "the quote at Angela Place" -> the actual place is after "at".
+      const nestedAt = candidate.match(/^.+?\s+at\s+(.+)$/i);
+      if (nestedAt?.[1]) candidate = nestedAt[1].trim();
+
+      if (candidate.length < 2 || candidate.length > 120) continue;
+      if (/^(?:4pm|12pm|noon|midnight|the\s+quote|the\s+measurements|the\s+flashing)$/i.test(candidate)) continue;
+
+      location = candidate;
+      break;
     }
   }
 
@@ -562,6 +611,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   }
 
   const primaryVerb = extractPrimaryTaskVerb(text);
+  const parseText = normaliseSpeechLead(text);
   if (primaryVerb) {
     out.primaryVerb = primaryVerb;
     const compound = extractCompoundSemantic(text, primaryVerb);
@@ -575,8 +625,8 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   // ---------------------------------------------------------------------------
 
   if (
-    /^(?:no|actually|sorry|wait|i\s+meant)\b/i.test(text) ||
-    /\bactually\b/i.test(lower) ||
+    /^(?:no|sorry|wait|i\s+meant)\b/i.test(text) ||
+    (/^actually\b/i.test(lower) && !primaryVerb) ||
     /\b(?:i\s+)?need\s+it\b/i.test(lower) ||
     /\b(?:make|put|do)\s+that\b/i.test(lower) ||
     /\b(?:the\s+)?same\s+one\b/i.test(lower)
@@ -606,37 +656,39 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   if (isQuestion || isNegatedCommitment) {
     out.action = 'unknown';
   } else if (
-    /\b(?:remind\s+me|don(?:'t|’t)\s+let\s+me\s+forget|keep\s+that\s+in\s+mind)\b/i.test(
+    /\b(?:remind\s+me|can\s+you\s+remind\s+me|could\s+you\s+remind\s+me|don(?:'t|’t)\s+let\s+me\s+forget|keep\s+that\s+in\s+mind)\b/i.test(
       lower
     )
   ) {
     out.action = 'remind';
-  } else if (/\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(lower)) {
+  } else if (primaryVerb && isDropOffVerb(primaryVerb)) {
     out.action = 'create_task';
+  } else if (primaryVerb && isPhysicalPickupVerb(primaryVerb)) {
+    out.action = 'pickup';
+  } else if (primaryVerb === 'get') {
+    // "get measurements/quote/details" is information work; "get screws"
+    // is physical collection. The object noun and destination preposition
+    // are evidence, but an explicit non-physical purpose wins.
+    if (
+      /\b(?:measurements?|dimensions?|details?|information|info|quote|price|pricing|approval|confirmation|answer|answers|response|responses|feedback|availability|status|update|updates|estimate|estimates)\b/i.test(
+        lower
+      )
+    ) {
+      out.action = 'create_task';
+    } else if (/\b(?:from|at)\s+(?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office)\b/i.test(lower)) {
+      out.action = 'pickup';
+    } else {
+      out.action = 'create_task';
+    }
   } else if (
-    /\bget\s+(?:the\s+)?(?:measurements?|dimensions?|details?|information|info|quote|price|pricing|approval|confirmation|answer|answers|response|responses|feedback|availability|status|update|updates)\b/i.test(lower)
-  ) {
-    // "get measurements/details/a quote" is an information-gathering task,
-    // not a material pickup. This must outrank the broad pickup meaning of
-    // "get" while preserving genuine requests such as "get screws".
-    out.action = 'create_task';
-  } else if (/\b(?:pick\s*up|pickup|grab|collect|get|fetch)\b/i.test(lower)) {
-    out.action = out.action === 'remind' ? 'remind' : 'pickup';
-  } else if (
-    /\b(?:put|move|chuck)\b.+\b(?:tomorrow|today|monday|tuesday)\b/i.test(lower)
+    /\b(?:put|move|chuck)\b.+\b(?:tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(lower)
   ) {
     out.action = 'move';
     out.isRefinement = true;
-  } else if (/\b(?:i\s+)?(?:need|have|got)\s+to\s+/i.test(lower)) {
-    // "I need to call the client tomorrow" is an executable task request.
+  } else if (primaryVerb) {
+    // Any explicit top-level imperative is a task unless it is a question.
     out.action = 'create_task';
-  } else if (
-    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\b/i.test(
-      lower
-    )
-  ) {
-    // Bare imperative captures are new requests, not refinements of the
-    // previous request. "call John" must not inherit a previously bound task.
+  } else if (/\b(?:i\s+)?(?:need|have|got)\s+to\s+/i.test(lower)) {
     out.action = 'create_task';
   }
 
@@ -645,6 +697,13 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   // ---------------------------------------------------------------------------
 
   const objectPatterns = [
+    // Movement is a real top-level action. Preserve the destination and the
+    // purpose clause separately instead of treating "go to X to buy Y" as
+    // one giant object or accidentally making X the thing to buy.
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(?:go|head|drive|travel|walk|return)(?:\s+over)?\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+
+    // Polite imperative forms are still requests, not observations.
+    /^(?:please|can\s+you|could\s+you|would\s+you)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
     /*
      * PRIMARY ACTION FIRST.
      *
@@ -662,6 +721,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     /\b(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:from|at|to|for)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     /\b(?:remind\s+me\s+(?:about|to)\s+)(.+)$/i,
+    /^(?:can\s+you|could\s+you|would\s+you)\s+remind\s+me\s+(?:about|to)\s+(.+)$/i,
 
     // Generic explicit commitment: preserve the complete task phrase.
     /\b(?:i\s+)?(?:need|have|got)\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
@@ -675,7 +735,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 
   for (const pattern of objectPatterns) {
     if (isQuestion || isNegatedCommitment) break;
-    const match = text.match(pattern);
+    const match = parseText.match(pattern);
 
     if (!match?.[1]) continue;
 
@@ -1141,12 +1201,20 @@ export function requestTaskText(req: EngineRequest): string {
     req.action === 'pickup' ||
     isPhysicalPickupVerb(primaryVerb);
 
+  const isMovement = !!primaryVerb && /^(?:go|head|drive|travel|walk|return)$/.test(primaryVerb);
+
   const bits: string[] = [];
 
   if (isDropOff) {
     bits.push(req.objectText ? `Drop off ${req.objectText}` : 'Drop off');
   } else if (isPickup) {
     bits.push(req.objectText ? `Pick up ${req.objectText}` : 'Pick up');
+  } else if (isMovement && req.locationText) {
+    const displayVerb = primaryVerb === 'go' ? 'Go' :
+      primaryVerb === 'head' ? 'Head' :
+      primaryVerb === 'drive' ? 'Drive' :
+      primaryVerb === 'travel' ? 'Travel' : 'Walk';
+    bits.push(req.objectText ? `${displayVerb} to ${req.locationText} to ${req.objectText}` : `${displayVerb} to ${req.locationText}`);
   } else if (primaryVerb && req.objectText) {
     const displayVerb = primaryVerb
       .replace(/\bcall\b/i, 'Call')
