@@ -2457,3 +2457,29 @@ html[data-theme='dark'] .desk-job-card:first-child{
   .mobile-today-next>span:last-child{align-self:end;font-family:var(--font-digital);font-size:10px;color:var(--ink-soft);white-space:nowrap}
   .mobile-today-cockpit.is-off .mobile-today-cockpit-time strong{font-size:44px}
 }
+
+/* Mobile Today cockpit: persistent instrument, not a collapsible header. */
+@media (max-width:700px){
+  .mobile-today-cockpit{
+    position:sticky;
+    top:0;
+    z-index:24;
+    isolation:isolate;
+  }
+  .mobile-today-cockpit::after{
+    content:'';
+    position:absolute;
+    inset:0;
+    z-index:-1;
+    border-radius:inherit;
+    background:inherit;
+    box-shadow:0 12px 28px rgba(var(--shadow-rgb),.10);
+  }
+  .mobile-today-cockpit-actions{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:7px;
+    flex:0 0 auto;
+  }
+}
