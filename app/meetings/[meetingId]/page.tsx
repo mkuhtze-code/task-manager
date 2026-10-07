@@ -43,6 +43,7 @@ import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
 import MeetingsPlanGate from '@/components/MeetingsPlanGate';
+import ContextLine from '@/components/ContextLine';
 
 export default function MeetingDetail({ params }: { params: { meetingId: string } }) {
   const meetingId = params.meetingId;
@@ -593,10 +594,18 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
         <div className="detail-section">
           <div className="detail-section-title">{meeting.text}</div>
-          <p className="settings-help" style={{ margin: '4px 0 0' }}>
-            {fmtMeetingWindow(meeting.start_time, meeting.duration_mins)}
-            {jobName ? ` · ${jobName}` : ''}
-          </p>
+          <ContextLine
+            className="meeting-detail-context"
+            items={[
+              { label: fmtMeetingWindow(meeting.start_time, meeting.duration_mins) },
+              ...(jobName && meeting.job_id
+                ? [{ label: jobName, href: `/jobs/${meeting.job_id}` }]
+                : jobName
+                  ? [{ label: jobName }]
+                  : []),
+              ...(meeting.location_text ? [{ label: meeting.location_text }] : []),
+            ]}
+          />
         </div>
 
         <MeetingConnections
