@@ -66,7 +66,7 @@ import { logCapturePrediction } from '@/lib/thinking/evidence/predictionLog';
 import { closeCompletionLoop, historyRowFromCompletion } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
 import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
-import { oneShotGate, formatDockSummary } from '@/lib/unifiedInput/oneShot';
+import { oneShotGate } from '@/lib/unifiedInput/oneShot';
 import { resolveJobAndLocation, deriveAliasTerm, type JobLocationResolution, type JobLocationCandidate, type EntityAliasMemory, type EntityRelationshipMemory } from '@/lib/unifiedInput/resolve';
 import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
 import type { SurfaceEvent, Surface } from '@/lib/thinking/types';
@@ -301,8 +301,6 @@ export function TodayPage() {
       )
       .map((x) => x.id),
   });
-  /** Quiet post-dock line: what landed + optional clear. */
-  const [dockSummary, setDockSummary] = useState<string | null>(null);
   const [postStopPrompt, setPostStopPrompt] = useState<PostStopPromptState | null>(null);
   const [postStopBusy, setPostStopBusy] = useState(false);
   const [realityCheckOpen, setRealityCheckOpen] = useState(false);
@@ -1429,15 +1427,6 @@ export function TodayPage() {
       setTasks((prev) =>
         prev.map((t) => (t.id === engineOverrides.updateTaskId ? { ...t, ...updated } : t))
       );
-      setDockSummary(
-        formatDockSummary({
-          text,
-          surfaceDate: surfaceDate,
-          intendedTime: intendedTime,
-          locationText: locationText,
-          jobName: jobId ? jobs.find((j) => j.id === jobId)?.name ?? null : null,
-        })
-      );
       if (engineOverrides.engineRequest) {
         const { bindRequestToTask, saveActiveRequestLocal, pushEngineStateRemote } = await import(
           '@/lib/engine'
@@ -1507,18 +1496,6 @@ export function TodayPage() {
       );
     }
 
-    const dockedJobName = (confirmedJobId ?? captureJobId)
-      ? jobs.find((j) => j.id === (confirmedJobId ?? captureJobId))?.name ?? null
-      : null;
-    setDockSummary(
-      formatDockSummary({
-        text,
-        surfaceDate: surfaceDate,
-        intendedTime: intendedTime,
-        locationText: locationText,
-        jobName: dockedJobName,
-      })
-    );
     setTasks((prev) => [...prev, data]);
     setTaskText('');
     setTaskTime('');
@@ -2751,25 +2728,6 @@ export function TodayPage() {
 
 
 <div className="task-list">
-      {dockSummary && (
-        <div
-          className="settings-help"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            padding: '8px var(--space-page, 16px)',
-            margin: 0,
-          }}
-        >
-          <span>Docked · {dockSummary}</span>
-          <button type="button" className="btn-text" style={{ padding: 0, flexShrink: 0 }} onClick={() => setDockSummary(null)}>
-            OK
-          </button>
-        </div>
-      )}
-
       {postStopPrompt && (
         <PostStopPrompt
           prompt={postStopPrompt}
