@@ -105,8 +105,9 @@ export default function DesktopJobsHeader({
       <div className="surface-header-bar">
         <div className="surface-header-orient">
           <div className="surface-identity">
-            <span className="surface-kicker">Work</span>
+            <span className="surface-kicker">Work / Field</span>
             <h1 className="surface-title">Jobs</h1>
+            <span className="surface-lede">The work that persists beyond today.</span>
           </div>
           <div className={pulseClass} aria-label="Jobs pulse">
             <div className="surface-pulse-body">
