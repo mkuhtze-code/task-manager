@@ -64,7 +64,28 @@ export type ContextEntity = {
   metadata?: Record<string, string | number | boolean | null>;
 };
 
+export type SituationModel = {
+  /** Canonical snapshot of the user's current situation for this CPU cycle. */
+  version: 1;
+  nowIso: string;
+  userId: string | null;
+  interface: CpuInterface;
+  surface: string | null;
+  activity: string | null;
+  focus: InteractionInput['context']['currentFocus'] | null;
+  request: EngineRequest;
+  authority: InteractionResult['authority'];
+  work: UniversalContext['work'];
+  commitments: UniversalContext['commitments'];
+  movement: UniversalContext['movement'];
+  memory: UniversalContext['memory'];
+  constraints: UniversalContext['constraints'];
+  confidence: Confidence;
+};
+
 export type UniversalContext = {
+  /** Canonical cognitive state. Specialist brains should prefer this over parallel slices. */
+  situation: SituationModel;
   nowIso: string;
   interface: CpuInterface;
   activity: string | null;
