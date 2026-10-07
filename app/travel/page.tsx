@@ -340,8 +340,8 @@ export default function TravelHome() {
     const stops = row?.stopCount;
 
     return (
-      <div key={tr.id} className={`trip-row-maybach pressure-${pressure}`}>
-        <Link href={`/travel/${tr.id}`} className="trip-row-link surface-object">
+      <div key={tr.id} className={`trip-row-maybach surface-object pressure-${pressure}`}>
+        <Link href={`/travel/${tr.id}`} className="trip-row-link">
           <div className="trip-row-main">
             <div className="trip-row-top">
               <span className="trip-row-name surface-object-title">{tr.name}</span>
