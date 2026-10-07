@@ -87,3 +87,49 @@ describe('CPU Phase 4A — behavioural learning', () => {
     expect(graph.beliefs).toHaveLength(0);
   });
 });
+
+
+  it('raises fit for a suggestion the user repeatedly accepts', async () => {
+    const { rankOpportunities } = await import('../reconcile/opportunityRanker');
+    const belief = updateBehaviorBeliefs(
+      emptyBeliefGraph(),
+      'user-1',
+      [
+        observeBehavior({
+          event: 'accepted',
+          request: { id: 'r1', action: 'create_task', objectText: 'x', locationText: null, relatedJobText: null, relatedMeetingText: null, dateHint: null, timeHint: null, urgency: null, flexibility: null, commitment: null, constraints: [], rawUtterances: [] } as never,
+          value: 'accepted',
+          timestamp: '2026-10-08T08:00:00.000Z',
+        }),
+        observeBehavior({
+          event: 'accepted',
+          request: { id: 'r2', action: 'create_task', objectText: 'x', locationText: null, relatedJobText: null, relatedMeetingText: null, dateHint: null, timeHint: null, urgency: null, flexibility: null, commitment: null, constraints: [], rawUtterances: [] } as never,
+          value: 'accepted',
+          timestamp: '2026-10-09T08:00:00.000Z',
+        }),
+      ]
+    );
+
+    const opportunity = {
+      kind: 'temporal',
+      message: 'Useful timing connection',
+      confidence: 'medium',
+      entityIds: [],
+      reason: 'timing',
+    } as const;
+
+    const base = {
+      context: {
+        beliefs: belief,
+        constraints: { remainingMinsToday: 120 },
+        movement: { travel: null },
+      } as never,
+      interaction: {
+        request: { action: 'create_task', objectText: 'x', locationText: null },
+      } as never,
+    };
+
+    const ranked = rankOpportunities([opportunity], base);
+    expect(ranked[0]?.score).toBe(71);
+    expect(ranked[0]?.reasons).toContain('you usually accept this kind of suggestion');
+  });
