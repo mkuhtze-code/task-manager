@@ -49,7 +49,6 @@ function SearchGlyph() {
 
 export default function DesktopTravelHeader({
   pulseTitle,
-  pulseMeta,
   pulseAttention = false,
   depthRead,
   consequenceLine = null,
