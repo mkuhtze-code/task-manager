@@ -50,6 +50,7 @@ export function NewMeetingSheet(props: {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [showJobField, setShowJobField] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [declinedResolution, setDeclinedResolution] = useState(false);
   const [error, setError] = useState('');
 
@@ -108,6 +109,7 @@ export function NewMeetingSheet(props: {
   }
 
   const job = chosenJob();
+  const hasOptionalActive = Boolean(timeInput || durationInput !== '30m' || locationText.trim() || jobId || showJobField || notes.trim());
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -207,66 +209,80 @@ export function NewMeetingSheet(props: {
           </div>
         )}
 
-        <div className="reminder-date-row" style={{ flexWrap: 'wrap', gap: 8 }}>
-          <input type="date" value={dateInput} onChange={(e) => setDateInput(e.target.value)} aria-label="Meeting date" />
-          <input type="time" value={timeInput} onChange={(e) => { setTimeInput(e.target.value); prefilled.current.time = true; }} aria-label="Meeting time" />
-          <input type="text" value={durationInput} onChange={(e) => setDurationInput(e.target.value)} placeholder="30m" style={{ width: 70 }} aria-label="Duration" />
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="settings-label">Where (optional)</span>
-          <LocationAutocomplete
-            value={locationText}
-            placeholder="Where does the meeting happen?"
-            onChange={(t) => setLocationText(t)}
-            onPlaceSelected={(r) => {
-              setLocationText(r.formattedAddress);
-              setCoords({ lat: r.lat, lng: r.lng });
-            }}
-          />
-        </div>
-
-        {job ? (
-          <div className="reminder-date-row">
-            <span className="settings-help">About <strong>{job.name}</strong></span>
-            <button type="button" className="btn-text" onClick={() => { setJobId(null); setShowJobField(false); }}>Remove</button>
+        <div className="stop-context-strip" style={{ marginTop: 4 }}>
+          <div className="stop-context-line">
+            <span className="stop-context-kicker">When</span>
+            <span>
+              {dateInput ? dateInput : 'Today'}
+              {timeInput ? ` · ${timeInput}` : ' · no fixed time'}
+              {` · ${parseMins(durationInput) ?? 30}m`}
+            </span>
           </div>
-        ) : !showJobField ? (
-          <button type="button" className="reveal-reminder-link" onClick={() => setShowJobField(true)}>+ About a job</button>
-        ) : jobs.length === 0 ? (
-          <div className="reminder-date-row">
-            <span className="settings-help">No jobs yet — create one from the Jobs tab</span>
-            <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
-          </div>
-        ) : (
-          <div className="job-picker">
-            {jobs.map((j) => (
-              <button type="button" key={j.id} className="move-day-option" onClick={() => { setJobId(j.id); setShowJobField(false); }}>{j.name}</button>
-            ))}
-            <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="settings-label">Notes (optional — raw capture)</span>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything jotted down before or during the meeting" rows={3} style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
-        </div>
-
-        {(dateInput || job || text.trim()) && (
-          <div className="stop-context-strip" style={{ marginTop: 4 }}>
+          {job ? (
             <div className="stop-context-line">
-              <span className="stop-context-kicker">Ready</span>
-              <span>
-                {dateInput ? dateInput : 'Pick a date'}
-                {timeInput ? ` · ${timeInput}` : ''}
-                {` · ${parseMins(durationInput) ?? 30}m`}
-                {job ? ` · ${job.name}` : ''}
-                {' · notes & photos after save'}
-              </span>
+              <span className="stop-context-kicker">About</span>
+              <span>{job.name}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          className={moreOpen ? "capture-more-toggle open" : "capture-more-toggle"}
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((v) => !v)}
+        >
+          {moreOpen ? "Less" : hasOptionalActive ? "Details" : "Time, place, job, notes…"}
+        </button>
+
+        {moreOpen ? (
+          <div className="capture-more-body">
+            <div className="reminder-date-row" style={{ flexWrap: "wrap", gap: 8 }}>
+              <input type="date" value={dateInput} onChange={(e) => setDateInput(e.target.value)} aria-label="Meeting date" />
+              <input type="time" value={timeInput} onChange={(e) => { setTimeInput(e.target.value); prefilled.current.time = true; }} aria-label="Meeting time" />
+              <input type="text" value={durationInput} onChange={(e) => setDurationInput(e.target.value)} placeholder="30m" style={{ width: 70 }} aria-label="Duration" />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span className="settings-label">Where (optional)</span>
+              <LocationAutocomplete
+                value={locationText}
+                placeholder="Where does the meeting happen?"
+                onChange={(t) => setLocationText(t)}
+                onPlaceSelected={(r) => {
+                  setLocationText(r.formattedAddress);
+                  setCoords({ lat: r.lat, lng: r.lng });
+                }}
+              />
+            </div>
+
+            {job ? (
+              <div className="reminder-date-row">
+                <span className="settings-help">About <strong>{job.name}</strong></span>
+                <button type="button" className="btn-text" onClick={() => { setJobId(null); setShowJobField(false); }}>Remove</button>
+              </div>
+            ) : !showJobField ? (
+              <button type="button" className="reveal-reminder-link" onClick={() => setShowJobField(true)}>+ About a job</button>
+            ) : jobs.length === 0 ? (
+              <div className="reminder-date-row">
+                <span className="settings-help">No jobs yet — create one from the Jobs tab</span>
+                <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
+              </div>
+            ) : (
+              <div className="job-picker">
+                {jobs.map((j) => (
+                  <button type="button" key={j.id} className="move-day-option" onClick={() => { setJobId(j.id); setShowJobField(false); }}>{j.name}</button>
+                ))}
+                <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span className="settings-label">Notes (optional — raw capture)</span>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything jotted down before or during the meeting" rows={3} style={{ width: "100%", boxSizing: "border-box", resize: "vertical" }} />
             </div>
           </div>
-        )}
-
+        ) : null}
         {error && (
           <p id="new-meeting-error" role="alert" style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>
         )}
