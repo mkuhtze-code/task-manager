@@ -4,6 +4,38 @@ import { resolveReference } from '../references';
 import { emptyWorkingMemory, makeMemoryItem, remember, setFocus } from '../workingMemory';
 import { interpretRequestUtterance } from '../request';
 
+describe('stale binding boundary', () => {
+  it('does not update a prior bound task for a new explicit request', async () => {
+    const { runEngineCycle } = await import('../orchestrate');
+    const { emptyRequest } = await import('../request');
+    const { emptyWorkingMemory } = await import('../workingMemory');
+
+    const prior = {
+      ...emptyRequest('create_task'),
+      objectText: 'call Gerald at 10am',
+      rawUtterances: ['I need to call Gerald at 10am'],
+      confidence: 'high' as const,
+      constraints: [{
+        axis: 'dependency',
+        value: 'task:gerald-task',
+        confidence: 'high' as const,
+        source: 'test',
+      }],
+    };
+
+    const result = runEngineCycle({
+      utterance: 'I need to call John about the Smith Street flashing',
+      priorRequest: prior,
+      workingMemory: emptyWorkingMemory('today'),
+      todayDate: '2026-10-08',
+      context: { jobs: [], meetings: [], workingMemory: emptyWorkingMemory('today') },
+    });
+
+    expect(result.request.isRefinement).toBe(false);
+    expect(result.action.kind).toBe('create_task');
+  });
+});
+
 describe('vertical slice — flashing / ABC Roofing', () => {
   const jobs = [
     { id: 'j1', name: 'Henderson', locationText: '12 Henderson Rd' },
