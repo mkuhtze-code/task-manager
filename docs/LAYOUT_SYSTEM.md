@@ -87,3 +87,23 @@ This layout/system pass does not change data models, engine authority, capacity 
 - Secondary tools are discoverable through a clear Tools/overflow entry.
 - Mobile is the source of truth; desktop widens without inventing a second hierarchy.
 - A realistic multi-surface day can be followed end-to-end without mental reconstruction.
+
+## Design engineering contract
+
+Dokkit's visible design is governed by five rules:
+
+1. **The object is the primitive.** A task, job, meeting, or trip should feel like the same kind of thing even when its content emphasis differs.
+2. **Quiet surface, strong object.** Space and hierarchy carry more weight than borders, badges, gradients, or decorative panels.
+3. **The lens changes emphasis, not physics.** Today prioritizes time/fit; Jobs durable work identity; Meetings people/conversation; Travel place/movement. Geometry, type rhythm, interaction feedback, and disclosure remain shared.
+4. **Intelligence appears as reduced effort.** Do not expose implementation theatre or turn useful inference into warnings, dashboards, or AI-labelled UI unless the user actually needs an explanation.
+5. **Controls earn their space.** Primary actions remain obvious; secondary actions are progressively disclosed; routine state changes should be quiet and reversible.
+
+### Signature interaction qualities
+
+- The user should know where they are, what matters, and what happens next without reading the interface closely.
+- Objects should preserve identity when followed across Today, Jobs, Meetings, and Travel.
+- Time should feel spatially meaningful: now, next, later, carried, and complete should have presence without becoming a badge grid.
+- Mobile and desktop are the same instrument at different scales, not separate designs.
+- If a visual element does not establish hierarchy, communicate state, support action, preserve context, or create calm, remove it.
+
+This contract supersedes incremental surface-specific styling when the two conflict.
