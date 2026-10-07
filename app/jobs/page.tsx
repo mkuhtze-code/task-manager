@@ -483,7 +483,7 @@ export default function JobsHome() {
               <BackIcon />
             </Link>
 
-            <div className="jobs-mobile-identity">
+            <div className="jobs-mobile-identity surface-mobile-identity">
               <h1 className="app-title">Jobs</h1>
               <p className="jobs-mobile-pulse">
                 Work across days
