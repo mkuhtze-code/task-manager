@@ -441,7 +441,7 @@ function extractLocation(text: string): string | null {
     // Procurement source beats a trailing job-purpose phrase:
     // "Get 6 lengths of gutter from the supplier for Smith Road" -> supplier.
     const physicalSource = text.match(
-      /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\b/i
+      /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\b/i
     );
     if (physicalSource?.[1]) {
       location = physicalSource[1].trim();
@@ -591,6 +591,7 @@ function extractLocation(text: string): string | null {
   location = stripExplicitDurationPhrase(location);
   location = location
     .replace(/\s+(?:on|after|before)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i, '')
+    .replace(/\s+(?:on|at|to|from)\s*$/i, '')
     .replace(/[?.,]+$/, '')
     .trim();
 
@@ -770,7 +771,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
      */
     /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)\s*(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
-    /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+    /\b(?:drop\s+off|dropoff|deliver|take|leave)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     // Movement / physical collection. This intentionally comes AFTER
     // explicit primary-action parsing so nested "get" does not win.
@@ -1275,7 +1276,7 @@ export function requestTaskText(req: EngineRequest): string {
     bits.push(`Remind me ${req.objectText.replace(/^remind\s+me\s+/i, '')}`);
   } else if (isDropOff) {
     const dropVerb =
-      primaryVerb === 'deliver' ? 'Drop off' :
+      primaryVerb === 'deliver' ? 'Deliver' :
       primaryVerb === 'take' ? 'Take' :
       primaryVerb === 'leave' ? 'Leave' : 'Drop off';
     bits.push(req.objectText ? `${dropVerb} ${req.objectText}` : dropVerb);
