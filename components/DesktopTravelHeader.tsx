@@ -95,8 +95,8 @@ export default function DesktopTravelHeader({
       <div className="surface-header-bar">
         <div className="surface-header-orient">
           <div className="surface-identity">
-            <span className="surface-kicker">Travel</span>
-            <h1 className="surface-title">Movement</h1>
+            <span className="surface-kicker">Place</span>
+            <h1 className="surface-title">Travel</h1>
           </div>
           <div
             className={
