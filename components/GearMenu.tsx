@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -28,7 +29,17 @@ export default function GearMenu({
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+    null
+  );
+  const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (userId) {
       checkAdmin(userId);
@@ -50,14 +61,51 @@ export default function GearMenu({
     setIsAdmin(!!data);
   }
 
+  function placeMenu() {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    setMenuPos({
+      top: Math.round(r.bottom + 8),
+      right: Math.round(window.innerWidth - r.right),
+    });
+  }
+
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      setMenuPos(null);
+      return;
+    }
+    placeMenu();
+    function onReposition() {
+      placeMenu();
+    }
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
+    return () => {
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
+    };
+  }, [menuOpen]);
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      setMenuOpen(false);
     }
-    if (menuOpen) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false);
+    }
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKey);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, [menuOpen]);
 
   async function handleLogOut() {
@@ -66,47 +114,102 @@ export default function GearMenu({
     router.push('/');
   }
 
-  const feedbackHref = `/feedback?from=${encodeURIComponent(pathname || '/')}`;
+  const feedbackHref =
+    context === 'travel'
+      ? '/feedback?from=travel'
+      : context === 'jobs'
+        ? '/feedback?from=jobs'
+        : '/feedback';
+
+  const dropdown =
+    menuOpen && mounted && menuPos
+      ? createPortal(
+          <div
+            ref={menuRef}
+            className="gear-dropdown gear-dropdown-portal"
+            role="menu"
+            style={{
+              position: 'fixed',
+              top: menuPos.top,
+              right: menuPos.right,
+              left: 'auto',
+              zIndex: 400,
+            }}
+          >
+            {pathname !== '/analytics' && pathname !== '/preferences' && (
+              <>
+                <Link
+                  href="/analytics"
+                  className="gear-dropdown-item"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Analytics
+                </Link>
+                <Link
+                  href="/preferences"
+                  className="gear-dropdown-item"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Preferences
+                </Link>
+              </>
+            )}
+            <Link
+              href="/account"
+              className="gear-dropdown-item"
+              role="menuitem"
+              onClick={() => setMenuOpen(false)}
+            >
+              Account
+            </Link>
+            <Link
+              href={feedbackHref}
+              className="gear-dropdown-item"
+              role="menuitem"
+              onClick={() => setMenuOpen(false)}
+            >
+              Feedback
+            </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="gear-dropdown-item"
+                role="menuitem"
+                onClick={() => setMenuOpen(false)}
+              >
+                Admin
+              </Link>
+            )}
+            <div className="gear-dropdown-divider" />
+            <button
+              type="button"
+              className="gear-dropdown-item destructive"
+              role="menuitem"
+              onClick={handleLogOut}
+            >
+              Log out
+            </button>
+          </div>,
+          document.body
+        )
+      : null;
 
   return (
-    <div className="gear-menu-wrap" ref={menuRef} onClick={(e) => e.stopPropagation()}>
+    <div className="gear-menu-wrap" onClick={(e) => e.stopPropagation()}>
       <button
+        ref={btnRef}
+        type="button"
         className="gear-btn"
         onClick={() => setMenuOpen((v) => !v)}
         aria-label="Menu"
         aria-expanded={menuOpen}
+        aria-haspopup="menu"
       >
         <GearIcon />
       </button>
-      {menuOpen && (
-        <div className="gear-dropdown">
-          {context !== 'travel' && (
-            <>
-              <Link href="/analytics" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-                Patterns
-              </Link>
-              <Link href="/preferences" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-                Settings
-              </Link>
-            </>
-          )}
-          <Link href="/account" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-            Account
-          </Link>
-          <Link href={feedbackHref} className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-            Send Feedback
-          </Link>
-          {isAdmin && (
-            <Link href="/admin" className="gear-dropdown-item" onClick={() => setMenuOpen(false)}>
-              Admin
-            </Link>
-          )}
-          <div className="gear-dropdown-divider" />
-          <button className="gear-dropdown-item destructive" onClick={handleLogOut}>
-            Log out
-          </button>
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }
