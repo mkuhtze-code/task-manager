@@ -33,7 +33,16 @@ const TRAILING_ANCHOR_RE =
 
 /** Segments that look like independent tasks, not list items. */
 const TASKISH_SEGMENT =
-  /^(?:call|email|text|message|meet|schedule|book|pay|fix|write|send|remind)\b/i;
+  /^(?:call|email|text|message|meet|schedule|book|pay|fix|write|send|remind|check|inspect|review|confirm|ask|tell|chase|follow\s+up)\b/i;
+
+/**
+ * A duration is a task constraint, not an item in a collection.
+ * If a comma-separated utterance contains a standalone duration clause
+ * ("..., give me 1 hour"), structural list capture must yield to the normal
+ * request interpreter so the duration remains attached to the task.
+ */
+const DURATION_SEGMENT =
+  /^(?:give(?:\s+me)?|take|allow|spend|about|around|for)\s+(?:half\s+an?\s+hour|an?\s+half\s+hour|\d+(?:\.\d+)?\s*(?:minutes?|mins?|m|hours?|hrs?|h))\s*$/i;
 
 export type StructuralCapture = {
   title: string;
@@ -117,6 +126,11 @@ export function tryStructuralMultiItemCapture(raw: string): StructuralCapture | 
   if (!hasEnumCue) return null;
 
   const segments = splitItemEnumeration(body).map(stripItemDecorators).filter(Boolean);
+
+  // A trailing duration clause is metadata for the primary task, not a list
+  // item. More generally, any task-like segment means this is not a related
+  // item enumeration.
+  if (segments.some((segment) => DURATION_SEGMENT.test(segment))) return null;
   if (!isItemEnumeration(segments)) return null;
 
   // Require at least 2 items after cleaning
