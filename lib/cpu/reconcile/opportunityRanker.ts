@@ -1,6 +1,7 @@
 import type { Confidence } from '@/lib/engine';
 import type { InteractionResult } from '@/lib/engine/interactionTypes';
 import type { UniversalContext } from '../types';
+import { activeBehaviorBelief } from '../behavior';
 import type { ReconciledOpportunity } from './types';
 
 export type OpportunityDisposition = 'surface' | 'suggest' | 'retain' | 'ignore';
@@ -40,6 +41,28 @@ function dispositionFor(score: number): OpportunityDisposition {
   if (score >= 65) return 'suggest';
   if (score >= 45) return 'retain';
   return 'ignore';
+}
+
+function behavioralFit(
+  ranking: OpportunityRankingContext
+): { points: number; reasons: string[] } {
+  const action = ranking.interaction.request.action;
+  const belief = activeBehaviorBelief(
+    ranking.context.beliefs,
+    'response.' + action
+  );
+  if (!belief || (belief.confidence !== 'medium' && belief.confidence !== 'high')) {
+    return { points: 0, reasons: [] };
+  }
+
+  if (belief.value === 'accepted') {
+    return { points: 8, reasons: ['you usually accept this kind of suggestion'] };
+  }
+  if (belief.value === 'rejected') {
+    return { points: -12, reasons: ['you usually reject this kind of suggestion'] };
+  }
+
+  return { points: 0, reasons: [] };
 }
 
 function requestIsFlexible(interaction: InteractionResult): boolean {
@@ -114,13 +137,15 @@ export function rankOpportunities(
   return opportunities
     .map((opportunity) => {
       const value = practicalValue(opportunity, ranking);
+      const behavior = behavioralFit(ranking);
       const score = Math.max(
         0,
         Math.min(
           100,
           confidenceWeight[opportunity.confidence] +
             kindWeight[opportunity.kind] +
-            value.points,
+            value.points +
+            behavior.points,
         ),
       );
 
@@ -128,7 +153,7 @@ export function rankOpportunities(
         ...opportunity,
         score,
         disposition: dispositionFor(score),
-        reasons: value.reasons,
+        reasons: [...value.reasons, ...behavior.reasons],
       };
     })
     .filter((opportunity) => opportunity.disposition !== 'ignore')
