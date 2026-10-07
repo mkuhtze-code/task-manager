@@ -7,6 +7,7 @@
 
 import { assembleContext } from '@/lib/engine/contextAssembly';
 import type { CpuInput, CpuInterface, UniversalContext } from './types';
+import type { InteractionResult } from '@/lib/engine/interactionTypes';
 
 function normalizeInterface(value: string | undefined): CpuInterface {
   switch (value) {
@@ -24,7 +25,7 @@ function normalizeInterface(value: string | undefined): CpuInterface {
   }
 }
 
-export function assembleUniversalContext(input: CpuInput): UniversalContext {
+export function assembleUniversalContext(input: CpuInput, interaction?: InteractionResult): UniversalContext {
   const ctx = input.context;
   const interfaceName = normalizeInterface(
     input.cpu?.interface ?? ctx.interface
@@ -85,7 +86,34 @@ export function assembleUniversalContext(input: CpuInput): UniversalContext {
   const meetings = ctx.meetings ?? [];
   const jobs = ctx.jobs ?? [];
 
-  return {
+  const request = interaction?.request ?? {
+    id: 'unresolved',
+    action: 'unknown' as const,
+    objectText: null,
+    locationText: null,
+    relatedJobText: null,
+    relatedMeetingText: null,
+    dateHint: null,
+    timeHint: null,
+    urgency: 'none' as const,
+    flexibility: 'high' as const,
+    commitment: 'weak' as const,
+    consequence: null,
+    constraints: [],
+    rawUtterances: input.input.text ? [input.input.text] : [],
+    titleText: null,
+    confidence: 'low' as const,
+    updatedAt: reasoning.nowIso,
+  };
+  const authority = interaction?.authority ?? {
+    commitmentClass: 'NEW_REQUEST' as const,
+    autonomy: 'observe' as const,
+    mayAct: false,
+    maySuggest: false,
+    reason: 'Interaction has not been evaluated yet.',
+  };
+
+  const context = {
     nowIso: reasoning.nowIso,
     interface: interfaceName,
     activity: ctx.activity ?? null,
@@ -156,5 +184,25 @@ export function assembleUniversalContext(input: CpuInput): UniversalContext {
 
     reasoning,
     interaction: ctx,
+  } as UniversalContext;
+
+  context.situation = {
+    version: 1,
+    nowIso: reasoning.nowIso,
+    userId: input.userId,
+    interface: interfaceName,
+    surface: ctx.surface ?? null,
+    activity: ctx.activity ?? null,
+    focus: currentFocus,
+    request,
+    authority,
+    work: context.work,
+    commitments: context.commitments,
+    movement: context.movement,
+    memory: context.memory,
+    constraints: context.constraints,
+    confidence: interaction?.confidence ?? 'low',
   };
+
+  return context;
 }
