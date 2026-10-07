@@ -164,7 +164,7 @@ export default function DesktopTravelHeader({
       {showFeatured && nextTripId ? (
         <Link
           href={`/travel/${nextTripId}`}
-          className="travel-featured"
+          className="travel-featured surface-object surface-object-featured"
           aria-label={`Open ${featuredTitle}`}
         >
           <div className="travel-featured-label">
