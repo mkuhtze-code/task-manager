@@ -1297,3 +1297,96 @@ html[data-theme='dark'] .meetings-featured,
 html[data-theme='dark'] .travel-featured {
   background: var(--paper-raised, #111827) !important;
 }
+
+
+/* --------------------------------------------------------------------------
+   Mobile Jobs joins the same object family.
+   -------------------------------------------------------------------------- */
+
+.job-list {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.job-row {
+  display: block !important;
+  min-height: 0 !important;
+  padding: 14px 16px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--surface-object-radius) !important;
+  background: var(--paper-raised) !important;
+  color: var(--ink) !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+
+.job-row:hover {
+  border-color: var(--line-strong) !important;
+  background: var(--paper-raised) !important;
+}
+
+.job-row-top {
+  min-height: 20px;
+}
+
+.job-row-name {
+  font-size: 15px !important;
+  line-height: 1.3 !important;
+  font-weight: 650 !important;
+  letter-spacing: -.012em !important;
+  color: var(--ink) !important;
+}
+
+.job-row-meta {
+  margin-top: 5px !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  color: var(--ink-soft) !important;
+}
+
+.job-row-next {
+  margin-top: 11px !important;
+  padding-top: 9px !important;
+  border-top: 1px solid var(--line) !important;
+  font-size: 12px !important;
+  color: var(--ink-soft) !important;
+}
+
+.job-row-numeral,
+.job-row-done-mark {
+  color: var(--ink-soft) !important;
+}
+
+/* Today uses the same geometry without losing its task-specific controls. */
+.task-card.surface-object {
+  border-radius: var(--surface-object-radius) !important;
+  background: var(--paper-raised) !important;
+}
+
+.task-card.surface-object .task-main {
+  min-height: 68px !important;
+  padding: 13px 14px !important;
+}
+
+.task-card.surface-object .task-text {
+  font-size: 15px !important;
+  line-height: 1.3 !important;
+}
+
+.task-card.surface-object .task-reveal {
+  border-top: 1px solid var(--line) !important;
+}
+
+@media (min-width: 701px) {
+  html[data-surface='desktop'] .job-list {
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  html[data-surface='desktop'] .job-row {
+    min-height: 112px !important;
+  }
+}
