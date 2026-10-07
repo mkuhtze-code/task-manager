@@ -505,6 +505,13 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     out.action = 'remind';
   } else if (/\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\b/i.test(lower)) {
     out.action = 'create_task';
+  } else if (
+    /\bget\s+(?:the\s+)?(?:measurements?|dimensions?|details?|information|info|quote|price|pricing|approval|confirmation|answer|answers|response|responses|feedback|availability|status|update|updates)\b/i.test(lower)
+  ) {
+    // "get measurements/details/a quote" is an information-gathering task,
+    // not a material pickup. This must outrank the broad pickup meaning of
+    // "get" while preserving genuine requests such as "get screws".
+    out.action = 'create_task';
   } else if (/\b(?:pick\s*up|pickup|grab|collect|get|fetch)\b/i.test(lower)) {
     out.action = out.action === 'remind' ? 'remind' : 'pickup';
   } else if (
