@@ -353,6 +353,21 @@ function extractLocation(text: string): string | null {
 
   let location: string | null = afterAction?.[1]?.trim() ?? null;
 
+  // When the first source/destination marker is followed by a second
+  // location marker, the second marker owns the actual place:
+  //   "from Jordan at Angela Place" -> "Angela Place"
+  //   "from the supplier for Smith Road" -> "Smith Road"
+  //   "to Smith Road on Monday" -> "Smith Road"
+  if (location) {
+    const nestedLocation = location.match(/^.*?\s+(?:at|for)\s+(.+?)(?:\s+on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*)?$/i);
+    if (nestedLocation?.[1]) {
+      location = nestedLocation[1].trim();
+    }
+    location = location
+      .replace(/\s+on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i, '')
+      .trim();
+  }
+
   if (!location) {
     /*
      * Movement + destination + infinitive:
@@ -364,11 +379,20 @@ function extractLocation(text: string): string | null {
      * instead of swallowing the action phrase into locationText.
      */
     const movementDestination = text.match(
-      /\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\s+(?:over\s+)?to\s+(.+?)\s+(?:to|and|for)\s+(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase|drop\s+off|deliver)\b/i
+      /\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\s+(?:over\s+)?to\s+(.+?)\s+(?:to|and|for)\s+(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase|drop\s+off|deliver|inspect|check|measure|review|fix|repair|look\s+at|see|meet|discuss|the\s+site\s+meeting)\b/i
     );
 
     if (movementDestination?.[1]) {
       location = movementDestination[1].trim();
+    }
+
+    if (!location) {
+      const movementForPurpose = text.match(
+        /\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\s+(?:over\s+)?to\s+(.+?)\s+for\s+(?:the\s+)?(?:site\s+meeting|meeting|appointment|job|work)\b/i
+      );
+      if (movementForPurpose?.[1]) {
+        location = movementForPurpose[1].trim();
+      }
     }
   }
 
@@ -1253,7 +1277,19 @@ export function requestTaskText(req: EngineRequest): string {
       .replace(/\bcheck\b/i, 'Check')
       .replace(/\bfollow\\s*up\b/i, 'Follow up');
 
-    bits.push(`${displayVerb} ${req.objectText}`);
+    const isCommunication =
+      /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up)$/.test(primaryVerb);
+
+    if (isCommunication && req.personText) {
+      const semanticTail = req.purposeText?.trim();
+      bits.push(
+        semanticTail
+          ? `${displayVerb} ${req.personText} ${semanticTail}`
+          : `${displayVerb} ${req.personText}`
+      );
+    } else {
+      bits.push(`${displayVerb} ${req.objectText}`);
+    }
   } else if (req.action === 'remind' && req.objectText) {
     bits.push(`Remind me ${req.objectText}`);
   } else if (req.objectText) {
