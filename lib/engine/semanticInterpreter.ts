@@ -142,7 +142,7 @@ export function interpretSemanticInput(
     });
 
     reference = {
-      phrase: resolved.phrase,
+      phrase: normalizedText.match(/\b(this|that|it|these|those|the\s+last\s+one|the\s+other\s+one|the\s+previous\s+(?:one|task|job)|the\s+job|that\s+job|the\s+meeting|there|here)\b/i)?.[1]?.toLowerCase() ?? normalizedText,
       status: resolved.status,
       targetId: resolved.item?.id ?? null,
       targetKind: resolved.item?.type ?? null,
