@@ -28,6 +28,7 @@ import DesktopMeetingsHeader, {
   type MeetingsListFilter,
 } from '@/components/DesktopMeetingsHeader';
 import { useNow } from '@/hooks/useNow';
+import ContextLine from '@/components/ContextLine';
 
 function fmtDur(mins: number): string {
   if (mins <= 0) return '';
@@ -369,9 +370,14 @@ export default function MeetingsHome() {
             <span className="meeting-window mono">
               {fmtMeetingWindow(m.start_time, m.duration_mins)}
             </span>
-            {job ? <span className="meeting-meta">{job}</span> : null}
-            {!job && m.location_text ? (
-              <span className="meeting-meta">{m.location_text}</span>
+            {job || m.location_text ? (
+              <ContextLine
+                className="meeting-row-context"
+                items={[
+                  ...(job ? [{ label: job, href: m.job_id ? `/jobs/${m.job_id}` : undefined }] : []),
+                  ...(m.location_text ? [{ label: m.location_text }] : []),
+                ]}
+              />
             ) : null}
           </div>
         </div>
