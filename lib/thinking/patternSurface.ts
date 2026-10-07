@@ -1,11 +1,12 @@
 /**
  * Presentation model for the Patterns surface.
  * Maps authoritative thinking-engine observations → human claims.
- * Does not recalculate intelligence — only frames it.
+ * Does not recalculate intelligence — only frames it for denser visualisation.
  */
 
 import type { StructuredObservation } from '@/lib/thinking/v2/observations';
 import type { Confidence } from '@/lib/thinking/types';
+import type { ConfidenceDimensions, ContradictionStatus } from '@/lib/thinking/v2/evidence';
 
 export type PatternConfidenceLabel =
   | 'Well established'
@@ -13,6 +14,24 @@ export type PatternConfidenceLabel =
   | 'Early signal';
 
 export type PatternBucket = 'established' | 'emerging' | 'changing';
+
+/** Compact visual payload derived from evidence.measurements + dims. */
+export type PatternVisual = {
+  /** sample / effect / consistency strengths for the 3-segment indicator */
+  dims: ConfidenceDimensions;
+  effectMagnitude: number | null;
+  consistency: number | null;
+  recencyDays: number | null;
+  contradictionStatus: ContradictionStatus;
+  /** Estimate calibration */
+  directionBias: 'over' | 'under' | 'balanced' | null;
+  medianRatio: number | null;
+  /** Rate-style observations (carry, lifecycle, temporal rates) — 0..1 */
+  proportion: number | null;
+  proportionLabel: string | null;
+  /** Time-of-day / completion-period distribution */
+  periods: { label: string; ratio: number }[] | null;
+};
 
 export type PatternCard = {
   id: string;
@@ -26,9 +45,11 @@ export type PatternCard = {
   consequence: string;
   bucket: PatternBucket;
   type: string;
+  semanticType: string;
   clusterLabel: string | null;
   location: string | null;
   medianMins: number | null;
+  visual: PatternVisual;
 };
 
 export type RecurringWorkItem = {
@@ -38,6 +59,8 @@ export type RecurringWorkItem = {
   medianMins: number | null;
   confidence: Confidence;
   location: string | null;
+  /** 0..1 strength relative to the strongest cluster in the set */
+  relativeStrength: number;
 };
 
 export type ModelStatus = {
@@ -114,6 +137,72 @@ function medianFromEvidence(obs: StructuredObservation): number | null {
   return null;
 }
 
+function extractVisual(obs: StructuredObservation): PatternVisual {
+  const dims = obs.confidenceDimensions ?? {
+    sampleStrength: 'low' as Confidence,
+    effectStrength: 'low' as Confidence,
+    consistencyStrength: 'low' as Confidence,
+  };
+
+  let directionBias: PatternVisual['directionBias'] = null;
+  let medianRatio: number | null = null;
+  let proportion: number | null = null;
+  let proportionLabel: string | null = null;
+  let periods: PatternVisual['periods'] = null;
+
+  for (const raw of obs.evidence.measurements ?? []) {
+    const m = raw as Record<string, unknown>;
+
+    if (typeof m.medianRatio === 'number') {
+      medianRatio = m.medianRatio;
+      if (m.directionBias === 'over' || m.directionBias === 'under' || m.directionBias === 'balanced') {
+        directionBias = m.directionBias;
+      }
+    }
+
+    if (typeof m.period === 'string' && typeof m.ratio === 'number') {
+      periods = periods ?? [];
+      periods.push({ label: String(m.period), ratio: m.ratio });
+    }
+
+    // Temporal / carry style: lateCount / total, or explicit rate fields
+    if (typeof m.lateCount === 'number' && typeof m.total === 'number' && m.total > 0) {
+      proportion = m.lateCount / m.total;
+      proportionLabel = 'later than planned';
+    }
+  }
+
+  // Fall back to effectMagnitude as a rate when no explicit proportion
+  if (proportion === null && obs.evidence.effectMagnitude != null) {
+    const t = `${obs.type} ${obs.semanticType}`.toLowerCase();
+    if (t.includes('carry') || t.includes('lifecycle') || t.includes('overnight') || t.includes('staleness') || t.includes('proportion')) {
+      proportion = Math.min(1, Math.max(0, obs.evidence.effectMagnitude));
+      if (t.includes('carry')) proportionLabel = 'carries forward';
+      else if (t.includes('overnight')) proportionLabel = 'spans nights';
+      else if (t.includes('lifecycle') || t.includes('same_day')) proportionLabel = 'same-day finish';
+      else if (t.includes('stale')) proportionLabel = 'goes stale';
+      else proportionLabel = 'rate';
+    }
+  }
+
+  if (periods && periods.length > 0) {
+    periods.sort((a, b) => b.ratio - a.ratio);
+  }
+
+  return {
+    dims,
+    effectMagnitude: obs.evidence.effectMagnitude,
+    consistency: obs.evidence.consistency,
+    recencyDays: obs.recency ?? obs.evidence.recency,
+    contradictionStatus: obs.contradictionStatus ?? 'none',
+    directionBias,
+    medianRatio,
+    proportion,
+    proportionLabel,
+    periods,
+  };
+}
+
 function bucketFor(obs: StructuredObservation): PatternBucket {
   const n = obs.evidence.sampleSize ?? 0;
   if (obs.confidence === 'high' || (obs.confidence === 'medium' && n >= 5)) {
@@ -146,9 +235,11 @@ export function observationToPatternCard(obs: StructuredObservation): PatternCar
         : consequenceFor(obs),
     bucket: bucketFor(obs),
     type: obs.type,
+    semanticType: obs.semanticType ?? '',
     clusterLabel: obs.affectedContext.clusterLabel ?? null,
     location: obs.affectedContext.location ?? null,
     medianMins: medianFromEvidence(obs),
+    visual: extractVisual(obs),
   };
 }
 
@@ -162,10 +253,10 @@ export function buildPatternSurfaceModel(params: {
     .filter((o) => o.staleness !== 'stale')
     .map(observationToPatternCard);
 
-  const established = cards.filter((c) => c.bucket === 'established').slice(0, 4);
+  const established = cards.filter((c) => c.bucket === 'established').slice(0, 5);
   const emerging = cards
     .filter((c) => c.bucket === 'emerging')
-    .slice(0, 3);
+    .slice(0, 4);
 
   const byCluster = new Map<string, RecurringWorkItem>();
   for (const obs of params.clusterObservations) {
@@ -184,13 +275,19 @@ export function buildPatternSurfaceModel(params: {
         medianMins,
         confidence: obs.confidence,
         location: obs.affectedContext.location ?? null,
+        relativeStrength: 0,
       });
     }
   }
 
-  const recurringWork = [...byCluster.values()]
-    .sort((a, b) => b.sampleSize - a.sampleSize)
-    .slice(0, 6);
+  const recurringRaw = [...byCluster.values()].sort(
+    (a, b) => b.sampleSize - a.sampleSize
+  );
+  const maxN = recurringRaw[0]?.sampleSize ?? 1;
+  const recurringWork = recurringRaw.slice(0, 8).map((item) => ({
+    ...item,
+    relativeStrength: item.sampleSize / maxN,
+  }));
 
   return {
     established,

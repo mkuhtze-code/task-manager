@@ -15,7 +15,10 @@ import {
 import {
   buildPatternSurfaceModel,
   type PatternCard,
+  type PatternVisual,
+  type RecurringWorkItem,
 } from '@/lib/thinking/patternSurface';
+import type { Confidence } from '@/lib/thinking/types';
 
 type CompletedTask = {
   id: string;
@@ -49,6 +52,151 @@ function fmtMins(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function dimClass(level: Confidence): string {
+  return `patterns-dim is-${level}`;
+}
+
+/** Three-segment confidence indicator: sample · effect · consistency */
+function ConfidenceStrip({ visual }: { visual: PatternVisual }) {
+  const { dims } = visual;
+  return (
+    <div className="patterns-conf-strip" aria-label="Evidence strength">
+      <span className={dimClass(dims.sampleStrength)} title="Sample size">
+        n
+      </span>
+      <span className={dimClass(dims.effectStrength)} title="Effect size">
+        fx
+      </span>
+      <span className={dimClass(dims.consistencyStrength)} title="Consistency">
+        c
+      </span>
+    </div>
+  );
+}
+
+/** Horizontal ratio scale for estimate calibration (0.5 ← 1.0 → 1.5+) */
+function RatioScale({ ratio, bias }: { ratio: number; bias: string | null }) {
+  // Map ratio onto 0–100% where 1.0 sits at 50%
+  const clamped = Math.min(2, Math.max(0.25, ratio));
+  const pct = ((clamped - 0.25) / 1.75) * 100;
+  return (
+    <div className="patterns-ratio" aria-label={`Median ratio ${ratio.toFixed(2)}`}>
+      <div className="patterns-ratio-track">
+        <span className="patterns-ratio-mid" />
+        <span
+          className={`patterns-ratio-marker bias-${bias ?? 'balanced'}`}
+          style={{ left: `${pct}%` }}
+        />
+      </div>
+      <div className="patterns-ratio-labels">
+        <span>0.5×</span>
+        <span className="patterns-ratio-value mono">{ratio.toFixed(2)}×</span>
+        <span>2×</span>
+      </div>
+    </div>
+  );
+}
+
+/** Simple filled proportion bar */
+function ProportionBar({
+  value,
+  label,
+}: {
+  value: number;
+  label: string | null;
+}) {
+  const pct = Math.round(Math.min(1, Math.max(0, value)) * 100);
+  return (
+    <div className="patterns-prop" aria-label={`${pct}% ${label ?? ''}`}>
+      <div className="patterns-prop-track">
+        <div className="patterns-prop-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="patterns-prop-meta mono">
+        {pct}%{label ? ` ${label}` : ''}
+      </span>
+    </div>
+  );
+}
+
+/** Time-of-day / period distribution as proportional segments */
+function PeriodStrip({ periods }: { periods: { label: string; ratio: number }[] }) {
+  const top = periods.slice(0, 4);
+  return (
+    <div className="patterns-periods" aria-label="Period distribution">
+      <div className="patterns-periods-bar">
+        {top.map((p) => (
+          <span
+            key={p.label}
+            className="patterns-period-seg"
+            style={{ flexGrow: Math.max(0.04, p.ratio) }}
+            title={`${p.label}: ${Math.round(p.ratio * 100)}%`}
+          />
+        ))}
+      </div>
+      <div className="patterns-periods-legend">
+        {top.map((p) => (
+          <span key={p.label} className="patterns-period-legend-item">
+            <span className="mono">{Math.round(p.ratio * 100)}%</span> {p.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatusBadges({ card }: { card: PatternCard }) {
+  const badges: { key: string; label: string; tone: string }[] = [];
+  if (card.staleness === 'stale') {
+    badges.push({ key: 'stale', label: 'May be out of date', tone: 'warn' });
+  }
+  if (card.visual.contradictionStatus === 'partial') {
+    badges.push({ key: 'contra-p', label: 'Some conflict', tone: 'warn' });
+  } else if (card.visual.contradictionStatus === 'full') {
+    badges.push({ key: 'contra-f', label: 'Contradicted', tone: 'alert' });
+  }
+  if (card.visual.directionBias && card.visual.directionBias !== 'balanced') {
+    badges.push({
+      key: 'bias',
+      label: card.visual.directionBias === 'over' ? 'Over' : 'Under',
+      tone: 'info',
+    });
+  }
+  if (card.visual.recencyDays != null && card.visual.recencyDays <= 7) {
+    badges.push({ key: 'fresh', label: 'Recent', tone: 'ok' });
+  }
+  if (badges.length === 0) return null;
+  return (
+    <div className="patterns-badges">
+      {badges.map((b) => (
+        <span key={b.key} className={`patterns-badge tone-${b.tone}`}>
+          {b.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function PatternVisuals({ card }: { card: PatternCard }) {
+  const v = card.visual;
+  const hasRatio = v.medianRatio != null && v.medianRatio > 0;
+  const hasProp = v.proportion != null;
+  const hasPeriods = v.periods != null && v.periods.length > 0;
+
+  return (
+    <div className="patterns-visuals">
+      <ConfidenceStrip visual={v} />
+      {hasRatio ? (
+        <RatioScale ratio={v.medianRatio!} bias={v.directionBias} />
+      ) : null}
+      {hasProp && !hasRatio ? (
+        <ProportionBar value={v.proportion!} label={v.proportionLabel} />
+      ) : null}
+      {hasPeriods ? <PeriodStrip periods={v.periods!} /> : null}
+      <StatusBadges card={card} />
+    </div>
+  );
 }
 
 function PatternCardView({
@@ -87,6 +235,9 @@ function PatternCardView({
             </>
           ) : null}
         </p>
+
+        <PatternVisuals card={card} />
+
         <p className="patterns-card-consequence">{card.consequence}</p>
       </div>
 
@@ -111,6 +262,32 @@ function PatternCardView({
               <div>
                 <dt>Observed examples</dt>
                 <dd className="mono">{card.sampleSize}</dd>
+              </div>
+            ) : null}
+            {card.visual.effectMagnitude != null ? (
+              <div>
+                <dt>Effect magnitude</dt>
+                <dd className="mono">
+                  {(card.visual.effectMagnitude * 100).toFixed(0)}%
+                </dd>
+              </div>
+            ) : null}
+            {card.visual.consistency != null ? (
+              <div>
+                <dt>Consistency</dt>
+                <dd className="mono">
+                  {(card.visual.consistency * 100).toFixed(0)}%
+                </dd>
+              </div>
+            ) : null}
+            {card.visual.recencyDays != null ? (
+              <div>
+                <dt>Last supporting data</dt>
+                <dd className="mono">
+                  {card.visual.recencyDays < 1
+                    ? 'today'
+                    : `${Math.round(card.visual.recencyDays)}d ago`}
+                </dd>
               </div>
             ) : null}
             {card.medianMins != null && card.medianMins > 0 ? (
@@ -147,6 +324,33 @@ function PatternCardView({
         </div>
       ) : null}
     </article>
+  );
+}
+
+function RecurringItem({ item }: { item: RecurringWorkItem }) {
+  return (
+    <li className="patterns-recurring-item">
+      <div className="patterns-recurring-top">
+        <span className="patterns-recurring-label">{item.label}</span>
+        <span className="patterns-recurring-meta">
+          {item.medianMins != null && item.medianMins > 0 ? (
+            <span className="mono">Usually ~{fmtMins(item.medianMins)}</span>
+          ) : null}
+          <span className="mono">
+            {item.sampleSize} example{item.sampleSize === 1 ? '' : 's'}
+          </span>
+          {item.location ? (
+            <span className="patterns-recurring-place">{item.location}</span>
+          ) : null}
+        </span>
+      </div>
+      <div className="patterns-recurring-bar" aria-hidden="true">
+        <div
+          className="patterns-recurring-fill"
+          style={{ width: `${Math.round(item.relativeStrength * 100)}%` }}
+        />
+      </div>
+    </li>
   );
 }
 
@@ -269,16 +473,11 @@ export default function Analytics() {
     [scopeTasks, createFact]
   );
 
-  const allFacts = useMemo(
-    () => allTasks.map(createFact),
-    [allTasks, createFact]
-  );
-
   const actionable: StructuredObservation[] = useMemo(
     () =>
       topActionableObservations(scopeFacts, {
         timezone: userTimezone || 'UTC',
-        limit: 8,
+        limit: 10,
       }),
     [scopeFacts, userTimezone]
   );
@@ -502,27 +701,7 @@ export default function Analytics() {
                 </h2>
                 <ul className="patterns-recurring">
                   {model.recurringWork.map((item) => (
-                    <li key={item.id} className="patterns-recurring-item">
-                      <span className="patterns-recurring-label">
-                        {item.label}
-                      </span>
-                      <span className="patterns-recurring-meta">
-                        {item.medianMins != null && item.medianMins > 0 ? (
-                          <span className="mono">
-                            Usually ~{fmtMins(item.medianMins)}
-                          </span>
-                        ) : null}
-                        <span className="mono">
-                          {item.sampleSize} example
-                          {item.sampleSize === 1 ? '' : 's'}
-                        </span>
-                        {item.location ? (
-                          <span className="patterns-recurring-place">
-                            {item.location}
-                          </span>
-                        ) : null}
-                      </span>
-                    </li>
+                    <RecurringItem key={item.id} item={item} />
                   ))}
                 </ul>
               </section>
@@ -550,6 +729,14 @@ export default function Analytics() {
                 Based on what you&apos;ve completed and changed in Dokkit. Weak
                 evidence stays weak — Dokkit does not invent certainty.
               </p>
+              <div className="patterns-legend">
+                <span className="patterns-legend-title">Evidence dims</span>
+                <div className="patterns-legend-row">
+                  <span className="patterns-dim is-high">n</span> sample
+                  <span className="patterns-dim is-high">fx</span> effect
+                  <span className="patterns-dim is-high">c</span> consistency
+                </div>
+              </div>
             </div>
           </aside>
         </div>
