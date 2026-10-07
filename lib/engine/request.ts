@@ -124,6 +124,24 @@ function extractTimeHint(text: string): string | null {
   return last ? normaliseTimeHint(last) : null;
 }
 
+
+/**
+ * Extract an explicit task duration from natural language.
+ * Explicit duration is per-task user evidence and outranks learned/default estimates.
+ */
+export function extractDurationHint(text: string): number | null {
+  const raw = text.replace(/\s+/g, ' ').trim().toLowerCase();
+  if (/\b(?:half\s+an?\s+hour|an?\s+half\s+hour)\b/.test(raw)) return 30;
+  if (/\ban?\s+hour\b/.test(raw)) return 60;
+  const match = raw.match(/\b(?:for\s+|give(?:\s+me)?\s+|take\s+|about\s+|around\s+)?(\d+(?:\.\d+)?)\s*(minutes?|mins?|m|hours?|hrs?|h)\b/);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const minutes = /^(?:hours?|hrs?|h)$/.test(match[2]) ? amount * 60 : amount;
+  const rounded = Math.round(minutes);
+  return rounded > 0 && rounded <= 24 * 60 ? rounded : null;
+}
+
 function extractDateHint(text: string): string | null {
   const matches = Array.from(
     text.matchAll(
@@ -589,6 +607,20 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
       out.constraints ?? [],
       'temporal',
       `time:${timeHint}`,
+      'high',
+      'utterance'
+    );
+  }
+
+  // Explicit duration is authoritative for this task. Preserve it as
+  // structured evidence so execution can outrank the legacy 15m default.
+  const durationHint = extractDurationHint(text);
+
+  if (durationHint != null) {
+    out.constraints = pushConstraint(
+      out.constraints ?? [],
+      'duration',
+      `minutes:${durationHint}`,
       'high',
       'utterance'
     );
