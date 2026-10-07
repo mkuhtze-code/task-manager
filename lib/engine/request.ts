@@ -211,17 +211,21 @@ function extractCompoundSemantic(text: string, primaryVerb: string | null): {
     return { personText: null, purposeText: null, subjectText: null };
   }
 
-  const personMatch = afterVerb.match(
-    /^(.+?)(?=\s+(?:to|about|regarding|on|for|with)\s+)/i
-  );
+  const withPerson = afterVerb.match(/^with\s+(.+?)(?=\s+(?:to|about|regarding|on|for)\s+|$)/i);
+  const personMatch = withPerson
+    ? null
+    : afterVerb.match(/^(.+?)(?=\s+(?:to|about|regarding|on|for|with)\s+)/i);
 
-  const personText = (personMatch?.[1] ?? afterVerb)
-    .replace(/[.,]+$/, '')
-    .trim();
+  const personText = withPerson?.[1] ??
+    (personMatch?.[1] ?? afterVerb)
+      .replace(/[.,]+$/, '')
+      .trim();
 
-  const remainder = personMatch
-    ? afterVerb.slice(personMatch[0].length).trim()
-    : null;
+  const remainder = withPerson
+    ? afterVerb.slice(withPerson[0].length).trim()
+    : personMatch
+      ? afterVerb.slice(personMatch[0].length).trim()
+      : null;
 
   if (!remainder) {
     return {
@@ -788,7 +792,17 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
       .trim();
 
     if (objectText.length > 1 && objectText.length < 120) {
-      out.objectText = objectText;
+      const communicationVerb =
+        primaryVerb &&
+        /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up)$/.test(
+          primaryVerb
+        );
+
+      out.objectText =
+        communicationVerb &&
+        !new RegExp('^' + primaryVerb.replace(/\s+/g, '\\s+') + '\\b', 'i').test(objectText)
+          ? `${primaryVerb} ${objectText}`
+          : objectText;
       break;
     }
   }
@@ -1243,7 +1257,9 @@ export function requestTaskText(req: EngineRequest): string {
 
   const bits: string[] = [];
 
-  if (isDropOff) {
+  if (req.action === 'remind' && req.objectText) {
+    bits.push(`Remind me ${req.objectText.replace(/^remind\s+me\s+/i, '')}`);
+  } else if (isDropOff) {
     const dropVerb =
       primaryVerb === 'deliver' ? 'Deliver' :
       primaryVerb === 'take' ? 'Take' :
@@ -1300,8 +1316,6 @@ export function requestTaskText(req: EngineRequest): string {
     } else {
       bits.push(`${displayVerb} ${req.objectText}`);
     }
-  } else if (req.action === 'remind' && req.objectText) {
-    bits.push(`Remind me ${req.objectText}`);
   } else if (req.objectText) {
     bits.push(req.objectText);
   } else if (firstUtterance) {
