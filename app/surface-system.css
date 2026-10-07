@@ -493,3 +493,45 @@ html[data-theme='dark'] .task-card.surface-object,html[data-theme='dark'] .desk-
 html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   background:color-mix(in srgb,var(--paper) 92%,transparent)!important;
 }
+
+
+/* ==========================================================================
+   MOBILE ORIENTATION — same object grammar, smaller scale
+   ========================================================================== */
+@media (max-width:700px){
+  .app-header.surface-mobile-header,
+  .app-header.meetings-mobile-header,
+  .app-header.travel-mobile-header{
+    position:sticky!important;
+    top:0!important;
+    z-index:20!important;
+    min-height:58px!important;
+    padding:10px 0 9px!important;
+    background:color-mix(in srgb,var(--paper) 94%,transparent)!important;
+    backdrop-filter:blur(16px) saturate(1.02)!important;
+    -webkit-backdrop-filter:blur(16px) saturate(1.02)!important;
+    border-bottom:1px solid var(--line)!important;
+  }
+  .surface-mobile-identity{min-width:0!important;display:flex!important;flex-direction:column!important;gap:1px!important}
+  .surface-mobile-identity .app-title{font-size:17px!important;line-height:1.15!important;font-weight:700!important;letter-spacing:-.02em!important}
+  .surface-mobile-pulse{display:block!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;font-size:10px!important;line-height:1.3!important;font-weight:550!important;color:var(--ink-faint)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100vw - 92px)}
+  .meetings-mobile-pulse .meetings-sep,.travel-mobile-pulse .travel-sep,.jobs-mobile-pulse .jobs-sep{margin:0 4px!important;color:var(--line-strong)!important}
+  .meetings-mobile-header .app-header-left,.travel-mobile-header .app-header-left{gap:8px!important}
+  .meetings-mobile-header .back-link,.travel-mobile-header .back-link{padding-right:2px!important}
+}
+
+/* Today is the whole day, so it gets more weight — not a different material. */
+.today-header-card{
+  background:var(--paper-raised)!important;
+  border:1px solid var(--line)!important;
+  border-radius:var(--dk-radius,14px)!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+.today-header-card.overloaded{
+  background:color-mix(in srgb,var(--paper-raised) 92%,var(--warning) 8%)!important;
+  border-color:color-mix(in srgb,var(--warning) 38%,var(--line))!important;
+}
+.today-header-summary-toggle{border-radius:10px!important}
+.today-commitment{background:var(--paper)!important;border-color:var(--line)!important}
