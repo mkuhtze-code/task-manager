@@ -483,7 +483,14 @@ export default function JobsHome() {
               <BackIcon />
             </Link>
 
-            <h1 className="app-title">Jobs</h1>
+            <div className="jobs-mobile-identity">
+              <h1 className="app-title">Jobs</h1>
+              <p className="jobs-mobile-pulse">
+                Work across days
+                <span className="jobs-sep">·</span>
+                {activeTodayCount} on Today
+              </p>
+            </div>
           </div>
 
           <div className="app-header-right">
