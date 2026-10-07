@@ -114,7 +114,18 @@ function contextCandidates(input: CpuInput): ContextReferenceCandidate[] {
   return out;
 }
 
-function requestTargetBonus(phrase: string, request: EngineRequest | null): string[] {
+function timestampFor(mem: WorkingMemorySnapshot, id: string): number {
+  const item = [
+    ...mem.recentTasks,
+    ...mem.recentJobs,
+    ...mem.recentLocations,
+    ...mem.recentEntities,
+    ...mem.recentActions,
+  ].find((x) => x.id === id);
+  return item ? Date.parse(item.timestamp) || 0 : 0;
+}
+
+function requestTargetBonus(request: EngineRequest | null, label: string): string[] {
   if (!request) return [];
   const values = [
     request.objectText,
@@ -122,7 +133,7 @@ function requestTargetBonus(phrase: string, request: EngineRequest | null): stri
     request.relatedMeetingText,
     request.locationText,
   ].filter(Boolean) as string[];
-  return values.some((v) => lexicalOverlap(phrase, v) > 0.15)
+  return values.some((v) => lexicalOverlap(label, v) > 0.15)
     ? ['active_request_match']
     : [];
 }
@@ -151,7 +162,7 @@ export function resolveContextReference(
       score += 0.55;
       reasons.push('focus_match');
     }
-    if (request && c.label && requestTargetBonus(c.label, request).length) {
+    if (request && requestTargetBonus(request, c.label).length) {
       score += 0.1;
       reasons.push('active_request_match');
     }
@@ -168,19 +179,8 @@ export function resolveContextReference(
 
   if (/last|previous/.test(phrase)) {
     const dated = candidates
-      .map((c) => ({ c, item: memoryCandidates(workingMemory).find((m) => m.id === c.id) }))
-      .filter((x) => x.item)
-      .sort((a, b) => {
-        const at = Date.parse(a.item!.id ? (workingMemory.recentTasks.find(x=>x.id===a.item!.id)?.timestamp ??
-          workingMemory.recentJobs.find(x=>x.id===a.item!.id)?.timestamp ??
-          workingMemory.recentLocations.find(x=>x.id===a.item!.id)?.timestamp ??
-          workingMemory.recentEntities.find(x=>x.id===a.item!.id)?.timestamp ?? '') : '');
-        const bt = Date.parse(b.item!.id ? (workingMemory.recentTasks.find(x=>x.id===b.item!.id)?.timestamp ??
-          workingMemory.recentJobs.find(x=>x.id===b.item!.id)?.timestamp ??
-          workingMemory.recentLocations.find(x=>x.id===b.item!.id)?.timestamp ??
-          workingMemory.recentEntities.find(x=>x.id===b.item!.id)?.timestamp ?? '') : '');
-        return bt - at;
-      });
+      .filter((c) => timestampFor(workingMemory, c.id) > 0)
+      .sort((a, b) => timestampFor(workingMemory, b.id) - timestampFor(workingMemory, a.id));
     if (dated[0]) {
       return {
         status: 'resolved',
