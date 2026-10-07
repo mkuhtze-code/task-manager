@@ -7,6 +7,7 @@
 
 import { assembleContext } from '@/lib/engine/contextAssembly';
 import type { CpuInput, CpuInterface, UniversalContext } from './types';
+import type { SituationModel } from './types';
 import type { InteractionResult } from '@/lib/engine/interactionTypes';
 
 function normalizeInterface(value: string | undefined): CpuInterface {
@@ -113,7 +114,7 @@ export function assembleUniversalContext(input: CpuInput, interaction?: Interact
     reason: 'Interaction has not been evaluated yet.',
   };
 
-  const context = {
+  const contextBase = {
     nowIso: reasoning.nowIso,
     interface: interfaceName,
     activity: ctx.activity ?? null,
@@ -184,9 +185,9 @@ export function assembleUniversalContext(input: CpuInput, interaction?: Interact
 
     reasoning,
     interaction: ctx,
-  } as UniversalContext;
+  };
 
-  context.situation = {
+  const situation: SituationModel = {
     version: 1,
     nowIso: reasoning.nowIso,
     userId: input.userId,
@@ -196,12 +197,17 @@ export function assembleUniversalContext(input: CpuInput, interaction?: Interact
     focus: currentFocus,
     request,
     authority,
-    work: context.work,
-    commitments: context.commitments,
-    movement: context.movement,
-    memory: context.memory,
-    constraints: context.constraints,
+    work: contextBase.work,
+    commitments: contextBase.commitments,
+    movement: contextBase.movement,
+    memory: contextBase.memory,
+    constraints: contextBase.constraints,
     confidence: interaction?.confidence ?? 'low',
+  };
+
+  const context: UniversalContext = {
+    ...contextBase,
+    situation,
   };
 
   return context;
