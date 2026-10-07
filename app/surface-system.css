@@ -890,3 +890,46 @@ html[data-theme='dark'] .surface-object:hover {
     padding-right: 48px !important;
   }
 }
+
+
+/* Desktop tile placement follows Jobs: the object grid owns the width. */
+@media (min-width: 701px) {
+  html[data-surface='desktop'] .meetings-workspace,
+  html[data-surface='desktop'] .travel-workspace {
+    width: 100%;
+    max-width: none !important;
+    padding: 20px 28px 36px !important;
+    box-sizing: border-box;
+  }
+
+  html[data-surface='desktop'] .meeting-section,
+  html[data-surface='desktop'] .trip-section {
+    width: 100%;
+  }
+
+  html[data-surface='desktop'] .meeting-section-header,
+  html[data-surface='desktop'] .trip-section-header {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 0 0 10px !important;
+  }
+
+  html[data-surface='desktop'] .meeting-list,
+  html[data-surface='desktop'] .trip-list-maybach {
+    width: 100%;
+    max-width: 1500px;
+    margin: 0 auto;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    align-items: start;
+    gap: 14px !important;
+  }
+}
+
+@media (min-width: 1600px) {
+  html[data-surface='desktop'] .meetings-workspace,
+  html[data-surface='desktop'] .travel-workspace {
+    padding-left: 40px !important;
+    padding-right: 40px !important;
+  }
+}
