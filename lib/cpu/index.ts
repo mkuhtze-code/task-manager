@@ -30,8 +30,11 @@ export function processCpuInteraction(
   input: CpuInput,
   brains: CpuBrain[] = DEFAULT_BRAINS
 ): CpuCycleResult {
-  const context = assembleUniversalContext(input);
+  // The interaction must be evaluated first so the universal context contains
+  // the canonical request + authority for this cycle. This closes the former
+  // context-before-understanding gap without changing execution semantics.
   const interaction = processInteractionCore(input);
+  const context = assembleUniversalContext(input, interaction);
 
   const contributions = brains.map((brain) =>
     brain.contribute(input, context, interaction)
