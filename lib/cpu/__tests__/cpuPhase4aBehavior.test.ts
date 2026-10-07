@@ -5,8 +5,44 @@ import {
   observeBehavior,
   updateBehaviorBeliefs,
 } from '../behavior';
+import { rankOpportunities } from '../reconcile/opportunityRanker';
 
-describe('CPU Phase 4A — behavioural learning', () => {
+const requestFor = (id: string) => ({
+  id,
+  action: 'create_task',
+  objectText: 'x',
+  locationText: null,
+  relatedJobText: null,
+  relatedMeetingText: null,
+  dateHint: null,
+  timeHint: null,
+  urgency: null,
+  flexibility: null,
+  commitment: null,
+  constraints: [],
+  rawUtterances: [],
+}) as never;
+
+const temporalOpportunity = {
+  kind: 'temporal' as const,
+  message: 'Useful timing connection',
+  confidence: 'medium' as const,
+  entityIds: [],
+  reason: 'timing',
+};
+
+const rankingBase = (beliefs: ReturnType<typeof emptyBeliefGraph>) => ({
+  context: {
+    beliefs,
+    constraints: { remainingMinsToday: 120 },
+    movement: { travel: null },
+  } as never,
+  interaction: {
+    request: { action: 'create_task', objectText: 'x', locationText: null },
+  } as never,
+});
+
+describe('CPU Phase 4 — behavioural learning', () => {
   it('records an explicit acceptance without treating engine execution as acceptance', () => {
     const evidence = observeBehavior({
       event: 'accepted',
@@ -86,50 +122,97 @@ describe('CPU Phase 4A — behavioural learning', () => {
 
     expect(graph.beliefs).toHaveLength(0);
   });
-});
 
-
-  it('raises fit for a suggestion the user repeatedly accepts', async () => {
-    const { rankOpportunities } = await import('../reconcile/opportunityRanker');
-    const belief = updateBehaviorBeliefs(
+  it('raises fit when repeated work outcomes show that the user usually completes it', () => {
+    const graph = updateBehaviorBeliefs(
       emptyBeliefGraph(),
       'user-1',
       [
         observeBehavior({
-          event: 'accepted',
-          request: { id: 'r1', action: 'create_task', objectText: 'x', locationText: null, relatedJobText: null, relatedMeetingText: null, dateHint: null, timeHint: null, urgency: null, flexibility: null, commitment: null, constraints: [], rawUtterances: [] } as never,
-          value: 'accepted',
+          event: 'completed',
+          request: requestFor('r1'),
+          taskId: 't1',
           timestamp: '2026-10-08T08:00:00.000Z',
         }),
         observeBehavior({
-          event: 'accepted',
-          request: { id: 'r2', action: 'create_task', objectText: 'x', locationText: null, relatedJobText: null, relatedMeetingText: null, dateHint: null, timeHint: null, urgency: null, flexibility: null, commitment: null, constraints: [], rawUtterances: [] } as never,
-          value: 'accepted',
+          event: 'completed',
+          request: requestFor('r2'),
+          taskId: 't2',
           timestamp: '2026-10-09T08:00:00.000Z',
         }),
       ]
     );
 
-    const opportunity = {
-      kind: 'temporal',
-      message: 'Useful timing connection',
-      confidence: 'medium',
-      entityIds: [],
-      reason: 'timing',
-    } as const;
+    const belief = activeBehaviorBelief(graph, 'outcome.create_task');
+    expect(belief?.value).toBe('completed');
+    expect(belief?.supportingEvidence).toHaveLength(2);
 
-    const base = {
-      context: {
-        beliefs: belief,
-        constraints: { remainingMinsToday: 120 },
-        movement: { travel: null },
-      } as never,
-      interaction: {
-        request: { action: 'create_task', objectText: 'x', locationText: null },
-      } as never,
-    };
-
-    const ranked = rankOpportunities([opportunity], base);
-    expect(ranked[0]?.score).toBe(71);
-    expect(ranked[0]?.reasons).toContain('you usually accept this kind of suggestion');
+    const ranked = rankOpportunities([temporalOpportunity], rankingBase(graph));
+    expect(ranked[0]?.score).toBe(81);
+    expect(ranked[0]?.reasons).toContain(
+      'this kind of work usually fits when suggested'
+    );
   });
+
+  it('does not let one carry override an established outcome pattern', () => {
+    const graph = updateBehaviorBeliefs(
+      emptyBeliefGraph(),
+      'user-1',
+      [
+        observeBehavior({
+          event: 'completed',
+          request: requestFor('r1'),
+          taskId: 't1',
+          timestamp: '2026-10-08T08:00:00.000Z',
+        }),
+        observeBehavior({
+          event: 'completed',
+          request: requestFor('r2'),
+          taskId: 't2',
+          timestamp: '2026-10-09T08:00:00.000Z',
+        }),
+        observeBehavior({
+          event: 'carried',
+          request: requestFor('r3'),
+          taskId: 't3',
+          timestamp: '2026-10-10T08:00:00.000Z',
+        }),
+      ]
+    );
+
+    const belief = activeBehaviorBelief(graph, 'outcome.create_task');
+    expect(belief?.value).toBe('carried');
+    expect(belief?.supportingEvidence).toHaveLength(1);
+    expect(belief?.contradictingEvidence.length).toBeGreaterThan(0);
+
+    const ranked = rankOpportunities([temporalOpportunity], rankingBase(graph));
+    expect(ranked[0]?.score).toBe(71);
+  });
+
+  it('learns repeated carry-forward as a negative fit signal', () => {
+    const graph = updateBehaviorBeliefs(
+      emptyBeliefGraph(),
+      'user-1',
+      [
+        observeBehavior({
+          event: 'carried',
+          request: requestFor('r1'),
+          taskId: 't1',
+          timestamp: '2026-10-08T08:00:00.000Z',
+        }),
+        observeBehavior({
+          event: 'carried',
+          request: requestFor('r2'),
+          taskId: 't2',
+          timestamp: '2026-10-09T08:00:00.000Z',
+        }),
+      ]
+    );
+
+    const ranked = rankOpportunities([temporalOpportunity], rankingBase(graph));
+    expect(ranked[0]?.score).toBe(63);
+    expect(ranked[0]?.reasons).toContain(
+      'this kind of work is often carried forward'
+    );
+  });
+});
