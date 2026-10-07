@@ -10,6 +10,7 @@ import type { CpuInput, CpuInterface, UniversalContext } from './types';
 import type { SituationModel } from './types';
 import type { InteractionResult } from '@/lib/engine/interactionTypes';
 import { emptyBeliefGraph, type BeliefGraph } from './beliefs';
+import { resolveContextReference } from './referenceResolver';
 
 function normalizeInterface(value: string | undefined): CpuInterface {
   switch (value) {
@@ -107,6 +108,8 @@ export function assembleUniversalContext(input: CpuInput, interaction?: Interact
     confidence: 'low' as const,
     updatedAt: reasoning.nowIso,
   };
+  const references = resolveContextReference(input, interaction?.request ?? null, workingMemory);
+
   const authority = interaction?.authority ?? {
     commitmentClass: 'NEW_REQUEST' as const,
     autonomy: 'observe' as const,
@@ -205,12 +208,14 @@ export function assembleUniversalContext(input: CpuInput, interaction?: Interact
     constraints: contextBase.constraints,
     confidence: interaction?.confidence ?? 'low',
     beliefs,
+    references,
   };
 
   const context: UniversalContext = {
     ...contextBase,
     situation,
     beliefs,
+    references,
   };
 
   return context;
