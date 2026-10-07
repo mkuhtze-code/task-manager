@@ -85,7 +85,8 @@ export type ConstraintAxis =
   | 'consequence'
   | 'duration'
   | 'capacity'
-  | 'preference';
+  | 'preference'
+  | 'object';
 
 export type Constraint = {
   axis: ConstraintAxis;
