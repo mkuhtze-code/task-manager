@@ -80,4 +80,54 @@ describe('Dokkit CPU Phase 3 — reconciliation', () => {
     expect(result.decision.opportunities).toEqual([]);
     expect(result.decision.conflicts).toEqual([]);
   });
+  it('resolves "add this" from current list focus', () => {
+    let mem = emptyWorkingMemory('today');
+    mem = setFocus(mem, { kind: 'list', id: 'list-1', label: 'Grocery List' });
+    const result = resolveContextReference(input('add this'), null, mem);
+    expect(result.status).toBe('resolved');
+    expect(result.target?.id).toBe('list-1');
+    expect(result.target?.reasons).toContain('focus_match');
+  });
+
+  it('does not guess between similarly plausible jobs', () => {
+    const result = resolveContextReference(
+      input('update that job', {
+        jobs: [
+          { id: 'job-1', name: 'Smith renovation' },
+          { id: 'job-2', name: 'Jones renovation' },
+        ],
+      }),
+      null,
+      emptyWorkingMemory('jobs')
+    );
+    expect(result.status).toBe('ambiguous');
+    expect(result.target).toBeNull();
+    expect(result.candidates.length).toBe(2);
+  });
+
+  it('uses explicit recency for "the last one"', () => {
+    let mem = emptyWorkingMemory('today');
+    mem = {
+      ...mem,
+      recentTasks: [
+        makeMemoryItem({ id: 'task-new', type: 'task', label: 'Check flashings', source: 'test', timestamp: '2026-10-08T09:00:00.000Z', salience: 0.5 }),
+        makeMemoryItem({ id: 'task-old', type: 'task', label: 'Call supplier', source: 'test', timestamp: '2026-10-08T08:00:00.000Z', salience: 0.9 }),
+      ],
+    };
+    const result = resolveContextReference(input('move the last one to tomorrow'), null, mem);
+    expect(result.status).toBe('resolved');
+    expect(result.target?.id).toBe('task-new');
+    expect(result.reason).toBe('explicit_recency_reference');
+  });
+
+  it('uses the same resolver for Android Auto', () => {
+    let mem = emptyWorkingMemory('today');
+    mem = setFocus(mem, { kind: 'task', id: 'task-1', label: 'Pick up flashing' });
+    const auto = input('move it to tomorrow', { interface: 'android_auto' });
+    auto.cpu = { interface: 'android_auto' };
+    const result = resolveContextReference(auto, null, mem);
+    expect(result.status).toBe('resolved');
+    expect(result.target?.id).toBe('task-1');
+  });
+
 });
