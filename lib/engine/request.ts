@@ -282,10 +282,30 @@ function extractLocation(text: string): string | null {
        * preposition itself.
        */
       if (prep === 'for') {
+        /*
+         * "for" is intentionally conservative because it often introduces
+         * purpose/recipient language ("call John for the quote"). However,
+         * a place-like noun phrase is strong contextual location evidence:
+         * "call Mike for James Street", "check the flashing for Queen Street".
+         *
+         * Only accept it when either:
+         *  - the preceding action is location-oriented, or
+         *  - the candidate itself has a street/address/place shape.
+         *
+         * This keeps "for the quote", "for Sarah", etc. out of locationText.
+         */
+        const restAfterFor = text.slice(m.index + m[0].length);
+        const placeLike =
+          /\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq|road)\b/i.test(
+            restAfterFor
+          ) ||
+          /^\d+\s+[A-Za-z0-9][^,]{2,80}$/i.test(restAfterFor.trim());
+
         if (
           !/\b(?:check|inspect|fix|repair|visit|go|head|drive|work|working|deliver|drop\s+off|take|leave|pick\s*up|collect|get|fetch)\b/i.test(
             before
-          )
+          ) &&
+          !placeLike
         ) {
           continue;
         }
@@ -311,7 +331,7 @@ function extractLocation(text: string): string | null {
       );
 
       const tail = rest.match(
-        /^(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+\b(?:noon|midnight)\b|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\bbecause\b|\s+\bafter\b|$)/i
+        /^(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+\b(?:noon|midnight)\b|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\bbecause\b|\s+\bafter\b|\s+\b(?:give(?:\s+me)?|for|about|around|take)\s+(?:half\s+an?\s+hour|an?\s+half\s+hour|\d+(?:\.\d+)?\s*(?:minutes?|mins?|m|hours?|hrs?|h))\b|$)/i
       );
 
       if (purposeBoundary?.[1]) {
