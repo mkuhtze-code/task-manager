@@ -68,11 +68,17 @@ function SectionGlyph({ surface }: { surface: NavSurface }) {
       return (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
           <path
-            d="M4 6h16v10H4V6zM8 20h8M12 16v4"
+            d="M4 5.5h16v10H9l-5 3v-13z"
             stroke="currentColor"
             strokeWidth="1.75"
             strokeLinecap="round"
             strokeLinejoin="round"
+          />
+          <path
+            d="M8 9.5h8M8 13h5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
           />
         </svg>
       );
@@ -80,11 +86,20 @@ function SectionGlyph({ surface }: { surface: NavSurface }) {
       return (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
           <path
-            d="M12 3l7 6.5V20H5V9.5L12 3z"
+            d="M4 18.5 20 5.5"
             stroke="currentColor"
             strokeWidth="1.75"
+            strokeLinecap="round"
+          />
+          <path
+            d="M16 5.5h4v4M8 18.5H4v-4"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
             strokeLinejoin="round"
           />
+          <circle cx="7" cy="17.5" r="1.25" fill="currentColor" />
+          <circle cx="17" cy="6.5" r="1.25" fill="currentColor" />
         </svg>
       );
     default:
