@@ -2420,3 +2420,40 @@ html[data-theme='dark'] .desk-job-card:first-child{
 @media (max-width:700px){
   .desk-today-instrument{display:none}
 }
+
+/* DOKKIT MOBILE COCKPIT — Today is a real instrument at phone scale. */
+@media (max-width:700px){
+  .mobile-today-cockpit{position:relative;margin:0 0 12px;padding:16px;overflow:hidden;border:1px solid color-mix(in srgb,var(--dk-blue) 24%,var(--line));border-radius:18px;background:radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 10%,transparent),transparent 58%),linear-gradient(145deg,color-mix(in srgb,var(--dk-orange) 7%,var(--paper-raised)),var(--paper-raised) 58%,color-mix(in srgb,var(--dk-blue) 5%,var(--paper-raised)));box-shadow:0 10px 28px rgba(var(--shadow-rgb),.075)}
+  .mobile-today-cockpit::before{content:'';position:absolute;left:0;top:0;right:0;height:4px;background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue))}
+  .mobile-today-cockpit.is-over{border-color:color-mix(in srgb,var(--dk-orange) 52%,var(--line));background:radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-orange) 13%,transparent),transparent 58%),var(--paper-raised)}
+  .mobile-today-cockpit-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .mobile-today-cockpit-brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .mobile-today-cockpit-kicker{color:var(--dk-orange);font-family:var(--font-label);font-size:10px;font-weight:850;letter-spacing:.16em;line-height:1;text-transform:uppercase}
+  .mobile-today-cockpit-date{font-size:11px;color:var(--ink-faint);font-weight:650}
+  .mobile-today-dock{flex:0 0 auto;min-height:34px;padding:0 11px;border:1px solid var(--dk-orange);border-radius:10px;background:var(--dk-orange);color:#fff;font-size:11px;font-weight:800;box-shadow:0 3px 0 color-mix(in srgb,var(--dk-orange) 70%,#000)}
+  .mobile-today-dock span{font-size:16px;line-height:0;vertical-align:-1px;margin-right:2px}
+  .mobile-today-cockpit-readout{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:14px;padding:2px 0 15px}
+  .mobile-today-cockpit-time{display:flex;flex-direction:column;min-width:0}
+  .mobile-today-cockpit-time strong{font-size:clamp(40px,13vw,58px);line-height:.9;letter-spacing:-.07em;font-weight:850;color:var(--ink)}
+  .mobile-today-cockpit-time span{margin-top:6px;color:var(--ink-soft);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+  .mobile-today-cockpit-fit{display:grid;justify-items:end;gap:3px;padding-bottom:2px;text-align:right}
+  .mobile-today-cockpit-fit strong{font-family:var(--font-label);font-size:10px;letter-spacing:.12em;font-weight:850}
+  .mobile-today-cockpit-fit>span:last-child{font-size:10px;color:var(--ink-soft);font-weight:650}
+  .mobile-today-fit-dot{width:9px;height:9px;border-radius:50%;background:var(--dk-blue);box-shadow:0 0 0 4px color-mix(in srgb,var(--dk-blue) 12%,transparent)}
+  .mobile-today-fit-dot.over{background:var(--dk-orange);box-shadow:0 0 0 4px color-mix(in srgb,var(--dk-orange) 13%,transparent)}
+  .mobile-today-capacity{padding:12px 0 13px;border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent)}
+  .mobile-today-capacity-head,.mobile-today-capacity-foot{display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .mobile-today-capacity-head{font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--ink-faint);text-transform:uppercase}
+  .mobile-today-capacity-head .mono{font-size:10px;letter-spacing:0;color:var(--ink-soft);text-transform:none}
+  .mobile-today-capacity-track{position:relative;height:10px;margin:9px 0 6px;overflow:visible;border-radius:999px;background:color-mix(in srgb,var(--dk-blue) 9%,var(--paper))}
+  .mobile-today-capacity-track>span{position:absolute;left:0;top:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue))}
+  .mobile-today-capacity-track>span.is-over{background:var(--dk-orange)}
+  .mobile-today-capacity-track>i{position:absolute;top:-3px;width:2px;height:16px;border-radius:2px;background:var(--ink);transform:translateX(-1px);opacity:.8}
+  .mobile-today-capacity-foot{font-size:9px;color:var(--ink-faint);font-weight:650}
+  .mobile-today-capacity-foot strong{font-size:9px;color:var(--ink);font-weight:800}
+  .mobile-today-next{display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:3px;margin-top:2px;padding:11px 0 0;border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent)}
+  .mobile-today-next-kicker{grid-column:1/-1;color:var(--dk-orange);font-family:var(--font-label);font-size:9px;font-weight:850;letter-spacing:.13em}
+  .mobile-today-next strong{font-size:13px;line-height:1.25;font-weight:750;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-today-next>span:last-child{align-self:end;font-family:var(--font-digital);font-size:10px;color:var(--ink-soft);white-space:nowrap}
+  .mobile-today-cockpit.is-off .mobile-today-cockpit-time strong{font-size:44px}
+}
