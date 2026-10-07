@@ -1188,3 +1188,119 @@ html[data-theme='dark'] .desk-depth-track{
 html[data-theme='dark'] .surface-header-controls::after{
   opacity:.9;
 }
+
+/* ==========================================================================
+   DOKKIT MAKEOVER IV — give each lens a focal machine part
+   ========================================================================== */
+@media (min-width:701px){
+  .meetings-featured,
+  .travel-featured{
+    position:relative;
+    min-height:116px;
+    margin:18px 22px 6px!important;
+    padding:24px 26px!important;
+    overflow:hidden;
+    border-width:1px!important;
+    border-radius:18px!important;
+    background:
+      radial-gradient(circle at 88% 25%, color-mix(in srgb,var(--dk-blue) 12%,transparent), transparent 32%),
+      linear-gradient(115deg,color-mix(in srgb,var(--dk-orange) 7%,var(--paper-raised)),var(--paper-raised) 52%,color-mix(in srgb,var(--dk-blue) 5%,var(--paper-raised)))!important;
+  }
+  .meetings-featured::before,
+  .travel-featured::before{
+    content:'';
+    position:absolute;
+    left:0;
+    top:0;
+    bottom:0;
+    width:6px;
+    background:linear-gradient(180deg,var(--dk-orange),var(--dk-blue));
+  }
+  .meetings-featured::after,
+  .travel-featured::after{
+    content:'';
+    position:absolute;
+    right:-38px;
+    bottom:-72px;
+    width:210px;
+    height:210px;
+    border:1px solid color-mix(in srgb,var(--dk-blue) 22%,transparent);
+    border-radius:50%;
+    box-shadow:0 0 0 22px color-mix(in srgb,var(--dk-blue) 4%,transparent),0 0 0 44px color-mix(in srgb,var(--dk-orange) 3%,transparent);
+    pointer-events:none;
+  }
+  .meetings-featured-label,
+  .travel-featured-label{
+    color:var(--dk-orange)!important;
+    font-family:var(--font-label);
+    font-size:10px!important;
+    font-weight:850!important;
+    letter-spacing:.16em!important;
+    text-transform:uppercase;
+  }
+  .meetings-featured-title,
+  .travel-featured-title{
+    display:block;
+    margin-top:5px;
+    font-size:22px!important;
+    line-height:1.12!important;
+    font-weight:800!important;
+    letter-spacing:-.025em!important;
+  }
+  .meetings-featured-meta,
+  .travel-featured-meta{
+    display:block;
+    margin-top:8px;
+    font-size:12px!important;
+    color:var(--ink-soft)!important;
+  }
+  .meetings-featured-cta,
+  .travel-featured-cta{
+    align-self:center;
+    margin-left:auto;
+    padding:8px 12px;
+    border:1px solid var(--line-strong);
+    border-radius:999px;
+    background:var(--paper);
+    color:var(--ink);
+    font-size:11px;
+    font-weight:750;
+    z-index:1;
+  }
+  .desk-job-card:first-child{
+    position:relative;
+    overflow:hidden;
+    background:
+      radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--dk-blue) 11%,transparent), transparent 34%),
+      linear-gradient(120deg,color-mix(in srgb,var(--dk-orange) 7%,var(--paper-raised)),var(--paper-raised) 48%)!important;
+  }
+  .desk-job-card:first-child::after{
+    content:'';
+    position:absolute;
+    right:18px;
+    top:18px;
+    width:54px;
+    height:3px;
+    border-radius:999px;
+    background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+    box-shadow:0 8px 0 color-mix(in srgb,var(--dk-blue) 35%,transparent),0 16px 0 color-mix(in srgb,var(--dk-orange) 22%,transparent);
+    transform:rotate(-35deg);
+    transform-origin:right center;
+    pointer-events:none;
+  }
+  .desk-job-card:first-child .desk-job-card-name{font-size:21px!important}
+  .desk-job-card:first-child .desk-job-card-state{margin-top:14px}
+}
+@media (max-width:700px){
+  .meetings-featured,
+  .travel-featured{
+    border-radius:15px!important;
+  }
+}
+html[data-theme='dark'] .meetings-featured,
+html[data-theme='dark'] .travel-featured,
+html[data-theme='dark'] .desk-job-card:first-child{
+  background:
+    radial-gradient(circle at 88% 18%, color-mix(in srgb,var(--dk-blue) 13%,transparent), transparent 34%),
+    linear-gradient(115deg,color-mix(in srgb,var(--dk-orange) 8%,var(--paper-raised)),var(--paper-raised) 56%)!important;
+}
