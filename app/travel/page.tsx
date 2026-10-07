@@ -344,10 +344,10 @@ export default function TravelHome() {
         <Link href={`/travel/${tr.id}`} className="trip-row-link surface-object">
           <div className="trip-row-main">
             <div className="trip-row-top">
-              <span className="trip-row-name">{tr.name}</span>
+              <span className="trip-row-name surface-object-title">{tr.name}</span>
             </div>
             <div className="trip-row-sub">
-              <span className="trip-row-dates mono">
+              <span className="trip-row-dates surface-object-time mono">
                 {fmtDateRange(tr.start_date, tr.end_date)}
               </span>
               <ContextLine
