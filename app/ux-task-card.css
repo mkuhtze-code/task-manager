@@ -1,4 +1,46 @@
-/* Task card — collapsed instrument, quiet expand */
+/* Task card — visual instrument row */
+
+.task-card.surface-object {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Fit / state as left colour rail — readable without text */
+.task-card.surface-object::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--line, #e2e8f0);
+  border-radius: 14px 0 0 14px;
+}
+
+.task-card.fit-protect::before {
+  background: var(--steel, #1e6be6);
+}
+
+.task-card.fit-ok::before {
+  background: #22c55e;
+}
+
+.task-card.fit-later::before {
+  background: #94a3b8;
+}
+
+.task-card.fit-uncertain::before {
+  background: #cbd5e1;
+}
+
+.task-card.fit-blocked::before,
+.task-card.task-overtime::before {
+  background: var(--hazard, #b91c1c);
+}
+
+.task-card.task-due-today:not(.fit-protect):not(.fit-ok)::before {
+  background: color-mix(in srgb, var(--steel, #1e6be6) 70%, #94a3b8);
+}
 
 .task-card .task-text {
   font-size: var(--text-base, 1rem);
@@ -12,7 +54,6 @@
   font-weight: 500;
 }
 
-/* Job under title — secondary, never a badge */
 .task-card-job {
   margin-top: 2px;
   font-size: 11px;
@@ -44,6 +85,24 @@
   color: var(--steel, #1e6be6);
 }
 
+.task-card-active-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--steel, #1e6be6);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--steel, #1e6be6) 22%, transparent);
+  animation: task-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes task-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-card-active-dot { animation: none; }
+}
+
 .task-card-chevron {
   display: inline-flex;
   color: var(--ink-faint, var(--text-tertiary));
@@ -54,9 +113,30 @@
   transform: rotate(180deg);
 }
 
+/* Always-on progress under timed rows (collapsed) */
+.task-card-progress {
+  height: 3px;
+  margin: 0 14px 0 48px;
+  border-radius: 2px;
+  background: var(--line, #e2e8f0);
+  overflow: hidden;
+}
+
+.task-card-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--steel, #1e6be6);
+  min-width: 0;
+  transition: width 0.2s ease;
+}
+
+.task-card.task-overtime .task-card-progress-fill {
+  background: var(--hazard, #b91c1c);
+}
+
 .task-reveal {
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 0;
+  padding: 10px 14px 12px 48px;
   border-top: 1px solid var(--line, var(--border-subtle));
   display: flex;
   flex-direction: column;
@@ -175,7 +255,6 @@
   transition: width 0.2s ease;
 }
 
-/* Live day fit — calm, not traffic lights */
 .task-fit-line {
   margin-top: 2px;
 }
@@ -194,7 +273,7 @@
 }
 
 .task-card.fit-ok .task-fit-badge {
-  color: var(--ink-soft, #475569);
+  color: #15803d;
 }
 
 .task-card.fit-later .task-fit-badge {
@@ -212,6 +291,11 @@
 
 .task-card.fit-later {
   opacity: 0.92;
+}
+
+/* Collapsed: hide fit text when colour rail carries the signal */
+.task-card:not(.expanded) .task-fit-line {
+  display: none;
 }
 
 .live-day-strip {
@@ -245,4 +329,11 @@
 
 html[data-surface='desktop'] .live-day-strip {
   display: none;
+}
+
+/* Sheet stacking above sticky mobile cockpit (z-index 40) */
+.sheet-backdrop,
+.capture-sheet,
+.map-overlay {
+  z-index: 80 !important;
 }

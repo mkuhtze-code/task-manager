@@ -125,7 +125,7 @@ export function TaskCard(props: {
       )
     : 0;
 
-  const showProgress = timed && (running || progressPct > 0);
+  const showCollapsedProgress = timed && (running || progressPct > 0 || t.logged_mins > 0);
 
   let glanceRight: string | null = null;
   let glanceKind: 'elapsed' | 'time' | 'subs' | null = null;
@@ -156,7 +156,6 @@ export function TaskCard(props: {
 
   return (
     <div className={rowClass}>
-      {/* ── Collapsed instrument line ─────────────────────────── */}
       <div className="task-main">
         <button
           type="button"
@@ -188,7 +187,9 @@ export function TaskCard(props: {
             <ContextLine
               className="task-card-context"
               items={[
-                ...(jobLabel ? [{ label: jobLabel, href: t.job_id ? `/jobs/${t.job_id}` : undefined }] : []),
+                ...(jobLabel
+                  ? [{ label: jobLabel, href: t.job_id ? `/jobs/${t.job_id}` : undefined }]
+                  : []),
                 ...(t.location_text ? [{ label: t.location_text }] : []),
               ]}
             />
@@ -259,10 +260,19 @@ export function TaskCard(props: {
         ) : null}
       </div>
 
-      {/* ── Expand: secondary truth only ───────────────────────── */}
+      {/* Collapsed progress — always visible for timed work with progress */}
+      {showCollapsedProgress && !expanded ? (
+        <div className="task-card-progress" aria-hidden>
+          <div
+            className="task-card-progress-fill"
+            style={{ width: `${Math.max(progressPct, running ? 4 : 0)}%` }}
+          />
+        </div>
+      ) : null}
+
       {expanded ? (
         <div className="task-reveal">
-          {showProgress ? (
+          {timed ? (
             <div className="task-progress-row" aria-hidden>
               <div className="task-progress-track">
                 <div

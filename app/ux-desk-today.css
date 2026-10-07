@@ -1,18 +1,57 @@
-/* Desktop Today — command bar + Day Depth (refined density)
-   Authoritative for .desk-today-saas. Do not add parallel desktop-vN sheets. */
+/* Desktop Today — command bar + Day Depth + split pane
+   Authoritative for .desk-today-saas. */
+
+/* ── Shell grid ─────────────────────────────────────────────────
+   Children of .app-shell on desktop Today must be explicitly placed.
+   Unplaced siblings (banners, invites, SurfaceNav) previously broke the
+   list/detail columns. */
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
+  display: grid;
   grid-template-columns: var(--desk-list-w, 320px) 6px minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Full-bleed rows above the work columns */
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .travel-aware-banner,
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .reality-invite-card,
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .starter-pack-banner,
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .live-day-strip,
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .recalc-error,
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .settings-help {
+  grid-column: 1 / -1;
+  grid-row: auto;
+}
+
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-today-saas.today-header-card,
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .today-header-card {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  z-index: 12;
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 3;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 14px 48px;
+  margin: 0;
+  border-right: none;
+  background: var(--paper, #fff);
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 3;
   width: 6px;
   margin: 0;
   padding: 0;
@@ -32,6 +71,7 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-
   left: 2px;
   width: 2px;
   background: var(--line, #e2e8f0);
+  transition: background 0.12s ease;
 }
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle:hover::after,
@@ -41,29 +81,51 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-
 
 html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-pane-detail {
   grid-column: 3;
-  grid-row: 2;
+  grid-row: 3;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
   background: var(--paper, #fff);
+  border-left: 1px solid var(--line, #e2e8f0);
 }
 
+/* Empty detail region when nothing is open */
 html[data-surface='desktop'] .app-shell:has(> .today-header-card):not(.has-desk-detail)::after {
+  content: '';
   grid-column: 3;
-  grid-row: 2;
+  grid-row: 3;
+  background:
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--steel, #1e6be6) 6%, transparent), transparent 55%),
+    var(--paper-raised, #f8fafc);
+  border-left: 1px solid var(--line, #e2e8f0);
+  pointer-events: none;
 }
+
+/* SurfaceNav is replaced by desktop product nav — hide mobile tab bar */
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .surface-nav {
+  display: none !important;
+}
+
+/* Sheets / maps sit above sticky chrome */
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .sheet-backdrop,
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .map-view,
+.sheet-backdrop {
+  z-index: 80;
+}
+
+/* ── Header card ─────────────────────────────────────────────── */
 
 html[data-surface='desktop'] .desk-today-saas.today-header-card {
-  grid-column: 1 / -1;
-  grid-row: 1;
   padding: 10px 20px 12px;
   gap: 0;
   border-radius: 0;
+  border: none;
   border-bottom: 1px solid var(--line, #e2e8f0);
   background: rgba(var(--glass-rgb, 255, 255, 255), 0.94);
   backdrop-filter: blur(12px);
   box-shadow: none;
 }
 
-/* ── Command bar: orient | context fills width | actions ─────── */
 .desk-today-bar {
   display: grid;
   grid-template-columns: auto minmax(12rem, 1fr) auto;
@@ -109,7 +171,6 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
   color: var(--ink-soft, #64748b);
 }
 
-/* Fit is the dominant signal — not a tiny chip */
 .desk-today-fit {
   display: inline-flex;
   align-items: center;
@@ -126,79 +187,8 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
   background: rgba(185, 28, 28, 0.05);
 }
 
-.desk-today-fit-icon {
-  display: inline-flex;
-  flex-shrink: 0;
-}
-
-.desk-today-fit-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  line-height: 1.15;
-}
-
-.desk-today-fit-title {
-  font-size: 13px;
-  font-weight: 750;
-  color: var(--ink, #0f172a);
-}
-
-.desk-today-fit-metrics {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-soft, #64748b);
-  white-space: nowrap;
-}
-
-.desk-today-fit-sep {
-  margin: 0 4px;
-  color: var(--ink-faint, #94a3b8);
-}
-
 .is-over-text {
   color: var(--hazard, #b91c1c);
-}
-
-/* Context rail — continuous statement, full remaining width */
-.desk-today-context {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px 0;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 550;
-  color: var(--ink-soft, #64748b);
-}
-
-.desk-ctx-wrap {
-  display: inline-flex;
-  align-items: baseline;
-  min-width: 0;
-}
-
-.desk-ctx-dot {
-  margin: 0 8px;
-  color: var(--ink-faint, #94a3b8);
-  font-weight: 600;
-}
-
-.desk-ctx-bit {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 22rem;
-}
-
-.desk-ctx-bit strong {
-  font-weight: 700;
-  color: var(--ink, #0f172a);
-}
-
-.desk-ctx-bit-strong {
-  font-weight: 650;
-  color: var(--steel-dark, #1e40af);
 }
 
 .desk-today-bar-right {
@@ -213,7 +203,207 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
   min-height: 34px;
 }
 
-/* ── Day Depth — one surface, full width ─────────────────────── */
+/* ── Instrument strip (Now / Load / Next) ─────────────────────── */
+
+.desk-today-instrument {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.7fr) minmax(220px, 1.4fr) minmax(180px, 0.9fr);
+  gap: 0;
+  margin-top: 14px;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--paper-raised, #f8fafc);
+}
+
+.desk-today-now,
+.desk-today-capacity,
+.desk-today-next {
+  min-height: 96px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.desk-today-capacity,
+.desk-today-next {
+  border-left: 1px solid var(--line, #e2e8f0);
+}
+
+.desk-today-now-kicker,
+.desk-today-next-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.desk-today-now-value {
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--ink, #0f172a);
+  font-variant-numeric: tabular-nums;
+}
+
+.desk-today-now-label {
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-today-capacity-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.desk-today-capacity-head strong {
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+  font-variant-numeric: tabular-nums;
+}
+
+.desk-today-capacity-track {
+  height: 8px;
+  margin: 8px 0 6px;
+  border-radius: 999px;
+  background: var(--line, #e2e8f0);
+  overflow: hidden;
+}
+
+.desk-today-capacity-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--steel, #1e6be6);
+  min-width: 2px;
+}
+
+.desk-today-capacity-track > span.is-over {
+  background: var(--hazard, #b91c1c);
+}
+
+.desk-today-capacity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft, #64748b);
+  font-variant-numeric: tabular-nums;
+}
+
+.desk-today-next strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desk-today-next > span:last-child {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink-soft, #64748b);
+}
+
+/* ── Day shape rail ──────────────────────────────────────────── */
+
+.desk-today-rail {
+  margin-top: 12px;
+}
+
+.desk-today-rail-head,
+.desk-today-rail-foot {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft, #64748b);
+}
+
+.desk-today-rail-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+
+.desk-today-rail-track {
+  position: relative;
+  height: 10px;
+  margin: 6px 0;
+  border-radius: 999px;
+  background: var(--line, #e2e8f0);
+  overflow: hidden;
+}
+
+.desk-today-rail-elapsed {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: rgba(100, 116, 139, 0.28);
+}
+
+.desk-today-rail-load {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(30, 107, 230, 0.4);
+}
+
+.desk-today-rail-load.is-over {
+  background: rgba(185, 28, 28, 0.4);
+}
+
+.desk-today-rail-fixed {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 3px;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1;
+}
+
+.desk-today-rail-now {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--steel, #1e6be6);
+  z-index: 2;
+}
+
+.desk-today-rail-foot strong {
+  justify-self: center;
+  text-align: center;
+  font-weight: 650;
+  color: var(--ink, #0f172a);
+}
+
+/* ── Day depth disclosure ────────────────────────────────────── */
+
 .desk-today-depth {
   display: flex;
   flex-direction: column;
@@ -266,7 +456,6 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
   color: var(--steel, #1e6be6);
 }
 
-/* Full-width temporal track */
 .desk-depth-track {
   position: relative;
   width: 100%;
@@ -349,13 +538,11 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
   color: var(--ink-soft, #64748b);
 }
 
-/* Horizontal band — density-aware, no empty equal columns */
 .desk-depth-band {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px 28px;
   width: 100%;
-  padding-top: 2px;
 }
 
 .desk-depth-col-title {
@@ -410,7 +597,6 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
   gap: 10px;
 }
 
-/* Fits uses width as a flow, not a tall list */
 .desk-depth-fits {
   width: 100%;
   padding-top: 10px;
@@ -518,12 +704,22 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
   color: var(--ink-faint, #94a3b8);
 }
 
+html[data-surface='desktop'] .desk-detail-pm {
+  max-width: min(1040px, 100%);
+  padding: 20px 28px 40px;
+}
+
 @media (max-width: 1100px) {
   .desk-today-bar {
     grid-template-columns: minmax(0, 1fr) auto;
   }
-  .desk-today-context {
-    grid-column: 1 / -1;
+  .desk-today-instrument {
+    grid-template-columns: 1fr;
+  }
+  .desk-today-capacity,
+  .desk-today-next {
+    border-left: none;
+    border-top: 1px solid var(--line, #e2e8f0);
   }
   .desk-depth-band {
     grid-template-columns: 1fr 1fr;
@@ -534,9 +730,4 @@ html[data-surface='desktop'] .desk-today-saas.today-header-card {
   .desk-depth-band {
     grid-template-columns: 1fr;
   }
-}
-
-html[data-surface='desktop'] .desk-detail-pm {
-  max-width: min(1040px, 100%);
-  padding: 20px 28px 40px;
 }
