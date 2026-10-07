@@ -101,7 +101,7 @@ export function TaskCard(props: {
               : '';
 
   const rowClass = [
-    'task-card',
+    'task-card surface-object',
     t.source === 'came_up' ? 'came-up' : '',
     taskColorClass,
     fitClass,
