@@ -222,7 +222,7 @@ export function updateBeliefGraph(
     graph = upsertBelief(
       graph,
       userId,
-      `request.${field}`,
+      `request.${request.id}.${field}`,
       String(value),
       ref,
       true
@@ -237,7 +237,7 @@ export function updateBeliefGraph(
     graph = upsertBelief(
       graph,
       userId,
-      `constraint.${constraint.axis}`,
+      `request.${request.id}.constraint.${constraint.axis}`,
       constraint.value,
       makeRef(ref),
       true
