@@ -47,19 +47,44 @@ function behavioralFit(
   ranking: OpportunityRankingContext
 ): { points: number; reasons: string[] } {
   const action = ranking.interaction.request.action;
-  const belief = activeBehaviorBelief(
+  const responseBelief = activeBehaviorBelief(
     ranking.context.beliefs,
     'response.' + action
   );
-  if (!belief || (belief.confidence !== 'medium' && belief.confidence !== 'high')) {
-    return { points: 0, reasons: [] };
+  if (responseBelief && (responseBelief.confidence === 'medium' || responseBelief.confidence === 'high')) {
+    if (responseBelief.value === 'accepted') {
+      return { points: 8, reasons: ['you usually accept this kind of suggestion'] };
+    }
+    if (responseBelief.value === 'rejected') {
+      return { points: -12, reasons: ['you usually reject this kind of suggestion'] };
+    }
   }
 
-  if (belief.value === 'accepted') {
-    return { points: 8, reasons: ['you usually accept this kind of suggestion'] };
-  }
-  if (belief.value === 'rejected') {
-    return { points: -12, reasons: ['you usually reject this kind of suggestion'] };
+  // Phase 4C: learn whether the work actually fit, not just whether the user
+  // accepted the suggestion. Require repeated matching outcomes before changing
+  // ranking; a single completion/carry/skipped event is not enough to establish
+  // a personal pattern.
+  const outcomeBelief = activeBehaviorBelief(
+    ranking.context.beliefs,
+    'outcome.' + action
+  );
+  if (
+    outcomeBelief &&
+    (outcomeBelief.confidence === 'medium' || outcomeBelief.confidence === 'high') &&
+    outcomeBelief.supportingEvidence.length >= 2
+  ) {
+    if (outcomeBelief.value === 'completed') {
+      return { points: 10, reasons: ['this kind of work usually fits when suggested'] };
+    }
+    if (outcomeBelief.value === 'partial') {
+      return { points: 2, reasons: ['this kind of work often only partly fits'] };
+    }
+    if (outcomeBelief.value === 'carried') {
+      return { points: -8, reasons: ['this kind of work is often carried forward'] };
+    }
+    if (outcomeBelief.value === 'skipped') {
+      return { points: -12, reasons: ['this kind of work is often skipped'] };
+    }
   }
 
   return { points: 0, reasons: [] };
