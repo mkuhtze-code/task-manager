@@ -955,11 +955,19 @@ export function requestTaskText(req: EngineRequest): string {
      */
     const object = (req.objectText ?? '').trim();
     const location = req.locationText.trim();
-    const escaped = location.replace(/[.*+?^$()|[\\]{}]/g, '\\    const escaped = location.replace(/[.*+?^$()|[\\]{}]/g, '\\  if (req.locationText && !isDropOff && !isPickup) {
-    bits.push(`at ${req.locationText}`);
-  }');');
+    const escaped = location.replace(/[.*+?^$()|[\\]{}]/g, '\\$&');
+
     const alreadyInObject =
-      new RegExp('(?:\\b(?:at|to|from|for|about)\\s+)' + escaped + '\\s*
+      new RegExp(
+        '(?:\\b(?:at|to|from|for|about)\\s+)' + escaped + '\\s*$',
+        'i'
+      ).test(object) ||
+      object.toLowerCase() === location.toLowerCase();
+
+    if (!alreadyInObject) {
+      bits.push(`at ${location}`);
+    }
+  }
 
   return bits.join(' ').replace(/\s+/g, ' ').trim();
 }
