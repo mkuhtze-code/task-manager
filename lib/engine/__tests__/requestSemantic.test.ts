@@ -55,6 +55,24 @@ describe('material errand semantic extraction', () => {
     expect(parsed.objectText).toBe('2 boxes of screws');
   });
 
+  it('strips the contextual "for" preposition from location text', () => {
+    const parsed = interpretRequestUtterance(
+      'check the flashings for Smith Street'
+    );
+
+    expect(parsed.action).toBe('create_task');
+    expect(parsed.locationText).toBe('Smith Street');
+    expect(parsed.objectText).toBe('flashings for Smith Street');
+  });
+
+  it('does not treat ordinary "for" language as a location', () => {
+    const parsed = interpretRequestUtterance(
+      'write a quote for the client'
+    );
+
+    expect(parsed.locationText).toBeNull();
+  });
+
   it('does not regress ordinary destination extraction', () => {
     const parsed = interpretRequestUtterance(
       'I need to drop off clips to 64 Grace James Road in Pukekohe at 4pm today'
