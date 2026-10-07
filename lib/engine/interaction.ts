@@ -29,7 +29,7 @@ import {
 } from './deferredIntention';
 import { resolveReference, containsReference } from './references';
 import { resolveJobName } from './contextAssembly';
-import { setFocus } from './workingMemory';
+import { emptyWorkingMemory, setFocus } from './workingMemory';
 import {
   loadWorkingMemoryLocal,
   saveWorkingMemoryLocal,
@@ -130,7 +130,8 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
 
   let mem =
     input.workingMemory ??
-    (input.dryRun ? undefined : loadWorkingMemoryLocal(userId));
+    (input.dryRun ? undefined : loadWorkingMemoryLocal(userId)) ??
+    emptyWorkingMemory();
   const prior =
     input.priorRequest ??
     (input.dryRun ? null : loadActiveRequestLocal(userId));
@@ -263,7 +264,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
     }
   }
 
-  if (containsReference(text) && mem) {
+  if (containsReference(text)) {
     // Current context is evidence for reference resolution, not a new memory
     // system. Supply current jobs/meetings as ephemeral candidates so phrases
     // such as "update that job" can be clarified even when those entities have
