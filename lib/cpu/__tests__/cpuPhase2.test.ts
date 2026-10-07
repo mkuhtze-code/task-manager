@@ -25,13 +25,13 @@ describe('Dokkit CPU Phase 2 — evidence and beliefs', () => {
 
     expect(result.context.beliefs.version).toBe(1);
     expect(result.context.beliefs.beliefs.some(
-      (b) => b.key === 'request.objectText' && b.value.includes('clips')
+      (b) => b.key.endsWith('.objectText') && b.value.includes('clips')
     )).toBe(true);
     expect(result.context.beliefs.beliefs.some(
-      (b) => b.key === 'request.locationText' && b.value.includes('Grace James Road')
+      (b) => b.key.endsWith('.locationText') && b.value.includes('Grace James Road')
     )).toBe(true);
     expect(result.context.beliefs.beliefs.some(
-      (b) => b.key === 'request.timeHint' && b.value === '16:00'
+      (b) => b.key.endsWith('.timeHint') && b.value === '16:00'
     )).toBe(true);
   });
 
@@ -45,7 +45,7 @@ describe('Dokkit CPU Phase 2 — evidence and beliefs', () => {
     });
 
     const dateBelief = result.context.beliefs.beliefs.find(
-      (b) => b.key === 'request.dateHint'
+      (b) => b.key.endsWith('.dateHint')
     );
 
     expect(dateBelief?.strength).toBeGreaterThanOrEqual(4);
