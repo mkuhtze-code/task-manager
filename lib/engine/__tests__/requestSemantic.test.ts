@@ -165,3 +165,62 @@ describe('spoken correction and refinement', () => {
     ]);
   });
 });
+
+
+describe('spoken object and location corrections', () => {
+  it('replaces the active object when the correction supplies a new object', () => {
+    const first = 'I need to go to Bunnings to grab 2 cartridges of clear Sika MS';
+    const initial = applyUtteranceToRequest(
+      emptyRequest(),
+      first,
+      emptyWorkingMemory()
+    );
+
+    const corrected = applyUtteranceToRequest(
+      initial,
+      'actually, make it 2 sausages of Sika White MS',
+      { ...emptyWorkingMemory(), activeRequestId: initial.id }
+    );
+
+    expect(corrected.action).toBe('pickup');
+    expect(corrected.locationText).toBe('Bunnings');
+    expect(corrected.objectText).toBe('2 sausages of Sika White MS');
+  });
+
+  it('replaces the active location for an explicit correction', () => {
+    const first = 'I need to go to Bunnings to grab 2 cartridges of clear Sika MS';
+    const initial = applyUtteranceToRequest(
+      emptyRequest(),
+      first,
+      emptyWorkingMemory()
+    );
+
+    const corrected = applyUtteranceToRequest(
+      initial,
+      'no, Mitre 10',
+      { ...emptyWorkingMemory(), activeRequestId: initial.id }
+    );
+
+    expect(corrected.locationText).toBe('Mitre 10');
+    expect(corrected.objectText).toBe('2 cartridges of clear Sika MS');
+  });
+
+  it('keeps a plain new capture independent from correction context', () => {
+    const first = 'I need to call John tomorrow';
+    const initial = applyUtteranceToRequest(
+      emptyRequest(),
+      first,
+      emptyWorkingMemory()
+    );
+
+    const next = applyUtteranceToRequest(
+      initial,
+      'I need to call Sarah Friday',
+      emptyWorkingMemory()
+    );
+
+    expect(next.objectText).toBe('call Sarah');
+    expect(next.dateHint).toBe('friday');
+    expect(next.rawUtterances).toEqual(['I need to call Sarah Friday']);
+  });
+});
