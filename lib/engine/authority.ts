@@ -53,10 +53,27 @@ export function decideAuthority(
   const conf: Confidence = req.confidence;
   const userDefault = opts?.userAutonomyDefault ?? 'suggest';
 
+  // Explicit user timing is authoritative even when other heuristics
+  // classify the request as hard/low-confidence. The user has already chosen
+  // when; capacity and confidence must not turn that into a blocking question.
+  if (isExecutableCapture(req) && hasExplicitSchedule(req)) {
+    return {
+      commitmentClass:
+        commitmentClass === 'SOFT_COMMITMENT'
+          ? 'SOFT_COMMITMENT'
+          : req.dateHint && req.objectText
+            ? 'PLANNED_WORK'
+            : 'NEW_REQUEST',
+      autonomy: 'act',
+      mayAct: true,
+      maySuggest: true,
+      reason: 'explicit_schedule_commitment',
+    };
+  }
+
   // A hard commitment is the strongest user instruction, not a request for
-  // confirmation. If the request is an executable capture, Dokkit must act.
-  // Capacity, fit, and opportunity reasoning may advise around it, but never
-  // revoke the user's chosen commitment.
+  // confirmation. If the request is executable, act when sufficiently
+  // structured; otherwise ask for the missing structure.
   if (commitmentClass === 'HARD_COMMITMENT') {
     if (isExecutableCapture(req) && conf !== 'low') {
       return {
@@ -74,23 +91,6 @@ export function decideAuthority(
       mayAct: false,
       maySuggest: true,
       reason: 'hard_commitment_not_executable',
-    };
-  }
-
-  // Explicit schedule + meaningful object: user already decided when.
-  // Capacity may still warn; it must not revoke mayAct.
-  if (isExecutableCapture(req) && hasExplicitSchedule(req)) {
-    return {
-      commitmentClass:
-        commitmentClass === 'SOFT_COMMITMENT'
-          ? 'SOFT_COMMITMENT'
-          : req.dateHint && req.objectText
-            ? 'PLANNED_WORK'
-            : 'NEW_REQUEST',
-      autonomy: 'act',
-      mayAct: true,
-      maySuggest: true,
-      reason: 'explicit_schedule_commitment',
     };
   }
 
