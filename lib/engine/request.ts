@@ -416,8 +416,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 
   ];
 
-    // Bare imperative: "call John", "check flashings", "send the quote".
-    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\\s*up)\\s+(.+?)(?=\\s+\\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b|\\s+\\b\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)\\b|$)/i,
+
 
   for (const pattern of objectPatterns) {
     if (isQuestion || isNegatedCommitment) break;
