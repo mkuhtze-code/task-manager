@@ -13,9 +13,12 @@ import { DEFAULT_BRAINS } from './brains';
 import { reconcileCpuDecision } from './reconcile';
 import { loadBeliefGraphLocal, saveBeliefGraphLocal } from './beliefPersist';
 import { updateBeliefGraph } from './beliefs';
+import { observeBehavior, updateBehaviorBeliefs } from './behavior';
 
 export type * from './types';
 export type { Belief, BeliefGraph, EvidenceRef, EvidenceStrength } from './beliefs';
+export type { BehaviorEvent, BehaviorObservation } from './behavior';
+export { observeBehavior, updateBehaviorBeliefs, activeBehaviorBelief } from './behavior';
 export { resolveContextReference } from './referenceResolver';
 export type { ContextReferenceResolution, ContextReferenceCandidate, ContextReferenceStatus } from './referenceResolver';
 export type * from './reconcile/types';
@@ -40,12 +43,15 @@ export function processCpuInteraction(
   // context-before-understanding gap without changing execution semantics.
   const interaction = processInteractionCore(input);
   const previousBeliefs = input.dryRun ? undefined : loadBeliefGraphLocal(input.userId);
-  const beliefs = updateBeliefGraph(
+  const behavioralEvidence = (input.behavior ?? []).map(observeBehavior);
+  const allEvidence = [...interaction.evidence, ...behavioralEvidence];
+  let beliefs = updateBeliefGraph(
     previousBeliefs ?? { version: 1, updatedAt: new Date(0).toISOString(), beliefs: [] },
     input.userId,
     interaction.request,
-    interaction.evidence
+    allEvidence
   );
+  beliefs = updateBehaviorBeliefs(beliefs, input.userId, behavioralEvidence);
   if (!input.dryRun) saveBeliefGraphLocal(beliefs, input.userId);
   const context = assembleUniversalContext(input, interaction, beliefs);
 
@@ -58,7 +64,10 @@ export function processCpuInteraction(
   return {
     context,
     contributions,
-    decision,
+    decision: {
+      ...decision,
+      evidence: [...decision.evidence, ...behavioralEvidence],
+    },
   };
 }
 
