@@ -113,13 +113,54 @@ function normaliseTimeHint(value: string): string | null {
  * Extract an explicit clock time from an utterance.
  */
 function extractTimeHint(text: string): string | null {
-  const match = text.match(
-    /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm)|noon|midnight)\b/i
+  const matches = Array.from(
+    text.matchAll(
+      /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm)|noon|midnight)\b/gi
+    )
   );
 
-  if (!match?.[1]) return null;
+  const last = matches.at(-1)?.[1];
+  return last ? normaliseTimeHint(last) : null;
+}
 
-  return normaliseTimeHint(match[1]);
+function extractDateHint(text: string): string | null {
+  const matches = Array.from(
+    text.matchAll(
+      /\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|this\s+afternoon|next\s+week)\b/gi
+    )
+  );
+
+  const last = matches.at(-1)?.[1]?.toLowerCase().replace(/\s+/g, ' ');
+  if (!last) return null;
+
+  if (last === 'this afternoon') return 'today';
+  if (last === 'next week') return 'next_week';
+  return last;
+}
+
+function extractQuantityCorrection(text: string): string | null {
+  const match = text.match(
+    /\b(?:make|change|set)\s+(?:that|it)\s+(?:to\s+)?(\d+)\b/i
+  );
+  return match?.[1] ?? null;
+}
+
+function extractAdditionalQuantity(text: string): string | null {
+  const match = text.match(/\b(?:and\s+)?(?:grab|pick\s*up|get|collect|fetch|buy)\s+(\d+)\s+more\b/i);
+  return match?.[1] ?? null;
+}
+
+function replaceLeadingQuantity(text: string, quantity: string): string {
+  return /^\d+\b/.test(text.trim())
+    ? text.trim().replace(/^\d+\b/, quantity)
+    : text.trim();
+}
+
+function addToLeadingQuantity(text: string, amount: string): string {
+  const match = text.trim().match(/^(\d+)\b/);
+  if (!match) return text.trim();
+
+  return text.trim().replace(/^\d+\b/, String(Number(match[1]) + Number(amount)));
 }
 
 /**
@@ -362,6 +403,37 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   }
 
   // ---------------------------------------------------------------------------
+  // Deterministic correction semantics
+  // ---------------------------------------------------------------------------
+
+  const quantityCorrection = extractQuantityCorrection(text);
+  const additionalQuantity = extractAdditionalQuantity(text);
+
+  if (quantityCorrection) {
+    out.constraints = pushConstraint(
+      out.constraints ?? [],
+      'object',
+      `quantity:${quantityCorrection}`,
+      'high',
+      'correction'
+    );
+    out.isCorrection = true;
+    out.isRefinement = true;
+  }
+
+  if (additionalQuantity) {
+    out.constraints = pushConstraint(
+      out.constraints ?? [],
+      'object',
+      `additional_quantity:${additionalQuantity}`,
+      'high',
+      'correction'
+    );
+    out.isCorrection = true;
+    out.isRefinement = true;
+  }
+
+  // ---------------------------------------------------------------------------
   // Location
   // ---------------------------------------------------------------------------
 
@@ -403,45 +475,18 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   // Temporal date
   // ---------------------------------------------------------------------------
 
-  if (/\btoday\b/i.test(lower)) {
-    out.dateHint = 'today';
+  const dateHint = extractDateHint(text);
+
+  if (dateHint) {
+    out.dateHint = dateHint;
 
     out.constraints = pushConstraint(
       out.constraints ?? [],
       'temporal',
-      'today',
-      'high',
-      'utterance'
-    );
-  } else if (/\btomorrow\b/i.test(lower)) {
-    out.dateHint = 'tomorrow';
-
-    out.constraints = pushConstraint(
-      out.constraints ?? [],
-      'temporal',
-      'tomorrow',
-      'high',
-      'utterance'
-    );
-  } else if (/\bthis\s+afternoon\b/i.test(lower)) {
-    out.dateHint = 'today';
-    out.timeHint = 'afternoon';
-
-    out.constraints = pushConstraint(
-      out.constraints ?? [],
-      'temporal',
-      'afternoon',
-      'medium',
-      'utterance'
-    );
-  } else if (/\bnext\s+week\b/i.test(lower)) {
-    out.dateHint = 'next_week';
-
-    out.constraints = pushConstraint(
-      out.constraints ?? [],
-      'temporal',
-      'next_week',
-      'medium',
+      dateHint === 'today' && /\bthis\s+afternoon\b/i.test(lower)
+        ? 'afternoon'
+        : dateHint,
+      dateHint === 'today' || dateHint === 'tomorrow' ? 'high' : 'medium',
       'utterance'
     );
   } else if (/\bwhenever\b/i.test(lower)) {
@@ -593,11 +638,24 @@ export function applyUtteranceToRequest(
     }
   }
 
-  if (partial.objectText) {
+  const quantityCorrection = partial.constraints?.find(
+    (c) => c.axis === 'object' && c.value.startsWith('quantity:')
+  )?.value.slice('quantity:'.length);
+
+  const additionalQuantity = partial.constraints?.find(
+    (c) => c.axis === 'object' && c.value.startsWith('additional_quantity:')
+  )?.value.slice('additional_quantity:'.length);
+
+  if (quantityCorrection && base.objectText) {
+    base.objectText = replaceLeadingQuantity(base.objectText, quantityCorrection);
+  } else if (additionalQuantity && base.objectText) {
+    base.objectText = addToLeadingQuantity(base.objectText, additionalQuantity);
+  } else if (partial.objectText) {
     base.objectText = partial.objectText;
-    if (!base.titleText) {
-      base.titleText = partial.objectText;
-    }
+  }
+
+  if (partial.objectText && !base.titleText) {
+    base.titleText = partial.objectText;
   }
 
   if (partial.locationText) {
