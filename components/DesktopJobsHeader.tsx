@@ -72,13 +72,6 @@ export default function DesktopJobsHeader({
         ? `${openCount} open`
         : 'No open work';
 
-  const pulseMeta = [
-    attentionCount > 0 ? `${attentionCount} need attention` : null,
-    spotlightJobName ? spotlightJobName : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
   const pulseClass =
     attentionCount > 0
       ? 'surface-pulse is-attention'
@@ -107,29 +100,11 @@ export default function DesktopJobsHeader({
           <div className="surface-identity">
             <span className="surface-kicker">Work / Field</span>
             <h1 className="surface-title">Jobs</h1>
-            <span className="surface-lede">The work that persists beyond today.</span>
           </div>
           <div className={pulseClass} aria-label="Jobs pulse">
-            <div className="surface-pulse-body">
-              <span className="surface-pulse-title">{pulseTitle}</span>
-              {pulseMeta ? (
-                <span className="surface-pulse-meta">{pulseMeta}</span>
-              ) : (
-                <span className="surface-pulse-meta">
-                  Work that spans days, gathered in one place
-                </span>
-              )}
-            </div>
+          <div className="surface-pulse-body">
+            <span className="surface-pulse-title">{pulseTitle}</span>
           </div>
-        </div>
-
-        <div className="surface-context" aria-label="Jobs context">
-          {contextBits.map((bit, i) => (
-            <span key={bit} className="surface-context-bit">
-              {i > 0 ? <span className="surface-context-dot">·</span> : null}
-              {bit}
-            </span>
-          ))}
         </div>
 
         <div className="surface-header-actions">
