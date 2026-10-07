@@ -638,7 +638,7 @@ if (estimateHintVisible) {
 
 return ( <div className="sheet-overlay" onClick={onClose}>
 <div
-className="sheet-panel capture-sheet capture-sheet-paper"
+className="sheet-panel capture-sheet capture-sheet-paper capture-sheet-product"
 role="dialog"
 aria-modal="true"
 aria-labelledby="capture-sheet-title"
@@ -646,7 +646,8 @@ aria-describedby={error ? 'capture-error' : undefined}
 ref={dialogRef}
 onClick={(e) => e.stopPropagation()}
 > <div className="capture-sheet-header"> <h2 id="capture-sheet-title" className="capture-sheet-title">
-Add </h2>
+        Capture
+      </h2>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <button
