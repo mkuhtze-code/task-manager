@@ -175,6 +175,15 @@ function planForRequest(
   return { steps, summary, confidence: conf, facts: [...facts] };
 }
 
+function explicitDurationMins(req: EngineRequest): number | null {
+  const duration = [...req.constraints]
+    .reverse()
+    .find((c) => c.axis === 'duration' && c.value.startsWith('minutes:'));
+  if (!duration) return null;
+  const mins = Number(duration.value.slice('minutes:'.length));
+  return Number.isFinite(mins) && mins > 0 ? mins : null;
+}
+
 function taskIdFromConstraints(req: EngineRequest): string | null {
   const c = req.constraints.find(
     (x) => x.axis === 'dependency' && x.value.startsWith('task:')
@@ -252,7 +261,8 @@ function actionFromPlan(
     locationText,
     jobId,
     surfaceDate,
-    estimateMins: 15,
+    // Explicit duration wins; 15m remains the legacy fallback.
+    estimateMins: explicitDurationMins(req) ?? 15,
   };
 }
 
