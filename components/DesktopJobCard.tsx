@@ -52,11 +52,11 @@ export default function DesktopJobCard({
   return (
     <Link
       href={`/jobs/${job.id}`}
-      className={done ? 'desk-job-card completed' : 'desk-job-card'}
+      className={done ? 'desk-job-card surface-object completed' : 'desk-job-card surface-object'}
     >
       <div className="desk-job-card-head">
         <div className="desk-job-card-identity">
-          <span className="desk-job-card-name">{job.name}</span>
+          <span className="desk-job-card-name surface-object-title">{job.name}</span>
 
           {job.client && (
             <span className="desk-job-card-client">{job.client}</span>
