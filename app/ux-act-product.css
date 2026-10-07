@@ -5,16 +5,31 @@
    Loaded last so it wins the cascade.
    ============================================================ */
 
-/* ---------- Shared sheet shell ---------- */
+/* ---------- Shared sheet shell ----------
+   Capture uses .sheet-overlay; task detail uses .sheet-backdrop.
+   Both must sit above sticky Today chrome (z 40–50) and below
+   the gear portal (z 400).
+   ---------- */
 .sheet-backdrop,
 .sheet-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 200 !important;
   background: rgba(15, 23, 42, 0.42);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
 .sheet-panel.capture-sheet,
-.task-detail-sheet {
+.task-detail-sheet,
+.sheet-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 560px;
   border-radius: 20px 20px 0 0;
   border: 1px solid var(--line, rgba(15, 23, 42, 0.08));
   box-shadow:
@@ -22,6 +37,24 @@
     0 0 0 1px rgba(255, 255, 255, 0.4) inset;
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
   max-height: min(92dvh, 920px);
+  overflow-y: auto;
+  background: var(--paper, #fff);
+}
+
+/* Desktop: centre the sheet rather than floor-dock only */
+@media (min-width: 900px) {
+  .sheet-backdrop,
+  .sheet-overlay {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .sheet-panel.capture-sheet,
+  .task-detail-sheet,
+  .sheet-panel {
+    border-radius: 16px;
+    max-height: min(85dvh, 720px);
+  }
 }
 
 /* ---------- Capture: pen → paper ---------- */
