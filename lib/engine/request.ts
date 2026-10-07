@@ -162,11 +162,10 @@ export function extractDurationHint(text: string): number | null {
 function normaliseSpeechLead(text: string): string {
   return text
     .replace(/^\s*(?:um+|uh+|er+|erm+)\b[,:-]?\s*/i, '')
-    .replace(/^(?:\s*(?:i\s+need\s+to|i\s+have\s+to|i\s+got\s+to))\s*,?\s*(?:um+|uh+|er+|erm+)\b[,:-]?\s*/i, (m) =>
-      m.replace(/\b(?:um+|uh+|er+|erm+)\b[,:-]?\s*$/i, '')
-    )
+    .replace(/^(\s*(?:i\s+need\s+to|i\s+have\s+to|i\s+got\s+to))\s*,?\s*(?:um+|uh+|er+|erm+)\b[,:-]?\s*/i, '$1 ')
+    .replace(/^(\s*(?:i\s+need\s+to|i\s+have\s+to|i\s+got\s+to))\s*,\s*/i, '$1 ')
     .replace(/^(?:\s*(?:actually|okay|ok|right|well))\s*[,:-]?\s*/i, '')
-    .replace(/^\s*(?:please|can\s+you|could\s+you|would\s+you)\s+/i, '');
+    .replace(/^\s*(?:please)\s+/i, '');
 }
 
 function extractPrimaryTaskVerb(text: string): string | null {
@@ -610,9 +609,13 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 } {
   const text = raw.replace(/\s+/g, ' ').trim();
   const lower = text.toLowerCase();
+  const isReminderRequest =
+    /\b(?:remind\s+me|can\s+you\s+remind\s+me|could\s+you\s+remind\s+me|would\s+you\s+remind\s+me|don(?:'t|’t)\s+let\s+me\s+forget)\b/i.test(lower);
+
   const isQuestion =
-    /\?\s*$/.test(text) ||
-    /^(?:can|could|do|does|should|is|are|will|what|when|where|why|how)\b/i.test(lower);
+    !isReminderRequest &&
+    (/\?\s*$/.test(text) ||
+      /^(?:can|could|do|does|should|is|are|will|what|when|where|why|how)\b/i.test(lower));
   const isNegatedCommitment =
     /\b(?:i\s+)?(?:do\s+not|don't|do\s+n[o’]t|never)\s+(?:need|have|got)\s+to\b/i.test(lower) ||
     /\bnot\s+(?:need|have|got)\s+to\b/i.test(lower);
@@ -699,7 +702,10 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
       )
     ) {
       out.action = 'create_task';
-    } else if (/\b(?:from|at)\s+(?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office)\b/i.test(lower)) {
+    } else if (
+      /\b(?:from|at)\s+(?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office)\b/i.test(lower) &&
+      !/\bfor\s+(?:[A-Z0-9][A-Za-z0-9' .-]{1,80})$/i.test(text)
+    ) {
       out.action = 'pickup';
     } else {
       out.action = 'create_task';
@@ -1238,7 +1244,11 @@ export function requestTaskText(req: EngineRequest): string {
   const bits: string[] = [];
 
   if (isDropOff) {
-    bits.push(req.objectText ? `Drop off ${req.objectText}` : 'Drop off');
+    const dropVerb =
+      primaryVerb === 'deliver' ? 'Deliver' :
+      primaryVerb === 'take' ? 'Take' :
+      primaryVerb === 'leave' ? 'Leave' : 'Drop off';
+    bits.push(req.objectText ? `${dropVerb} ${req.objectText}` : dropVerb);
   } else if (isPickup && isMovement && req.locationText) {
     const location = req.locationText.trim();
     const purpose = (req.objectText ?? '')
