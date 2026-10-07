@@ -210,7 +210,10 @@ function actionFromPlan(
   const jobId = jobStep && jobStep.kind === 'attach_job' ? jobStep.jobId : null;
   const surfaceDate = place && place.kind === 'place' ? place.surfaceDate : null;
 
-  const boundTaskId = taskIdFromConstraints(req);
+  // A task binding belongs to a refinement chain, not to every future
+  // utterance. Once the user starts a new explicit request, the old bound
+  // task must stop being executable context.
+  const boundTaskId = req.isRefinement ? taskIdFromConstraints(req) : null;
   if (boundTaskId) {
     return {
       kind: 'update_task',
@@ -224,7 +227,7 @@ function actionFromPlan(
   }
 
   const focus = _ctx.workingMemory?.currentFocus;
-  if (focus?.kind === 'task' && focus.id && req.rawUtterances.length > 1) {
+  if (req.isRefinement && focus?.kind === 'task' && focus.id && req.rawUtterances.length > 1) {
     return {
       kind: 'update_task',
       taskId: focus.id,
