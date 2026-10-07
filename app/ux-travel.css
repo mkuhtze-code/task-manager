@@ -350,3 +350,8 @@ html[data-surface='desktop'] .travel-shell > .surface-nav,
 html[data-surface='desktop'] .travel-shell > nav.surface-nav {
   display: none;
 }
+
+/* Shared featured-object treatment: quiet, not a competing status badge. */
+.travel-featured-label { padding: 0; background: transparent; color: var(--ink-faint); }
+.travel-featured { box-shadow: none; border-color: var(--line); }
+.travel-featured:hover { box-shadow: none; border-color: var(--line-strong); }
