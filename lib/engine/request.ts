@@ -150,6 +150,27 @@ function extractAdditionalQuantity(text: string): string | null {
   return match?.[1] ?? null;
 }
 
+function extractObjectReplacement(text: string): string | null {
+  const match = text.match(
+    /^(?:actually[,:]?\s*)?(?:make|change|set)\s+(?:it|that)\s+(?:to\s+)?(?:the\s+)?(.+?)\s*$/i
+  );
+  const value = match?.[1]?.trim();
+  if (!value || /^\d+$/.test(value)) return null;
+  return value.replace(/[.,]+$/, '').trim();
+}
+
+function extractCorrectionLocation(text: string): string | null {
+  const match = text.match(
+    /^(?:no|actually|sorry|i\s+meant)[,\s]+(?:the\s+)?(?:location\s+is\s+)?(.+?)\s*$/i
+  );
+  const value = match?.[1]?.trim().replace(/[.,]+$/, '');
+  if (!value || /\b(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(value)) {
+    return null;
+  }
+  if (/^(?:it|that|this|same|one)$/i.test(value)) return null;
+  return value;
+}
+
 function replaceLeadingQuantity(text: string, quantity: string): string {
   return /^\d+\b/.test(text.trim())
     ? text.trim().replace(/^\d+\b/, quantity)
@@ -408,6 +429,8 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 
   const quantityCorrection = extractQuantityCorrection(text);
   const additionalQuantity = extractAdditionalQuantity(text);
+  const objectReplacement = extractObjectReplacement(text);
+  const correctionLocation = extractCorrectionLocation(text);
 
   if (quantityCorrection) {
     out.constraints = pushConstraint(
@@ -426,6 +449,30 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
       out.constraints ?? [],
       'object',
       `additional_quantity:${additionalQuantity}`,
+      'high',
+      'correction'
+    );
+    out.isCorrection = true;
+    out.isRefinement = true;
+  }
+
+  if (objectReplacement) {
+    out.constraints = pushConstraint(
+      out.constraints ?? [],
+      'object',
+      `replace:${objectReplacement}`,
+      'high',
+      'correction'
+    );
+    out.isCorrection = true;
+    out.isRefinement = true;
+  }
+
+  if (correctionLocation) {
+    out.constraints = pushConstraint(
+      out.constraints ?? [],
+      'location',
+      `replace:${correctionLocation}`,
       'high',
       'correction'
     );
@@ -646,10 +693,20 @@ export function applyUtteranceToRequest(
     (c) => c.axis === 'object' && c.value.startsWith('additional_quantity:')
   )?.value.slice('additional_quantity:'.length);
 
+  const objectReplacement = partial.constraints?.find(
+    (c) => c.axis === 'object' && c.value.startsWith('replace:')
+  )?.value.slice('replace:'.length);
+
+  const locationReplacement = partial.constraints?.find(
+    (c) => c.axis === 'location' && c.value.startsWith('replace:')
+  )?.value.slice('replace:'.length);
+
   if (quantityCorrection && base.objectText) {
     base.objectText = replaceLeadingQuantity(base.objectText, quantityCorrection);
   } else if (additionalQuantity && base.objectText) {
     base.objectText = addToLeadingQuantity(base.objectText, additionalQuantity);
+  } else if (objectReplacement && base.objectText) {
+    base.objectText = objectReplacement;
   } else if (partial.objectText) {
     base.objectText = partial.objectText;
   }
@@ -658,7 +715,9 @@ export function applyUtteranceToRequest(
     base.titleText = partial.objectText;
   }
 
-  if (partial.locationText) {
+  if (locationReplacement && base.locationText) {
+    base.locationText = locationReplacement;
+  } else if (partial.locationText) {
     base.locationText = partial.locationText;
   }
 
