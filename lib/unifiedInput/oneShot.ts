@@ -54,30 +54,10 @@ export function oneShotGate(params: {
   return { ready: true, blockReason: null };
 }
 
-/** Compact line after a successful one-shot dock. */
-export function formatDockSummary(params: {
-  text: string;
-  surfaceDate: string | null;
-  intendedTime: string | null;
-  locationText: string | null;
-  jobName: string | null;
-}): string {
-  const parts: string[] = [params.text.trim()];
-  if (params.surfaceDate) {
-    try {
-      parts.push(fmtSurfaceDate(params.surfaceDate));
-    } catch {
-      parts.push(params.surfaceDate);
-    }
-  }
-  if (params.intendedTime) {
-    try {
-      parts.push(fmtClock(params.intendedTime));
-    } catch {
-      parts.push(params.intendedTime);
-    }
-  }
-  if (params.jobName) parts.push(params.jobName);
-  else if (params.locationText) parts.push(params.locationText);
-  return parts.join(' · ');
+/**
+ * Post-dock summaries were removed from Today. Capture feedback belongs in
+ * the capture surface, not as stale confirmation text on the main screen.
+ */
+export function formatDockSummary(): string {
+  return '';
 }
