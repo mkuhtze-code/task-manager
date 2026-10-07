@@ -236,11 +236,28 @@ function extractLocation(text: string): string | null {
 
   if (!location) {
     // Fall back: first at/to/from that is not an infinitive marker.
-    const re = /\b(?:at|to|from)\s+/gi;
+    const re = /\b(?:at|to|from|for)\s+/gi;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
       const prep = m[0].trim().toLowerCase();
       const before = text.slice(Math.max(0, m.index - 28), m.index).toLowerCase();
+
+      /*
+       * "for" can introduce contextual place/job language, but it is much
+       * more ambiguous than at/to/from. Only accept it when the preceding
+       * clause contains a location-oriented action. The captured value is
+       * still only the text after "for", so locationText never contains the
+       * preposition itself.
+       */
+      if (prep === 'for') {
+        if (
+          !/\b(?:check|inspect|fix|repair|visit|go|head|drive|work|working|deliver|drop\s+off|take|leave|pick\s*up|collect|get|fetch)\b/i.test(
+            before
+          )
+        ) {
+          continue;
+        }
+      }
       if (
         prep === 'to' &&
         /\b(?:need|want|have|got|going|try|ought|able|supposed)\s+$/i.test(before)
