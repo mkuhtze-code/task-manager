@@ -386,13 +386,8 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     out.action = 'move';
     out.isRefinement = true;
   } else if (/\b(?:i\s+)?(?:need|have|got)\s+to\s+/i.test(lower)) {
-    // "I need to call the client tomorrow" is an executable task request,
-    // not an unknown intent. Keep this generic so the CPU can reason over
-    // communication, checks, site work, and other non-movement tasks without
-    // adding a verb-specific branch for every possible task.
+    // "I need to call the client tomorrow" is an executable task request.
     out.action = 'create_task';
-  }
-
   } else if (
     /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\b/i.test(
       lower
@@ -411,14 +406,16 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     /\b(?:drop\s+off|dropoff|deliver|take\s+to|leave\s+at)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     // Movement + purpose: "go to Bunnings and grab two cartridges".
-    // The object belongs after the purpose verb, not after the destination.
     /\b(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:from|at|to|for)\s+|\s+\b(?:today|tomorrow)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     /\b(?:remind\s+me\s+(?:about|to)\s+)(.+)$/i,
 
-    // Generic explicit commitment: preserve the complete task phrase for
-    // executable requests such as "I need to call the client tomorrow".
+    // Generic explicit commitment: preserve the complete task phrase.
     /\b(?:i\s+)?(?:need|have|got)\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+
+    // Bare imperative: "call John", "check flashings", "send the quote".
+    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+
   ];
 
     // Bare imperative: "call John", "check flashings", "send the quote".
