@@ -1218,11 +1218,7 @@ export function requestTaskText(req: EngineRequest): string {
   } else if (isPickup && isMovement && req.locationText) {
     const location = req.locationText.trim();
     const purpose = (req.objectText ?? '')
-      .replace(new RegExp('^' + location.replace(/[.*+?^$()|[\\]{}]/g, '\\  if (isDropOff) {
-    bits.push(req.objectText ? `Drop off ${req.objectText}` : 'Drop off');
-  } else if (isPickup) {
-    bits.push(req.objectText ? `Pick up ${req.objectText}` : 'Pick up');
-  } else if (isMovement && req.locationText) {') + '\\s+to\\s+', 'i'), '')
+      .replace(/^.+?\s+to\s+/i, '')
       .trim();
     bits.push(purpose ? `Pick up ${purpose} from ${location}` : `Pick up from ${location}`);
   } else if (isPickup) {
