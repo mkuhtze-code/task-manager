@@ -98,6 +98,17 @@ export type Constraint = {
 export type EngineRequest = {
   id: string;
   action: RequestAction;
+
+  /**
+   * Semantic task shape. These fields preserve the user's explicit action
+   * before task-title rendering. They are intentionally orthogonal to the
+   * coarse RequestAction (create_task/pickup/etc.).
+   */
+  primaryVerb: string | null;
+  personText: string | null;
+  purposeText: string | null;
+  subjectText: string | null;
+
   objectText: string | null;
   locationText: string | null;
   relatedJobText: string | null;
