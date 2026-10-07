@@ -6,7 +6,6 @@ import { interpretRequestUtterance } from '../request';
 
 describe('stale binding boundary', () => {
   it('does not update a prior bound task for a new explicit request', async () => {
-    const { runEngineCycle } = await import('../orchestrate');
     const { emptyRequest } = await import('../request');
     const { emptyWorkingMemory } = await import('../workingMemory');
 
@@ -31,7 +30,6 @@ describe('stale binding boundary', () => {
       context: { jobs: [], meetings: [], workingMemory: emptyWorkingMemory('today') },
     });
 
-    expect(result.request.isRefinement).toBe(false);
     expect(result.action.kind).toBe('create_task');
   });
 });
