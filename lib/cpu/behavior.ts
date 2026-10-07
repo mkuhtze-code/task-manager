@@ -188,17 +188,23 @@ export function updateBehaviorBeliefs(
     }
 
     const supports = current.value === value;
-    const supportingEvidence = supports
-      ? [ref, ...current.supportingEvidence.filter((item) => item.id !== ref.id)].slice(0, 8)
-      : current.supportingEvidence;
-    const contradictingEvidence = supports
-      ? current.contradictingEvidence
-      : [ref, ...current.contradictingEvidence.filter((item) => item.id !== ref.id)].slice(0, 8);
-
     const shouldReplace =
       !supports &&
       (strength > current.strength ||
         (strength === current.strength && event.timestamp >= current.updatedAt));
+
+    const supportingEvidence = supports
+      ? [ref, ...current.supportingEvidence.filter((item) => item.id !== ref.id)].slice(0, 8)
+      : shouldReplace
+        ? [ref]
+        : current.supportingEvidence;
+    const contradictingEvidence = supports
+      ? current.contradictingEvidence
+      : shouldReplace
+        ? [...current.contradictingEvidence, ...current.supportingEvidence]
+            .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
+            .slice(0, 8)
+        : [ref, ...current.contradictingEvidence.filter((item) => item.id !== ref.id)].slice(0, 8);
 
     graph = {
       ...graph,
