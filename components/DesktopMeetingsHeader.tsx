@@ -100,7 +100,6 @@ export default function DesktopMeetingsHeader({
           <div className="surface-identity">
             <span className="surface-kicker">People / Time</span>
             <h1 className="surface-title">Meetings</h1>
-            <span className="surface-lede">Conversations that occupy time — and leave things behind.</span>
           </div>
           <div
             className={
@@ -112,41 +111,8 @@ export default function DesktopMeetingsHeader({
           >
             <div className="surface-pulse-body">
               <span className="surface-pulse-title">{pulseTitle}</span>
-              <span className="surface-pulse-meta">{pulseMeta}</span>
             </div>
           </div>
-        </div>
-
-        <div className="surface-context" aria-label="Meetings context">
-          {todayCount > 0 ? (
-            <span className="surface-context-bit">
-              <span className="surface-context-emphasis mono">
-                {fmtDur(todayLoadMins)}
-              </span>{' '}
-              today
-            </span>
-          ) : (
-            <span className="surface-context-bit surface-context-quiet">
-              Clear today
-            </span>
-          )}
-          {nextRelative ? (
-            <span className="surface-context-bit">
-              <span className="surface-context-dot">·</span>
-              <span className="surface-context-next">{nextRelative}</span>
-            </span>
-          ) : nextLabel ? (
-            <span className="surface-context-bit">
-              <span className="surface-context-dot">·</span>
-              <span className="surface-context-next">{nextLabel}</span>
-            </span>
-          ) : null}
-          {openLoopCount > 0 ? (
-            <span className="surface-context-bit">
-              <span className="surface-context-dot">·</span>
-              {openLoopCount} open loop{openLoopCount === 1 ? '' : 's'}
-            </span>
-          ) : null}
         </div>
 
         <div className="surface-header-actions">
