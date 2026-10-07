@@ -349,7 +349,6 @@ export default function MeetingsHome() {
   function renderRow(m: Meeting) {
     const row = surface.rows[m.id];
     const job = jobName(m.job_id);
-    const phase = row?.phaseLabel ?? '';
     const pressure = row?.pressure ?? 'later';
     const openN = row?.openActionCount ?? 0;
 
@@ -362,47 +361,32 @@ export default function MeetingsHome() {
         <div className="meeting-row-main">
           <div className="meeting-row-top">
             <span className="meeting-row-name surface-object-title">{m.text}</span>
-            {m.source === 'outlook' ? (
-              <span className="meeting-source-tag">outlook</span>
+            {m.source === 'outlook' ? <span className="meeting-source-tag">Outlook</span> : null}
+          </div>
+          <div className="meeting-row-time surface-object-time mono">
+            {fmtMeetingWindow(m.start_time, m.duration_mins)}
+            {row?.relativeLine ? (
+              <>
+                <span className="meeting-row-state-sep" aria-hidden="true"> · </span>
+                <span className={pressure === 'now' || pressure === 'soon' ? 'meeting-row-relative is-urgent' : 'meeting-row-relative'}>
+                  {row.relativeLine}
+                </span>
+              </>
             ) : null}
           </div>
-          <div className="meeting-row-sub">
-            <span className="meeting-window surface-object-time mono">
-              {fmtMeetingWindow(m.start_time, m.duration_mins)}
-            </span>
-            {job || m.location_text ? (
-              <ContextLine
-                className="meeting-row-context"
-                items={[
-                  ...(job ? [{ label: job, href: m.job_id ? `/jobs/${m.job_id}` : undefined }] : []),
-                  ...(m.location_text ? [{ label: m.location_text }] : []),
-                ]}
-              />
-            ) : null}
-          </div>
-        </div>
-        <div className="meeting-row-aside">
-          {row?.relativeLine ? (
-            <span
-              className={`meeting-relative${
-                pressure === 'now' || pressure === 'soon'
-                  ? ' is-urgent'
-                  : ''
-              }`}
-            >
-              {row.relativeLine}
-            </span>
-          ) : phase ? (
-            <span className={`meeting-phase phase-${row?.phase ?? 'upcoming'}`}>
-              {phase}
-            </span>
+          {job || m.location_text ? (
+            <ContextLine
+              className="meeting-row-context"
+              items={[
+                ...(job ? [{ label: job, href: m.job_id ? `/jobs/${m.job_id}` : undefined }] : []),
+                ...(m.location_text ? [{ label: m.location_text }] : []),
+              ]}
+            />
           ) : null}
-          {openN > 0 ? (
-            <span className="meeting-loop-chip">
-              {openN} open
-            </span>
-          ) : row?.hasNotes || row?.hasSummary ? (
-            <span className="meeting-capture-chip">Captured</span>
+          {(openN > 0 || row?.hasNotes || row?.hasSummary) ? (
+            <div className="meeting-row-state surface-object-state">
+              {openN > 0 ? <span>{openN} open action{openN === 1 ? '' : 's'}</span> : <span>Captured</span>}
+            </div>
           ) : null}
         </div>
       </Link>
@@ -479,13 +463,12 @@ export default function MeetingsHome() {
               href={`/meetings/${featured.id}`}
               className="meetings-featured surface-object surface-object-featured meetings-featured-mobile"
             >
-              <div className="meetings-featured-label">
-                {featuredRow.phase === 'live' ? 'Now' : 'Next'}
-              </div>
               <div className="meetings-featured-body">
                 <span className="meetings-featured-title">{featured.text}</span>
-                <span className="meetings-featured-meta">
-                  {featuredRow.relativeLine}
+                <span className="meetings-featured-time surface-object-time mono">
+                  {fmtMeetingWindow(featured.start_time, featured.duration_mins)}
+                  <span aria-hidden="true"> · </span>
+                  {featuredRow.phase === 'live' ? 'Now' : 'Next'}
                 </span>
               </div>
             </Link>
