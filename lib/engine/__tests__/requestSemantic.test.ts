@@ -167,6 +167,46 @@ describe('spoken correction and refinement', () => {
 });
 
 
+describe('explicit imperative capture boundaries', () => {
+  it('treats a bare call as a new task even when a prior request is active', () => {
+    const previous = applyUtteranceToRequest(
+      emptyRequest(),
+      'I need to call Gerald at 10am today',
+      emptyWorkingMemory()
+    );
+
+    const next = applyUtteranceToRequest(
+      previous,
+      'call John about the Smith Street flashing',
+      { ...emptyWorkingMemory(), activeRequestId: previous.id }
+    );
+
+    expect(next.action).toBe('create_task');
+    expect(next.objectText).toBe('John about the Smith Street flashing');
+    expect(next.rawUtterances).toEqual([
+      'call John about the Smith Street flashing',
+    ]);
+  });
+
+  it('treats a bare check as a new task instead of a list continuation', () => {
+    const previous = applyUtteranceToRequest(
+      emptyRequest(),
+      'I need to call Gerald',
+      emptyWorkingMemory()
+    );
+
+    const next = applyUtteranceToRequest(
+      previous,
+      'check flashings for Smith Street',
+      { ...emptyWorkingMemory(), activeRequestId: previous.id }
+    );
+
+    expect(next.action).toBe('create_task');
+    expect(next.objectText).toBe('flashings for Smith Street');
+  });
+});
+
+
 describe('spoken object and location corrections', () => {
   it('replaces the active object when the correction supplies a new object', () => {
     const first = 'I need to go to Bunnings to grab 2 cartridges of clear Sika MS';
