@@ -326,17 +326,17 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
         ? forcedJobName
         : cycle.request.relatedJobText,
     objectText:
-      !request.objectText && addPat.objectText
+      !cycle.request.objectText && addPat.objectText
         ? addPat.objectText
-        : request.objectText,
+        : cycle.request.objectText,
     action:
       cycle.request.action === 'unknown' && addPat.objectText
         ? 'create_task'
         : cycle.request.action,
     confidence:
-      request.confidence === 'low' && addPat.objectText
+      cycle.request.confidence === 'low' && addPat.objectText
         ? 'medium'
-        : request.confidence,
+        : cycle.request.confidence,
   };
 
   if (
