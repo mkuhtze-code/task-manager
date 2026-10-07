@@ -50,6 +50,56 @@ describe('Integration Pass 1 — ACT', () => {
   });
 });
 
+
+
+  it('explicit date/time remains actionable even when the day is tight', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: {
+        type: 'text',
+        text: 'I need to drop off clips to 64 Grace James Road in Pukekohe at 4pm today',
+      },
+      context: {
+        ...baseContext,
+        remainingMinsToday: 5,
+      },
+    });
+
+    expect(r.outcome).toBe('ACT');
+    expect(r.action?.kind).toBe('create_task');
+    expect(r.action?.surfaceDate).toBe('2026-10-05');
+    expect(r.action?.locationText).toMatch(/Grace James Road/i);
+    expect(r.request.timeHint).toBe('16:00');
+    expect(r.request.dateHint).toBe('today');
+    expect(r.authority.mayAct).toBe(true);
+  });
+
+  it('does not mutate the orchestrated request when add-to-job enrichment is applied', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: {
+        type: 'text',
+        text: 'Add split September invoice to this job',
+      },
+      context: {
+        ...baseContext,
+        currentFocus: {
+          kind: 'job',
+          id: 'j-henderson',
+          label: 'Henderson',
+        },
+      },
+    });
+
+    expect(r.outcome).toBe('ACT');
+    expect(r.request.relatedJobText).toBe('Henderson');
+    expect(r.request.objectText).toMatch(/invoice/i);
+    expect(r.cycle.request).not.toBe(r.request);
+    expect(r.cycle.request.relatedJobText).not.toBe('Henderson');
+  });
+
 describe('Integration Pass 1 — ANSWER', () => {
   it('answers feasibility without mutation when capacity allows', () => {
     const r = processInteraction({
