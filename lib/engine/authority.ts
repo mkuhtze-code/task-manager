@@ -61,9 +61,7 @@ export function decideAuthority(
       commitmentClass:
         commitmentClass === 'SOFT_COMMITMENT'
           ? 'SOFT_COMMITMENT'
-          : req.dateHint && req.objectText
-            ? 'PLANNED_WORK'
-            : 'NEW_REQUEST',
+          : 'HARD_COMMITMENT',
       autonomy: 'act',
       mayAct: true,
       maySuggest: true,
