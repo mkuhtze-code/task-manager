@@ -32,7 +32,7 @@ export function resolvePersonalTerm(input:string, entries:VocabularyEntry[]):Voc
     let score=0, candidate='';
     for(const c of all){const max=Math.max(n.length,c.length);const s=max?1-editDistance(n,c)/max:0;if(s>score){score=s;candidate=c;}}
     const ph=n.length>=4&&phonetic(n)===phonetic(candidate);
-    return {input,canonical:entry.canonical,kind:entry.kind,score:ph?Math.max(score,.84):score,reason:ph?'phonetic' as const:'edit_distance' as const};
+    return {input,canonical:entry.canonical,kind:entry.kind,score:ph?Math.max(score,.95):score,reason:ph?'phonetic' as const:'edit_distance' as const};
   }).sort((a,b)=>b.score-a.score);
   const best=candidates[0], second=candidates[1]; if(!best)return null;
   const threshold=n.length<=4?.9:n.length<=7?.78:.72;
@@ -46,7 +46,7 @@ export function applyPersonalVocabulary(text:string,entries:VocabularyEntry[]):{
     for(const alias of entry.aliases){
       const n=normalise(alias); if(!n)continue;
       const words=n.split(' ').map(x=>x.replace(/[.*+?^()|[\\]\\\\]/g,'\\\\$&')).join('\\\\s+');
-      const re=new RegExp('\\\\b'+words+'\\\\b','gi');
+      const re=new RegExp('\\b'+words+'\\b','gi');
       if(!re.test(result))continue;
       result=result.replace(re,entry.canonical);
       const m=resolvePersonalTerm(alias,[entry]); if(m)matches.push({...m,input:alias});
