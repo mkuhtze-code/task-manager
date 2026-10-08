@@ -85,10 +85,6 @@ function semanticFeaturesFor(observation: BehaviorObservation): string[] {
   return [prefix + '.verb.' + primaryVerb];
 }
 
-function featuresFor(observation: BehaviorObservation): string[] {
-  return [featureFor(observation), ...semanticFeaturesFor(observation)];
-}
-
 function valueFor(observation: BehaviorObservation): string {
   if (observation.value !== null && observation.value !== undefined) {
     return String(observation.value);
@@ -181,7 +177,7 @@ export function updateBehaviorBeliefs(
     if (!features.length || !value) continue;
 
     for (const feature of features) {
-    const id = behaviorBeliefId(userId, feature);
+      const id = behaviorBeliefId(userId, feature);
     const strength = strengthForBehavior(event);
     const ref = {
       id: event.id,
@@ -257,6 +253,7 @@ export function updateBehaviorBeliefs(
       ),
       updatedAt: event.timestamp,
     };
+    }
   }
 
   return graph;
