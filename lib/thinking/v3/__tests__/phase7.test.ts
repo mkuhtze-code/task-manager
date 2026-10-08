@@ -20,12 +20,12 @@ describe('Dokkit Phase 7 — personal task fit', () => {
       userId: 'p7',
       updatedAt,
       samples: [
-        { text: 'Site measure access', actualMins: 40 },
-        { text: 'Site measure entry', actualMins: 45 },
-        { text: 'Site measure inspection', actualMins: 42 },
+        { text: 'Site measure plan', actualMins: 40, createdAt: '2026-01-01T10:00:00Z', completedAt: '2026-01-01T11:00:00Z' },
+        { text: 'Site measure review', actualMins: 44, createdAt: '2026-01-02T10:00:00Z', completedAt: '2026-01-02T11:00:00Z' },
+        { text: 'Site measure final', actualMins: 42, createdAt: '2026-01-03T10:00:00Z', completedAt: '2026-01-03T11:00:00Z' },
       ],
     });
-    const d = lookupHierarchicalDuration('Site measure review', model);
+    const d = lookupHierarchicalDuration('Site measure check', model);
 
     expect(d.level).toBe('cluster');
     expect(d.clusterId).not.toBeNull();
