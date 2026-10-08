@@ -348,12 +348,16 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
   // compound captures. The legacy request parser remains the fallback for
   // fields the grammar does not claim.
   const grammar = semantic.grammar;
-  if (grammar.primaryVerb) request.primaryVerb = grammar.primaryVerb;
-  if (grammar.personText) request.personText = grammar.personText;
-  if (grammar.purposeText) request.purposeText = grammar.purposeText;
-  if (grammar.subjectText) request.subjectText = grammar.subjectText;
-  if (grammar.objectText) request.objectText = grammar.objectText;
-  if (grammar.locationText) request.locationText = grammar.locationText;
+  // Only apply grammar overrides when a concrete semantic relationship was
+  // identified. Weak verb-only frames must not replace legacy extraction.
+  if (grammar.relations.length > 0) {
+    if (grammar.primaryVerb) request.primaryVerb = grammar.primaryVerb;
+    if (grammar.personText) request.personText = grammar.personText;
+    if (grammar.purposeText) request.purposeText = grammar.purposeText;
+    if (grammar.subjectText) request.subjectText = grammar.subjectText;
+    if (grammar.objectText) request.objectText = grammar.objectText;
+    if (grammar.locationText) request.locationText = grammar.locationText;
+  }
 
   if (grammar.relations.length > 0) {
     request = {
