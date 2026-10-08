@@ -68,6 +68,27 @@ function featureFor(observation: BehaviorObservation): string {
   return 'response.' + (request?.action ?? action ?? 'unknown');
 }
 
+function semanticFeaturesFor(observation: BehaviorObservation): string[] {
+  const request = observation.request;
+  const primaryVerb = request?.primaryVerb?.trim().toLowerCase();
+  if (!primaryVerb) return [];
+
+  const prefix =
+    observation.event === 'rescheduled'
+      ? 'timing'
+      : observation.event === 'edited'
+        ? 'editing'
+        : observation.event === 'accepted' || observation.event === 'rejected'
+          ? 'response'
+          : 'outcome';
+
+  return [prefix + '.verb.' + primaryVerb];
+}
+
+function featuresFor(observation: BehaviorObservation): string[] {
+  return [featureFor(observation), ...semanticFeaturesFor(observation)];
+}
+
 function valueFor(observation: BehaviorObservation): string {
   if (observation.value !== null && observation.value !== undefined) {
     return String(observation.value);
@@ -106,6 +127,7 @@ export function observeBehavior(
       source: 'behavior_observation',
       event: observation.event,
       feature: featureFor(observation),
+      semanticFeatures: semanticFeaturesFor(observation),
       value: valueFor(observation),
       action: actionLabel(observation.action),
       taskId: observation.taskId ?? null,
@@ -147,12 +169,18 @@ export function updateBehaviorBeliefs(
   for (const event of evidence) {
     if (event.payload.source !== 'behavior_observation') continue;
 
-    const feature =
-      typeof event.payload.feature === 'string' ? event.payload.feature : null;
+    const primaryFeatures = Array.isArray(event.payload.semanticFeatures)
+      ? event.payload.semanticFeatures.filter((item): item is string => typeof item === 'string')
+      : [];
+    const features = [
+      typeof event.payload.feature === 'string' ? event.payload.feature : null,
+      ...primaryFeatures,
+    ].filter((item): item is string => Boolean(item));
     const value =
       typeof event.payload.value === 'string' ? event.payload.value : null;
-    if (!feature || !value) continue;
+    if (!features.length || !value) continue;
 
+    for (const feature of features) {
     const id = behaviorBeliefId(userId, feature);
     const strength = strengthForBehavior(event);
     const ref = {
