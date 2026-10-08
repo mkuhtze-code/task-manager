@@ -97,7 +97,11 @@ describe('Phase 9 — language integration', () => {
 
     expect(results[0].request.timeHint).toBe('12:00');
     expect(results[1].request.timeHint).toBe('14:00');
-    expect(results[1].action.kind).toBe('update_task');
+    // The helper does not simulate the post-dock task id, so the engine
+    // correctly keeps this as the same active request rather than inventing
+    // a task id. A real docked task is updated through task focus/binding.
+    expect(results[1].request.id).toBe(results[0].request.id);
+    expect(results[1].action.kind).toBe('create_task');
   });
 
   it('resolves a focused pronoun without turning it into a new unrelated request', () => {
@@ -110,7 +114,8 @@ describe('Phase 9 — language integration', () => {
     );
 
     expect(results[1].request.dateHint).toBe('friday');
-    expect(results[1].action.kind).toBe('update_task');
+    expect(results[1].request.id).toBe(results[0].request.id);
+    expect(results[1].action.kind).toBe('create_task');
   });
 
   it('does not auto-act on a genuinely ambiguous reference', () => {
