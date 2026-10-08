@@ -20,14 +20,20 @@ function normaliseTranscript(value: string): string {
   return (value ?? '').trim().replace(/\s+/g, ' ');
 }
 
+function overlapToken(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}'-]/gu, '');
+}
+
 /**
  * Find the largest word overlap where the end of the committed transcript
  * is also the beginning of the next STT segment.
  *
  * We deliberately require at least two words. A one-word overlap such as
  * "call John" + "John said..." can be a legitimate repeated word, while
- * multi-word overlap is a strong signal that Web Speech has replayed part of
- * the previous hypothesis.
+ * multi-word overlap is a strong signal that Web Speech has replayed part
+ * of the previous hypothesis.
  */
 function trailingLeadingOverlap(a: string[], b: string[]): number {
   const max = Math.min(a.length, b.length);
@@ -36,7 +42,7 @@ function trailingLeadingOverlap(a: string[], b: string[]): number {
     let matches = true;
 
     for (let i = 0; i < size; i += 1) {
-      if (a[a.length - size + i] !== b[i]) {
+      if (overlapToken(a[a.length - size + i]) !== overlapToken(b[i])) {
         matches = false;
         break;
       }
@@ -69,8 +75,8 @@ export function mergeSpeechFinal(acc: string, next: string): string {
   if (aL.startsWith(bL)) return a;
   if (aL === bL) return a;
 
-  const aWords = aL.split(' ');
-  const bWords = bL.split(' ');
+  const aWords = a.split(' ');
+  const bWords = b.split(' ');
   const overlap = trailingLeadingOverlap(aWords, bWords);
 
   if (overlap > 0) {
