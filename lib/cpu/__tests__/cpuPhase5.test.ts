@@ -230,7 +230,7 @@ describe('Dokkit CPU Phase 5 routing', () => {
     expect(result.decision.request.locationText).toBe('Bunnings');
     expect(result.decision.request.objectText).toContain('2 cartridges of clear Sika MS');
     expect(result.decision.request.objectText).toContain('2 sausages of Sika White MS');
-    expect(result.decision.action?.kind).toBe('pickup');
+    expect(result.decision.action?.kind).toBe('create_task');
   });
 
   it('carries semantic fields into the learning belief graph', () => {
