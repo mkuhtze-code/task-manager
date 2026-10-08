@@ -446,7 +446,28 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
 
   const plan = planForRequest(request, ctx, input.todayDate, facts);
   const authority = decideAuthority(request);
-  const action = actionFromPlan(request, plan, authority.mayAct, ctx, input.utterance);
+  let action = actionFromPlan(request, plan, authority.mayAct, ctx, input.utterance);
+
+  // Referential language is only executable when its antecedent is established.
+  // Never silently turn "do that", "move it", or "go there" into a new action
+  // when working memory cannot resolve what the user means.
+  if (
+    containsReference(input.utterance) &&
+    resolvedReference &&
+    (resolvedReference.status === 'ambiguous' || resolvedReference.status === 'unknown')
+  ) {
+    const message =
+      resolvedReference.status === 'ambiguous'
+        ? 'Which one did you mean?'
+        : 'What are you referring to?';
+    action = { kind: 'ask', message };
+    facts.push(
+      resolvedReference.status === 'ambiguous'
+        ? 'Reference was ambiguous; no action taken.'
+        : 'Reference had no resolvable antecedent; no action taken.'
+    );
+  }
+
   const explanation = explainDecision({
     request,
     plan,

@@ -39,22 +39,25 @@ export function resolveReference(
   mem: WorkingMemorySnapshot,
   opts?: {
     preferTypes?: MemoryItem['type'][];
-    /**
-     * Ephemeral referents supplied by the current surface/context.
-     * These are candidates only; they are not persisted into working memory.
-     */
     extraReferents?: MemoryItem[];
   }
 ): ReferenceResolution {
   const phrase = extractReferencePhrase(text);
-  if (!phrase) {
-    return { status: 'unknown', reason: 'no_reference_phrase' };
-  }
+  if (!phrase) return { status: 'unknown', reason: 'no_reference_phrase' };
 
   const prefer = opts?.preferTypes ?? prefersType(phrase);
-  let pool = [...(opts?.extraReferents ?? []), ...allReferents(mem)];
+  const seen = new Set<string>();
 
-  // Focus boost
+  // Utterance transcripts are evidence about what was said, not referents.
+  // Treating the current utterance as an antecedent makes a bare "it" look
+  // resolved even when the user has supplied no prior object.
+  let pool = [...(opts?.extraReferents ?? []), ...allReferents(mem)].filter((item) => {
+    if (item.type === 'utterance') return false;
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+
   if (mem.currentFocus.id && mem.currentFocus.label) {
     const focusItem: MemoryItem = {
       id: mem.currentFocus.id,
@@ -76,47 +79,58 @@ export function resolveReference(
     pool = [focusItem, ...pool.filter((p) => p.id !== focusItem.id)];
   }
 
+  // Ordinary anaphora is different from "last/previous": when the user
+  // has an explicit conversational focus, "it/that/this" refers to that focus
+  // unless the phrase itself supplies a stronger type/locative instruction.
+  // Do this before salience comparison so an unrelated recent entity cannot
+  // manufacture ambiguity around the active task.
+  if (
+    mem.currentFocus.id &&
+    mem.currentFocus.label &&
+    /^(?:it|that|this|these|those)$/.test(phrase)
+  ) {
+    const focused = pool.find((item) => item.id === mem.currentFocus.id);
+    if (focused) {
+      return { status: 'resolved', item: focused, reason: 'active_focus' };
+    }
+  }
+
   if (prefer) {
     const typed = pool.filter((p) => prefer.includes(p.type));
     if (typed.length > 0) pool = typed;
   }
 
-  // "the last one" / "previous" → most recent
+  if (/^(?:there|here)$/.test(phrase)) {
+    const locs = pool.filter((item) => item.type === 'location' || item.type === 'job');
+    const loc = [...locs].sort((a, b) => {
+      const salienceDelta = b.salience - a.salience;
+      if (salienceDelta !== 0) return salienceDelta;
+      return Date.parse(b.timestamp) - Date.parse(a.timestamp);
+    })[0];
+    if (loc) return { status: 'resolved', item: loc, reason: 'locative_recency' };
+    return { status: 'unknown', reason: 'no_location_antecedent' };
+  }
+
   if (/last|previous/.test(phrase)) {
     const sorted = [...pool].sort(
       (a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp)
     );
-    if (sorted[0]) {
-      return { status: 'resolved', item: sorted[0], reason: 'recency_last' };
-    }
+    if (sorted[0]) return { status: 'resolved', item: sorted[0], reason: 'recency_last' };
   }
 
-  // "the other one" → second-most-salient if two+
   if (/other/.test(phrase)) {
-    if (pool.length >= 2) {
-      return { status: 'resolved', item: pool[1], reason: 'other_of_pair' };
-    }
-    if (pool.length === 1) {
-      return { status: 'ambiguous', candidates: pool, reason: 'other_needs_pair' };
-    }
+    if (pool.length >= 2) return { status: 'resolved', item: pool[1], reason: 'other_of_pair' };
+    if (pool.length === 1) return { status: 'ambiguous', candidates: pool, reason: 'other_needs_pair' };
   }
 
-  if (pool.length === 0) {
-    return { status: 'unknown', reason: 'empty_memory' };
-  }
+  if (pool.length === 0) return { status: 'unknown', reason: 'empty_memory' };
 
-  // Single strong candidate
   if (pool.length === 1 || pool[0].salience >= (pool[1]?.salience ?? 0) + 0.25) {
     return { status: 'resolved', item: pool[0], reason: 'salience_leader' };
   }
 
-  // Top two close → ambiguous
   if (pool.length >= 2 && Math.abs(pool[0].salience - pool[1].salience) < 0.2) {
-    return {
-      status: 'ambiguous',
-      candidates: pool.slice(0, 3),
-      reason: 'close_salience',
-    };
+    return { status: 'ambiguous', candidates: pool.slice(0, 3), reason: 'close_salience' };
   }
 
   return { status: 'resolved', item: pool[0], reason: 'best_available' };
