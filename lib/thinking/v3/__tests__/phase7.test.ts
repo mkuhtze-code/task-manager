@@ -92,8 +92,7 @@ describe('Dokkit Phase 7 — personal task fit', () => {
     const d = decideTaskFit({
       capacityMins: 60,
       remainingWindowMins: 120,
-      minsToNextCommitment: 30,
-      meetingDensity: 0.5,
+      calendar: { remainingWindowMins: 120, minsToNextCommitment: 30, meetingDensity: 0.5 },
       sameDayRate: 0.8,
       protectFromCarry: true,
       dueToday: false,
