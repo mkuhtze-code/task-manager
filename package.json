@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run test:phase5 && npm run test:phase6 && next build",
+    "build": "npm run test:phase5-core && npm run test:phase6 && next build",
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -14,7 +14,8 @@
     "test:phase5": "vitest run lib/speech lib/engine/__tests__/captureTorture.test.ts lib/cpu/__tests__/cpuPhase5.test.ts",
     "test:phase6": "vitest run lib/cpu/__tests__/cpuPhase6.test.ts lib/thinking/v3/__tests__/behaviour.test.ts lib/thinking/v3/__tests__/fit.test.ts",
     "typecheck": "tsc --noEmit",
-    "ci": "npm run test:phase5 && npm run test:phase6 && npm run typecheck && npm run build"
+    "ci": "npm run test:phase5 && npm run test:phase6 && npm run typecheck && npm run build",
+    "test:phase5-core": "vitest run lib/engine/__tests__/captureTorture.test.ts lib/cpu/__tests__/cpuPhase5.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
