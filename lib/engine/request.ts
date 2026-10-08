@@ -248,7 +248,7 @@ function extractCompoundSemantic(text: string, primaryVerb: string | null): {
     .trim();
 
   const subjectMatch = purpose.match(
-    /^(?:to\s+)?(?:get|grab|pick\s*up|collect|fetch|check|inspect|confirm|ask|find\s+out|find)\s+(?:the\s+|a\s+|an\s+)?(.+)$/i
+    /^(?:to\s+)?(?:get|grab|pick\s*up|collect|fetch|check|inspect|confirm|ask|find\s+out|find|sort\s+out|sort)\s+(?:the\s+|a\s+|an\s+)?(.+)$/i
   );
 
   return {
