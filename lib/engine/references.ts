@@ -79,6 +79,22 @@ export function resolveReference(
     pool = [focusItem, ...pool.filter((p) => p.id !== focusItem.id)];
   }
 
+  // Ordinary anaphora is different from "last/previous": when the user
+  // has an explicit conversational focus, "it/that/this" refers to that focus
+  // unless the phrase itself supplies a stronger type/locative instruction.
+  // Do this before salience comparison so an unrelated recent entity cannot
+  // manufacture ambiguity around the active task.
+  if (
+    mem.currentFocus.id &&
+    mem.currentFocus.label &&
+    /^(?:it|that|this|these|those)$/.test(phrase)
+  ) {
+    const focused = pool.find((item) => item.id === mem.currentFocus.id);
+    if (focused) {
+      return { status: 'resolved', item: focused, reason: 'active_focus' };
+    }
+  }
+
   if (prefer) {
     const typed = pool.filter((p) => prefer.includes(p.type));
     if (typed.length > 0) pool = typed;
