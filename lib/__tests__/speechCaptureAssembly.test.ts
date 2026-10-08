@@ -36,19 +36,38 @@ describe('speech_capture_incremental_hypothesis_replacement', () => {
     );
   });
 
+  it('removes a multi-word replayed boundary', () => {
+    expect(
+      mergeSpeechFinal(
+        'I need to call Jordan to sort out the measurements',
+        'the measurements for Angela place'
+      )
+    ).toBe(
+      'I need to call Jordan to sort out the measurements for Angela place'
+    );
+  });
+
+  it('removes the repeated phrase seen in microphone capture', () => {
+    expect(
+      mergeSpeechFinal(
+        'call Jordan for the measurements',
+        'for the measurements for Angela place'
+      )
+    ).toBe(
+      'call Jordan for the measurements for Angela place'
+    );
+  });
+
   it('preserves legitimate repeated words', () => {
     const final = assembleProgressiveFinals([
       'I need to call John',
       'I need to call John, John said he would be available',
     ]);
     expect(final.toLowerCase()).toContain('john');
-    // Progressive extension keeps a single coherent string; the repeated John
-    // in the *final* hypothesis is preserved when STT includes it once as final.
     expect(final).toBe('I need to call John, John said he would be available');
   });
 
   it('joins non-overlapping segments that legitimately repeat a name', () => {
-    // Additive segments (not progressive full-string hypotheses)
     expect(mergeSpeechFinal('call John', 'John said he would be available')).toBe(
       'call John John said he would be available'
     );
@@ -67,7 +86,12 @@ describe('speech_capture_incremental_hypothesis_replacement', () => {
 
     committed = applySpeechRecognitionEvent(committed, {
       resultIndex: 0,
-      results: [{ isFinal: true, 0: { transcript: 'check on Monday whether the flashings can be fixed' } }],
+      results: [
+        {
+          isFinal: true,
+          0: { transcript: 'check on Monday whether the flashings can be fixed' },
+        },
+      ],
     });
     expect(committed).toBe('check on Monday whether the flashings can be fixed');
   });
@@ -78,7 +102,7 @@ describe('speech_capture_incremental_hypothesis_replacement', () => {
       resultIndex: 0,
       results: [{ isFinal: true, 0: { transcript: 'check on Monday' } }],
     });
-    // Later event: only new index is final; earlier slot still present in results array
+
     committed = applySpeechRecognitionEvent(committed, {
       resultIndex: 1,
       results: [
@@ -86,6 +110,7 @@ describe('speech_capture_incremental_hypothesis_replacement', () => {
         { isFinal: true, 0: { transcript: 'whether the flashings can be fixed' } },
       ],
     });
+
     expect(committed).toBe('check on Monday whether the flashings can be fixed');
   });
 
