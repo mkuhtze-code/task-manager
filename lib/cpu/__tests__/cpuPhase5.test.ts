@@ -102,7 +102,7 @@ describe('Dokkit CPU Phase 5 routing', () => {
       context: { ...base.context, remainingMinsToday: 480 },
     });
 
-    const request = result.decision.primaryIntent;
+    const request = result.decision.request;
 
     expect(request.primaryVerb).toBe('call');
     expect(request.personText).toBe('Jordan');
