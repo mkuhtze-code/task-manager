@@ -252,6 +252,27 @@ describe('Dokkit CPU Phase 5 routing', () => {
     expect(values.get(`request.${result.decision.request.id}.subjectText`)).toContain('downpipe measurements');
   });
 
+  it('keeps the repaired microphone transcript semantically authoritative end to end', () => {
+    const result = processCpuInteraction({
+      ...base,
+      input: {
+        ...base.input,
+        type: 'speech_transcript',
+        text: "I need to call Jordan to sort out the measurements for Angela's place.",
+      },
+      context: { ...base.context, interface: 'voice', remainingMinsToday: 480 },
+    });
+
+    expect(result.decision.request.primaryVerb).toBe('call');
+    expect(result.decision.request.personText).toBe('Jordan');
+    expect(result.decision.request.purposeText).toContain('sort out the measurements');
+    expect(result.decision.request.locationText).toBe("Angela's place");
+    expect(result.decision.request.action).toBe('create_task');
+    expect(result.decision.action?.kind).toBe('create_task');
+    expect(result.decision.action?.text.toLowerCase()).toContain('call jordan');
+    expect(result.decision.action?.text.toLowerCase()).not.toMatch(/^pick up\\b/);
+  });
+
   it('keeps the CPU interface-neutral for voice and Android Auto', () => {
     const voice = processCpuInteraction({
       ...base,
