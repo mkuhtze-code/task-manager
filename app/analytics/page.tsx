@@ -331,19 +331,62 @@ function PatternCardView({
 
       {expanded ? (
         <div className="pk-card-detail">
+          <div className="pk-think-block">
+            <div className="pk-think-label">Evidence weight</div>
+            <div className="pk-dim-rows">
+              {(
+                [
+                  ['Sample', v.dims.sampleStrength],
+                  ['Effect', v.dims.effectStrength],
+                  ['Consistency', v.dims.consistencyStrength],
+                ] as const
+              ).map(([name, level]) => {
+                const pct =
+                  level === 'high' ? 100 : level === 'medium' ? 58 : 22;
+                return (
+                  <div key={name} className="pk-dim-row">
+                    <span className="pk-dim-name">{name}</span>
+                    <div className="pk-dim-track">
+                      <div
+                        className={`pk-dim-fill is-${level}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="pk-dim-val">{level}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <p className="pk-detail-line">{card.confidenceDetail}</p>
           {card.detail ? <p className="pk-detail-line">{card.detail}</p> : null}
+
           <div className="pk-detail-grid">
+            <div>
+              <span className="pk-dg-lbl">n</span>
+              <span className="pk-dg-val">{card.sampleSize}</span>
+            </div>
             {v.effectMagnitude != null ? (
               <div>
                 <span className="pk-dg-lbl">effect</span>
-                <span className="pk-dg-val">{(v.effectMagnitude * 100).toFixed(0)}%</span>
+                <span className="pk-dg-val">
+                  {(v.effectMagnitude * 100).toFixed(0)}%
+                </span>
               </div>
             ) : null}
             {v.consistency != null ? (
               <div>
                 <span className="pk-dg-lbl">consist</span>
-                <span className="pk-dg-val">{(v.consistency * 100).toFixed(0)}%</span>
+                <span className="pk-dg-val">
+                  {(v.consistency * 100).toFixed(0)}%
+                </span>
+              </div>
+            ) : null}
+            {card.medianMins != null ? (
+              <div>
+                <span className="pk-dg-lbl">typical</span>
+                <span className="pk-dg-val">{fmtMins(card.medianMins)}</span>
               </div>
             ) : null}
             {card.clusterLabel ? (
@@ -642,6 +685,75 @@ export default function Analytics() {
           </div>
         </div>
       </header>
+
+      {!loading && hasAny ? (
+        <>
+          <div className="pk-instrument" aria-label="Pattern model">
+            <div className="pk-inst-metric is-accent">
+              <strong className="mono">{model.modelStatus.establishedCount}</strong>
+              <span>established in the model</span>
+            </div>
+            <div className="pk-inst-metric">
+              <strong className="mono">{model.modelStatus.emergingCount}</strong>
+              <span>still taking shape</span>
+            </div>
+            <div className="pk-inst-metric">
+              <strong className="mono">{model.modelStatus.completedTasks}</strong>
+              <span>
+                completed tasks
+                {evidenceScope === 'recent' ? ' · last 60d' : ' · all time'}
+              </span>
+            </div>
+          </div>
+
+          <div className="pk-engine" aria-label="How Dokkit thinks">
+            <div className="pk-engine-head">
+              <span className="pk-engine-kicker">Under the hood</span>
+              <span className="pk-engine-live">
+                <i aria-hidden />
+                Live model
+              </span>
+            </div>
+            <div className="pk-engine-flow">
+              <div className="pk-engine-step">
+                <div className="pk-engine-step-num">01 Observe</div>
+                <strong>Completed work</strong>
+                <span>
+                  {model.modelStatus.completedTasks} tasks feed evidence —
+                  estimates, places, timing, carry.
+                </span>
+              </div>
+              <div className="pk-engine-step">
+                <div className="pk-engine-step-num">02 Weigh</div>
+                <strong>Sample · effect · consistency</strong>
+                <span>
+                  Each pattern is scored on how often it shows up, how strong
+                  the signal is, and how steady it stays.
+                </span>
+              </div>
+              <div className="pk-engine-step">
+                <div className="pk-engine-step-num">03 Decide</div>
+                <strong>
+                  {model.modelStatus.establishedCount} strong ·{' '}
+                  {model.modelStatus.emergingCount} rising
+                </strong>
+                <span>
+                  Only well-backed patterns drive estimates, fit, and capture
+                  suggestions.
+                </span>
+              </div>
+              <div className="pk-engine-step">
+                <div className="pk-engine-step-num">04 Apply</div>
+                <strong>Today · Capture · fit</strong>
+                <span>
+                  Quiet in the day — visible here. Open a pattern to see its
+                  evidence weight.
+                </span>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
 
       {error ? (
         <button type="button" className="recalc-error" onClick={() => void loadData()} disabled={loading}>
