@@ -866,7 +866,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   } else if (
     primaryVerb &&
     /^(?:go|head|drive|travel|walk|return)$/.test(primaryVerb) &&
-    /\b(?:grab|pick\s*up|pickup|collect|fetch)\b/i.test(lower)
+    /\b(?:grab|pick\s*up|pickup|collect|fetch|get)\b/i.test(lower)
   ) {
     // "Drive to the supplier to collect the brackets" is semantically a
     // pickup. Movement is the route, collection is the actionable outcome.
