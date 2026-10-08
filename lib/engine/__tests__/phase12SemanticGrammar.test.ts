@@ -83,4 +83,36 @@ describe('Phase 12 — semantic grammar', () => {
     );
     expect(r.request.constraints.some((c) => c.value === 'relation:action→destination')).toBe(true);
   });
+
+  it('extracts delivery object and address without swallowing time or date', () => {
+    const g = parseSemanticGrammar(
+      'I need to drop off clips to 64 Grace James Road in Pukekohoe at 4pm today'
+    );
+    expect(g.primaryVerb).toBe('drop off');
+    expect(g.objectText).toBe('clips');
+    expect(g.locationText).toBe('64 Grace James Road in Pukekohoe');
+    expect(g.locationText).not.toMatch(/4pm|today/i);
+    expect(g.relations).toContain('action→destination');
+  });
+
+  it('wires delivery roles into the executable request path', () => {
+    const r = runEngineCycle({
+      utterance: 'I need to drop off clips to 64 Grace James Road in Pukekohoe at 4pm today',
+      workingMemory: emptyWorkingMemory(),
+    });
+    expect(r.request.primaryVerb).toBe('drop off');
+    expect(r.request.objectText).toBe('clips');
+    expect(r.request.locationText).toBe('64 Grace James Road in Pukekohoe');
+    expect(r.action.kind).toBe('create_task');
+  });
+
+  it('does not classify a temporal check as a person-directed communication', () => {
+    const g = parseSemanticGrammar(
+      'I need to check on Monday whether the flashings can be fixed'
+    );
+    expect(g.primaryVerb).toBe('check');
+    expect(g.personText).toBeNull();
+    expect(g.relations).toEqual([]);
+  });
+
 });
