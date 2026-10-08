@@ -16,7 +16,8 @@ export type GrammarFrame = {
 };
 
 const ACTIONS='(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|inspect|measure|fix|repair|send|write|book|pay|finish|review|meet|visit|order|clean|install|remove|replace|update|change|chase|follow\\s*up|pick\\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\\s+off|dropoff|deliver|take|leave|remind|schedule|go|head|drive|travel|walk|return)';
-const COMMUNICATION=/^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up)$/i;
+const COMMUNICATION=/^(?:call|ring|phone|email|text|message|contact|ask|tell|chase|follow\s*up)$/i;
+const DELIVERY=/^(?:drop\s+off|dropoff|deliver|take|leave)$/i;
 const MOVEMENT=/^(?:go|head|drive|travel|walk|return)$/i;
 const PICKUP=/^(?:pick\s*up|pickup|grab|collect|fetch|get|buy|purchase)$/i;
 
@@ -52,6 +53,16 @@ function movement(text:string,v:string):GrammarFrame{
  const object=items.length?items.map(i=>i.quantity!=null?i.quantity+' '+i.text:i.text).join(' and '):no;
  return{...base(v),purposeText:purpose,subjectText:no,locationText:destination,objectText:object,items,relations:['action→destination',...(purpose?['destination→purpose']:[]),...(no?['purpose→object']:[])]};
 }
+function delivery(text:string,v:string):GrammarFrame{
+ const after=text.match(new RegExp('^.*?\\b'+v.replace(/\s+/g,'\\s+')+'\\s+(.+)$','i'))?.[1];
+ if(!after)return base(v);
+ // Remove trailing scheduling language before extracting the delivery destination.
+ const withoutTime=clean(after.replace(/\s+(?:today|tomorrow|tonight|on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)).*$/i,''));
+ const m=withoutTime?.match(/^(.+?)\s+to\s+(.+)$/i);
+ if(!m)return base(v);
+ const object=clean(m[1]),destination=clean(m[2]),items=splitItems(object??'');
+ return{...base(v),subjectText:object,objectText:items.length?items.map(i=>i.quantity!=null?i.quantity+' '+i.text:i.text).join(' and '):object,locationText:destination,items,relations:['action→object','action→destination']};
+}
 function pickup(text:string,v:string):GrammarFrame{
  const after=text.match(new RegExp('^.*?\\b'+v.replace(/\s+/g,'\\s+')+'\\s+(.+)$','i'))?.[1];const object=clean(after),items=splitItems(object??'');
  return{...base(v),subjectText:object,objectText:items.length?items.map(i=>i.quantity!=null?i.quantity+' '+i.text:i.text).join(' and '):object,items,relations:object?['action→object']:[]};
@@ -61,7 +72,9 @@ export function parseSemanticGrammar(rawText:string):GrammarFrame{
  if(!v)return base('');
  if(COMMUNICATION.test(v))return communication(text,v);
  if(MOVEMENT.test(v))return movement(text,v);
+ if(DELIVERY.test(v))return delivery(text,v);
  if(PICKUP.test(v))return pickup(text,v);
- const out=base(v);out.objectText=clean(text.replace(new RegExp('^.*?\\b'+v.replace(/\s+/g,'\\s+')+'\\s+','i'),''));
- out.relations=out.objectText?['action→object']:[];return out;
+ // For verbs without a confident role pattern, leave the legacy parser in charge.
+ // In particular, do not turn temporal/object phrases after “check” into a person.
+ return base(v);
 }
