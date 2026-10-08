@@ -211,10 +211,17 @@ function extractCompoundSemantic(text: string, primaryVerb: string | null): {
     return { personText: null, purposeText: null, subjectText: null };
   }
 
-  const withPerson = afterVerb.match(/^with\s+(.+?)(?=\s+(?:to|about|regarding|on|for)\s+|$)/i);
+  const semanticBoundary =
+    '(?:to|about|regarding|on|for|with|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|at\\s+\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))';
+
+  const withPerson = afterVerb.match(
+    new RegExp('^with\\s+(.+?)(?=\\s+' + semanticBoundary + '\\s+|$)', 'i')
+  );
   const personMatch = withPerson
     ? null
-    : afterVerb.match(/^(.+?)(?=\s+(?:to|about|regarding|on|for|with)\s+)/i);
+    : afterVerb.match(
+        new RegExp('^(.+?)(?=\\s+' + semanticBoundary + '\\s+)', 'i')
+      );
 
   const personText = withPerson?.[1] ??
     (personMatch?.[1] ?? afterVerb)
