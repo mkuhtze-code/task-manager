@@ -515,6 +515,15 @@ function extractLocation(text: string): string | null {
   }
 
   if (!location) {
+    const trailingForPlace = text.match(
+      /\bfor\s+((?:\d+\s+)?[A-Z][A-Za-z0-9'’-]*(?:\s+[A-Z][A-Za-z0-9'’-]*){0,5}\s+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Place|Pl|Crescent|Cres|Court|Ct|Close|Cl|Terrace|Tce|Way|Boulevard|Blvd|Highway|Hwy|Parade|Parkway|Pkwy|Square|Sq))(?:\s+in\s+[A-Z][A-Za-z' .-]{1,60})?(?=\s|[.,?]|$)/
+    );
+    if (trailingForPlace?.[1]) {
+      location = trailingForPlace[1].trim();
+    }
+  }
+
+  if (!location) {
     /*
      * Communication and purpose clauses often contain several prepositions:
      *   "email Dave to ask whether ... at 7 King Road"
@@ -873,7 +882,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     // Movement is a real top-level action. Preserve the destination and the
     // purpose clause separately instead of treating "go to X to buy Y" as
     // one giant object or accidentally making X the thing to buy.
-    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(?:go|head|drive|travel|walk|return)(?:\s+over)?\s+to\s+.+?\s+to\s+(?:grab|pick\s*up|pickup|collect|fetch|get|buy|purchase)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(?:go|head|drive|travel|walk|return)(?:\s+over)?\s+to\s+.+?\s+(?:to|and)\s+(?:grab|pick\s*up|pickup|collect|fetch|get|buy|purchase)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(?:go|head|drive|travel|walk|return)(?:\s+over)?\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
