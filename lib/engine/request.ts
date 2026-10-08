@@ -659,7 +659,7 @@ function extractLocation(text: string): string | null {
      * a capitalised road/place name ending in a recognised street suffix.
      */
     const finalPlaceMatches = [...text.matchAll(
-      /\b(?:at|to|for|about)\s+((?:\d+\s+)?[A-Z][A-Za-z0-9'’-]*(?:\s+[A-Z][A-Za-z0-9'’-]*){0,5}\s+(?:[Ss]treet|[Ss]t|[Rr]oad|[Rr]d|[Aa]venue|[Aa]ve|[Dd]rive|[Dd]r|[Ll]ane|[Ll]n|[Pp]lace|[Pp]l|[Cc]rescent|[Cc]res|[Cc]ourt|[Cc]t|[Cc]lose|[Cc]l|[Tt]errace|[Tt]ce|[Ww]ay|[Bb]oulevard|[Bb]lvd|[Hh]ighway|[Hh]wy|[Pp]arade|[Pp]arkway|[Pp]kwy|[Ss]quare|[Ss]q))(?:\s+in\s+[A-Z][A-Za-z' .-]{1,60})?(?=\s|[.,?]|$)/g
+      /\b(?:at|to|for|about)\s+((?:\d+\s+)?[A-Z][A-Za-z0-9'’-]*(?:\s+[A-Z][A-Za-z0-9'’-]*){0,5}\s+(?:[Ss]treet|[Ss]t|[Rr]oad|[Rr]d|[Aa]venue|[Aa]ve|[Dd]rive|[Dd]r|[Ll]ane|[Ll]n|[Pp]lace|[Pp]l|[Cc]rescent|[Cc]res|[Cc]ourt|[Cc]t|[Cc]lose|[Cc]l|[Tt]errace|[Tt]ce|[Ww]ay|[Bb]oulevard|[Bb]lvd|[Hh]ighway|[Hh]wy|[Pp]arade|[Pp]arkway|[Pp]kwy|[Ss]quare|[Ss]q))(?:\s+in\s+[A-Z][A-Za-z' .-]{1,60}?)?(?=\s|[.,?]|$)/g
     )];
 
     if (finalPlaceMatches.length) {
