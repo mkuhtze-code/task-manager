@@ -73,7 +73,7 @@ describe('decideTaskFit', () => {
       clusterBehaviour: null,
       duration: null,
     });
-    expect(d.fit).toBe('strong');
+    expect(d.fit).toBe('possible');
   });
 });
 
