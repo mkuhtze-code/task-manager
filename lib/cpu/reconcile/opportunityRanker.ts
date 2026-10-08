@@ -95,10 +95,11 @@ function behavioralFit(
   }
 
   const primaryVerb = ranking.interaction.request.primaryVerb?.trim().toLowerCase();
-  if (primaryVerb) {
+  const semanticAction = ranking.interaction.request.action === 'pickup' ? 'pickup' : primaryVerb;
+  if (semanticAction) {
     const semanticBelief = activeBehaviorBelief(
       ranking.context.beliefs,
-      'outcome.verb.' + primaryVerb
+      'outcome.verb.' + semanticAction
     );
     if (
       semanticBelief &&
