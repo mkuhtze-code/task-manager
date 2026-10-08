@@ -30,17 +30,34 @@ export function resolvePersonalTerm(input:string, entries:VocabularyEntry[]):Voc
     const exact=all.find(x=>x===n);
     if(exact)return {input,canonical:entry.canonical,kind:entry.kind,score:1,reason:exact===canonical?'exact' as const:'alias' as const};
     let score=0, candidate='';
-    for(const c of all){const max=Math.max(n.length,c.length);const s=max?1-editDistance(n,c)/max:0;if(s>score){score=s;candidate=c;}}
+    for(const c of all){
+      const max=Math.max(n.length,c.length);
+      const s=max?1-editDistance(n,c)/max:0;
+      if(s>score){score=s;candidate=c;}
+    }
     const ph=n.length>=4&&phonetic(n)===phonetic(candidate);
-    return {input,canonical:entry.canonical,kind:entry.kind,score:ph?Math.max(score,.95):score,reason:ph?'phonetic' as const:'edit_distance' as const};
+    return {input,canonical:entry.canonical,kind:entry.kind,score:ph?Math.max(score,.95):score,reason:ph?'phonetic' as const:'edit_distance' as const,rawScore:score};
   }).sort((a,b)=>b.score-a.score);
   const best=candidates[0], second=candidates[1]; if(!best)return null;
   const threshold=n.length<=4?.9:n.length<=7?.78:.72;
+
+  // A phonetic hit must still beat a close lexical alternative. This prevents
+  // names such as "Jadon" from being silently forced to "Jaden" when "Jason"
+  // is nearly as plausible, while still allowing an isolated "fone" -> "phone".
+  if(
+    best.reason==='phonetic' &&
+    second &&
+    best.rawScore !== undefined &&
+    second.rawScore >= best.rawScore - .15
+  ) return null;
+
   if(best.score<threshold||(second&&best.score-second.score<.08))return null;
   return best;
 }
-
 export function applyPersonalVocabulary(text:string,entries:VocabularyEntry[]):{text:string;matches:VocabularyMatch[]}{
+  let result=text;
+  const matches:VocabularyMatch[]=[];
+  const escapeRegExp=(value:string)=>value.replace(/[.*+?^()|[\\]\\\\]/g,'\\\\export function applyPersonalVocabulary(text:string,entries:VocabularyEntry[]):{text:string;matches:VocabularyMatch[]}{
   let result=text; const matches:VocabularyMatch[]=[];
   for(const entry of entries){
     for(const alias of entry.aliases){
@@ -51,6 +68,29 @@ export function applyPersonalVocabulary(text:string,entries:VocabularyEntry[]):{
       result=result.replace(re,entry.canonical);
       const m=resolvePersonalTerm(alias,[entry]); if(m)matches.push({...m,input:alias});
     }
+  }
+  return {text:result,matches};
+}
+');
+
+  // Replace longest aliases first so a specific learned phrase wins over a
+  // shorter alias contained inside it.
+  const aliases=entries.flatMap(entry=>entry.aliases.map(alias=>({entry,alias})))
+    .filter(({alias})=>normalise(alias))
+    .sort((a,b)=>normalise(b.alias).length-normalise(a.alias).length);
+
+  for(const {entry,alias} of aliases){
+    const words=normalise(alias).split(' ').map(escapeRegExp).join('\\s+');
+    const re=new RegExp('\\\\b'+words+'\\\\b','gi');
+    if(!re.test(result))continue;
+    result=result.replace(re,entry.canonical);
+    matches.push({
+      input:alias,
+      canonical:entry.canonical,
+      kind:entry.kind,
+      score:1,
+      reason:'alias'
+    });
   }
   return {text:result,matches};
 }
