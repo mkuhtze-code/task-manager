@@ -68,26 +68,63 @@ function behavioralFit(
     ranking.context.beliefs,
     'outcome.' + action
   );
+  let points = 0;
+  const reasons: string[] = [];
+
   if (
     outcomeBelief &&
     (outcomeBelief.confidence === 'medium' || outcomeBelief.confidence === 'high') &&
     outcomeBelief.supportingEvidence.length >= 2
   ) {
     if (outcomeBelief.value === 'completed') {
-      return { points: 10, reasons: ['this kind of work usually fits when suggested'] };
+      points += 10;
+      reasons.push('this kind of work usually fits when suggested');
     }
     if (outcomeBelief.value === 'partial') {
-      return { points: 2, reasons: ['this kind of work often only partly fits'] };
+      points += 2;
+      reasons.push('this kind of work often only partly fits');
     }
     if (outcomeBelief.value === 'carried') {
-      return { points: -8, reasons: ['this kind of work is often carried forward'] };
+      points -= 8;
+      reasons.push('this kind of work is often carried forward');
     }
     if (outcomeBelief.value === 'skipped') {
-      return { points: -12, reasons: ['this kind of work is often skipped'] };
+      points -= 12;
+      reasons.push('this kind of work is often skipped');
     }
   }
 
-  return { points: 0, reasons: [] };
+  const primaryVerb = ranking.interaction.request.primaryVerb?.trim().toLowerCase();
+  if (primaryVerb) {
+    const semanticBelief = activeBehaviorBelief(
+      ranking.context.beliefs,
+      'outcome.verb.' + primaryVerb
+    );
+    if (
+      semanticBelief &&
+      (semanticBelief.confidence === 'medium' || semanticBelief.confidence === 'high') &&
+      semanticBelief.supportingEvidence.length >= 2
+    ) {
+      if (semanticBelief.value === 'completed') {
+        points += 12;
+        reasons.push('you usually complete this kind of action');
+      }
+      if (semanticBelief.value === 'partial') {
+        points += 3;
+        reasons.push('you often only partly complete this kind of action');
+      }
+      if (semanticBelief.value === 'carried') {
+        points -= 10;
+        reasons.push('you often carry this kind of action forward');
+      }
+      if (semanticBelief.value === 'skipped') {
+        points -= 14;
+        reasons.push('you often skip this kind of action');
+      }
+    }
+  }
+
+  return { points, reasons };
 }
 
 function requestIsFlexible(interaction: InteractionResult): boolean {
