@@ -1170,9 +1170,9 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   // Movement-to-collection is a semantic pickup when the destination is
   // followed by an actual collection verb. Buying/purchasing remains a normal
   // procurement task, and informational "get" requests remain non-pickup.
-  const movementCollectionPhrase = /^(?:\\s*(?:i\\s+)?(?:need|have|got)\\s+to\\s+)?(?:go|head|drive|travel|walk|return)\\b.*\\bto\\s+(?:grab|pick\\s*up|pickup|collect|fetch)\\b/i.test(text) ||
-    (/^(?:\\s*(?:i\\s+)?(?:need|have|got)\\s+to\\s+)?(?:go|head|drive|travel|walk|return)\\b/i.test(text) &&
-      /\\bto\\s+get\\s+(?!(?:the\\s+)?(?:measurements?|dimensions?|details?|information|info|quote|price|pricing|approval|confirmation|answer|answers|response|responses|feedback|availability|status|update|updates|estimate|estimates)\\b)/i.test(text));
+  const movementCollectionPhrase = /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(?:go|head|drive|travel|walk|return)\b.*\bto\s+(?:grab|pick\s*up|pickup|collect|fetch)\b/i.test(text) ||
+    (/^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(?:go|head|drive|travel|walk|return)\b/i.test(text) &&
+      /\bto\s+get\s+(?!(?:the\s+)?(?:measurements?|dimensions?|details?|information|info|quote|price|pricing|approval|confirmation|answer|answers|response|responses|feedback|availability|status|update|updates|estimate|estimates)\b)/i.test(text));
   if (!isQuestion && !isNegatedCommitment && movementCollectionPhrase) {
     out.action = 'pickup';
   }
