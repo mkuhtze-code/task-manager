@@ -12,8 +12,9 @@
     "test:collections": "vitest run lib/collections",
     "test:engine": "vitest run lib/speech lib/collections",
     "test:phase5": "vitest run lib/speech lib/engine/__tests__/captureTorture.test.ts lib/cpu/__tests__/cpuPhase5.test.ts",
+    "test:phase6": "vitest run lib/cpu/__tests__/cpuPhase6.test.ts lib/thinking/v3/__tests__/behaviour.test.ts lib/thinking/v3/__tests__/fit.test.ts",
     "typecheck": "tsc --noEmit",
-    "ci": "npm run test:phase5 && npm run typecheck && npm run build"
+    "ci": "npm run test:phase5 && npm run test:phase6 && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
@@ -33,7 +34,7 @@
     "@types/node": "^20.12.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
-    "@types/web-push": "^3.6.3",
+    "@types/web-push": "^6.0.0",
     "fake-indexeddb": "^6.0.0",
     "happy-dom": "^15.11.0",
     "typescript": "^5.4.0",
