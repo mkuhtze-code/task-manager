@@ -774,6 +774,10 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     personText: null,
     purposeText: null,
     subjectText: null,
+    objectText: null,
+    locationText: null,
+    relatedJobText: null,
+    relatedMeetingText: null,
     constraints: [],
   };
 
