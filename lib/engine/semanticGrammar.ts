@@ -30,14 +30,15 @@ function splitItems(s:string):SemanticItem[]{const x=clean(s);if(!x)return[];ret
 function base(v:string):GrammarFrame{return{primaryVerb:v,personText:null,purposeText:null,subjectText:null,locationText:null,objectText:null,items:[],relations:[]};}
 
 function communication(text:string,v:string):GrammarFrame{
- const after=text.match(new RegExp('^.*?\\b'+v.replace(/\\s+/g,'\\s+')+'\\s+(.+)$','i'))?.[1]; if(!after)return base(v);
- const m=after.match(/^(.+?)(?=\\s+(?:to|about|regarding|on|for)\\s+|$)/i);
+ const after=text.match(/\b(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up)\s+(.+)$/i)?.[1];
+ if(!after)return base(v);
+ const m=after.match(/^(.+?)(?=\s+(?:to|about|regarding|on|for|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm))\s+|$)/i);
  const person=clean(m?.[1]??after), rem=m?clean(after.slice(m[0].length)):null;
  if(!rem)return{...base(v),personText:person,objectText:person,relations:['action→person']};
- const lm=rem.match(/\\s+for\\s+([A-Z][A-Za-z0-9' .-]{1,80})\\s*$/);
+ const lm=rem.match(/\s+for\s+([A-Z][A-Za-z0-9' .-]{1,80})\s*$/);
  const location=clean(lm?.[1]);
  const purpose=clean(lm?rem.slice(0,lm.index).trim():rem);
- const subject=clean(purpose?.replace(/^(?:to\\s+)?(?:get|grab|pick\\s*up|collect|fetch|check|inspect|confirm|ask|find\\s+out|find|sort\\s+out|sort)\\s+(?:the\\s+|a\\s+|an\\s+)?/i,''));
+ const subject=clean(purpose?.replace(/^(?:to\s+)?(?:get|grab|pick\s*up|collect|fetch|check|inspect|confirm|ask|find\s+out|find|sort\s+out|sort)\s+(?:the\s+|a\s+|an\s+)?/i,''));
  return{...base(v),personText:person,purposeText:purpose,subjectText:subject??purpose,locationText:location,objectText:subject??purpose,relations:['action→person','action→purpose','purpose→subject',...(location?['purpose→location']:[])]};
 }
 function movement(text:string,v:string):GrammarFrame{
