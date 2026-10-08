@@ -50,6 +50,48 @@ describe('Dokkit CPU Phase 5 routing', () => {
     }
   });
 
+
+
+  it.each([
+    ['call Jordan to get measurements', 'call', 'Jordan', 'get the measurements', 'create_task'],
+    ['email Sarah to confirm the quote for Smith Road', 'email', 'Sarah', 'confirm the quote', 'create_task'],
+    ['pick up the screws from Bunnings', 'pick up', null, null, 'pickup'],
+    ['go to Angela Place to inspect the flashing', 'go', null, null, 'pickup'],
+  ])(
+    'preserves semantic intent through the universal CPU: %s',
+    (text, primaryVerb, personText, purposeText, expectedAction) => {
+      const result = processCpuInteraction({
+        ...base,
+        input: { ...base.input, text },
+        context: { ...base.context, remainingMinsToday: 480 },
+      });
+
+      expect(result.decision.request.primaryVerb).toBe(primaryVerb);
+      if (personText) expect(result.decision.request.personText).toBe(personText);
+      if (purposeText) expect(result.decision.request.purposeText).toContain(purposeText);
+      expect(result.decision.request.action).toBe(expectedAction);
+      expect(result.decision.action?.kind).not.toBe('ask');
+    }
+  );
+
+  it('does not let CPU reconciliation replace explicit semantic action with a nested verb', () => {
+    const result = processCpuInteraction({
+      ...base,
+      input: {
+        ...base.input,
+        text: 'I need to call Jordan to get the measurements for the downpipes for Angela Place',
+      },
+      context: { ...base.context, remainingMinsToday: 480 },
+    });
+
+    expect(result.decision.request.primaryVerb).toBe('call');
+    expect(result.decision.request.personText).toBe('Jordan');
+    expect(result.decision.request.action).toBe('create_task');
+    expect(result.decision.action?.kind).toBe('create_task');
+    expect(result.decision.action?.text.toLowerCase()).toContain('call jordan');
+    expect(result.decision.action?.text.toLowerCase()).not.toMatch(/^pick up\\b/);
+  });
+
   it('keeps the CPU interface-neutral for voice and Android Auto', () => {
     const voice = processCpuInteraction({
       ...base,
