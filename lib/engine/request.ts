@@ -659,14 +659,29 @@ function extractLocation(text: string): string | null {
      * a capitalised road/place name ending in a recognised street suffix.
      */
     const finalPlaceMatches = [...text.matchAll(
-      /\b(?:at|for|about)\s+((?:\d+\s+)?[A-Z][A-Za-z0-9'’-]*(?:\s+[A-Z][A-Za-z0-9'’-]*){0,5}\s+(?:[Ss]treet|[Ss]t|[Rr]oad|[Rr]d|[Aa]venue|[Aa]ve|[Dd]rive|[Dd]r|[Ll]ane|[Ll]n|[Pp]lace|[Pp]l|[Cc]rescent|[Cc]res|[Cc]ourt|[Cc]t|[Cc]lose|[Cc]l|[Tt]errace|[Tt]ce|[Ww]ay|[Bb]oulevard|[Bb]lvd|[Hh]ighway|[Hh]wy|[Pp]arade|[Pp]arkway|[Pp]kwy|[Ss]quare|[Ss]q))(?:\s+in\s+[A-Z][A-Za-z' .-]{1,60})?(?=\s|[.,?]|$)/g
+      /\b(?:at|to|for|about)\s+((?:\d+\s+)?[A-Z][A-Za-z0-9'’-]*(?:\s+[A-Z][A-Za-z0-9'’-]*){0,5}\s+(?:[Ss]treet|[Ss]t|[Rr]oad|[Rr]d|[Aa]venue|[Aa]ve|[Dd]rive|[Dd]r|[Ll]ane|[Ll]n|[Pp]lace|[Pp]l|[Cc]rescent|[Cc]res|[Cc]ourt|[Cc]t|[Cc]lose|[Cc]l|[Tt]errace|[Tt]ce|[Ww]ay|[Bb]oulevard|[Bb]lvd|[Hh]ighway|[Hh]wy|[Pp]arade|[Pp]arkway|[Pp]kwy|[Ss]quare|[Ss]q))(?:\s+in\s+[A-Z][A-Za-z' .-]{1,60})?(?=\s|[.,?]|$)/g
     )];
 
     if (finalPlaceMatches.length) {
       const communication = /\b(?:call|ring|phone|email|text|message|contact|write|ask|tell)\b/i.test(text);
-      const procurement = /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\s+/i.test(text);
+      const procurementSource = text.match(
+        /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\s+/i
+      );
+      const hasLaterPhysicalDestination = procurementSource
+        ? /\b(?:at|to)\s+/i.test(
+            text.slice((procurementSource.index ?? 0) + procurementSource[0].length)
+          )
+        : false;
 
-      if (communication || !procurement) {
+      if (
+        procurementSource?.[1] &&
+        !communication &&
+        !hasLaterPhysicalDestination
+      ) {
+        // Physical source outranks the trailing job relationship:
+        // "get gutter from the supplier for Smith Road" -> supplier.
+        location = procurementSource[1].trim();
+      } else {
         location = finalPlaceMatches[finalPlaceMatches.length - 1][1].trim();
       }
     }
