@@ -1422,7 +1422,7 @@ export function applyUtteranceToRequest(
  *   create_task + check flashing -> check flashing
  */
 export function requestTaskText(req: EngineRequest): string {
-  const firstUtterance = req.rawUtterances[0] ?? '';
+  const firstUtterance = req.rawUtterances?.[0] ?? '';
   const primaryVerb = req.primaryVerb || extractPrimaryTaskVerb(firstUtterance);
 
   /*
