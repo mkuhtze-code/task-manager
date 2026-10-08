@@ -201,12 +201,17 @@ export function updateBeliefGraph(
   const fields: Array<keyof Pick<
     EngineRequest,
     'objectText' | 'locationText' | 'relatedJobText' | 'relatedMeetingText' |
+    'primaryVerb' | 'personText' | 'purposeText' | 'subjectText' |
     'dateHint' | 'timeHint' | 'urgency' | 'flexibility' | 'commitment'
   >> = [
     'objectText',
     'locationText',
     'relatedJobText',
     'relatedMeetingText',
+    'primaryVerb',
+    'personText',
+    'purposeText',
+    'subjectText',
     'dateHint',
     'timeHint',
     'urgency',
