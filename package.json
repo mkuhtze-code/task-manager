@@ -11,8 +11,9 @@
     "test:speech": "vitest run lib/speech",
     "test:collections": "vitest run lib/collections",
     "test:engine": "vitest run lib/speech lib/collections",
+    "test:phase5": "vitest run lib/speech lib/engine/__tests__/captureTorture.test.ts lib/cpu/__tests__/cpuPhase5.test.ts",
     "typecheck": "tsc --noEmit",
-    "ci": "npm run test:engine && npm run typecheck && npm run build"
+    "ci": "npm run test:phase5 && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
@@ -21,10 +22,10 @@
     "fflate": "^0.8.3",
     "firebase": "10.12.2",
     "next": "^14.2.0",
-    "pdf-lib": "^1.17.1",
+    "pdf-lib": "^1.17.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "web-push": "^3.6.7",
+    "web-push": "^3.6.3",
     "stripe": "^17.7.0"
   },
   "devDependencies": {
