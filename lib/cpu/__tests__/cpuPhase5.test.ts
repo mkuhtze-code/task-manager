@@ -92,6 +92,62 @@ describe('Dokkit CPU Phase 5 routing', () => {
     expect(result.decision.action?.text.toLowerCase()).not.toMatch(/^pick up\\b/);
   });
 
+  it('preserves the complete semantic frame through reconciliation and action conversion', () => {
+    const result = processCpuInteraction({
+      ...base,
+      input: {
+        ...base.input,
+        text: 'Call Jordan tomorrow at 4pm to confirm the downpipe measurements for Angela Place',
+      },
+      context: { ...base.context, remainingMinsToday: 480 },
+    });
+
+    const request = result.decision.primaryIntent;
+
+    expect(request.primaryVerb).toBe('call');
+    expect(request.personText).toBe('Jordan');
+    expect(request.purposeText).toContain('confirm the downpipe measurements');
+    expect(request.subjectText).toContain('downpipe measurements');
+    expect(request.locationText).toBe('Angela Place');
+    expect(request.dateHint).toBe('tomorrow');
+    expect(request.timeHint).toBe('4pm');
+    expect(request.relatedJobText).toBe('Angela Place');
+
+    expect(result.decision.recommendedAction?.kind).toBe('create_task');
+    expect(result.decision.recommendedAction?.kind === 'create_task'
+      ? result.decision.recommendedAction.locationText
+      : null).toBe('Angela Place');
+    expect(result.decision.recommendedAction?.kind === 'create_task'
+      ? result.decision.recommendedAction.text.toLowerCase()
+      : '').toContain('call jordan');
+    expect(result.decision.recommendedAction?.kind === 'create_task'
+      ? result.decision.recommendedAction.text.toLowerCase()
+      : '').not.toMatch(/^pick up\\b/);
+  });
+
+  it('keeps explicit physical procurement distinct from a trailing job relationship', () => {
+    const result = processCpuInteraction({
+      ...base,
+      input: {
+        ...base.input,
+        text: 'Get 6 lengths of gutter from the supplier for Smith Road',
+      },
+      context: { ...base.context, remainingMinsToday: 480 },
+    });
+
+    expect(result.decision.request.primaryVerb).toBe('get');
+    expect(result.decision.request.action).toBe('create_task');
+    expect(result.decision.request.locationText).toBe('the supplier');
+    expect(result.decision.request.relatedJobText).toBe('Smith Road');
+    expect(result.decision.action?.kind).toBe('create_task');
+    expect(result.decision.action?.kind === 'create_task'
+      ? result.decision.action.locationText
+      : null).toBe('the supplier');
+    expect(result.decision.action?.kind === 'create_task'
+      ? result.decision.action.text.toLowerCase()
+      : '').toContain('gutter');
+  });
+
   it('keeps the CPU interface-neutral for voice and Android Auto', () => {
     const voice = processCpuInteraction({
       ...base,
