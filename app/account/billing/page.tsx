@@ -3,16 +3,16 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import AppHeader from '@/components/AppHeader';
-import { supabase } from '@/lib/supabaseClient';
-import { authedFetch, authedGet } from '@/lib/authedFetch';
-import type { BillingInvoiceRow, BillingSummary, ProFeature } from '@/lib/billing';
-import { PRO_FEATURE_COPY } from '@/lib/billing';
+import AppHeader from '../../../components/AppHeader';
+import { supabase } from '../../../lib/supabaseClient';
+import { authedFetch, authedGet } from '../../../lib/authedFetch';
+import type { BillingInvoiceRow, BillingSummary, ProFeature } from '../../../lib/billing';
+import { PRO_FEATURE_COPY } from '../../../lib/billing';
 import {
   buildStorageQuota,
   formatStorageBytes,
   formatStoragePercent,
-} from '@/lib/storageQuota';
+} from '../../../lib/storageQuota';
 
 function formatPeriodEnd(iso: string | null): string | null {
   if (!iso) return null;
