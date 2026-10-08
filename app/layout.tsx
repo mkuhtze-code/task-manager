@@ -1,8 +1,3 @@
-'use client';
-
-/* This file may be a server component in production builds;
-   keep client-only logic out of the default export body. */
-
 import './globals.css';
 import './dokkit-v4-foundation.css';
 import './desktop-surface.css';

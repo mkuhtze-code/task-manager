@@ -1,544 +1,516 @@
-/* ==========================================================================
-   DOKKIT TODAY — PRODUCT DESIGN SYSTEM
-   Strategies from Apple / Google / Samsung / Meta / YouTube:
-   - One dominant number (Samsung One UI, Apple Health)
-   - Content is the UI (YouTube, Meta)
-   - List rhythm over card chrome (Apple Reminders, Google Tasks)
-   - Progressive disclosure (Material 3, iOS sheets)
-   - Thumb-zone primary action (One UI, Material FAB)
-   - State in colour + shape, not labels (Apple Watch rings)
-   ========================================================================== */
+/* ============================================================
+   DOKKIT v4 — TODAY SURFACE
+   Today + Capture + Task detail + desk split.
+   Loaded last so it wins over legacy surface-system layers.
 
-/* ── Tokens (scoped) ─────────────────────────────────────────── */
+   Visual grammar:
+   - Sticky instrument header (capacity is the one number)
+   - Continuous task list (hairline rows, no card chrome)
+   - Colour rail = fit state (not badges)
+   - Sheets float at z-sheet above sticky chrome
+   - Thumb-first primary actions
+   ============================================================ */
+
 :root {
-  --td-list-gap: 0;
-  --td-row-pad-y: 14px;
-  --td-row-pad-x: 16px;
-  --td-row-min: 56px;
-  --td-radius: 12px;
-  --td-hairline: color-mix(in srgb, var(--line, #e2e8f0) 88%, transparent);
-  --td-surface: var(--paper, #fff);
-  --td-inset: var(--paper-raised, #f8fafc);
-  --td-ink: var(--ink, #0f172a);
-  --td-ink-2: var(--ink-soft, #64748b);
-  --td-ink-3: var(--ink-faint, #94a3b8);
-  --td-accent: var(--steel, #1e6be6);
-  --td-good: #16a34a;
-  --td-warn: var(--hazard, #b91c1c);
-  --td-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --td-radius: 14px;
+  --td-radius-sm: 10px;
+  --td-hairline: color-mix(in srgb, var(--line) 90%, transparent);
+  --td-surface: var(--paper-raised);
+  --td-page: var(--paper);
+  --td-ink: var(--ink);
+  --td-ink-2: var(--ink-soft);
+  --td-ink-3: var(--ink-faint);
+  --td-accent: var(--steel);
+  --td-good: var(--ok, #15803d);
+  --td-warn: var(--warn, #b45309);
+  --td-danger: var(--danger, #dc2626);
+  --td-ease: var(--ease-out, cubic-bezier(0.2, 0.8, 0.2, 1));
+  --td-row: var(--row, 56px);
+  --td-pad-x: 16px;
+  --td-pad-y: 14px;
 }
 
-/* ── Task list: continuous content field (Apple / Meta) ──────── */
+/* ── Page field ─────────────────────────────────────────────── */
 
-.app-shell:has(> .today-header-card) > .task-list,
-.task-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--td-list-gap);
-  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+.app-shell:has(> .today-header-card) {
+  background: var(--td-page);
 }
 
-/* Grouped list surface — one sheet, hairline rows */
-@media (max-width: 700px) {
-  .app-shell:has(> .today-header-card) > .task-list {
-    margin: 8px 12px 0;
-    padding: 0;
-    border: 1px solid var(--td-hairline);
-    border-radius: var(--td-radius);
-    background: var(--td-surface);
-    overflow: hidden;
-  }
+/* ── Sticky instrument header ───────────────────────────────── */
 
-  .task-list > .task-card.surface-object {
-    border: none !important;
-    border-radius: 0 !important;
-    border-bottom: 1px solid var(--td-hairline) !important;
-    box-shadow: none !important;
-    background: transparent !important;
-    transform: none !important;
-  }
-
-  .task-list > .task-card.surface-object:last-of-type {
-    border-bottom: none !important;
-  }
-
-  .task-list > .task-card.surface-object:hover {
-    transform: none !important;
-    background: color-mix(in srgb, var(--td-inset) 70%, transparent) !important;
-  }
-
-  .task-list > .task-card.surface-object:active {
-    background: color-mix(in srgb, var(--td-accent) 6%, transparent) !important;
-  }
+.today-header-card,
+.desk-today-saas.today-header-card {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: var(--z-sticky, 40) !important;
+  margin: 0 !important;
+  padding: 12px var(--td-pad-x) 14px !important;
+  background: color-mix(in srgb, var(--td-page) 88%, transparent) !important;
+  backdrop-filter: blur(18px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--td-hairline) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
-/* ── Task row: 56pt min, clear primary column (HIG / Material) ── */
-
-.task-card.surface-object .task-main {
-  min-height: var(--td-row-min) !important;
-  padding: var(--td-row-pad-y) var(--td-row-pad-x) !important;
-  gap: 12px;
-  align-items: center;
+.today-header-card.overloaded {
+  background: color-mix(in srgb, var(--td-warn) 8%, var(--td-page)) !important;
 }
 
-.task-card .task-text {
-  font-size: 16px !important;
-  line-height: 1.3 !important;
-  font-weight: 590 !important;
-  letter-spacing: -0.015em !important;
+/* Dominant capacity number */
+.today-header-card .capacity-primary,
+.today-header-card .today-capacity-value,
+.desk-today-saas .capacity-num,
+.today-header-card .mono.capacity {
+  font-family: "JetBrains Mono", "Space Mono", ui-monospace, monospace !important;
+  font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem) !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.045em !important;
+  line-height: 1 !important;
+  font-variant-numeric: tabular-nums !important;
   color: var(--td-ink) !important;
 }
 
-.task-card.task-list-item .task-text {
-  font-weight: 500 !important;
-}
-
-.task-card-context,
-.task-card .task-card-context {
-  margin-top: 2px !important;
-  font-size: 13px !important;
-  line-height: 1.25 !important;
-  color: var(--td-ink-2) !important;
-}
-
-.task-card-glance {
-  gap: 8px;
-}
-
-.task-card-time,
-.task-card-elapsed {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-.task-card-elapsed {
-  color: var(--td-accent) !important;
-}
-
-/* Check control — 44pt touch target, quiet chrome */
-.task-card .check-btn {
-  width: 44px !important;
-  height: 44px !important;
-  min-width: 44px !important;
-  margin: -6px 0 -6px -8px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 50% !important;
-  flex-shrink: 0;
-}
-
-.task-card .check-btn:active {
-  background: color-mix(in srgb, var(--td-accent) 10%, transparent);
-}
-
-/* State rail: 2px, full height — Apple Watch style signal */
-.task-card.surface-object::before {
-  width: 2px !important;
-  border-radius: 0 !important;
-  opacity: 0.9;
-}
-
-.task-card.fit-ok::before {
-  background: var(--td-good) !important;
-}
-
-.task-card.fit-protect::before {
-  background: var(--td-accent) !important;
-}
-
-.task-card.fit-later::before,
-.task-card.fit-uncertain::before {
-  background: var(--td-ink-3) !important;
-  opacity: 0.55;
-}
-
-.task-card.fit-blocked::before,
-.task-card.task-overtime::before {
-  background: var(--td-warn) !important;
-}
-
-/* Progress: 2px hairline under content (YouTube buffer bar language) */
-.task-card-progress {
-  height: 2px !important;
-  margin: 0 16px 0 52px !important;
-  background: color-mix(in srgb, var(--td-ink-3) 28%, transparent) !important;
-  border-radius: 1px !important;
-}
-
-.task-card-progress-fill {
-  background: var(--td-accent) !important;
-  border-radius: 1px !important;
-}
-
-.task-card.task-overtime .task-card-progress-fill {
-  background: var(--td-warn) !important;
-}
-
-/* Expand: secondary only, no new chrome */
-.task-reveal {
-  padding: 8px 16px 14px 52px !important;
-  border-top: 1px solid var(--td-hairline) !important;
-  background: color-mix(in srgb, var(--td-inset) 55%, transparent);
-}
-
-.task-action-link {
-  min-height: 40px;
-  padding: 8px 4px !important;
-  font-size: 14px !important;
-}
-
-.task-action-details {
-  text-decoration: none !important;
-  color: var(--td-accent) !important;
-  font-weight: 600 !important;
-}
-
-/* ── Mobile cockpit: one metric, one status, one bar ─────────── */
-
-@media (max-width: 700px) {
-  .today-header-card {
-    display: contents !important;
-  }
-
-  .mobile-today-cockpit {
-    position: sticky;
-    top: 0;
-    z-index: 40;
-    margin: 0;
-    padding: 12px 16px 14px;
-    border: none;
-    border-bottom: 1px solid var(--td-hairline);
-    border-radius: 0;
-    background: color-mix(in srgb, var(--td-surface) 92%, transparent);
-    backdrop-filter: saturate(180%) blur(16px);
-    -webkit-backdrop-filter: saturate(180%) blur(16px);
-    box-shadow: none;
-  }
-
-  .mobile-today-cockpit::before,
-  .mobile-today-cockpit::after {
-    display: none !important;
-  }
-
-  .mobile-today-cockpit-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-  }
-
-  .mobile-today-cockpit-kicker {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    text-transform: none;
-    color: var(--td-ink);
-  }
-
-  .mobile-today-cockpit-date {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--td-ink-2);
-  }
-
-  .mobile-today-cockpit-brand {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-  }
-
-  .mobile-today-cockpit-readout {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: end;
-    gap: 12px;
-    margin-bottom: 10px;
-  }
-
-  .mobile-today-cockpit-time strong {
-    display: block;
-    font-size: 40px !important;
-    line-height: 0.95 !important;
-    font-weight: 700 !important;
-    letter-spacing: -0.05em !important;
-    font-variant-numeric: tabular-nums;
-    color: var(--td-ink);
-  }
-
-  .mobile-today-cockpit-time span {
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    letter-spacing: 0 !important;
-    text-transform: none !important;
-    color: var(--td-ink-2) !important;
-  }
-
-  .mobile-today-cockpit-fit {
-    text-align: right;
-    justify-items: end;
-  }
-
-  .mobile-today-fit-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--td-good);
-    margin-bottom: 4px;
-  }
-
-  .mobile-today-fit-dot.over {
-    background: var(--td-warn);
-  }
-
-  .mobile-today-cockpit-fit strong {
-    font-size: 12px !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.02em !important;
-    text-transform: none !important;
-    color: var(--td-ink);
-  }
-
-  .mobile-today-cockpit-fit > span:last-child {
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    color: var(--td-ink-2) !important;
-  }
-
-  .mobile-today-capacity {
-    margin-top: 0;
-  }
-
-  .mobile-today-capacity-head {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.02em !important;
-    text-transform: none !important;
-    color: var(--td-ink-3) !important;
-  }
-
-  .mobile-today-capacity-track {
-    height: 6px !important;
-    margin: 6px 0 4px !important;
-    border-radius: 3px !important;
-    background: color-mix(in srgb, var(--td-ink-3) 22%, transparent) !important;
-  }
-
-  .mobile-today-capacity-track > span {
-    border-radius: 3px !important;
-    background: var(--td-accent) !important;
-  }
-
-  .mobile-today-capacity-track > span.is-over {
-    background: var(--td-warn) !important;
-  }
-
-  .mobile-today-capacity-foot {
-    font-size: 11px !important;
-    color: var(--td-ink-3) !important;
-  }
-
-  .mobile-today-next {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--td-hairline);
-  }
-
-  .mobile-today-next-kicker {
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.02em !important;
-    text-transform: none !important;
-    color: var(--td-ink-3) !important;
-  }
-
-  .mobile-today-next strong {
-    font-size: 14px !important;
-    font-weight: 600 !important;
-  }
-
-  .mobile-today-dock {
-    min-height: 32px;
-    padding: 0 12px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
-  }
-}
-
-/* ── Desktop instrument: Health / Watch clarity ──────────────── */
-
-html[data-surface='desktop'] .desk-today-saas.today-header-card {
-  padding: 12px 24px 14px !important;
-  background: color-mix(in srgb, var(--td-surface) 88%, transparent) !important;
-  backdrop-filter: saturate(160%) blur(20px);
-  -webkit-backdrop-filter: saturate(160%) blur(20px);
-  border-bottom: 1px solid var(--td-hairline) !important;
-}
-
-html[data-surface='desktop'] .desk-today-title {
-  font-size: 22px !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.03em !important;
-}
-
-html[data-surface='desktop'] .desk-today-kicker {
-  display: none; /* Apple large-title: title is enough */
-}
-
-html[data-surface='desktop'] .desk-today-date {
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  color: var(--td-ink-2) !important;
-}
-
-html[data-surface='desktop'] .desk-today-instrument {
-  margin-top: 12px !important;
-  border: 1px solid var(--td-hairline) !important;
-  border-radius: 16px !important;
-  background: var(--td-surface) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
-  overflow: hidden;
-}
-
-html[data-surface='desktop'] .desk-today-now,
-html[data-surface='desktop'] .desk-today-capacity,
-html[data-surface='desktop'] .desk-today-next {
-  min-height: 88px !important;
-  padding: 18px 20px !important;
-}
-
-html[data-surface='desktop'] .desk-today-now-value {
-  font-size: clamp(32px, 3.2vw, 44px) !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.045em !important;
-}
-
-html[data-surface='desktop'] .desk-today-now-kicker,
-html[data-surface='desktop'] .desk-today-next-kicker,
-html[data-surface='desktop'] .desk-today-capacity-head > span:first-child {
+.today-header-weekday,
+.today-header-date,
+.today-header-card .kicker {
   font-size: 11px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.04em !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.06em !important;
   text-transform: uppercase !important;
   color: var(--td-ink-3) !important;
 }
 
-html[data-surface='desktop'] .desk-today-capacity-track {
+/* Capacity track — quiet instrument */
+.capacity-track,
+.today-capacity-track,
+.desk-capacity-track {
   height: 6px !important;
-  border-radius: 3px !important;
-  background: color-mix(in srgb, var(--td-ink-3) 20%, transparent) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--ink) 8%, transparent) !important;
+  overflow: hidden !important;
 }
 
-html[data-surface='desktop'] .desk-today-capacity-track > span {
-  border-radius: 3px !important;
+.capacity-fill,
+.today-capacity-fill,
+.desk-capacity-fill {
+  height: 100% !important;
+  border-radius: 999px !important;
+  background: linear-gradient(
+    90deg,
+    var(--td-accent),
+    color-mix(in srgb, var(--td-accent) 70%, #60a5fa)
+  ) !important;
+  transition: width var(--dur, 180ms) var(--td-ease) !important;
 }
 
-html[data-surface='desktop'] .desk-today-rail {
-  margin-top: 14px !important;
+.capacity-fill.is-tight,
+.today-capacity-fill.is-tight {
+  background: linear-gradient(90deg, var(--td-warn), #f59e0b) !important;
 }
 
-html[data-surface='desktop'] .desk-today-rail-track {
-  height: 8px !important;
-  border-radius: 4px !important;
-  background: color-mix(in srgb, var(--td-ink-3) 18%, transparent) !important;
+.capacity-fill.is-over,
+.today-capacity-fill.is-over {
+  background: linear-gradient(90deg, var(--td-danger), #f87171) !important;
 }
 
-html[data-surface='desktop'] .desk-today-rail-label {
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.04em !important;
+/* ── Task list: one continuous sheet ────────────────────────── */
+
+.app-shell:has(> .today-header-card) > .task-list,
+.task-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (max-width: 899px) {
+  .app-shell:has(> .today-header-card) > .task-list {
+    margin: 10px 12px 0 !important;
+    border: 1px solid var(--td-hairline) !important;
+    border-radius: var(--td-radius) !important;
+    background: var(--td-surface) !important;
+    overflow: hidden !important;
+    box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.04) !important;
+  }
+}
+
+/* Kill card chrome — content is the UI */
+.task-list > .task-card,
+.task-list > .task-card.surface-object {
+  border: none !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--td-hairline) !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  transform: none !important;
+  margin: 0 !important;
+}
+
+.task-list > .task-card:last-of-type,
+.task-list > .task-card.surface-object:last-of-type {
+  border-bottom: none !important;
+}
+
+.task-list > .task-card:hover,
+.task-list > .task-card.surface-object:hover {
+  transform: none !important;
+  background: color-mix(in srgb, var(--ink) 2.5%, transparent) !important;
+  box-shadow: none !important;
+}
+
+.task-list > .task-card:active,
+.task-list > .task-card.surface-object:active {
+  background: color-mix(in srgb, var(--td-accent) 6%, transparent) !important;
+}
+
+/* Row geometry */
+.task-card .task-main,
+.task-card.surface-object .task-main {
+  min-height: var(--td-row) !important;
+  padding: var(--td-pad-y) var(--td-pad-x) !important;
+  gap: 12px !important;
+  align-items: center !important;
+}
+
+.task-card .task-title,
+.task-card .task-name {
+  font-size: 15px !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.015em !important;
+  line-height: 1.3 !important;
+  color: var(--td-ink) !important;
+}
+
+.task-card .task-meta,
+.task-card .task-sub {
+  font-size: 12px !important;
+  font-weight: 550 !important;
   color: var(--td-ink-3) !important;
 }
 
-/* Primary CTA — Material / One UI weight */
-html[data-surface='desktop'] .desk-today-dock-pill {
-  min-height: 36px !important;
-  padding: 0 16px !important;
-  border-radius: 999px !important;
-  font-size: 14px !important;
-  font-weight: 600 !important;
-}
-
-html[data-surface='desktop'] .desk-today-depth-toggle {
-  min-height: 36px !important;
-  border-radius: 999px !important;
-  font-weight: 500 !important;
+.task-card .task-time,
+.task-card .estimate,
+.task-card .remaining {
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  font-variant-numeric: tabular-nums !important;
   color: var(--td-ink-2) !important;
+  letter-spacing: -0.02em !important;
 }
 
-/* Desktop list: inset grouped style */
-html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
-  padding: 12px 12px 32px !important;
-  background: var(--td-inset) !important;
+.task-card[data-fit='good'],
+.task-card.is-fit-good {
+  box-shadow: inset 3px 0 0 var(--td-good) !important;
 }
 
-html[data-surface='desktop'] .task-list > .task-card.surface-object {
+.task-card[data-fit='tight'],
+.task-card.is-fit-tight {
+  box-shadow: inset 3px 0 0 var(--td-warn) !important;
+}
+
+.task-card[data-fit='over'],
+.task-card.is-fit-over {
+  box-shadow: inset 3px 0 0 var(--td-danger) !important;
+}
+
+.task-card.is-live,
+.task-card[data-live='true'] {
+  background: color-mix(in srgb, var(--td-accent) 5%, transparent) !important;
+  box-shadow: inset 3px 0 0 var(--td-accent) !important;
+}
+
+.task-card.is-done .task-title,
+.task-card.is-done .task-name {
+  color: var(--td-ink-3) !important;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--ink) 25%, transparent);
+}
+
+.task-card .task-progress-track {
+  height: 3px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--ink) 8%, transparent) !important;
+  overflow: hidden !important;
+  margin-top: 6px !important;
+}
+
+.task-card .task-progress-fill {
+  height: 100% !important;
+  border-radius: 999px !important;
+  background: var(--td-accent) !important;
+}
+
+.task-list-empty,
+.today-empty,
+.empty-today {
+  padding: 48px 24px !important;
+  text-align: center !important;
+  color: var(--td-ink-2) !important;
+  font-size: 14px !important;
+  font-weight: 550 !important;
+  line-height: 1.45 !important;
+}
+
+.travel-aware-banner,
+.reality-invite-card,
+.starter-pack-banner,
+.live-day-strip,
+.recalc-error {
+  margin: 10px 12px 0 !important;
+  border-radius: var(--td-radius-sm) !important;
   border: 1px solid var(--td-hairline) !important;
-  border-radius: 12px !important;
-  margin-bottom: 8px !important;
   background: var(--td-surface) !important;
   box-shadow: none !important;
 }
 
-html[data-surface='desktop'] .task-list > .task-card.surface-object:hover {
-  border-color: color-mix(in srgb, var(--td-accent) 28%, var(--td-hairline)) !important;
-  transform: none !important;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+.recalc-error {
+  border-color: color-mix(in srgb, var(--td-danger) 30%, transparent) !important;
+  background: color-mix(in srgb, var(--td-danger) 6%, var(--td-surface)) !important;
+  color: var(--td-danger) !important;
 }
 
-html[data-surface='desktop'] .task-list > .task-card.surface-object.expanded,
-html[data-surface='desktop'] .app-shell.has-desk-detail .task-list > .task-card.surface-object:has(.task-main) {
-  /* selected row cue when detail open — handled via openTaskId expansion */
-}
-
-/* Selected task on desktop (expanded) */
-html[data-surface='desktop'] .task-card.surface-object.expanded {
-  border-color: color-mix(in srgb, var(--td-accent) 40%, var(--td-hairline)) !important;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--td-accent) 18%, transparent) !important;
-}
-
-/* Empty detail: calm invitation, not decoration */
-html[data-surface='desktop'] .app-shell:has(> .today-header-card):not(.has-desk-detail)::after {
-  background: var(--td-inset) !important;
-  border-left: 1px solid var(--td-hairline) !important;
-}
-
-/* Split handle: invisible until hover (Apple sidebar divider) */
-html[data-surface='desktop'] .desk-split-handle::after {
-  background: transparent !important;
-  width: 1px !important;
-  left: 2.5px !important;
-}
-
-html[data-surface='desktop'] .desk-split-handle:hover::after,
-html[data-surface='desktop'] .desk-split-handle:focus-visible::after {
+.capture-fab,
+.fab-add,
+.today-fab {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 16px !important;
   background: var(--td-accent) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow:
+    0 8px 24px color-mix(in srgb, var(--td-accent) 35%, transparent),
+    0 0 0 1px color-mix(in srgb, #fff 12%, transparent) inset !important;
+  transition: transform var(--dur-fast) var(--td-ease), box-shadow var(--dur) var(--td-ease) !important;
 }
 
-/* Sheets above sticky chrome */
-.sheet-backdrop {
-  z-index: 100 !important;
-  background: rgba(15, 23, 42, 0.32) !important;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+.capture-fab:active,
+.fab-add:active,
+.today-fab:active {
+  transform: scale(0.94) !important;
 }
 
-/* Travel legs between tasks: quieter */
-.task-list .travel-leg,
-.task-list .TravelLeg {
-  opacity: 0.85;
-}
-
-/* Reduce motion */
-@media (prefers-reduced-motion: reduce) {
-  .task-card-active-dot,
-  .task-reveal {
-    animation: none !important;
+@media (min-width: 900px) {
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 6px minmax(280px, 42%);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    column-gap: 0;
+    max-width: none;
+    padding: 0;
+    height: 100dvh;
+    overflow: hidden;
   }
+
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .today-header-card {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .travel-aware-banner,
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .reality-invite-card,
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .starter-pack-banner,
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .live-day-strip,
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .recalc-error {
+    grid-column: 1 / -1;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+  }
+
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
+    grid-column: 1;
+    grid-row: 3;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow-y: auto !important;
+    padding: 0 8px 32px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle {
+    grid-column: 2;
+    grid-row: 3;
+    background: transparent;
+    position: relative;
+    z-index: 8;
+  }
+
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 12%;
+    bottom: 12%;
+    width: 1px;
+    transform: translateX(-50%);
+    background: var(--td-hairline);
+  }
+
+  html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-pane-detail {
+    grid-column: 3;
+    grid-row: 3;
+    overflow-y: auto;
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--td-page) 70%, var(--td-surface)) 0%,
+        var(--td-surface) 48px
+      );
+    border-left: 1px solid var(--td-hairline);
+  }
+
+  html[data-surface='desktop'] .task-list > .task-card {
+    border-radius: var(--td-radius-sm) !important;
+    border-bottom: none !important;
+    margin: 2px 4px !important;
+  }
+
+  html[data-surface='desktop'] .task-list > .task-card:hover {
+    background: color-mix(in srgb, var(--ink) 3%, transparent) !important;
+  }
+}
+
+.sheet-backdrop,
+.sheet-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: var(--z-sheet, 200) !important;
+  background: rgba(15, 23, 42, 0.42) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+}
+
+.sheet-panel,
+.sheet-panel.capture-sheet,
+.task-detail-sheet {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  max-width: 560px !important;
+  max-height: min(92dvh, 920px) !important;
+  overflow-y: auto !important;
+  border-radius: 20px 20px 0 0 !important;
+  border: 1px solid var(--td-hairline) !important;
+  background: var(--td-surface) !important;
+  box-shadow:
+    0 -12px 40px rgba(var(--shadow-rgb), 0.14),
+    0 0 0 1px color-mix(in srgb, #fff 40%, transparent) inset !important;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (min-width: 900px) {
+  .sheet-backdrop,
+  .sheet-overlay {
+    align-items: center !important;
+    padding: 24px !important;
+  }
+
+  .sheet-panel,
+  .sheet-panel.capture-sheet,
+  .task-detail-sheet {
+    border-radius: 16px !important;
+    max-height: min(85dvh, 720px) !important;
+  }
+}
+
+.capture-sheet-paper .capture-text-row input[type='text'],
+.capture-sheet input[type='text'] {
+  min-height: 56px !important;
+  padding: 14px 16px !important;
+  font-size: 1.2rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.025em !important;
+  border-radius: 14px !important;
+  border: 1px solid var(--td-hairline) !important;
+  background: color-mix(in srgb, var(--ink) 3%, var(--td-surface)) !important;
+  color: var(--td-ink) !important;
+  box-shadow: none !important;
+}
+
+.capture-sheet-paper .capture-text-row input[type='text']:focus,
+.capture-sheet input[type='text']:focus {
+  outline: none !important;
+  border-color: var(--td-accent) !important;
+  background: var(--td-surface) !important;
+  box-shadow: var(--focus-ring) !important;
+}
+
+.capture-dock-btn,
+.capture-sheet .btn-primary {
+  min-height: 52px !important;
+  border-radius: 14px !important;
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  background: var(--td-accent) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--td-accent) 28%, transparent) !important;
+}
+
+.task-detail-name,
+.desk-detail-title {
+  font-size: 1.35rem !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.25 !important;
+  color: var(--td-ink) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--td-hairline) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 8px 0 !important;
+}
+
+.task-detail-instrument-metric strong {
+  font-size: 1.75rem !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.04em !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.surface-nav,
+.bottom-nav {
+  z-index: var(--z-nav, 50) !important;
+  background: color-mix(in srgb, var(--td-page) 90%, transparent) !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  border-top: 1px solid var(--td-hairline) !important;
+  box-shadow: none !important;
+}
+
+.surface-nav a,
+.bottom-nav a,
+.surface-nav button,
+.bottom-nav button {
+  min-height: var(--touch, 44px) !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  color: var(--td-ink-3) !important;
+}
+
+.surface-nav a.active,
+.bottom-nav a.active,
+.surface-nav [aria-current='page'],
+.bottom-nav [aria-current='page'] {
+  color: var(--td-accent) !important;
+}
+
+html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .surface-nav {
+  display: none !important;
+}
+
+.gear-dropdown-portal {
+  z-index: var(--z-portal, 400) !important;
 }
