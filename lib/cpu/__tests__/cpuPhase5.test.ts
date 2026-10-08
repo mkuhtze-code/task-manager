@@ -148,6 +148,25 @@ describe('Dokkit CPU Phase 5 routing', () => {
       : '').toContain('gutter');
   });
 
+  it('carries semantic fields into the learning belief graph', () => {
+    const result = processCpuInteraction({
+      ...base,
+      input: {
+        ...base.input,
+        text: 'Call Jordan tomorrow at 4pm to confirm the downpipe measurements for Angela Place',
+      },
+      context: { ...base.context, remainingMinsToday: 480 },
+    });
+
+    const beliefs = result.context.beliefs.beliefs;
+    const values = new Map(beliefs.map((belief) => [belief.key, belief.value]));
+
+    expect(values.get(`request.${result.decision.request.id}.primaryVerb`)).toBe('call');
+    expect(values.get(`request.${result.decision.request.id}.personText`)).toBe('Jordan');
+    expect(values.get(`request.${result.decision.request.id}.purposeText`)).toContain('confirm the downpipe measurements');
+    expect(values.get(`request.${result.decision.request.id}.subjectText`)).toContain('downpipe measurements');
+  });
+
   it('keeps the CPU interface-neutral for voice and Android Auto', () => {
     const voice = processCpuInteraction({
       ...base,
