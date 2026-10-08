@@ -71,7 +71,8 @@ function featureFor(observation: BehaviorObservation): string {
 function semanticFeaturesFor(observation: BehaviorObservation): string[] {
   const request = observation.request;
   const primaryVerb = request?.primaryVerb?.trim().toLowerCase();
-  if (!primaryVerb) return [];
+  const semanticAction = request?.action === 'pickup' ? 'pickup' : primaryVerb;
+  if (!semanticAction) return [];
 
   const prefix =
     observation.event === 'rescheduled'
@@ -82,7 +83,7 @@ function semanticFeaturesFor(observation: BehaviorObservation): string[] {
           ? 'response'
           : 'outcome';
 
-  return [prefix + '.verb.' + primaryVerb];
+  return [prefix + '.verb.' + semanticAction];
 }
 
 function valueFor(observation: BehaviorObservation): string {
