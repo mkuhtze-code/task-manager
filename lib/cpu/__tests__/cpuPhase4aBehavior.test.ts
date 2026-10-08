@@ -43,6 +43,15 @@ const rankingBase = (beliefs: ReturnType<typeof emptyBeliefGraph>) => ({
 });
 
 describe('CPU Phase 4 — behavioural learning', () => {
+  it('learns outcomes by primary verb', () => {
+    const request = { ...requestFor('r1'), primaryVerb: 'call' };
+    const graph = updateBehaviorBeliefs(emptyBeliefGraph(), 'user-1', [
+      observeBehavior({ event: 'completed', request, timestamp: '2026-10-08T08:00:00.000Z' }),
+      observeBehavior({ event: 'completed', request: { ...request, id: 'r2' }, timestamp: '2026-10-09T08:00:00.000Z' }),
+    ]);
+    expect(activeBehaviorBelief(graph, 'outcome.verb.call')?.value).toBe('completed');
+    expect(activeBehaviorBelief(graph, 'outcome.verb.call')?.supportingEvidence).toHaveLength(2);
+  });
   it('records an explicit acceptance without treating engine execution as acceptance', () => {
     const evidence = observeBehavior({
       event: 'accepted',
