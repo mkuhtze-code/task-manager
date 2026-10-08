@@ -440,15 +440,34 @@ function extractLocation(text: string): string | null {
   }
 
   if (!location) {
-    // A communication/purpose clause can contain several prepositions before
-    // the actual place: "email Dave to ask whether ... at 7 King Road".
-    // Recover the final address-shaped phrase before allowing the generic
-    // preposition parser to claim the earlier text.
-    const addressMatches = [...text.matchAll(
-      /(?:\b(?:at|to|for|from)\s+)?((?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq))\.?(?=\s|$)/gi
-    )];
-    if (addressMatches.length) {
-      location = addressMatches[addressMatches.length - 1][1].trim();
+    /*
+     * Communication and purpose clauses often contain several prepositions:
+     *   "email Dave to ask whether ... at 7 King Road"
+     *   "call Jordan ... about Angela Place"
+     *
+     * The place must begin immediately after a semantic location marker.
+     * The previous implementation made that marker optional, allowing the
+     * regex to consume the entire sentence and call the whole sentence a
+     * location. That is a semantic corruption, not merely a formatting bug.
+     */
+    const procurementSource = text.match(
+      /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\s+/i
+    );
+    const explicitLaterPlace = /\b(?:at|to)\s+(?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)\b/i.test(text);
+
+    if (procurementSource?.[1] && !explicitLaterPlace) {
+      // In "get 6 lengths of gutter from the supplier for Smith Road",
+      // the physical stop is the supplier; Smith Road is the job/context.
+      location = procurementSource[1].trim();
+    }
+
+    if (!location) {
+      const addressMatches = [...text.matchAll(
+        /\b(?:at|to|for|from|about)\s+((?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq))\.?(?=\s|$)/gi
+      )];
+      if (addressMatches.length) {
+        location = addressMatches[addressMatches.length - 1][1].trim();
+      }
     }
   }
 
