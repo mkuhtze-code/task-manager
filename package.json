@@ -22,7 +22,7 @@
     "test:phase10": "vitest run lib/engine/__tests__/phase10Discourse.test.ts",
     "test:phase11": "vitest run lib/engine/__tests__/phase11Vocabulary.test.ts",
     "test:phase12": "vitest run lib/engine/__tests__/phase12SemanticGrammar.test.ts",
-    "test:phase12-integration": "vitest run lib/engine/__tests__/verticalSlice.test.ts -t \"understands a concrete drop-off with address, time and today as executable work\""
+    "test:phase12-integration": "vitest run lib/engine/__tests__/verticalSlice.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
