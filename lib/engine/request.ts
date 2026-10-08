@@ -1014,6 +1014,18 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   //   "get gutter from the supplier for Smith Road"
   //     -> location = supplier, relatedJobText = Smith Road
   // Preserve both rather than letting the trailing job replace the source.
+  if (!out.relatedJobText && out.locationText) {
+    const physicalSource = /^(?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office)$/i.test(
+      out.locationText.trim()
+    );
+    const looksLikeSite = /^(?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)(?:\s+in\s+[A-Za-z][A-Za-z' .-]{1,60})?$/i.test(
+      out.locationText.trim()
+    );
+    if (!physicalSource && looksLikeSite) {
+      out.relatedJobText = out.locationText.trim();
+    }
+  }
+
   if (!out.relatedJobText) {
     const procurementJob = text.match(
       /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\s+(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|[.,?]|$)/i
