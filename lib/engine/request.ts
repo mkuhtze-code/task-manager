@@ -637,6 +637,34 @@ function extractLocation(text: string): string | null {
     }
   }
 
+  /*
+   * Final semantic-location arbitration.
+   *
+   * Earlier generic preposition parsing is intentionally permissive, but it
+   * must never outrank a clear physical destination or a final place-shaped
+   * job reference.
+   */
+  const finalMovement = text.match(
+    /\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\s+(?:over\s+)?to\s+(.+?)(?=\s+(?:to|and|for)\s+(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase|drop\s+off|deliver|inspect|check|measure|review|fix|repair|look\s+at|see|meet|discuss|the\s+site\s+meeting|the\s+meeting|a\s+meeting)\b)/i
+  );
+
+  if (finalMovement?.[1]) {
+    location = finalMovement[1].trim();
+  } else {
+    const finalPlaceMatches = [...text.matchAll(
+      /\b(?:at|for|about)\s+((?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}?\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq))(?:\s+in\s+[A-Za-z][A-Za-z' .-]{1,60})?(?=\s|$)/gi
+    )];
+
+    if (finalPlaceMatches.length) {
+      const communication = /\b(?:call|ring|phone|email|text|message|contact|write|ask|tell)\b/i.test(text);
+      const procurement = /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\s+/i.test(text);
+
+      if (communication || !procurement) {
+        location = finalPlaceMatches[finalPlaceMatches.length - 1][1].trim();
+      }
+    }
+  }
+
   if (!location) return null;
 
   // Duration phrases must never leak into location semantics.
