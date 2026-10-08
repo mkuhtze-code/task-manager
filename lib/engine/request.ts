@@ -651,8 +651,15 @@ function extractLocation(text: string): string | null {
   if (finalMovement?.[1]) {
     location = finalMovement[1].trim();
   } else {
+    /*
+     * Only accept a place-shaped phrase beginning at the actual place marker.
+     * The old matcher allowed arbitrary lowercase words after "about"/"for",
+     * so "about the flashing at 20 Queen Road" became
+     * "the flashing at 20 Queen Road". A place name is either an address or
+     * a capitalised road/place name ending in a recognised street suffix.
+     */
     const finalPlaceMatches = [...text.matchAll(
-      /\b(?:at|for|about)\s+((?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}?\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq))(?:\s+in\s+[A-Za-z][A-Za-z' .-]{1,60})?(?=\s|$)/gi
+      /\b(?:at|for|about)\s+((?:\d+\s+)?[A-Z][A-Za-z0-9'’-]*(?:\s+[A-Z][A-Za-z0-9'’-]*){0,5}\s+(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq))(?:\s+in\s+[A-Z][A-Za-z' .-]{1,60})?(?=\s|$)/g
     )];
 
     if (finalPlaceMatches.length) {
