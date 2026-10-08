@@ -202,7 +202,7 @@ describe('Dokkit CPU Phase 5 routing', () => {
 
     expect(activeBehaviorBelief(graph, 'outcome.verb.call')?.value).toBe('completed');
     expect(activeBehaviorBelief(graph, 'outcome.verb.call')?.supportingEvidence).toHaveLength(2);
-    expect(activeBehaviorBelief(graph, 'outcome.verb.pickup')).toBeUndefined();
+    expect(activeBehaviorBelief(graph, 'outcome.verb.pickup')).toBeNull();
 
     // A pickup request must not inherit the learned CALL behaviour.
     const pickupEvidence = observeBehavior({
