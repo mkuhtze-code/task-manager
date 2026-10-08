@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm install pdf-lib@1.17.1 --no-save --prefer-online && next build",
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
