@@ -682,7 +682,22 @@ function extractLocation(text: string): string | null {
         // "get gutter from the supplier for Smith Road" -> supplier.
         location = procurementSource[1].trim();
       } else {
-        location = finalPlaceMatches[finalPlaceMatches.length - 1][1].trim();
+        const finalMatch = finalPlaceMatches[finalPlaceMatches.length - 1];
+        location = finalMatch[1].trim();
+
+        // Preserve a locality attached to an address:
+        // "64 Grace James Road in Pukekohe" must remain one location.
+        if (/^\d+\s/.test(location)) {
+          const afterMatch = text.slice(
+            (finalMatch.index ?? 0) + finalMatch[0].length
+          );
+          const locality = afterMatch.match(
+            /^\s+in\s+([A-Z][A-Za-z' .-]{1,60}?)(?=\s+(?:at|to|from|for|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|[.,?]|$)/
+          );
+          if (locality?.[1]) {
+            location = location + ' in ' + locality[1].trim();
+          }
+        }
       }
     }
   }
