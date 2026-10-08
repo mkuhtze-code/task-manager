@@ -20,7 +20,7 @@ const COMMUNICATION=/^(?:call|ring|phone|email|text|message|contact|ask|tell|con
 const MOVEMENT=/^(?:go|head|drive|travel|walk|return)$/i;
 const PICKUP=/^(?:pick\s*up|pickup|grab|collect|fetch|get|buy|purchase)$/i;
 
-function clean(v:string|null|undefined):string|null{const x=v?.replace(/\s+/g,' ').replace(/^[,;\s]+|[,;\s]+$/g,'').trim();return x||null;}
+function clean(v:string|null|undefined):string|null{const x=v?.replace(/\s+/g,' ').replace(/^[,;\s]+|[,;.?!\s]+$/g,'').trim();return x||null;}
 function verbFrom(text:string):string|null{
  const lead=text.replace(/^\s*(?:um+|uh+|er+|erm+)\b[,:-]?\s*/i,'').replace(/^\s*(?:actually|okay|ok|right|well)\s*[,:-]?\s*/i,'').replace(/^\s*(?:i\s+need\s+to|i\s+have\s+to|i\s+got\s+to)\s+/i,'');
  const m=lead.match(new RegExp('^('+ACTIONS+')\\b','i')); return clean(m?.[1])?.toLowerCase()??null;
