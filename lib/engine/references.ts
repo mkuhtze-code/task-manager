@@ -12,7 +12,7 @@ export type ReferenceResolution =
   | { status: 'unknown'; reason: string };
 
 const REF_RE =
-  /\\b(this|that|it|these|those|the\\s+last\\s+one|the\\s+other\\s+one|the\\s+previous\\s+(?:one|task|job)|the\\s+job|that\\s+job|the\\s+meeting|there|here)\\b/i;
+  /\b(this|that|it|these|those|the\s+last\s+one|the\s+other\s+one|the\s+previous\s+(?:one|task|job)|the\s+job|that\s+job|the\s+meeting|there|here)\b/i;
 
 export function containsReference(text: string): boolean {
   return REF_RE.test(text);
