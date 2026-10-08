@@ -52,9 +52,19 @@ export function resolveReference(
   }
 
   const prefer = opts?.preferTypes ?? prefersType(phrase);
-  let pool = [...(opts?.extraReferents ?? []), ...allReferents(mem)];
+  // De-duplicate by stable entity id. A focused task can also appear in
+  // recentTasks/recentActions; duplicate entries must not manufacture
+  // artificial ambiguity.
+  const seen = new Set<string>();
+  let pool = [...(opts?.extraReferents ?? []), ...allReferents(mem)].filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
 
-  // Focus boost
+  // Focus boost. For ordinary anaphora ("it", "that", "this"), the active
+  // task/request is the strongest discourse antecedent. Do not let a random
+  // high-salience entity outrank the thing the user is currently discussing.
   if (mem.currentFocus.id && mem.currentFocus.label) {
     const focusItem: MemoryItem = {
       id: mem.currentFocus.id,
@@ -79,6 +89,19 @@ export function resolveReference(
   if (prefer) {
     const typed = pool.filter((p) => prefer.includes(p.type));
     if (typed.length > 0) pool = typed;
+  }
+
+  // "there"/"here" are locative anaphora. Prefer the most recent location,
+  // then a job/site carrying a location relationship.
+  if (/^(?:there|here)$/.test(phrase)) {
+    const locs = pool.filter((item) => item.type === 'location' || item.type === 'job');
+    const loc = [...locs].sort((a, b) => {
+      const salienceDelta = b.salience - a.salience;
+      if (salienceDelta !== 0) return salienceDelta;
+      return Date.parse(b.timestamp) - Date.parse(a.timestamp);
+    })[0];
+    if (loc) return { status: 'resolved', item: loc, reason: 'locative_recency' };
+    return { status: 'unknown', reason: 'no_location_antecedent' };
   }
 
   // "the last one" / "previous" → most recent
