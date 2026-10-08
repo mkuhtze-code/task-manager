@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run test:phase5 && npm run test:phase6 && next build",
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
