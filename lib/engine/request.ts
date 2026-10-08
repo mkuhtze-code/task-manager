@@ -425,7 +425,7 @@ function extractLocation(text: string): string | null {
           /\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i,
           ''
         )
-        .replace(/\s*,\s*$/, '')
+         .replace(/[.,]+$/, '')
         .trim();
 
       if (
@@ -436,6 +436,19 @@ function extractLocation(text: string): string | null {
         location = cleanedCandidate;
         break;
       }
+    }
+  }
+
+  if (!location) {
+    // A communication/purpose clause can contain several prepositions before
+    // the actual place: "email Dave to ask whether ... at 7 King Road".
+    // Recover the final address-shaped phrase before allowing the generic
+    // preposition parser to claim the earlier text.
+    const addressMatches = [...text.matchAll(
+      /(?:\b(?:at|to|for|from)\s+)?((?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq))\.?(?=\s|$)/gi
+    )];
+    if (addressMatches.length) {
+      location = addressMatches[addressMatches.length - 1][1].trim();
     }
   }
 
