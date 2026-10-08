@@ -110,7 +110,7 @@ describe('Dokkit CPU Phase 5 routing', () => {
     expect(request.subjectText).toContain('downpipe measurements');
     expect(request.locationText).toBe('Angela Place');
     expect(request.dateHint).toBe('tomorrow');
-    expect(request.timeHint).toBe('4pm');
+    expect(request.timeHint).toBe('16:00');
     expect(request.relatedJobText).toBe('Angela Place');
 
     expect(result.decision.recommendedAction?.kind).toBe('create_task');
