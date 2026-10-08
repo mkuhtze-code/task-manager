@@ -135,23 +135,31 @@ function StrengthRing({
 /* ── Dim bars (sample / effect / consistency) ── */
 function DimBars({ visual }: { visual: PatternVisual }) {
   const items: { key: string; level: Confidence; label: string }[] = [
-    { key: 'n', level: visual.dims.sampleStrength, label: 'n' },
-    { key: 'fx', level: visual.dims.effectStrength, label: 'fx' },
-    { key: 'c', level: visual.dims.consistencyStrength, label: 'c' },
+    { key: 'n', level: visual.dims.sampleStrength, label: 'Size' },
+    { key: 'fx', level: visual.dims.effectStrength, label: 'Signal' },
+    { key: 'c', level: visual.dims.consistencyStrength, label: 'Steady' },
   ];
   return (
-    <div className="pk-dims" aria-label="Evidence dimensions">
-      {items.map((it) => (
-        <div key={it.key} className="pk-dim">
-          <div className="pk-dim-track">
-            <div
-              className={`pk-dim-fill is-${it.level}`}
-              style={{ height: `${confScore(it.level) * 100}%` }}
-            />
+    <div className="pk-dims" aria-label="How strong this evidence is: samples, signal strength, steadiness">
+      {items.map((it) => {
+        const tip =
+          it.key === 'n'
+            ? 'Size — how many times this showed up'
+            : it.key === 'fx'
+              ? 'Signal — how strong the difference is'
+              : 'Steady — how consistent it stays';
+        return (
+          <div key={it.key} className="pk-dim" title={tip}>
+            <div className="pk-dim-track">
+              <div
+                className={`pk-dim-fill is-${it.level}`}
+                style={{ height: `${confScore(it.level) * 100}%` }}
+              />
+            </div>
+            <span className="pk-dim-lbl">{it.label}</span>
           </div>
-          <span className="pk-dim-lbl">{it.label}</span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -283,7 +291,7 @@ function PatternCardView({
       <button type="button" className="pk-card-hit" onClick={onToggle} aria-expanded={expanded}>
         <div className="pk-card-left">
           <div className="pk-ring-wrap">
-            <StrengthRing value={strength} color={color} />
+            <StrengthRing value={strength} size={56} color={color} />
             <span className="pk-type-icon">{icon}</span>
           </div>
           <DimBars visual={v} />
@@ -299,7 +307,9 @@ function PatternCardView({
             {card.sampleSize > 0 ? (
               <span className="pk-metric">
                 <span className="pk-metric-num">{card.sampleSize}</span>
-                <span className="pk-metric-unit">n</span>
+                <span className="pk-metric-unit">
+                  {card.sampleSize === 1 ? 'time' : 'times'}
+                </span>
               </span>
             ) : null}
             {card.medianMins != null && card.medianMins > 0 ? (
@@ -445,7 +455,7 @@ function ModelHealth({ model }: { model: ReturnType<typeof buildPatternSurfaceMo
         <div className="pk-health-item">
           <StrengthRing value={estPct || 0.05} size={52} color="var(--pk-est)" />
           <span className="pk-health-num">{model.modelStatus.establishedCount}</span>
-          <span className="pk-health-lbl">solid</span>
+          <span className="pk-health-lbl">Trusted</span>
         </div>
         <div className="pk-health-item">
           <StrengthRing
@@ -454,7 +464,7 @@ function ModelHealth({ model }: { model: ReturnType<typeof buildPatternSurfaceMo
             color="var(--pk-time)"
           />
           <span className="pk-health-num">{model.modelStatus.emergingCount}</span>
-          <span className="pk-health-lbl">rising</span>
+          <span className="pk-health-lbl">Learning</span>
         </div>
         <div className="pk-health-item">
           <StrengthRing
@@ -463,7 +473,7 @@ function ModelHealth({ model }: { model: ReturnType<typeof buildPatternSurfaceMo
             color="var(--pk-cluster)"
           />
           <span className="pk-health-num">{model.modelStatus.completedTasks}</span>
-          <span className="pk-health-lbl">done</span>
+          <span className="pk-health-lbl">Done</span>
         </div>
       </div>
     </div>
@@ -671,14 +681,14 @@ export default function Analytics() {
                 className={evidenceScope === 'all' ? 'pk-scope-btn active' : 'pk-scope-btn'}
                 onClick={() => setEvidenceScope('all')}
               >
-                All
+                All time
               </button>
               <button
                 type="button"
                 className={evidenceScope === 'recent' ? 'pk-scope-btn active' : 'pk-scope-btn'}
                 onClick={() => setEvidenceScope('recent')}
               >
-                60d
+                60 days
               </button>
             </div>
             <GearMenu userId={session?.user.id ?? null} />
@@ -691,17 +701,17 @@ export default function Analytics() {
           <div className="pk-instrument" aria-label="Pattern model">
             <div className="pk-inst-metric is-accent">
               <strong className="mono">{model.modelStatus.establishedCount}</strong>
-              <span>established in the model</span>
+              <span>patterns Dokkit trusts</span>
             </div>
             <div className="pk-inst-metric">
               <strong className="mono">{model.modelStatus.emergingCount}</strong>
-              <span>still taking shape</span>
+              <span>still learning from you</span>
             </div>
             <div className="pk-inst-metric">
               <strong className="mono">{model.modelStatus.completedTasks}</strong>
               <span>
-                completed tasks
-                {evidenceScope === 'recent' ? ' · last 60d' : ' · all time'}
+                tasks completed
+                {evidenceScope === 'recent' ? ' · last 60 days' : ' · all time'}
               </span>
             </div>
           </div>
@@ -734,11 +744,11 @@ export default function Analytics() {
               <div className="pk-engine-step">
                 <div className="pk-engine-step-num">03 Decide</div>
                 <strong>
-                  {model.modelStatus.establishedCount} strong ·{' '}
-                  {model.modelStatus.emergingCount} rising
+                  {model.modelStatus.establishedCount} trusted ·{' '}
+                  {model.modelStatus.emergingCount} learning
                 </strong>
                 <span>
-                  Only well-backed patterns drive estimates, fit, and capture
+                  Only trusted patterns change estimates, fit, and capture
                   suggestions.
                 </span>
               </div>
@@ -783,7 +793,10 @@ export default function Analytics() {
               <section className="pk-section">
                 <div className="pk-sec-head">
                   <span className="pk-sec-dot solid" />
-                  <h2 className="pk-sec-title">Established</h2>
+                  <div className="pk-sec-titles">
+                    <h2 className="pk-sec-title">Trusted</h2>
+                    <p className="pk-sec-sub">Dokkit uses these in Today, estimates, and capture</p>
+                  </div>
                   <span className="pk-sec-count">{model.established.length}</span>
                 </div>
                 <div className="pk-card-list">
@@ -803,7 +816,10 @@ export default function Analytics() {
               <section className="pk-section">
                 <div className="pk-sec-head">
                   <span className="pk-sec-dot rising" />
-                  <h2 className="pk-sec-title">Emerging</h2>
+                  <div className="pk-sec-titles">
+                    <h2 className="pk-sec-title">Still learning</h2>
+                    <p className="pk-sec-sub">Seen a few times — not relied on yet</p>
+                  </div>
                   <span className="pk-sec-count">{model.emerging.length}</span>
                 </div>
                 <div className="pk-card-list">
@@ -823,7 +839,10 @@ export default function Analytics() {
               <section className="pk-section">
                 <div className="pk-sec-head">
                   <span className="pk-sec-dot cluster" />
-                  <h2 className="pk-sec-title">Repeats</h2>
+                  <div className="pk-sec-titles">
+                    <h2 className="pk-sec-title">Work that repeats</h2>
+                    <p className="pk-sec-sub">Similar tasks that show up again and again</p>
+                  </div>
                   <span className="pk-sec-count">{model.recurringWork.length}</span>
                 </div>
                 <ul className="pk-rec-list">
