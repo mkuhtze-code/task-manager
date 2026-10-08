@@ -128,7 +128,10 @@ export function classifyOutcomeChannel(
     };
   }
 
-  if (evidence === 'contaminated' || interruption > 0) {
+  // An interruption contaminates elapsed time, but it does not contaminate
+  // explicitly measured active minutes. A timer-derived active measurement is
+  // still valid training evidence when the episode records it directly.
+  if (evidence === 'contaminated' || (interruption > 0 && evidence !== 'active_measured')) {
     reasons.push(
       evidence === 'contaminated'
         ? 'durationEvidence=contaminated'
@@ -140,6 +143,9 @@ export function classifyOutcomeChannel(
       logOutcomeKind: 'done',
       reasons,
     };
+  }
+  if (interruption > 0 && evidence === 'active_measured') {
+    reasons.push(`interruptionMinutes=${interruption}; active minutes measured`);
   }
 
   if (waiting > 0 && (input.measuredMins == null || input.measuredMins <= 0)) {
