@@ -17,6 +17,7 @@ import type {
 } from './types';
 import { interpretRequestUtterance } from './request';
 import { resolveReference, containsReference, extractReferencePhrase } from './references';
+import { parseSemanticGrammar } from './semanticGrammar';
 
 export type SemanticSpeechAct =
   | 'request'
@@ -57,6 +58,8 @@ export type SemanticInterpretation = {
   confidence: Confidence;
   reference: SemanticReference | null;
   evidence: string[];
+  /** Phase 12 explicit role graph extracted by deterministic grammar. */
+  grammar: ReturnType<typeof parseSemanticGrammar>;
 };
 
 export type SemanticInterpretationContext = {
@@ -115,6 +118,7 @@ export function interpretSemanticInput(
 ): SemanticInterpretation {
   const normalizedText = rawText.replace(/\s+/g, ' ').trim();
   const parsed = interpretRequestUtterance(normalizedText);
+  const grammar = parseSemanticGrammar(normalizedText);
 
   let reference: SemanticReference | null = null;
 
@@ -225,5 +229,6 @@ export function interpretSemanticInput(
     confidence: confidenceFor(parsed, reference),
     reference,
     evidence,
+    grammar,
   };
 }
