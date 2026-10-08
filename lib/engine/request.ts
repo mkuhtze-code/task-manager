@@ -356,6 +356,45 @@ function extractLocation(text: string): string | null {
 
   let location: string | null = afterAction?.[1]?.trim() ?? null;
 
+  /*
+   * Repair the broad after-action capture before it becomes authoritative.
+   * For example:
+   *   "Inspect the flashing at 12 Queen Street"
+   * can otherwise capture the whole sentence because the action regex is
+   * intentionally permissive about the object. An explicit place-shaped
+   * phrase is stronger evidence than the broad action capture.
+   *
+   * Procurement is the exception:
+   *   "Get gutter from the supplier for Smith Road"
+   * has a physical source ("the supplier") and a trailing job/location
+   * relationship ("Smith Road"). The physical source wins.
+   */
+  const procurementSource = text.match(
+    /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\s+/i
+  );
+
+  const explicitPlaceMatches = [...text.matchAll(
+    /\b(?:at|to|for|about|from)\s+((?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq))\.?(?=\s|$)/gi
+  )];
+
+  if (procurementSource?.[1]) {
+    const hasLaterExplicitPlace = explicitPlaceMatches.some((match) => {
+      const matched = match[0] ?? '';
+      return /\b(?:at|to)\s+/i.test(matched);
+    });
+
+    if (!hasLaterExplicitPlace) {
+      location = procurementSource[1].trim();
+    }
+  }
+
+  if (explicitPlaceMatches.length) {
+    const finalPlace = explicitPlaceMatches[explicitPlaceMatches.length - 1][1]?.trim();
+    if (finalPlace) {
+      location = finalPlace;
+    }
+  }
+
   // When the first source/destination marker is followed by a second
   // location marker, the second marker owns the actual place:
   //   "from Jordan at Angela Place" -> "Angela Place"
