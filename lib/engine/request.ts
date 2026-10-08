@@ -350,61 +350,100 @@ function extractLocation(text: string): string | null {
    *   drop off clips to 64 Grace James Road in Pukekohe at 4pm today
    * Must not treat infinitive "to" in "need to drop off…" as a place marker.
    */
+  const movementDestination = text.match(
+    /\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\s+(?:over\s+)?to\s+(.+?)\s+(?:to|and|for)\s+(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase|drop\s+off|deliver|inspect|check|measure|review|fix|repair|look\s+at|see|meet|discuss|the\s+site\s+meeting)\b/i
+  );
+
+  const movementForPurpose = text.match(
+    /\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\s+(?:over\s+)?to\s+(.+?)\s+for\s+(?:the\s+)?(?:site\s+meeting|meeting|appointment|job|work)\b/i
+  );
+
+  /*
+   * Resolve the physical stop before broad action parsing. This is critical
+   * for:
+   *   "Go to Mitre 10 to pick up screws for Angela Place"
+   * The nested "for Angela Place" is job context; the destination is Mitre 10.
+   */
+  let location: string | null =
+    movementDestination?.[1]?.trim() ??
+    movementForPurpose?.[1]?.trim() ??
+    null;
+
   const afterAction = text.match(
     /\b(?:drop\s+off|dropoff|deliver|take|leave|pick\s*up|pickup|grab|collect|get|fetch)\s+(?:the\s+|a\s+|an\s+)?(?:.+?)\s+(?:at|to|from)\s+(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+\b(?:noon|midnight)\b|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\bbecause\b|\s+\bafter\b|$)/i
   );
 
-  let location: string | null = afterAction?.[1]?.trim() ?? null;
+  if (!location) {
+    location = afterAction?.[1]?.trim() ?? null;
+  }
 
   /*
-   * Repair the broad after-action capture before it becomes authoritative.
-   * For example:
-   *   "Inspect the flashing at 12 Queen Street"
-   * can otherwise capture the whole sentence because the action regex is
-   * intentionally permissive about the object. An explicit place-shaped
-   * phrase is stronger evidence than the broad action capture.
-   *
-   * Procurement is the exception:
-   *   "Get gutter from the supplier for Smith Road"
-   * has a physical source ("the supplier") and a trailing job/location
-   * relationship ("Smith Road"). The physical source wins.
+   * Strong semantic place extraction. Instead of matching a whole sentence
+   * from the first preposition, inspect location markers from right to left
+   * and only accept a remainder that is itself a complete place-shaped phrase.
+   * This prevents:
+   *   "get the measurements for the downpipes for Angela Place"
+   * from becoming "the downpipes for Angela Place".
+   */
+  const placeSuffix =
+    /(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)\b/i;
+
+  const temporalTail =
+    /\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b.*$|\s+(?:noon|midnight)\b.*$|\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i;
+
+  const markerMatches = [...text.matchAll(/\b(at|to|for|about|from)\s+/gi)];
+
+  let semanticPlace: string | null = null;
+  for (let i = markerMatches.length - 1; i >= 0; i -= 1) {
+    const marker = markerMatches[i];
+    const markerName = (marker[1] ?? '').toLowerCase();
+    const start = (marker.index ?? 0) + marker[0].length;
+    let candidate = text.slice(start).replace(temporalTail, '').replace(/[.,?]+$/, '').trim();
+
+    // A place introduced by "at/to" is physical evidence. "for/about" can
+    // also name a job/site, but only when the entire remainder is place-like.
+    const placeMatch = candidate.match(
+      /^(?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)(?:\s+in\s+[A-Za-z][A-Za-z' .-]{1,60})?$/i
+    );
+
+    if (placeMatch?.[0]) {
+      semanticPlace = placeMatch[0].trim();
+      break;
+    }
+
+    // Named places without a road suffix are supported when the marker is
+    // the final semantic marker, e.g. "about Angela Place" is already covered
+    // by the suffix matcher; this branch deliberately stays conservative.
+    if (markerName === 'at' || markerName === 'to') {
+      const simpleNamedPlace = candidate.match(/^[A-Z][A-Za-z0-9' .-]{1,60}$/);
+      if (simpleNamedPlace && candidate.split(/\s+/).length <= 8) {
+        semanticPlace = candidate;
+        break;
+      }
+    }
+  }
+
+  /*
+   * Procurement source is a physical stop, while a trailing "for <job>" is
+   * relationship context:
+   *   "Get gutter from the supplier for Smith Road" -> the supplier
+   * If an explicit later at/to destination exists, that later destination wins.
    */
   const procurementSource = text.match(
     /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\s+/i
   );
+  const hasPhysicalMarkerAfterSource = procurementSource
+    ? /\b(?:at|to)\s+/i.test(text.slice((procurementSource.index ?? 0) + procurementSource[0].length))
+    : false;
 
-  const explicitPlaceMatches = [...text.matchAll(
-    /\b(?:at|to|for|about|from)\s+((?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq))\.?(?=\s|$)/gi
-  )];
-
-  if (procurementSource?.[1]) {
-    const hasLaterExplicitPlace = explicitPlaceMatches.some((match) => {
-      const matched = match[0] ?? '';
-      return /\b(?:at|to)\s+/i.test(matched);
-    });
-
-    if (!hasLaterExplicitPlace) {
-      location = procurementSource[1].trim();
-    }
+  if (procurementSource?.[1] && !hasPhysicalMarkerAfterSource) {
+    location = procurementSource[1].trim();
+  } else if (semanticPlace) {
+    // Explicit semantic place outranks a broad action capture.
+    location = semanticPlace;
   }
 
-  if (explicitPlaceMatches.length) {
-    const finalPlace = explicitPlaceMatches[explicitPlaceMatches.length - 1][1]?.trim();
-    if (finalPlace) {
-      location = finalPlace;
-    }
-  }
-
-  // When the first source/destination marker is followed by a second
-  // location marker, the second marker owns the actual place:
-  //   "from Jordan at Angela Place" -> "Angela Place"
-  //   "from the supplier for Smith Road" -> "Smith Road"
-  //   "to Smith Road on Monday" -> "Smith Road"
   if (location) {
-    const nestedLocation = location.match(/^.*?\s+(?:at|for)\s+(.+?)(?:\s+on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*)?$/i);
-    if (nestedLocation?.[1]) {
-      location = nestedLocation[1].trim();
-    }
     location = location
       .replace(/\s+on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i, '')
       .trim();
