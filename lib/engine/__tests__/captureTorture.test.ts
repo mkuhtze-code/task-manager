@@ -7,6 +7,13 @@ type Case = [string,string,'create_task'|'pickup'|'remind',string|null,string];
 
 const cases: Case[] = [
   [
+    "call-sort-out",
+    "I need to call Jordan to sort out the measurements for Angela's place.",
+    "create_task",
+    "Angela's place",
+    "call jordan to sort out the measurements"
+  ],
+  [
     "call",
     "I need to call Jordan to get the measurements for the downpipes for Angela Place.",
     "create_task",
