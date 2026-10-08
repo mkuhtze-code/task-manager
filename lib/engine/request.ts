@@ -542,6 +542,7 @@ function extractLocation(text: string): string | null {
   // Duration phrases must never leak into location semantics.
   location = stripExplicitDurationPhrase(location);
   location = location
+    .replace(/\s+(?:is|are|was|were)\s+(?:wrong|right|correct|available|ready|late|missing|damaged|fine)\b.*$/i, '')
     .replace(/\s+(?:on|after|before)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i, '')
     .replace(/\s+(?:on|at|to|from)\s*$/i, '')
     .replace(/[?.,]+$/, '')
