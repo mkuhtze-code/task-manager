@@ -344,6 +344,39 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     mem
   );
 
+  // Phase 12 grammar is the authoritative semantic-role refinement for
+  // compound captures. The legacy request parser remains the fallback for
+  // fields the grammar does not claim.
+  const grammar = semantic.grammar;
+  if (grammar.primaryVerb) request.primaryVerb = grammar.primaryVerb;
+  if (grammar.personText) request.personText = grammar.personText;
+  if (grammar.purposeText) request.purposeText = grammar.purposeText;
+  if (grammar.subjectText) request.subjectText = grammar.subjectText;
+  if (grammar.objectText) request.objectText = grammar.objectText;
+  if (grammar.locationText) request.locationText = grammar.locationText;
+
+  if (grammar.relations.length > 0) {
+    request = {
+      ...request,
+      constraints: [
+        ...request.constraints,
+        ...grammar.relations.map((relation) => ({
+          axis: 'object' as const,
+          value: `relation:${relation}`,
+          confidence: 'high' as const,
+          source: 'semantic_grammar',
+        })),
+      ].filter(
+        (constraint, index, list) =>
+          list.findIndex(
+            (candidate) =>
+              candidate.axis === constraint.axis &&
+              candidate.value === constraint.value
+          ) === index
+      ),
+    };
+  }
+
   if (resolvedReference?.status === 'resolved') {
     if (resolvedReference.item.type === 'task') {
       const alreadyBound = request.constraints.some(
