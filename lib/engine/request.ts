@@ -1366,6 +1366,20 @@ export function applyUtteranceToRequest(
 
   base.confidence = score >= 3 ? 'high' : score >= 1 ? 'medium' : 'low';
 
+  // A scheduled executable capture with a concrete object is still a task
+  // even if the verb classifier was inconclusive. This prevents a valid
+  // "drop off ... at 4pm" commitment from falling through to planned-work
+  // suggestion mode merely because no job/entity context was available.
+  if (
+    !isQuestion &&
+    !isNegatedCommitment &&
+    base.action === 'unknown' &&
+    base.objectText &&
+    (base.dateHint || base.timeHint)
+  ) {
+    base.action = 'create_task';
+  }
+
   // Explicit "need/have/got to" language is a user commitment. When it has
   // enough structure to execute, mark it hard so capacity/opportunity logic
   // cannot later downgrade or veto the user's chosen commitment.
