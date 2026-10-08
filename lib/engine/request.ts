@@ -1002,6 +1002,23 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     out.relatedJobText = job[1].trim();
   }
 
+  // A physical procurement source and a trailing "for <place>" clause
+  // carry two different semantics:
+  //   "get gutter from the supplier for Smith Road"
+  //     -> location = supplier, relatedJobText = Smith Road
+  // Preserve both rather than letting the trailing job replace the source.
+  if (!out.relatedJobText) {
+    const procurementJob = text.match(
+      /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\s+(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|[.,?]|$)/i
+    );
+    if (procurementJob?.[2]) {
+      const candidate = procurementJob[2].trim();
+      if (/^(?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)$/i.test(candidate)) {
+        out.relatedJobText = candidate;
+      }
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Meeting
   // ---------------------------------------------------------------------------
