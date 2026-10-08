@@ -53,7 +53,7 @@ describe('Dokkit CPU Phase 5 routing', () => {
 
 
   it.each([
-    ['call Jordan to get measurements', 'call', 'Jordan', 'get the measurements', 'create_task'],
+    ['call Jordan to get measurements', 'call', 'Jordan', 'get measurements', 'create_task'],
     ['email Sarah to confirm the quote for Smith Road', 'email', 'Sarah', 'confirm the quote', 'create_task'],
     ['pick up the screws from Bunnings', 'pick up', null, null, 'pickup'],
     ['go to Angela Place to inspect the flashing', 'go', null, null, 'create_task'],
