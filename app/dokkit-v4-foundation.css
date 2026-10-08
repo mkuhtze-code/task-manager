@@ -1,0 +1,123 @@
+/* ============================================================
+   DOKKIT v4 — FOUNDATION
+   Single visual language for every surface.
+   Load after globals; product surface files load last.
+
+   Principles (aligned with design system doc):
+   - Thinking surface, not admin chrome
+   - One dominant metric; content is the UI
+   - Time-aware, no productivity guilt
+   - Warm paper · steel accent · hairline structure
+   ============================================================ */
+
+:root {
+  /* —— Elevation & z-index scale (never invent new ones) —— */
+  --z-base: 0;
+  --z-sticky: 40;
+  --z-nav: 50;
+  --z-dropdown: 60;
+  --z-sheet: 200;
+  --z-portal: 400;
+  --z-toast: 500;
+  --z-splash: 10000;
+
+  /* —— Motion —— */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 280ms;
+
+  /* —— Density —— */
+  --touch: 44px;
+  --row: 56px;
+  --row-compact: 48px;
+
+  /* —— Semantic aliases used across surfaces —— */
+  --ok: var(--moss, #15803d);
+  --ok-wash: var(--moss-bg, #d5e8dc);
+  --warn: var(--hazard, #b45309);
+  --warn-wash: var(--hazard-bg, #f2e0d3);
+  --wash: color-mix(in srgb, var(--ink) 5%, transparent);
+
+  /* —— Focus ring —— */
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--steel) 28%, transparent);
+}
+
+/* —— Global type & body polish —— */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-optical-sizing: auto;
+  font-feature-settings: "ss01" 1, "cv11" 1;
+  background: var(--paper);
+  color: var(--ink);
+  letter-spacing: -0.011em;
+  line-height: var(--leading-normal, 1.5);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mono for instruments only */
+.mono,
+.tabular,
+[data-mono] {
+  font-family: "JetBrains Mono", "Space Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Shared app shell rhythm */
+.app-shell {
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Quiet scrollbars */
+.app-shell *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.app-shell *::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+  border-radius: 999px;
+}
+.app-shell *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Focus visibility — product grade */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+/* Selection */
+::selection {
+  background: color-mix(in srgb, var(--steel) 28%, transparent);
+  color: var(--ink);
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
