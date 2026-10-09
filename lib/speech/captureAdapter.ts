@@ -243,7 +243,9 @@ export function processCaptureSpeech(input: ProcessCaptureSpeechInput): CaptureS
     outcome,
     uiMode: uiModeFrom(outcome, decision, collection),
     surfaceSummary,
-    rawText: interpretation?.originalTranscript ?? input.text,
+    // Preserve the actual supplied transcript separately from interpreted text.
+    // The latter is for display/understanding and must not replace source utterance.
+    rawText: input.text,
     normalisedText: interpretation?.normalisedText ?? input.text,
     proposals,
     wouldMutateWithoutConfirm: false,
