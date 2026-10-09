@@ -197,6 +197,14 @@ export function resolveContextReference(
     }
   }
 
+  // “Here/there” is a location deixis, not a generic task pronoun. Do not let
+  // a high-scoring current task focus override the grammatical target type.
+  // If no location evidence exists, leave the reference unresolved rather than
+  // silently binding it to an unrelated task.
+  if (/^(?:there|here)$/.test(phrase)) {
+    candidates = candidates.filter((candidate) => candidate.kind === 'location');
+  }
+
   candidates = candidates.slice(0, 5);
   if (!candidates.length) {
     return { status: 'unknown', phrase, target: null, candidates, reason: 'no_context_candidates' };
