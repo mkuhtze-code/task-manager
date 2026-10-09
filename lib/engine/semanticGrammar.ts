@@ -44,8 +44,15 @@ function communication(text:string,v:string):GrammarFrame{
 }
 function movement(text:string,v:string):GrammarFrame{
  const after=text.match(new RegExp('^.*?\\b'+v.replace(/\s+/g,'\\s+')+'\\s+to\\s+(.+)$','i'))?.[1];if(!after)return base(v);
- const boundary=new RegExp('\\s+(?=(?:to|and|for)\\s+(?:'+ACTIONS+'|the\\s+site\\s+meeting|the\\s+meeting|a\\s+meeting)\\b)','i');
- const destination=clean(after.split(boundary)[0]); const rem=destination?clean(after.slice(destination.length)):null;
+ // A temporal aside between the destination and purpose ("go to Bunnings
+ // this morning to grab...") belongs to scheduling, not the place name.
+ const boundary=new RegExp(
+  '\\s+(?:(?:this\\s+(?:morning|afternoon|evening|weekend)|today|tomorrow|next\\s+week|next\\s+month|on\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday))\\s+)?(?=(?:to|and|for)\\s+(?:'+ACTIONS+'|the\\s+site\\s+meeting|the\\s+meeting|a\\s+meeting)\\b)',
+  'i'
+ );
+ const boundaryMatch=boundary.exec(after);
+ const destination=clean(boundaryMatch?after.slice(0,boundaryMatch.index):after);
+ const rem=boundaryMatch?clean(after.slice(boundaryMatch.index+boundaryMatch[0].length)):null;
  const purpose=clean(rem?.match(/^(?:to|and|for)\s+(.+)$/i)?.[1]);
  const nested=purpose?.match(new RegExp('^('+ACTIONS+')\\s+(.+)$','i'));
  const nv=clean(nested?.[1])?.toLowerCase()??null, no=clean(nested?.[2]);
