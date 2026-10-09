@@ -130,7 +130,8 @@ export function textForCaptureField(r: CaptureSpeechResult): string {
     .replace(/\\s+([,;:])/g, '$1')
     .replace(/[,;:]\\s+(?=[,;:])/g, ' ')
     .replace(/\\s+/g, ' ')
-    .trim();  return cleaned || r.normalisedText || r.rawText || r.surfaceSummary;
+    .trim();
+  return cleaned || r.normalisedText || r.rawText || r.surfaceSummary;
 }
 
 export type UseCaptureSpeechOptions = {
