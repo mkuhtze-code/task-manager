@@ -187,7 +187,7 @@ export function expandSpokenNumbers(text: string): { text: string; expansions: {
       if (ml === 'thirty') mins = 30;
       else if (ml === 'fifteen') mins = 15;
       else if (ml.startsWith('forty')) mins = 45;
-      const value = \`${hour}:${String(mins).padStart(2, '0')}\`;
+      const value = `${hour}:${String(mins).padStart(2, '0')}`;
       expansions.push({ raw: match, value });
       return value;
     }
