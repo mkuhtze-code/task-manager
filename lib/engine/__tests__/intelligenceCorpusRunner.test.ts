@@ -63,7 +63,7 @@ type Observation = {
 function loadCorpus(): CorpusRecord[] {
   const directory = join(process.cwd(), 'data/intelligence-corpus/examples');
   const files = readdirSync(directory).filter((file) => file.endsWith('.jsonl')).sort();
-  return files.flatMap((file) =>
+  const allRecords = files.flatMap((file) =>
     readFileSync(join(directory, file), 'utf8')
       .split(/\r?\n/)
       .map((line) => line.trim())
@@ -76,6 +76,8 @@ function loadCorpus(): CorpusRecord[] {
         }
       }),
   );
+  // Normal development runs must never evaluate validation or held-out records.
+  return allRecords.filter((record) => record.split === 'development');
 }
 
 function observedMode(result: CaptureDockResult): ObservedMode {
@@ -169,6 +171,8 @@ describe('Phase E — cross-domain intelligence corpus runner (diagnostic only)'
       evaluatedRecords: observations.length,
       executionPaths: ['typed text', 'fixed transcript through speech adapter then capture'],
       transcriptSource: 'fixed text; acoustic ASR is not measured',
+      splitPolicy: 'development records only; validation and held-out records are excluded from this routine runner',
+      contextPolicy: 'Runs with empty prior context. Context-dependent records are ambiguity probes, not context-resolution coverage yet.',
       annotationStatus: {
         draft: draftCount,
         reviewed: records.filter((record) => record.annotation.review_status === 'reviewed').length,
