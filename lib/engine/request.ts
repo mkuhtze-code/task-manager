@@ -748,11 +748,11 @@ function extractLocation(text: string): string | null {
     // do not promote generic "the supplier" or a trailing job reference into
     // the physical stop.
     const namedTradeSource = text.match(
-      /\\bfrom\\s+((?:[A-Z][A-Za-z0-9&'’-]*)(?:\\s+[A-Z][A-Za-z0-9&'’-]*){0,4})(?=\\s*[.,!?]?\\s*$)/
+      /\bfrom\s+((?:[A-Z][A-Za-z0-9&'’-]*)(?:\s+[A-Z][A-Za-z0-9&'’-]*){0,4})(?=\s*[.,!?]?\s*$)/
     );
     if (
       namedTradeSource?.[1] &&
-      /\\b(?:roofing|builder|builders|building|construction|supplies|hardware|plumbing|electrical|limited|ltd|services|trades?|depot|yard)\\b/i.test(namedTradeSource[1])
+      /\b(?:roofing|builder|builders|building|construction|supplies|hardware|plumbing|electrical|limited|ltd|services|trades?|depot|yard)\b/i.test(namedTradeSource[1])
     ) {
       location = namedTradeSource[1].trim();
     }
