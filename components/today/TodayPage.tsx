@@ -1428,15 +1428,31 @@ export function TodayPage() {
         prev.map((t) => (t.id === engineOverrides.updateTaskId ? { ...t, ...updated } : t))
       );
       if (engineOverrides.engineRequest) {
-        const { bindRequestToTask, saveActiveRequestLocal, pushEngineStateRemote } = await import(
-          '@/lib/engine'
-        );
+        const {
+          bindRequestToTask,
+          bindTaskToWorkingMemory,
+          saveActiveRequestLocal,
+          saveWorkingMemoryLocal,
+          pushEngineStateRemote,
+          loadWorkingMemoryLocal,
+        } = await import('@/lib/engine');
         const bound = bindRequestToTask(engineOverrides.engineRequest, engineOverrides.updateTaskId);
+        const memory = bindTaskToWorkingMemory(
+          engineOverrides.workingMemory ?? loadWorkingMemoryLocal(userId),
+          {
+            taskId: engineOverrides.updateTaskId,
+            taskText: String(updated?.text ?? engineOverrides.text ?? text),
+            locationText: (updated?.location_text ?? locationText) as string | null,
+            jobId: (updated?.job_id ?? jobId) as string | null,
+            requestId: bound.id,
+          }
+        );
         saveActiveRequestLocal(bound, userId);
+        saveWorkingMemoryLocal(memory, userId);
         void pushEngineStateRemote(
           supabase as never,
           userId,
-          engineOverrides.workingMemory ?? (await import('@/lib/engine')).loadWorkingMemoryLocal(userId),
+          memory,
           bound,
           engineOverrides.evidence ?? []
         );
@@ -1483,14 +1499,31 @@ export function TodayPage() {
 
     // Bind engine request → task id so the next utterance can refine this row.
     if (engineOverrides?.engineRequest && data?.id) {
-      const { bindRequestToTask, saveActiveRequestLocal, pushEngineStateRemote, loadWorkingMemoryLocal } =
-        await import('@/lib/engine');
+      const {
+        bindRequestToTask,
+        bindTaskToWorkingMemory,
+        saveActiveRequestLocal,
+        saveWorkingMemoryLocal,
+        pushEngineStateRemote,
+        loadWorkingMemoryLocal,
+      } = await import('@/lib/engine');
       const bound = bindRequestToTask(engineOverrides.engineRequest, data.id);
+      const memory = bindTaskToWorkingMemory(
+        engineOverrides.workingMemory ?? loadWorkingMemoryLocal(userId),
+        {
+          taskId: data.id,
+          taskText: String(data.text ?? engineOverrides.text ?? text),
+          locationText: (data.location_text ?? locationText) as string | null,
+          jobId: (data.job_id ?? jobId) as string | null,
+          requestId: bound.id,
+        }
+      );
       saveActiveRequestLocal(bound, userId);
+      saveWorkingMemoryLocal(memory, userId);
       void pushEngineStateRemote(
         supabase as never,
         userId,
-        engineOverrides.workingMemory ?? loadWorkingMemoryLocal(userId),
+        memory,
         bound,
         engineOverrides.evidence ?? []
       );
