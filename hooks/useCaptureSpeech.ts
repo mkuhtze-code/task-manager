@@ -118,11 +118,11 @@ export function textForCaptureField(r: CaptureSpeechResult): string {
   // altering ordinary commas between list items.
   const source = r.rawText || r.normalisedText || r.surfaceSummary;
   const cleaned = source
-    .replace(/\\b(to|and|but|so|then)[,;:]\\s*(?=(?:um+|uh+|erm+|er+)\\b)\\s*(?:um+|uh+|erm+|er+)\\b[,;:]?\\s*/gi, '$1 ')
-    .replace(/\\b(?:um+|uh+|erm+|er+)\\b[,;:]?/gi, '')
-    .replace(/\\s+([,;:])/g, '$1')
-    .replace(/[,;:]\\s+(?=[,;:])/g, ' ')
-    .replace(/\\s+/g, ' ')
+    .replace(/\b(to|and|but|so|then)[,;:]\s*(?=(?:um+|uh+|erm+|er+)\b)\s*(?:um+|uh+|erm+|er+)\b[,;:]?\s*/gi, '$1 ')
+    .replace(/\b(?:um+|uh+|erm+|er+)\b[,;:]?/gi, '')
+    .replace(/\s+([,;:])/g, '$1')
+    .replace(/[,;:]\s+(?=[,;:])/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
   return cleaned || r.normalisedText || r.surfaceSummary;
 }
