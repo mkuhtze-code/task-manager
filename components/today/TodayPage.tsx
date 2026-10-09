@@ -1450,12 +1450,19 @@ export function TodayPage() {
         saveActiveRequestLocal(bound, userId);
         saveWorkingMemoryLocal(memory, userId);
         void pushEngineStateRemote(
-          supabase as never,
-          userId,
-          memory,
-          bound,
-          engineOverrides.evidence ?? []
-        );
+        supabase as never,
+        userId,
+        memory,
+        bound,
+        engineOverrides.evidence ?? []
+      ).then(({ stateSaved, evidenceSaved }) => {
+        if (!stateSaved) {
+          console.warn('Dokkit engine context remote sync failed; account-scoped local cache remains active.');
+        }
+        if (!evidenceSaved) {
+          console.warn('Dokkit learning evidence remote sync failed; local evidence cache remains active.');
+        }
+      });
       }
       setTaskText('');
       setTaskTime('');
@@ -1526,7 +1533,14 @@ export function TodayPage() {
         memory,
         bound,
         engineOverrides.evidence ?? []
-      );
+      ).then(({ stateSaved, evidenceSaved }) => {
+        if (!stateSaved) {
+          console.warn('Dokkit engine context remote sync failed; account-scoped local cache remains active.');
+        }
+        if (!evidenceSaved) {
+          console.warn('Dokkit learning evidence remote sync failed; local evidence cache remains active.');
+        }
+      });
     }
 
     setTasks((prev) => [...prev, data]);
