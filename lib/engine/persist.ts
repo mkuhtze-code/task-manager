@@ -133,33 +133,45 @@ export async function pushEngineStateRemote(
   mem: WorkingMemorySnapshot,
   activeRequest: EngineRequest | null,
   evidence: LearningEvidence[]
-): Promise<void> {
+): Promise<{ stateSaved: boolean; evidenceSaved: boolean }> {
+  let stateSaved = false;
+  let evidenceSaved = evidence.length === 0;
+
   try {
-    await supabase
-      .from('user_settings')
-      .update({
+    // Upsert makes first-use accounts durable too; update() silently affects
+    // zero rows when user_settings has not been initialized yet.
+    const { error } = await supabase.from('user_settings').upsert(
+      {
+        user_id: userId,
         engine_working_memory: mem,
         engine_active_request: activeRequest,
-      })
-      .eq('user_id', userId);
+      },
+      { onConflict: 'user_id' }
+    );
+    stateSaved = !error;
   } catch {
-    /* column may not exist until migration applied */
+    // Migration/configuration failures must not break capture. The caller can
+    // inspect the result and the account-scoped local cache remains available.
   }
 
-  if (evidence.length === 0) return;
-  try {
-    const rows = evidence.map((e) => ({
-      id: e.id,
-      user_id: userId,
-      kind: e.kind,
-      request_id: e.requestId,
-      payload: e.payload,
-      created_at: e.timestamp,
-    }));
-    await supabase.from('engine_evidence_events').insert(rows);
-  } catch {
-    /* table may not exist yet — local cache still holds events */
+  if (evidence.length > 0) {
+    try {
+      const rows = evidence.map((e) => ({
+        id: e.id,
+        user_id: userId,
+        kind: e.kind,
+        request_id: e.requestId,
+        payload: e.payload,
+        created_at: e.timestamp,
+      }));
+      const { error } = await supabase.from('engine_evidence_events').insert(rows);
+      evidenceSaved = !error;
+    } catch {
+      evidenceSaved = false;
+      // Evidence sync is independent of working-memory snapshot sync.
+    }
   }
+  return { stateSaved, evidenceSaved };
 }
 
 export async function hydrateEngineStateRemote(
@@ -167,25 +179,33 @@ export async function hydrateEngineStateRemote(
   userId: string
 ): Promise<{ memory: WorkingMemorySnapshot; activeRequest: EngineRequest | null }> {
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('user_settings')
       .select('engine_working_memory, engine_active_request')
       .eq('user_id', userId)
       .maybeSingle();
-    if (!data) {
+    if (error || !data) {
       return { memory: loadWorkingMemoryLocal(userId), activeRequest: loadActiveRequestLocal(userId) };
     }
-    const mem =
+
+    // A successful remote row is authoritative, including an explicit null
+    // active request. Do not resurrect a stale local request after it was
+    // cleared remotely.
+    const remoteMemory =
       data.engine_working_memory && typeof data.engine_working_memory === 'object'
         ? (data.engine_working_memory as WorkingMemorySnapshot)
-        : loadWorkingMemoryLocal(userId);
-    const req =
-      data.engine_active_request && typeof data.engine_active_request === 'object'
+        : null;
+    const memory = remoteMemory?.version === 1 ? remoteMemory : emptyWorkingMemory();
+    const remoteRequest =
+      data.engine_active_request &&
+      typeof data.engine_active_request === 'object' &&
+      typeof (data.engine_active_request as EngineRequest).id === 'string'
         ? (data.engine_active_request as EngineRequest)
-        : loadActiveRequestLocal(userId);
-    if (mem?.version === 1) saveWorkingMemoryLocal(mem, userId);
-    if (req) saveActiveRequestLocal(req, userId);
-    return { memory: mem?.version === 1 ? mem : emptyWorkingMemory(), activeRequest: req };
+        : null;
+
+    saveWorkingMemoryLocal(memory, userId);
+    saveActiveRequestLocal(remoteRequest, userId);
+    return { memory, activeRequest: remoteRequest };
   } catch {
     return { memory: loadWorkingMemoryLocal(userId), activeRequest: loadActiveRequestLocal(userId) };
   }
