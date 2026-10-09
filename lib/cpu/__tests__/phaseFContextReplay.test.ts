@@ -104,6 +104,8 @@ describe('Phase F — structured context replay (deterministic, diagnostic)', ()
     const result = processCpuInteraction(replayInput(testCase.followup, testCase, memory));
     expect(result.decision.outcome).toBe('ACT');
     expect(result.decision.action?.kind).toBe('create_task');
-    expect(result.decision.action?.text.toLowerCase()).toContain('call jordan');
+    if (result.decision.action?.kind === 'create_task') {
+      expect(result.decision.action.text.toLowerCase()).toContain('call jordan');
+    }
   });
 });
