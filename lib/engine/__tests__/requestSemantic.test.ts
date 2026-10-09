@@ -96,6 +96,17 @@ describe('material errand semantic extraction', () => {
     expect(parsed.locationText).toBeNull();
   });
 
+  it('treats spoken shorthand "drop the clips at [place]" as a delivery task', () => {
+    const parsed = interpretRequestUtterance(
+      'drop the clips at Grace James Road at 4 today'
+    );
+
+    expect(parsed.action).toBe('create_task');
+    expect(parsed.primaryVerb).toBe('drop off');
+    expect(parsed.objectText).toBe('clips');
+    expect(parsed.locationText?.toLowerCase()).toContain('grace james road');
+  });
+
   it('does not regress ordinary destination extraction', () => {
     const parsed = interpretRequestUtterance(
       'I need to drop off clips to 64 Grace James Road in Pukekohe at 4pm today'
