@@ -3,7 +3,6 @@ import { runCaptureDock } from '@/lib/engine/captureDock';
 import {
   bindRequestToTask,
   bindTaskToWorkingMemory,
-  emptyWorkingMemory,
   hydrateEngineStateRemote,
   loadActiveRequestLocal,
   loadWorkingMemoryLocal,
@@ -12,6 +11,7 @@ import {
   saveWorkingMemoryLocal,
   type EngineSupabase,
 } from '@/lib/engine/persist';
+import { emptyWorkingMemory } from '@/lib/engine/workingMemory';
 import type { EngineRequest, WorkingMemorySnapshot } from '@/lib/engine/types';
 
 class MemoryStorage {
