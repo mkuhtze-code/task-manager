@@ -365,13 +365,13 @@ function extractLocation(text: string): string | null {
    *   "travel to Angela Place for the site meeting" -> Angela Place
    */
   const movementDestination = text.match(
-    /\\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\\s+(?:over\\s+)?to\\s+(.+?)(?=\\s+(?:to|and|for)\\s+(?:grab|pick\\s*up|pickup|collect|get|fetch|buy|purchase|drop\\s+off|deliver|inspect|check|measure|review|fix|repair|look\\s+at|see|meet|discuss|the\\s+site\\s+meeting|the\\s+meeting|a\\s+meeting)\\b)/i
+    /\b(?:go|going|head|heading|drive|driving|travel|travelling|walk|walking|return|returning)\s+(?:over\s+)?to\s+(.+?)(?=\s+(?:to|and|for)\s+(?:grab|pick\s*up|pickup|collect|get|fetch|buy|purchase|drop\s+off|deliver|inspect|check|measure|review|fix|repair|look\s+at|see|meet|discuss|the\s+site\s+meeting|the\s+meeting|a\s+meeting)\b)/i
   );
 
   let location: string | null = movementDestination?.[1]?.trim() ?? null;
 
   const afterAction = text.match(
-    /\\b(?:drop\\s+off|dropoff|deliver|take|leave|pick\\s*up|pickup|grab|collect|get|fetch)\\s+(?:the\\s+|a\\s+|an\\s+)?(?:.+?)\\s+(?:at|to|from)\\s+(.+?)(?=\\s+(?:at\\s+)?\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)\\b|\\s+\\b(?:noon|midnight)\\b|\\s+\\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b|\\s+\\bbecause\\b|\\s+\\bafter\\b|$)/i
+    /\b(?:drop\s+off|dropoff|deliver|take|leave|pick\s*up|pickup|grab|collect|get|fetch)\s+(?:the\s+|a\s+|an\s+)?(?:.+?)\s+(?:at|to|from)\s+(.+?)(?=\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\s+\b(?:noon|midnight)\b|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\bbecause\b|\s+\bafter\b|$)/i
   );
 
   if (!location) {
@@ -387,9 +387,9 @@ function extractLocation(text: string): string | null {
    *   "for Angela Place" -> Angela Place
    */
   const placePattern =
-    /(?:\\d+\\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)(?:\\s+in\\s+[A-Za-z][A-Za-z' .-]{1,60})?/i;
+    /(?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)(?:\s+in\s+[A-Za-z][A-Za-z' .-]{1,60})?/i;
 
-  const markerMatches = [...text.matchAll(/\\b(at|to|for|about|from)\\s+/gi)];
+  const markerMatches = [...text.matchAll(/\b(at|to|for|about|from)\s+/gi)];
   let semanticPlace: string | null = null;
   let semanticMarker: string | null = null;
   for (let i = markerMatches.length - 1; i >= 0; i -= 1) {
@@ -407,7 +407,7 @@ function extractLocation(text: string): string | null {
 
     if (markerName === 'at' || markerName === 'to') {
       const simpleNamedPlace = remainder.match(
-        /^[A-Z][A-Za-z0-9' .-]{1,60}(?=\\s+(?:to|and|for)\\s+|$)/i
+        /^[A-Z][A-Za-z0-9' .-]{1,60}(?=\s+(?:to|and|for)\s+|$)/i
       );
       if (simpleNamedPlace && simpleNamedPlace[0].split(/\\s+/).length <= 8) {
         semanticPlace = simpleNamedPlace[0].trim();
@@ -424,11 +424,11 @@ function extractLocation(text: string): string | null {
    * allow the trailing place relationship to outrank the supplier source.
    */
   const procurementSource = text.match(
-    /\\bfrom\\s+((?:the\\s+)?(?:supplier|bunnings|mitre\\s*10|store|warehouse|office))\\s+for\\s+/i
+    /\bfrom\s+((?:the\s+)?(?:supplier|bunnings|mitre\s*10|store|warehouse|office))\s+for\s+/i
   );
-  const hasCommunicationIntent = /\\b(?:call|ring|phone|email|text|message|contact|write|ask|tell)\\b/i.test(text);
+  const hasCommunicationIntent = /\b(?:call|ring|phone|email|text|message|contact|write|ask|tell)\b/i.test(text);
   const hasPhysicalMarkerAfterSource = procurementSource
-    ? /\\b(?:at|to)\\s+/i.test(text.slice((procurementSource.index ?? 0) + procurementSource[0].length))
+    ? /\b(?:at|to)\s+/i.test(text.slice((procurementSource.index ?? 0) + procurementSource[0].length))
     : false;
 
   if (procurementSource?.[1] && !hasCommunicationIntent && !hasPhysicalMarkerAfterSource) {
@@ -929,6 +929,10 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 
     let objectText = match[1].trim().replace(/[.,]+$/, '').trim();
 
+    // Leading articles are grammatical scaffolding, not the work item:
+    // "check the flashings for Smith Street" -> object "flashings for Smith Street".
+    objectText = objectText.replace(/^(?:the|a|an)\s+/i, '');
+
     // Duration is a semantic modifier, not part of the task object.
     objectText = stripExplicitDurationPhrase(objectText);
 
@@ -1274,12 +1278,15 @@ export function applyUtteranceToRequest(
     (c) => c.axis === 'location' && c.value.startsWith('replace:')
   )?.value.slice('replace:'.length);
 
-  if (quantityCorrection && base.objectText) {
+  if (objectReplacement && base.objectText) {
+    // A full object replacement can also begin with a number. Apply it before
+    // the quantity-only rule so "make it 2 sausages of X" replaces the item,
+    // rather than silently retaining the previous item's noun/material.
+    base.objectText = objectReplacement;
+  } else if (quantityCorrection && base.objectText) {
     base.objectText = replaceLeadingQuantity(base.objectText, quantityCorrection);
   } else if (additionalQuantity && base.objectText) {
     base.objectText = addToLeadingQuantity(base.objectText, additionalQuantity);
-  } else if (objectReplacement && base.objectText) {
-    base.objectText = objectReplacement;
   } else if (partial.objectText) {
     base.objectText = partial.objectText;
   }
