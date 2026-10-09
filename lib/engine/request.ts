@@ -188,7 +188,7 @@ function isPhysicalPickupVerb(verb: string | null): boolean {
 }
 
 function isDropOffVerb(verb: string | null): boolean {
-  return !!verb && /^(?:drop|drop\s+off|dropoff|deliver|take|leave)$/.test(verb);
+  return !!verb && /^(?:drop\s+off|dropoff|deliver|take|leave)$/.test(verb);
 }
 
 function extractCompoundSemantic(text: string, primaryVerb: string | null): {
@@ -1534,6 +1534,7 @@ export function requestTaskText(req: EngineRequest): string {
       .replace(/\bmessage\b/i, 'Message')
       .replace(/\bcontact\b/i, 'Contact')
       .replace(/\bquote\b/i, 'Quote')
+      .replace(/\bdrop\b/i, 'Drop')
       .replace(/\bcheck\b/i, 'Check')
       .replace(/\binspect\b/i, 'Inspect')
       .replace(/\bconfirm\b/i, 'Confirm')
