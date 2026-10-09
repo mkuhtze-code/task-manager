@@ -191,7 +191,7 @@ export function interpretSemanticInput(
   const hasGrammarRelations = grammar.relations.length > 0;
   const grammarOwnsCommunicationSlots =
     grammar.primaryVerb != null &&
-    /^(?:call|ring|phone|email|text|message|contact|ask|tell|chase|follow\\s*up|check)$/i.test(
+    /^(?:call|ring|phone|email|text|message|contact|ask|tell|chase|follow\s*up|check)$/i.test(
       grammar.primaryVerb
     );
 
