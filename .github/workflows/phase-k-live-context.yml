@@ -1,0 +1,39 @@
+name: Phase K Live Supabase Context Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase-k-live-context
+  cancel-in-progress: false
+
+jobs:
+  live-context:
+    name: Authenticated Supabase context and account isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Phase K against live Supabase
+        run: npm run test:context-live
+        env:
+          PHASE_K_LIVE_TESTS: 'true'
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.PHASE_K_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PHASE_K_SUPABASE_ANON_KEY }}
+          PHASE_K_USER_A_EMAIL: ${{ secrets.PHASE_K_USER_A_EMAIL }}
+          PHASE_K_USER_A_PASSWORD: ${{ secrets.PHASE_K_USER_A_PASSWORD }}
+          PHASE_K_USER_B_EMAIL: ${{ secrets.PHASE_K_USER_B_EMAIL }}
+          PHASE_K_USER_B_PASSWORD: ${{ secrets.PHASE_K_USER_B_PASSWORD }}
