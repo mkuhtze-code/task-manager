@@ -79,6 +79,7 @@ export {
   pushEngineStateRemote,
   hydrateEngineStateRemote,
   bindRequestToTask,
+  bindTaskToWorkingMemory,
   taskIdFromRequest,
 } from './persist';
 export type { EngineSupabase } from './persist';

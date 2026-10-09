@@ -4,7 +4,7 @@
  */
 
 import type { EngineRequest, LearningEvidence, WorkingMemorySnapshot } from './types';
-import { emptyWorkingMemory } from './workingMemory';
+import { emptyWorkingMemory, makeMemoryItem, remember, setActiveRequest, setFocus } from './workingMemory';
 
 const WM_KEY = 'dokkit.engine.workingMemory.v1';
 const REQ_KEY = 'dokkit.engine.activeRequest.v1';
@@ -27,9 +27,9 @@ function readJsonKey(key: string): string | null {
 export function loadWorkingMemoryLocal(userId?: string | null): WorkingMemorySnapshot {
   if (typeof localStorage === 'undefined') return emptyWorkingMemory();
   try {
-    const raw =
-      readJsonKey(WM_KEY + userSuffix(userId)) ||
-      (userId ? readJsonKey(WM_KEY) : null);
+    // Authenticated users must never fall back to the legacy unscoped key:
+    // that key may belong to a different account used in the same browser.
+    const raw = readJsonKey(WM_KEY + userSuffix(userId));
     if (!raw) return emptyWorkingMemory();
     const parsed = JSON.parse(raw) as WorkingMemorySnapshot;
     if (parsed?.version !== 1) return emptyWorkingMemory();
@@ -47,7 +47,6 @@ export function saveWorkingMemoryLocal(
   try {
     const payload = JSON.stringify(mem);
     localStorage.setItem(WM_KEY + userSuffix(userId), payload);
-    localStorage.setItem(WM_KEY, payload);
   } catch {
     /* quota */
   }
@@ -56,9 +55,8 @@ export function saveWorkingMemoryLocal(
 export function loadActiveRequestLocal(userId?: string | null): EngineRequest | null {
   if (typeof localStorage === 'undefined') return null;
   try {
-    const raw =
-      readJsonKey(REQ_KEY + userSuffix(userId)) ||
-      (userId ? readJsonKey(REQ_KEY) : null);
+    // Keep active requests isolated by account for the same reason as memory.
+    const raw = readJsonKey(REQ_KEY + userSuffix(userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as EngineRequest;
     if (!parsed?.id) return null;
@@ -77,12 +75,10 @@ export function saveActiveRequestLocal(
     const key = REQ_KEY + userSuffix(userId);
     if (!req) {
       localStorage.removeItem(key);
-      if (userId) localStorage.removeItem(REQ_KEY);
       return;
     }
     const payload = JSON.stringify(req);
     localStorage.setItem(key, payload);
-    localStorage.setItem(REQ_KEY, payload);
   } catch {
     /* quota */
   }
@@ -193,6 +189,49 @@ export async function hydrateEngineStateRemote(
   } catch {
     return { memory: loadWorkingMemoryLocal(userId), activeRequest: loadActiveRequestLocal(userId) };
   }
+}
+
+/**
+ * Bind a successfully persisted task row into short-term working memory.
+ *
+ * The engine cannot know the database task id before the surface commits the
+ * task. Call this only after the task insert/update succeeds, so later turns
+ * resolve references to the real task row rather than a transient request.
+ */
+export function bindTaskToWorkingMemory(
+  memory: WorkingMemorySnapshot,
+  input: {
+    taskId: string;
+    taskText: string;
+    locationText?: string | null;
+    jobId?: string | null;
+    requestId?: string | null;
+  }
+): WorkingMemorySnapshot {
+  const taskText = input.taskText.trim();
+  if (!input.taskId.trim() || !taskText) return memory;
+
+  const relationships: Record<string, string> = {};
+  if (input.locationText?.trim()) relationships.locationText = input.locationText.trim();
+  if (input.jobId?.trim()) relationships.jobId = input.jobId.trim();
+  if (input.requestId?.trim()) relationships.requestId = input.requestId.trim();
+
+  let next = remember(
+    memory,
+    makeMemoryItem({
+      id: input.taskId,
+      type: 'task',
+      label: taskText,
+      source: 'persisted_task',
+      confidence: 'high',
+      salience: 1,
+      relationships,
+      payload: { taskId: input.taskId },
+    })
+  );
+  next = setFocus(next, { kind: 'task', id: input.taskId, label: taskText });
+  if (input.requestId) next = setActiveRequest(next, input.requestId);
+  return next;
 }
 
 /** Bind a created/updated task id onto the active request for multi-turn refine. */
