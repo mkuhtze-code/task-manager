@@ -91,6 +91,12 @@ describe('detectCollectionIntent', () => {
     expect(i).toBeNull();
   });
 
+  it('does not turn a hesitant multi-clause call request into a collection', () => {
+    expect(
+      detectCollectionIntent('I need to, um, call Jordan and get the measurements for Angela Place')
+    ).toBeNull();
+  });
+
   it('detects complete and remove', () => {
     expect(detectCollectionIntent('Got the milk.')?.type).toBe(
       'complete_collection_items'
