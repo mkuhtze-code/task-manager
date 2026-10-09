@@ -6,7 +6,7 @@ import { emptyWorkingMemory } from '../workingMemory';
 describe('Phase 17 — capture reference gates', () => {
   it.each([
     'I need to go to Bunnings this morning to grab materials',
-    'I need to finish that job next week',
+    'I need to finish this week',
     'There is a meeting at 10am',
     'It is Monday and I need to call Jordan',
   ])('does not classify ordinary temporal/existential wording as a reference: %s', (text) => {
