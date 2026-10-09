@@ -171,9 +171,16 @@ function normaliseSpeechLead(text: string): string {
 function extractPrimaryTaskVerb(text: string): string | null {
   const candidate = normaliseSpeechLead(text);
   const match = candidate.match(
-    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|deliver|take|leave|remind|schedule|go|head|drive|travel|walk|return)\b/i
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|drop|deliver|take|leave|remind|schedule|go|head|drive|travel|walk|return)\b/i
   );
-  return match?.[1]?.toLowerCase() ?? null;
+  const verb = match?.[1]?.toLowerCase() ?? null;
+  if (verb === 'drop') {
+    // Spoken shorthand "drop the clips at X" is a delivery request, but
+    // do not promote a bare "drop it" into a physical stop.
+    const afterVerb = candidate.replace(/^\s*(?:(?:i\s+)?(?:need|have|got)\s+to\s+)?drop\s+/i, '');
+    return /\b(?:at|to)\s+\S+/i.test(afterVerb) ? 'drop off' : 'drop';
+  }
+  return verb;
 }
 
 function isPhysicalPickupVerb(verb: string | null): boolean {
@@ -181,7 +188,7 @@ function isPhysicalPickupVerb(verb: string | null): boolean {
 }
 
 function isDropOffVerb(verb: string | null): boolean {
-  return !!verb && /^(?:drop\s+off|dropoff|deliver|take|leave)$/.test(verb);
+  return !!verb && /^(?:drop|drop\s+off|dropoff|deliver|take|leave)$/.test(verb);
 }
 
 function extractCompoundSemantic(text: string, primaryVerb: string | null): {
@@ -928,7 +935,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
      */
     /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)\s*(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
-    /\b(?:drop\s+off|dropoff|deliver|take|leave)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+    /\b(?:drop|drop\s+off|dropoff|deliver|take|leave)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     // Movement / physical collection. This intentionally comes AFTER
     // explicit primary-action parsing so nested "get" does not win.
