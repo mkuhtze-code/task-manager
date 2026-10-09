@@ -109,12 +109,12 @@ describe('Phase 18 — end-to-end Capture → speech → Dock torture suite', ()
   });
 
   it.each(cases)('$category: $input', ({ input, expectedText, expectedLocation }) => {
-    const { line, dock } = captureAndDock(input);
+    const { speech, line, dock } = captureAndDock(input);
 
     // A complete actionable request should not be blocked by a clarification gate.
     expect(
       ['act_create', 'act_update'].includes(dock.kind),
-      `Unexpected Dock result for: ${input}\nCapture field: ${line}\nDock result: ${JSON.stringify(
+      `Unexpected Dock result for: ${input}\nCapture field: ${line}\nRaw transcript: ${speech.rawText}\nNormalised transcript: ${speech.normalisedText}\nCollection intent: ${speech.collection?.intent.type ?? 'none'}\nDock result: ${JSON.stringify(
         dock.kind === 'act_create' || dock.kind === 'act_update'
           ? { kind: dock.kind, text: dock.overrides.text, location: dock.overrides.locationText, message: dock.message }
           : { kind: dock.kind, message: dock.message },
