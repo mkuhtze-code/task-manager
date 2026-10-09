@@ -223,31 +223,45 @@ describe.skipIf(!enabled)('Phase L — live task persistence and context continu
       expect(updated.text).toBe(inserted.text);
       expect(updated.surface_date).toBe(followUp.overrides.surfaceDate);
     } finally {
-      // Cleanup is part of the test contract; failure must be visible.
+      // Attempt every cleanup action even if an earlier one fails, so a task
+      // deletion error cannot prevent restoration of the user's original context.
+      const cleanupErrors: string[] = [];
       if (createdTaskId) {
-        const { error: deleteError } = await client
-          .from('tasks')
-          .delete()
-          .eq('id', createdTaskId)
-          .eq('user_id', user.id);
-        if (deleteError) {
-          throw new Error(`CRITICAL: Phase L could not delete temporary task ${createdTaskId}: ${deleteError.message}`);
+        try {
+          const { error: deleteError } = await client
+            .from('tasks')
+            .delete()
+            .eq('id', createdTaskId)
+            .eq('user_id', user.id);
+          if (deleteError) cleanupErrors.push(`temporary task delete failed (${createdTaskId}): ${deleteError.message}`);
+        } catch (error) {
+          cleanupErrors.push(`temporary task delete threw (${createdTaskId}): ${String(error)}`);
         }
       }
 
       if (originalRow) {
-        const { error: restoreError } = await client
-          .from('user_settings')
-          .update({
-            engine_working_memory: originalRow.engine_working_memory,
-            engine_active_request: originalRow.engine_active_request,
-          })
-          .eq('user_id', user.id);
-        if (restoreError) {
-          throw new Error(`CRITICAL: Phase L could not restore original engine context: ${restoreError.message}`);
+        try {
+          const { error: restoreError } = await client
+            .from('user_settings')
+            .update({
+              engine_working_memory: originalRow.engine_working_memory,
+              engine_active_request: originalRow.engine_active_request,
+            })
+            .eq('user_id', user.id);
+          if (restoreError) cleanupErrors.push(`engine context restore failed: ${restoreError.message}`);
+        } catch (error) {
+          cleanupErrors.push(`engine context restore threw: ${String(error)}`);
         }
       }
-      await client.auth.signOut();
+
+      try {
+        await client.auth.signOut();
+      } catch (error) {
+        cleanupErrors.push(`sign-out failed: ${String(error)}`);
+      }
+      if (cleanupErrors.length > 0) {
+        throw new Error(`CRITICAL: Phase L cleanup incomplete — ${cleanupErrors.join('; ')}`);
+      }
     }
   });
 });
