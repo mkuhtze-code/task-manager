@@ -33,7 +33,7 @@ const TRAILING_ANCHOR_RE =
 
 /** Segments that look like independent tasks, not list items. */
 const TASKISH_SEGMENT =
-  /^(?:call|email|text|message|meet|schedule|book|pay|fix|write|send|remind|check|inspect|review|confirm|ask|tell|chase|follow\s+up)\b/i;
+  /^(?:call|email|text|message|meet|schedule|book|pay|fix|write|send|remind|check|inspect|review|confirm|ask|tell|chase|follow\s+up|go|head|drive|travel|walk|visit|return|deliver|drop\s+off|dropoff|take)\b/i;
 
 /**
  * A duration is a task constraint, not an item in a collection.
