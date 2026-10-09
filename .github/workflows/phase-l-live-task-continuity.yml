@@ -1,0 +1,37 @@
+name: Phase L Live Task Continuity Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase-l-live-task-continuity
+  cancel-in-progress: false
+
+jobs:
+  live-task-continuity:
+    name: Real task insert, remote context recovery, and same-row update
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Phase L against live Supabase
+        run: npm run test:context-live-l
+        env:
+          PHASE_L_LIVE_TESTS: 'true'
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.PHASE_K_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PHASE_K_SUPABASE_ANON_KEY }}
+          PHASE_K_USER_A_EMAIL: ${{ secrets.PHASE_K_USER_A_EMAIL }}
+          PHASE_K_USER_A_PASSWORD: ${{ secrets.PHASE_K_USER_A_PASSWORD }}
