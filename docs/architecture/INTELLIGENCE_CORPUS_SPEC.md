@@ -1,8 +1,10 @@
-# Cross-domain Intelligence Corpus — Skeleton Specification
+# Cross-domain Intelligence Corpus — Specification
 
-**Status:** structural foundation; pilot examples only  
+**Status:** development seed; semantic annotations are still draft  
+**Current size:** 48 examples (10 structural pilot + 38 batch-001 development examples)  
 **Target scale:** 3,000–5,000 reviewed synthetic and privacy-safe regression examples  
-**Governing rule:** [Universal Intelligence Rule](./UNIVERSAL_INTELLIGENCE_RULE.md)
+**Governing rule:** [Universal Intelligence Rule](./UNIVERSAL_INTELLIGENCE_RULE.md)  
+**Annotation gate:** [Corpus Annotation Rubric](./CORPUS_ANNOTATION_RUBRIC.md)
 
 ## Purpose
 
@@ -12,10 +14,11 @@ The corpus is an evaluation and engineering instrument. It is **not** a runtime 
 
 ## Layout
 
-- `data/intelligence-corpus/manifest.json` — corpus version, status, counts, split policy and taxonomy version.
+- `data/intelligence-corpus/manifest.json` — corpus version, status, counts, split policy and taxonomies.
 - `data/intelligence-corpus/schema.json` — machine-readable record contract.
-- `data/intelligence-corpus/examples/pilot.jsonl` — small, hand-authored structural pilot; not a performance claim.
-- `scripts/validate-intelligence-corpus.mjs` — dependency-free structural validation.
+- `data/intelligence-corpus/examples/pilot.jsonl` — 10 illustrative structural fixtures.
+- `data/intelligence-corpus/examples/batch-001-development.jsonl` — 38 cross-domain draft examples.
+- `scripts/validate-intelligence-corpus.mjs` — dependency-free structure, taxonomy, split, and annotation-count validation.
 - `npm run test:corpus-schema` — run validation locally and in CI/build.
 
 JSONL is used so records can be reviewed, diffed, streamed and expanded without one giant JSON array. One line is one complete example.
@@ -29,50 +32,52 @@ Every record separates:
 3. **Capabilities:** reusable skills exercised, such as correction handling, negation, temporal resolution, reference resolution, sequencing, uncertainty or distinguishing questions from actions.
 4. **Expected interpretation:** one or more semantic acts with polarity, modality, arguments and relations/constraints.
 5. **Expected interaction:** act, preserve, answer, clarify or no-op, plus a rationale. Understanding a request is separate from permission to execute it.
-6. **Quality controls:** annotation status, reviewer note, difficulty, split and optional family ID for related paraphrases.
+6. **Quality controls:** annotation status, reviewer note, difficulty, split and family ID for related cases.
 
-The schema should evolve deliberately and be versioned. Do not make fields mandatory merely because one example happens to use them. Use explicit null/omission semantics and preserve ambiguity where the correct result depends on missing context.
+The schema should evolve deliberately and be versioned. Do not make fields mandatory merely because one example happens to use them. Preserve ambiguity where the correct result depends on missing context.
 
 ## Domain and capability policy
 
 - A record may have multiple domain tags and multiple capability tags.
 - Domain tags describe the *subject matter*, not a separate interpretation system.
 - Capability tags describe transferable language/reasoning operations.
-- Include familiar and unfamiliar vocabulary, colloquial language, corrections, disfluencies, questions, reports, hypotheticals, negation, conditions, multi-action inputs, context-dependent references, and cases where preserving the input is correct.
+- Include familiar and unfamiliar vocabulary, corrections, disfluencies, questions, reports, hypotheticals, negation, conditions, multi-action inputs, context-dependent references, and cases where preserving the input is correct.
 - Construction/site work is one domain among many and must not dominate the dataset.
-- Include examples from outside the current corpus authors' familiar domains.
+- Include examples from outside the authors' familiar domains.
 - Avoid near-duplicate templates masquerading as coverage.
 
 ## Split and leakage policy
 
-Use three disjoint splits: `development`, `validation`, and `held_out`. The held-out split is not used to author rules or tune heuristics. Keep paraphrases, template siblings, and same-scenario variants in the same split; `family_id` identifies related cases. Never split siblings across development and held-out sets.
+Use three disjoint splits: `development`, `validation`, and `held_out`. The held-out split is not used to author rules or tune heuristics. Keep paraphrases, template siblings, and same-scenario variants in one split; `family_id` identifies related cases. Never split siblings across development and held-out sets.
 
-The pilot contains development examples only. The manifest must not imply a held-out score until a reviewed held-out set exists. When scaling, use scenario-family separation and lexical/template similarity checks, not random line-level splitting alone.
+Current state: all 48 records are development examples. There are **zero** validation and held-out records. Do not report held-out performance or use corpus scores as release gates until reviewed gold labels and a leakage-controlled held-out set exist.
 
 ## Annotation and review
 
-- Each expected interpretation needs a short rationale grounded in the input.
-- Label the intended interaction separately from semantic content.
-- Use `review_status: "draft"` until reviewed by a human.
+- Each expected interpretation needs a rationale grounded in the input.
+- Label intended interaction separately from semantic content.
+- Keep all current records `draft` until a human review has been performed.
 - Ambiguous examples must state what context is missing; do not invent a single certain answer when multiple interpretations remain valid.
-- Record source provenance. Synthetic examples must be labelled synthetic; real user failures must be privacy-reviewed and de-identified before inclusion.
+- Synthetic examples must be labelled synthetic; real user failures must be privacy-reviewed and de-identified.
 - Avoid personal data, credentials, client-identifying details and confidential business information.
-- Keep generated examples diverse; manually review edge cases and a sample of every generation batch.
-- When multiple outputs are valid, represent alternatives explicitly in the annotation rationale or extend the schema rather than overfitting to one phrasing.
+- Structural validity does not establish semantic-label correctness.
+- Follow the [annotation rubric](./CORPUS_ANNOTATION_RUBRIC.md). Reviewed records must identify a reviewer/team.
 
 ## How it will be used
 
-1. Run the current engine against the corpus and save a versioned baseline.
-2. Classify errors by earliest failing layer: transcript repair, semantic interpretation, reference/context resolution, interaction policy, authority/confirmation or execution.
-3. Fix shared capabilities rather than adding isolated domain-specific phrase rules.
-4. Re-run the unchanged regression set and a separate held-out set.
-5. Report aggregate metrics *and* per-domain/per-capability results. Never allow a strong aggregate score to hide a weak domain or critical failure class.
-6. Add real regressions only with stable expected labels and privacy review.
+1. Establish and retain the existing Phase B 48-case diagnostic baseline separately from this semantic corpus.
+2. Review corpus examples independently; correct policy disagreements before using examples as gold labels.
+3. Build a corpus runner that reports the current engine's outputs without silently changing expected labels or hiding failures.
+4. Classify errors by earliest failing layer: transcript repair, semantic interpretation, reference/context resolution, interaction policy, authority/confirmation or execution.
+5. Fix shared capabilities rather than adding isolated domain-specific phrase rules.
+6. Re-run unchanged development and validation suites; evaluate the frozen held-out set only at planned checkpoints.
+7. Report aggregate metrics and per-domain/per-capability results. Never allow a strong aggregate score to hide a weak domain or critical failure class.
+8. Add observed regressions only with stable expected labels and privacy review.
 
 ## Growth target
 
-The proposed 3,000–5,000 examples are a target, not a quota to fill with low-quality data. Expand in reviewed batches. Prefer 3,000 diverse, well-labelled examples over 5,000 repetitive or weakly annotated examples.
+The proposed 3,000–5,000 examples are a target, not a quota to fill with low-quality data. Expand in reviewed batches. Prefer diverse, well-labelled examples over repetitive or weakly annotated examples.
 
-## Current status
+## Current status and limits
 
-This PR establishes the structure, validation and a tiny illustrative pilot. It does not change runtime interpretation, claim an intelligence improvement, or replace the Phase B 48-case diagnostic benchmark. The next corpus phase should validate the schema with reviewers, add balanced examples, and establish the held-out split before using scores as release gates.
+Phase D adds a 38-example development batch, manifest annotation accounting, stronger taxonomy/split/semantic-shape structural checks, and an annotation rubric. The corpus now has 48 records, but all 48 remain drafts. This phase does not change runtime interpretation, establish semantic performance, or replace the Phase B 48-case diagnostic benchmark. The next step is independent annotation review and a corpus runner; do not create validation/held-out sets by randomly splitting these existing draft records.
