@@ -88,7 +88,7 @@ const HAS_DONE_SIGNAL = new RegExp(
 );
 
 const REMOVE_RE =
-  /^(?:remove|delete|take|cross\s*off)\s+(.+?)(?:\s+off(?:\s+the\s+list)?|\s+from\s+(?:my\s+|the\s+)?(.+?)(?:\s+lists?)?)?$/i;
+  /^(?:remove|delete|cross\s*off|take(?!\s+.+?\s+to\b))\s+(.+?)(?:\s+off(?:\s+the\s+list)?|\s+from\s+(?:my\s+|the\s+)?(.+?)(?:\s+lists?)?)?$/i;
 
 const CLOSE_RE =
   /^(?:that(?:'s| is)\s+(?:it|everything|all)(?:\s+for\s+(.+))?|close\s+(?:my\s+|the\s+)?(.+?)(?:\s+lists?)?|i(?:'m| am)\s+done\s+with\s+(?:that\s+list|(?:my\s+|the\s+)?(.+?)))$/i;
