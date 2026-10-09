@@ -35,7 +35,7 @@
     "test:corpus-runner": "vitest run lib/engine/__tests__/intelligenceCorpusRunner.test.ts",
     "test:context-replay": "vitest run lib/cpu/__tests__/phaseFContextReplay.test.ts",
     "test:context-persistence": "vitest run lib/engine/__tests__/phaseGContextPersistence.test.ts",
-    "test:context-remote": "vitest run lib/engine/__tests__/phaseHRemoteContext.test.ts lib/engine/__tests__/phaseIContextValidation.test.ts"
+    "test:context-remote": "vitest run lib/engine/__tests__/phaseHRemoteContext.test.ts lib/engine/__tests__/phaseIContextValidation.test.ts lib/engine/__tests__/phaseJRemoteCaptureReplay.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
