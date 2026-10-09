@@ -1,17 +1,23 @@
 {
   "corpus_id": "dokkit-cross-domain-intelligence",
-  "corpus_version": "0.1.0",
+  "corpus_version": "0.2.0",
   "schema_version": "1.0.0",
-  "status": "skeleton",
+  "status": "development_seed",
   "target_examples": {
     "minimum": 3000,
     "maximum": 5000
   },
-  "current_example_count": 10,
+  "current_example_count": 48,
   "current_split_counts": {
-    "development": 10,
+    "development": 48,
     "validation": 0,
     "held_out": 0
+  },
+  "annotation_status_counts": {
+    "draft": 48,
+    "reviewed": 0,
+    "needs_revision": 0,
+    "rejected": 0
   },
   "domains": [
     "everyday_personal",
@@ -53,8 +59,10 @@
   "split_policy": "Keep scenario families and close paraphrases in one split. Held-out examples must not be used to author or tune interpretation rules.",
   "provenance_policy": "Label synthetic examples explicitly. Include observed user failures only after privacy review and de-identification.",
   "notes": [
-    "Pilot examples are illustrative schema fixtures, not a performance benchmark.",
+    "The 10 pilot records and 38 batch-001 records are draft development material, not validated ground truth or a performance benchmark.",
+    "No validation or held-out split exists yet; do not use corpus scores as release gates.",
     "Domains are descriptive tags; capabilities are cross-domain.",
-    "Runtime must not use this corpus as a nearest-sentence lookup table."
+    "Runtime must not use this corpus as a nearest-sentence lookup table.",
+    "Annotation-status counts are reported separately from example/split counts."
   ]
 }
