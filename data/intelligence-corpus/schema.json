@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dokkit.space/schemas/intelligence-corpus-record-1.0.0.json",
+  "title": "Dokkit Cross-domain Intelligence Corpus Record",
+  "description": "One synthetic or privacy-reviewed example with domain-neutral semantic labels.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "family_id",
+    "utterance",
+    "locale",
+    "split",
+    "provenance",
+    "domains",
+    "capabilities",
+    "difficulty",
+    "expected",
+    "annotation"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]+$"
+    },
+    "family_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Shared by paraphrases or variants that must remain in one data split."
+    },
+    "utterance": {
+      "type": "string",
+      "minLength": 1
+    },
+    "locale": {
+      "type": "string",
+      "minLength": 2
+    },
+    "split": {
+      "enum": ["development", "validation", "held_out"]
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "source_ref"],
+      "properties": {
+        "kind": {
+          "enum": ["synthetic", "observed_deidentified", "curated_public"]
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Batch, issue, or source reference; never place private user data here."
+        },
+        "generation_method": {
+          "type": "string"
+        }
+      }
+    },
+    "domains": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      }
+    },
+    "difficulty": {
+      "enum": ["basic", "intermediate", "hard", "adversarial"]
+    },
+    "context": {
+      "type": "object",
+      "description": "Optional prior-turn facts required to interpret the utterance. Keep context explicit and minimal.",
+      "additionalProperties": true
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interaction_mode", "semantic_acts", "rationale"],
+      "properties": {
+        "interaction_mode": {
+          "enum": ["act", "preserve", "answer", "clarify", "no_op"]
+        },
+        "semantic_acts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["act_type", "predicate", "polarity", "modality", "arguments"],
+            "properties": {
+              "act_type": {
+                "enum": ["action", "state", "question", "report", "condition", "correction", "preference", "unknown"]
+              },
+              "predicate": {
+                "type": "string",
+                "minLength": 1
+              },
+              "polarity": {
+                "enum": ["positive", "negative", "uncertain"]
+              },
+              "modality": {
+                "enum": ["asserted", "requested", "intended", "possible", "hypothetical", "prohibited", "conditional", "unknown"]
+              },
+              "arguments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["role", "value"],
+                  "properties": {
+                    "role": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "value": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "entity_type": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "constraints": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["type", "value"],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "value": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "relation": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["type", "target"],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "target": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clarification_needed": {
+          "type": "string"
+        },
+        "acceptable_alternatives": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "annotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["review_status", "review_note"],
+      "properties": {
+        "review_status": {
+          "enum": ["draft", "reviewed", "needs_revision", "rejected"]
+        },
+        "review_note": {
+          "type": "string"
+        },
+        "reviewer": {
+          "type": "string",
+          "description": "Optional reviewer handle or team identifier; avoid personal information."
+        }
+      }
+    }
+  }
+}
