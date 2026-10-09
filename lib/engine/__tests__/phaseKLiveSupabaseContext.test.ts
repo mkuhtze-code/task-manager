@@ -11,14 +11,20 @@ import {
 import { emptyWorkingMemory, setFocus } from '@/lib/engine/workingMemory';
 import type { EngineRequest, WorkingMemorySnapshot } from '@/lib/engine/types';
 
-const enabled =
-  process.env.PHASE_K_LIVE_TESTS === 'true' &&
-  Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
-  Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) &&
-  Boolean(process.env.PHASE_K_USER_A_EMAIL) &&
-  Boolean(process.env.PHASE_K_USER_A_PASSWORD) &&
-  Boolean(process.env.PHASE_K_USER_B_EMAIL) &&
-  Boolean(process.env.PHASE_K_USER_B_PASSWORD);
+const requested = process.env.PHASE_K_LIVE_TESTS === 'true';
+const requiredEnv = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'PHASE_K_USER_A_EMAIL',
+  'PHASE_K_USER_A_PASSWORD',
+  'PHASE_K_USER_B_EMAIL',
+  'PHASE_K_USER_B_PASSWORD',
+] as const;
+const missingEnv = requiredEnv.filter((name) => !process.env[name]);
+if (requested && missingEnv.length > 0) {
+  throw new Error(`Phase K live test requested but missing environment variables: ${missingEnv.join(', ')}`);
+}
+const enabled = requested && missingEnv.length === 0;
 
 class MemoryStorage {
   private values = new Map<string, string>();
