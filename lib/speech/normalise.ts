@@ -56,7 +56,7 @@ export function stripFillers(text: string): { text: string; removed: string[] } 
       // ("I need to, um, call"). Keep meaningful punctuation, but not a
       // separator stranded immediately before a deleted hesitation.
       for (let i = out.length - 1; i >= 0; i -= 1) {
-        if (/^\\s+$/.test(out[i])) continue;
+        if (/^\s+$/.test(out[i])) continue;
         if (/[,;:]$/.test(out[i])) out[i] = out[i].replace(/[,;:]$/, '');
         break;
       }
