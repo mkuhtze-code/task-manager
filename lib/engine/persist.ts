@@ -195,7 +195,13 @@ export async function hydrateEngineStateRemote(
       data.engine_working_memory && typeof data.engine_working_memory === 'object'
         ? (data.engine_working_memory as WorkingMemorySnapshot)
         : null;
-    const memory = remoteMemory?.version === 1 ? remoteMemory : emptyWorkingMemory();
+    // A newly migrated settings row has NULL context columns. That means
+    // "not initialized remotely", not "clear existing local context".
+    // Only a valid versioned snapshot makes remote null request state authoritative.
+    if (remoteMemory?.version !== 1) {
+      return { memory: loadWorkingMemoryLocal(userId), activeRequest: loadActiveRequestLocal(userId) };
+    }
+    const memory = remoteMemory;
     const remoteRequest =
       data.engine_active_request &&
       typeof data.engine_active_request === 'object' &&
