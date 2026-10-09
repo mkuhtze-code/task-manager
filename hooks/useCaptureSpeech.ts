@@ -95,23 +95,22 @@ function messageFor(r: CaptureSpeechResult): {
   }
 }
 
-/** Prefer proposal/surface text for the field; never discard raw on result. */
+/**
+ * The capture line is the source of truth for Dock. Proposal summaries and
+ * surface summaries are presentation copy; they can omit role information
+ * (recipient, purpose, destination, date/time) needed by the engine.
+ *
+ * Keep collection mutations on their dedicated path, but otherwise pass the
+ * complete repaired/normalised utterance into the capture field so the engine
+ * can interpret the original request rather than a lossy summary.
+ */
 export function textForCaptureField(r: CaptureSpeechResult): string {
   if (captureIsCollectionMutation(r) && r.collection) {
     const items = r.collection.previewItems;
     if (items.length > 0) return items.join(', ');
-    return r.surfaceSummary || r.normalisedText || r.rawText;
+    return r.normalisedText || r.rawText || r.surfaceSummary;
   }
-  if (r.mustNotCreateTask && (r.uiMode === 'auto_safe_noop' || r.uiMode === 'silent')) {
-    return r.normalisedText || r.rawText;
-  }
-  if (r.proposals.length === 1 && r.proposals[0].summary) {
-    return r.proposals[0].summary;
-  }
-  if (r.surfaceSummary && r.outcome !== 'DO_NOT_CREATE') {
-    return r.surfaceSummary;
-  }
-  return r.normalisedText || r.rawText;
+  return r.normalisedText || r.rawText || r.surfaceSummary;
 }
 
 export type UseCaptureSpeechOptions = {
