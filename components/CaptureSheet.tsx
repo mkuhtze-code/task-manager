@@ -9,6 +9,7 @@
   */
 
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 import type {
 EstimateSuggestion,
 LocationSuggestion,
@@ -43,6 +44,7 @@ type TaskListOps,
 type ListTaskCandidate,
 } from '@/lib/speech/taskListBridge';
 import {
+hydrateEngineStateRemote,
 loadActiveRequestLocal,
 type EngineRequest,
 type LearningEvidence,
@@ -177,16 +179,37 @@ pendingIntent: Exclude<CollectionIntent, { type: 'clarification_required' }> | n
 const [enginePriorRequest, setEnginePriorRequest] = useState<EngineRequest | null>(() =>
 loadActiveRequestLocal(userId)
 );
+const [engineHydratedUserId, setEngineHydratedUserId] = useState<string | null>(null);
+const engineStateReady = !userId || engineHydratedUserId === userId;
 const [engineExplain, setEngineExplain] = useState<string | null>(null);
 const { speechStatus, processSpokenText, clearSpeechStatus, confirmSpeechLearning } =
 useCaptureSpeech({
 userId,
 });
 
-// Sheet unmounts after dock — reload prior request when userId is ready / changes.
+// Hydrate the account-scoped remote snapshot before allowing a capture to
+// execute. This makes cross-session references available on a fresh device
+// and prevents a stale local request from winning over the remote state.
 useEffect(() => {
-const prior = loadActiveRequestLocal(userId);
-if (prior) setEnginePriorRequest(prior);
+let cancelled = false;
+if (!userId) {
+  setEnginePriorRequest(null);
+  setEngineHydratedUserId(null);
+  return () => { cancelled = true; };
+}
+
+setEngineHydratedUserId(null);
+void hydrateEngineStateRemote(supabase as never, userId).then(({ activeRequest }) => {
+  if (cancelled) return;
+  setEnginePriorRequest(activeRequest);
+  setEngineHydratedUserId(userId);
+}).catch(() => {
+  if (cancelled) return;
+  setEnginePriorRequest(loadActiveRequestLocal(userId));
+  setEngineHydratedUserId(userId);
+});
+
+return () => { cancelled = true; };
 }, [userId]);
 
 function buildSpeechContext(): SpeechUnderstandingContext {
@@ -452,6 +475,7 @@ void applyListDock(next);
 }
 
 async function tryDock() {
+if (!engineStateReady) return;
 const speechResult = speechStatus?.result ?? null;
 
 // The capture field is authoritative at Dock time.
@@ -885,6 +909,7 @@ onClick={(e) => e.stopPropagation()}
       type="button"
       className="btn btn-steel capture-dock-btn"
       disabled={
+        !engineStateReady ||
         listBusy ||
         (resolutionBlocksDock && !collectionDockReady) ||
         (!gate.ready && !collectionDockReady)
