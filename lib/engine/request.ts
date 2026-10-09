@@ -387,7 +387,7 @@ function extractLocation(text: string): string | null {
    *   "for Angela Place" -> Angela Place
    */
   const placePattern =
-    /(?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)(?:\s+in\s+[A-Za-z][A-Za-z' .-]{1,60})?/i;
+    /(?:\d+\s+)?[A-Za-z0-9][A-Za-z0-9' .-]{1,80}\b(?:street|st|road|rd|avenue|ave|drive|dr|lane|ln|place|pl|crescent|cres|court|ct|close|cl|terrace|tce|way|boulevard|blvd|highway|hwy|parade|parkway|pkwy|square|sq)\b(?:\s+in\s+[A-Za-z][A-Za-z' .-]{1,60})?/i;
 
   const markerMatches = [...text.matchAll(/\b(at|to|for|about|from)\s+/gi)];
   let semanticPlace: string | null = null;
