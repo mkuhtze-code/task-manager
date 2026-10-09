@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { containsReference, extractReferencePhrase } from '../references';
 import { processInteractionCore } from '../interaction';
 import { emptyWorkingMemory } from '../workingMemory';
+import { runCaptureDock } from '../captureDock';
 
 describe('Phase 17 — capture reference gates', () => {
   it.each([
@@ -50,4 +51,30 @@ describe('Phase 17 — capture reference gates', () => {
     expect(result.action?.kind).toBe('create_task');
     expect(result.action?.text.toLowerCase()).toContain('sika');
   });
+
+  it('keeps the real Capture → CPU → Dock path executable with existing jobs and meetings', () => {
+    const dock = runCaptureDock({
+      line: 'I need to go to Bunnings this morning to grab 2 cartridges of clear Sika MS and 2 sausages of Sika White MS',
+      userId: null,
+      priorRequest: null,
+      jobs: [
+        { id: 'job-a', name: 'Angela Place', locationText: '12 Angela Place' },
+        { id: 'job-b', name: 'Grace James Road', locationText: '64 Grace James Road' },
+      ],
+      captureJobId: null,
+      captureSurfaceDate: '2026-10-09',
+      remainingMinsToday: 240,
+      openTaskCount: 0,
+      inputType: 'speech_transcript',
+      meetings: [{ id: 'meeting-a', text: 'Site meeting at 10am', startAt: '2026-10-09T10:00:00' }],
+    });
+
+    expect(dock.kind).toBe('act_create');
+    if (dock.kind === 'act_create') {
+      expect(dock.overrides.text.toLowerCase()).toContain('2 cartridges of clear sika ms');
+      expect(dock.overrides.text.toLowerCase()).toContain('2 sausages of sika white ms');
+      expect(dock.overrides.locationText).toBe('Bunnings');
+    }
+  });
+
 });
