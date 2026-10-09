@@ -60,6 +60,20 @@
       "expected": { "referenceStatus": "unknown", "targetId": null }
     },
     {
+      "id": "unresolved-there-does-not-fall-back-to-task",
+      "priorTurns": [
+        { "text": "Check the flashing." }
+      ],
+      "memory": {
+        "focus": { "kind": "task", "id": "task-flashing", "label": "Check the flashing." },
+        "tasks": [
+          { "id": "task-flashing", "label": "Check the flashing.", "timestamp": "2026-10-09T08:00:00.000Z", "salience": 0.8 }
+        ]
+      },
+      "followup": "Do it there.",
+      "expected": { "referenceStatus": "unknown", "targetId": null }
+    },
+    {
       "id": "temporal-wording-is-not-a-reference",
       "priorTurns": [],
       "memory": {},
