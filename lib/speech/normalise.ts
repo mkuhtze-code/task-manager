@@ -61,7 +61,7 @@ export function stripFillers(text: string): { text: string; removed: string[] } 
     const re = new RegExp(`(?:^|\\s)(${soft.replace(/\\s+/g, '\\s+')})(?=\\s|$|[,.])`, 'gi');
     result = result.replace(re, (match, g1, offset) => {
       const before = result.slice(0, offset).trim().toLowerCase();
-      if (/\\b(i|we|they|you|he|she|really|don't|do not)\\s*$/.test(before) && soft === 'like') {
+      if (/\b(i|we|they|you|he|she|really|don't|do not)\s*$/.test(before) && soft === 'like') {
         return match;
       }
       removed.push(g1);
@@ -175,6 +175,23 @@ export function collapseRepetitions(text: string): { text: string; collapsed: st
 export function expandSpokenNumbers(text: string): { text: string; expansions: { raw: string; value: string }[] } {
   const expansions: { raw: string; value: string }[] = [];
   let result = text;
+  // Resolve spoken clock phrases before generic number expansion; otherwise
+  // "three thirty" becomes "3 30" and loses its clock structure.
+  result = result.replace(
+    /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(thirty|fifteen|forty[\s-]?five|o'?clock)\b/gi,
+    (match, h, m) => {
+      const hour = NUMBER_WORDS[h.toLowerCase()];
+      if (hour === undefined) return match;
+      let mins = 0;
+      const ml = m.toLowerCase().replace(/[\s'-]/g, '');
+      if (ml === 'thirty') mins = 30;
+      else if (ml === 'fifteen') mins = 15;
+      else if (ml.startsWith('forty')) mins = 45;
+      const value = `${hour}:${String(mins).padStart(2, '0')}`;
+      expansions.push({ raw: match, value });
+      return value;
+    }
+  );
   const compound =
     /\b((?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[\s-](?:one|two|three|four|five|six|seven|eight|nine))?|(?:one|two|three|four|five|six|seven|eight|nine)\s+hundred(?:\s+and)?(?:\s+(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety))?(?:[\s-](?:one|two|three|four|five|six|seven|eight|nine))?|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)\b/gi;
   result = result.replace(compound, (match) => {

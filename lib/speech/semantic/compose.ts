@@ -99,6 +99,16 @@ function classifyClause(span: string, temporals: TemporalReference[]): SemanticA
     kind = 'observation';
     blocksTaskCreation = true;
     evidence.push({ signal: 'observation', source: 'compose' });
+  } else if (
+    /^\s*(?:maybe|perhaps|possibly|i(?:'m| am) wondering|i wonder|i think|not sure|unsure|hmm)\b/i.test(correctedSpan) &&
+    !/\b(?:i\s+need\s+to|i\s+have\s+to|i(?:'ve| have)\s+got\s+to|i\s+must|remind\s+me\s+to|don't\s+forget\s+to)\b/i.test(correctedSpan)
+  ) {
+    // A speculative thought containing an action verb is not itself a task
+    // commitment. Keep it as non-executable unless the speaker explicitly
+    // commits to the action; do not let ACTION_VERB_RE override discourse.
+    kind = 'unknown';
+    blocksTaskCreation = true;
+    evidence.push({ signal: 'thinking_aloud', source: 'compose' });
   } else if (hasActionVerb) {
     kind = 'action';
     const vm = correctedSpan.match(ACTION_VERB_RE);
