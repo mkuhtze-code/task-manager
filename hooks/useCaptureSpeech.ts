@@ -124,7 +124,10 @@ export function textForCaptureField(r: CaptureSpeechResult): string {
   const current = r.normalisedText || '';
   const startsWithAction = /^(?:call|ring|phone|email|text|message|contact|ask|tell|check|inspect|measure|fix|repair|send|write|order|clean|install|remove|replace|drop\\s+off|dropoff|deliver|take|leave|go|head|drive|travel|walk|return|pick\\s+up|pickup|grab|collect|fetch|get|buy|purchase)\\b/i;
   const currentMissingLeadingAction = startsWithAction.test(sourceNormalised) && !startsWithAction.test(current);
-  const cleaned = (currentMissingLeadingAction ? sourceNormalised : current)
+  const currentLostCommitmentLead =
+    /^(?:i\\s+need\\s+to|i\\s+have\\s+to|i\\s+got\\s+to)\\b/i.test(sourceNormalised) &&
+    !/^(?:i\\s+need\\s+to|i\\s+have\\s+to|i\\s+got\\s+to)\\b/i.test(current);
+  const cleaned = (currentMissingLeadingAction || currentLostCommitmentLead ? sourceNormalised : current)
     .replace(/\\b(to|and|but|so|then)[,;:]\\s*(?=(?:um+|uh+|erm+|er+)\\b)\\s*(?:um+|uh+|erm+|er+)\\b[,;:]?\\s*/gi, '$1 ')
     .replace(/\\b(?:um+|uh+|erm+|er+)\\b[,;:]?/gi, '')
     .replace(/\\s+([,;:])/g, '$1')
