@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { emptyWorkingMemory, setFocus } from '@/lib/engine/workingMemory';
 import { isEngineRequest, isWorkingMemorySnapshot } from '@/lib/engine/persistValidation';
 import { hydrateEngineStateRemote, saveActiveRequestLocal, saveWorkingMemoryLocal } from '@/lib/engine/persist';
