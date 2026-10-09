@@ -457,6 +457,22 @@ function extractLocation(text: string): string | null {
   }
 
 
+  /*
+   * A named trade supplier is a physical pickup stop even when its name
+   * does not look like a street address. Prefer this explicit source over
+   * an earlier broad "from ..." parse (e.g. "flashing from ABC Roofing").
+   */
+  const namedTradeSource = text.match(
+    /\bfrom\s+((?:[A-Z][A-Za-z0-9&'’-]*)(?:\s+[A-Z][A-Za-z0-9&'’-]*){0,4})\s*[.,!?]?\s*$/ 
+  );
+  if (
+    namedTradeSource?.[1] &&
+    /\b(?:roofing|builders?|building|construction|supplies|hardware|plumbing|electrical|limited|ltd|services|trades?|depot|yard)\b/i.test(namedTradeSource[1]) &&
+    /\b(?:pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|remind)\b/i.test(text)
+  ) {
+    location = namedTradeSource[1].trim();
+  }
+
   if (location) {
     location = location
       .replace(/\s+on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i, '')
