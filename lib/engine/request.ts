@@ -957,6 +957,22 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     }
   }
 
+  // Some callers consume objectText as the full committed action phrase,
+  // while task rendering uses primaryVerb/person/purpose slots. Preserve the
+  // leading communication verb for explicit "I need to..." commitments so
+  // both contracts retain the action without affecting bare imperatives.
+  const explicitCommunicationCommitment =
+    /^\s*(?:i\s+)?(?:need|have|got)\s+to\s+(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up)\b/i.test(text);
+  if (
+    explicitCommunicationCommitment &&
+    primaryVerb &&
+    /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up)$/.test(primaryVerb) &&
+    out.objectText &&
+    !new RegExp('^' + primaryVerb.replace(/\s+/g, '\\s+') + '\\b', 'i').test(out.objectText)
+  ) {
+    out.objectText = primaryVerb + ' ' + out.objectText;
+  }
+
   // ---------------------------------------------------------------------------
   // Deterministic correction semantics
   // ---------------------------------------------------------------------------
