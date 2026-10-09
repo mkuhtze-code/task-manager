@@ -1,6 +1,6 @@
 # Phase A — Universal Intelligence Dependency and Assumption Audit
 
-**Status:** source audit in progress; initial map recorded  
+**Status:** Phase A source/dependency and hard-coded-assumption audit complete for the core capture/intelligence paths reviewed. Cross-domain performance baseline is the next phase.  
 **Scope:** repository architecture and runtime paths; no production behavior changed by this audit  
 **Governing rule:** [Universal Intelligence Rule](./UNIVERSAL_INTELLIGENCE_RULE.md)
 
@@ -113,7 +113,17 @@ The code correctly states that understanding is not permission to act and has ex
 
 The `lib/thinking` family contains meaningful temporal, spatial, sequencing, duration, lifecycle, calibration, and personal-pattern logic. This should consume validated semantic facts and contribute planning/context evidence. It should not be treated as a substitute for general semantic interpretation, nor should its task model constrain every future use of Dokkit's intelligence.
 
-## 3. Hard-coded assumption inventory
+## 3. Additional call-graph evidence: where interpretations diverge
+
+The engine cycle calls `interpretSemanticInput()` and separately calls `applyUtteranceToRequest()`. The semantic interpreter itself calls `interpretRequestUtterance()` and `parseSemanticGrammar()`. The orchestration layer then applies the legacy request parser result and conditionally overlays grammar fields only when `grammar.relations.length > 0`. This is an explicit dual-source merge, not yet a single canonical interpretation feeding a request adapter. It may be a deliberate compatibility strategy, but it must be covered by semantic-consistency tests and eventually replaced by one source of semantic truth.
+
+The interaction layer also contains early special-case paths before or around the normal engine cycle, including deferred-intention detection and add-to-job pattern handling. These may be valid product policies/capabilities, but the audit must distinguish them from general interpretation and ensure their early returns do not bypass needed semantic evidence or produce inconsistent request state.
+
+The CPU façade invokes `processInteractionCore()` before assembling its universal context and asking specialist brains for contributions. Specialist brains are documented as observers that cannot veto authority or execute mutations. That is a useful boundary to preserve. Separately, `executeCpuDecision()` requires an `ACT` outcome, authority permission, and a recommended action before dispatch. The execution boundary is structurally separated from interpretation, even though upstream interpretation/gating is duplicated.
+
+The core request contract is task-shaped: `RequestAction` contains `remind`, `pickup`, `create_task`, `complete`, `append_list`, `create_list`, `move`, `defer`, `refine`, `query`, and `unknown`; `EngineRequest` is centered on task title/object/location/time/urgency/commitment and related work entities. This is a valid current capability contract, but it must not become the canonical model for every future meaning Dokkit may need to understand. The speech semantic model is richer in act types and relations, but also uses finite `ActKind`, temporal relation, and action-outcome unions. A shared semantic contract should be expressive independently of the current action executor set.
+
+## 4. Hard-coded assumption inventory
 
 | Location | Current assumption observed | Required treatment |
 |---|---|---|
@@ -129,7 +139,7 @@ The `lib/thinking` family contains meaningful temporal, spatial, sequencing, dur
 
 Not every finite list is a defect. A deterministic implementation needs defined capabilities, action schemas, and lexical resources. The defect is allowing such lists to become the boundary of what the system can understand, or duplicating their semantic authority across layers.
 
-## 4. What should be preserved
+## 5. What should be preserved
 
 Do not throw away existing work merely because the architecture needs unification. Preserve and measure:
 
@@ -144,21 +154,21 @@ Do not throw away existing work merely because the architecture needs unificatio
 
 The target is to consolidate semantic authority, not to flatten all specialist capability into a simplistic parser.
 
-## 5. Phase A work plan and exit criteria
+## 6. Phase A completion and next phase
 
-### A1 — Finish the dependency/call-graph map
+### Completed in Phase A — core dependency/call-graph map
 
 Trace from each actual product entry point through interpretation, context/memory, decisions, persistence and execution. Mark each function as one of: input adapter, evidence producer, canonical interpreter, context resolver, policy/authority, planner, capability adapter, persistence, or UI mapping.
 
-**Exit:** no major production capture path remains undocumented; duplicate semantic decision points and conversion boundaries are explicitly identified.
+**Result:** the two primary capture paths, their interpretation seams, context/memory dependencies, action gates, and execution boundaries are mapped above. The map is limited to the core capture/intelligence paths reviewed; a repository-wide import graph and a line-by-line inventory of every regex remain follow-up engineering artifacts.
 
-### A2 — Inventory assumptions and classify them
+### Completed in Phase A — high-impact assumption inventory
 
 Search core and supporting modules for finite verb/intent lists, domain terms, phrase regexes, action unions, confidence defaults, fallbacks, and clarification gates. Classify each as lexical evidence, semantic inference, safety policy, capability constraint, or presentation behavior.
 
-**Exit:** every high-impact rule has an owner, purpose, source of evidence, and migration decision. Domain-specific terms are not mistaken for semantic architecture.
+**Result:** the highest-impact duplicated interpretation rules and finite contracts are identified and classified. Individual rule-by-rule ownership and exhaustive regex inventory should be added as code-level instrumentation/migration proceeds.
 
-### A3 — Establish a cross-domain baseline before refactoring
+### Phase B — establish a cross-domain baseline before refactoring
 
 Create a labeled set across everyday personal requests, communication, education/research, office/client work, creative work, travel/logistics, construction/site work, unfamiliar words, multi-clause instructions, corrections, negation, conditions, reported speech, references, and ambiguous cases.
 
@@ -174,17 +184,17 @@ Measure separately:
 
 **Exit:** baseline results are reproducible and identify failures by layer. Do not set an arbitrary passing threshold before a real baseline exists.
 
-### A4 — Define the canonical semantic contract
+### Later architecture phase — define the canonical semantic contract
 
 Specify a versioned, domain-neutral representation with raw-source provenance, semantic acts/events, participants/entities, predicates/relations, modality/polarity, temporal/spatial constraints, conditions/dependencies, corrections/discourse, confidence/alternatives, and links to context evidence.
 
 **Exit:** speech and typed capture can be compared in one semantic space without silently losing information. This is design work only until backward compatibility and migration are reviewed.
 
-### A5 — Publish a dependency graph and staged migration recommendation
+### Phase A deliverable
 
-**Exit:** Phase A delivers this report plus the detailed call graph and assumption inventory; no broad parser rewrite is made before the baseline and contract are agreed.
+**Result:** this report records the core call graph, high-impact assumption inventory, migration risks, and recommendation. No broad parser rewrite was made. Phase A does not claim the cross-domain baseline or semantic contract is already complete.
 
-## 6. Non-goals for Phase A
+## 7. Non-goals for Phase A
 
 - Do not replace the deterministic approach with an LLM or Whisper.
 - Do not expand construction vocabulary as the main solution.
@@ -193,6 +203,6 @@ Specify a versioned, domain-neutral representation with raw-source provenance, s
 - Do not claim universal performance from a niche test suite.
 - Do not merge or deploy runtime changes as part of this documentation-only audit.
 
-## Initial conclusion
+## 8. Initial conclusion
 
 The first architecture-level change should not be “add more verbs.” It should be to prove where meaning is created, transformed, discarded, or independently re-inferred, then establish one semantic contract and cross-domain benchmark before consolidation. The universal intelligence rule is binding for all subsequent phases.
