@@ -375,7 +375,7 @@ function extractLocation(text: string): string | null {
   );
 
   if (!location) {
-    location = afterAction?.[1]?.trim() ?? null;
+    location = afterAction?.[1]?.trim().replace(/[.,?]+$/, '') ?? null;
   }
 
   /*
@@ -395,7 +395,17 @@ function extractLocation(text: string): string | null {
   for (let i = markerMatches.length - 1; i >= 0; i -= 1) {
     const marker = markerMatches[i];
     const markerName = (marker[1] ?? '').toLowerCase();
-    const start = (marker.index ?? 0) + marker[0].length;
+    const markerIndex = marker.index ?? 0;
+    const beforeMarker = text.slice(Math.max(0, markerIndex - 32), markerIndex);
+    // Infinitive "to" after an obligation/intent verb introduces an action,
+    // not a physical destination ("need to buy ... from Bunnings").
+    if (
+      markerName === 'to' &&
+      /\b(?:need|want|have|got|going|try|ought|able|supposed)\s*$/i.test(beforeMarker)
+    ) {
+      continue;
+    }
+    const start = markerIndex + marker[0].length;
     const remainder = text.slice(start).replace(/[.,?]+$/, '').trim();
     const placeMatch = remainder.match(placePattern);
 
@@ -409,7 +419,7 @@ function extractLocation(text: string): string | null {
       const simpleNamedPlace = remainder.match(
         /^[A-Z][A-Za-z0-9' .-]{1,60}(?=\s+(?:to|and|for)\s+|$)/i
       );
-      if (simpleNamedPlace && simpleNamedPlace[0].split(/\\s+/).length <= 8) {
+      if (simpleNamedPlace && simpleNamedPlace[0].split(/\s+/).length <= 8) {
         semanticPlace = simpleNamedPlace[0].trim();
         semanticMarker = markerName;
         break;
