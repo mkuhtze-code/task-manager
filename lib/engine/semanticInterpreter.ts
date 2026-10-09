@@ -191,8 +191,12 @@ export function interpretSemanticInput(
   const hasGrammarRelations = grammar.relations.length > 0;
   const grammarOwnsCommunicationSlots =
     grammar.primaryVerb != null &&
-    /^(?:call|ring|phone|email|text|message|contact|ask|tell|chase|follow\s*up|check)$/i.test(
+    /^(?:call|ring|phone|email|text|message|contact|ask|tell|chase|follow\s*up)$/i.test(
       grammar.primaryVerb
+    );
+  const temporalCheckWithoutRecipient =
+    /\bcheck\s+on\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(
+      normalizedText
     );
 
   // Keep the semantic interpretation contract aligned with the structured
@@ -201,7 +205,7 @@ export function interpretSemanticInput(
   const primaryVerb = grammar.primaryVerb ?? parsed.primaryVerb ?? null;
   const personText = hasGrammarRelations
     ? grammar.personText ?? null
-    : grammarOwnsCommunicationSlots
+    : grammarOwnsCommunicationSlots || temporalCheckWithoutRecipient
       ? null
       : parsed.personText ?? null;
   const purposeText = hasGrammarRelations
