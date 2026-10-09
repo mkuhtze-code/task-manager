@@ -205,10 +205,10 @@ export function processCaptureSpeech(input: ProcessCaptureSpeechInput): CaptureS
     outcome = 'CREATE_MULTIPLE_TASKS';
   }
 
-  // Persistent collection path — prefer normalised text; fall back to raw.
-  const collectionText =
-    interpretation?.normalisedText?.trim() ||
-    input.text.trim();
+  // Collection detection must see the complete source utterance, not a
+  // possibly shortened interpretation summary. Its own deterministic parser
+  // handles raw speech and decides whether this is truly a list operation.
+  const collectionText = input.text.trim();
   const collection = detectCaptureCollection(
     collectionText,
     input.collectionContext ?? null
@@ -243,7 +243,9 @@ export function processCaptureSpeech(input: ProcessCaptureSpeechInput): CaptureS
     outcome,
     uiMode: uiModeFrom(outcome, decision, collection),
     surfaceSummary,
-    rawText: interpretation?.originalTranscript ?? input.text,
+    // Preserve the actual supplied transcript separately from interpreted text.
+    // The latter is for display/understanding and must not replace source utterance.
+    rawText: input.text,
     normalisedText: interpretation?.normalisedText ?? input.text,
     proposals,
     wouldMutateWithoutConfirm: false,

@@ -91,6 +91,12 @@ describe('detectCollectionIntent', () => {
     expect(i).toBeNull();
   });
 
+  it('does not turn a hesitant multi-clause call request into a collection', () => {
+    expect(
+      detectCollectionIntent('I need to, um, call Jordan and get the measurements for Angela Place')
+    ).toBeNull();
+  });
+
   it('detects complete and remove', () => {
     expect(detectCollectionIntent('Got the milk.')?.type).toBe(
       'complete_collection_items'
@@ -98,6 +104,17 @@ describe('detectCollectionIntent', () => {
     expect(detectCollectionIntent('Remove bananas.')?.type).toBe(
       'remove_collection_items'
     );
+    expect(detectCollectionIntent('Take bread off the list')?.type).toBe(
+      'remove_collection_items'
+    );
+  });
+
+  it('does not mistake a delivery using “take … to” for list removal', () => {
+    expect(detectCollectionIntent('Take the materials to Smith Road on Monday')).toBeNull();
+  });
+
+  it('does not turn travel followed by a purchase into a collection', () => {
+    expect(detectCollectionIntent('Head to Mitre 10 and buy ten downpipe clips for Angela Place')).toBeNull();
   });
 });
 

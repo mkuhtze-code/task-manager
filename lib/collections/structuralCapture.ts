@@ -25,7 +25,7 @@ const ACTION_RE =
   /\b(order|buy|get|grab|fetch|collect|source|arrange|organise|organize|bring|take|find|pick\s*up)\b/i;
 
 const LEAD_IN_RE =
-  /^(?:(?:ok|okay|hey|please)[,\s]+)?(?:i\s+)?(?:(?:just\s+)?(?:need\s+to|want\s+to|gotta|got\s+to|have\s+to|must|should)\s+)?/i;
+  /^(?:(?:ok|okay|hey|please)[,\s]+)?(?:i\s+)?(?:(?:just\s+)?(?:need\s+to|want\s+to|gotta|got\s+to|have\s+to|must|should)\s*[,;:]?\s*(?:(?:um+|uh+|erm+|er+)\b[,;:]?\s*)?)?/i;
 
 /** Trailing place/job anchor: "... for Munstead" / "... at Belgium Rd" */
 const TRAILING_ANCHOR_RE =
@@ -33,7 +33,7 @@ const TRAILING_ANCHOR_RE =
 
 /** Segments that look like independent tasks, not list items. */
 const TASKISH_SEGMENT =
-  /^(?:call|email|text|message|meet|schedule|book|pay|fix|write|send|remind|check|inspect|review|confirm|ask|tell|chase|follow\s+up)\b/i;
+  /^(?:call|email|text|message|meet|schedule|book|pay|fix|write|send|remind|check|inspect|review|confirm|ask|tell|chase|follow\s+up|go|head|drive|travel|walk|visit|return|deliver|drop\s+off|dropoff|take)\b/i;
 
 /**
  * A duration is a task constraint, not an item in a collection.

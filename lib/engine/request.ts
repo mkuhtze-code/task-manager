@@ -171,9 +171,16 @@ function normaliseSpeechLead(text: string): string {
 function extractPrimaryTaskVerb(text: string): string | null {
   const candidate = normaliseSpeechLead(text);
   const match = candidate.match(
-    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|deliver|take|leave|remind|schedule|go|head|drive|travel|walk|return)\b/i
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|drop|deliver|take|leave|remind|schedule|go|head|drive|travel|walk|return)\b/i
   );
-  return match?.[1]?.toLowerCase() ?? null;
+  const verb = match?.[1]?.toLowerCase() ?? null;
+  if (verb === 'drop') {
+    // Spoken shorthand "drop the clips at X" is a delivery request, but
+    // do not promote a bare "drop it" into a physical stop.
+    const afterVerb = candidate.replace(/^\s*(?:(?:i\s+)?(?:need|have|got)\s+to\s+)?drop\s+/i, '');
+    return /\b(?:at|to)\s+\S+/i.test(afterVerb) ? 'drop off' : 'drop';
+  }
+  return verb;
 }
 
 function isPhysicalPickupVerb(verb: string | null): boolean {
@@ -450,6 +457,22 @@ function extractLocation(text: string): string | null {
   }
 
 
+  /*
+   * A named trade supplier is a physical pickup stop even when its name
+   * does not look like a street address. Prefer this explicit source over
+   * an earlier broad "from ..." parse (e.g. "flashing from ABC Roofing").
+   */
+  const namedTradeSource = text.match(
+    /\bfrom\s+((?:[A-Z][A-Za-z0-9&'’-]*)(?:\s+[A-Z][A-Za-z0-9&'’-]*){0,4})\s*[.,!?]?\s*$/ 
+  );
+  if (
+    namedTradeSource?.[1] &&
+    /\b(?:roofing|builders?|building|construction|supplies|hardware|plumbing|electrical|limited|ltd|services|trades?|depot|yard)\b/i.test(namedTradeSource[1]) &&
+    /\b(?:pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|remind)\b/i.test(text)
+  ) {
+    location = namedTradeSource[1].trim();
+  }
+
   if (location) {
     location = location
       .replace(/\s+on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$/i, '')
@@ -719,6 +742,22 @@ function extractLocation(text: string): string | null {
     }
   }
 
+  if (!location) {
+    // A named trade supplier can be a real pickup destination even when it
+    // is not an address-shaped street name. Keep this deliberately narrow:
+    // do not promote generic "the supplier" or a trailing job reference into
+    // the physical stop.
+    const namedTradeSource = text.match(
+      /\bfrom\s+((?:[A-Z][A-Za-z0-9&'’-]*)(?:\s+[A-Z][A-Za-z0-9&'’-]*){0,4})(?=\s*[.,!?]?\s*$)/
+    );
+    if (
+      namedTradeSource?.[1] &&
+      /\b(?:roofing|builder|builders|building|construction|supplies|hardware|plumbing|electrical|limited|ltd|services|trades?|depot|yard)\b/i.test(namedTradeSource[1])
+    ) {
+      location = namedTradeSource[1].trim();
+    }
+  }
+
   if (!location) return null;
 
   // Duration phrases must never leak into location semantics.
@@ -910,9 +949,9 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
      * must bind to CALL. Do not let the nested "get" pattern below steal
      * "the measurements" and turn the whole task into a pickup.
      */
-    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)\s*(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)\s*(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
-    /\b(?:drop\s+off|dropoff|deliver|take|leave)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+    /\b(?:drop\s+off|dropoff|drop|deliver|take|leave)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     // Movement / physical collection. This intentionally comes AFTER
     // explicit primary-action parsing so nested "get" does not win.
@@ -925,7 +964,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     /\b(?:i\s+)?(?:need|have|got)\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     // Bare imperative fallback.
-    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
   ];
 
@@ -1510,6 +1549,8 @@ export function requestTaskText(req: EngineRequest): string {
       .replace(/\btext\b/i, 'Text')
       .replace(/\bmessage\b/i, 'Message')
       .replace(/\bcontact\b/i, 'Contact')
+      .replace(/\bquote\b/i, 'Quote')
+      .replace(/\bdrop\b/i, 'Drop')
       .replace(/\bcheck\b/i, 'Check')
       .replace(/\binspect\b/i, 'Inspect')
       .replace(/\bconfirm\b/i, 'Confirm')

@@ -25,6 +25,7 @@ import {
   defaultPersonalCommunicationProfile,
   type PersonalCommunicationProfile,
 } from '@/lib/communication/types';
+import { normaliseSpeech } from '@/lib/speech/normalise';
 
 export type CaptureSpeechStatus = {
   result: CaptureSpeechResult;
@@ -110,7 +111,24 @@ export function textForCaptureField(r: CaptureSpeechResult): string {
     if (items.length > 0) return items.join(', ');
     return r.normalisedText || r.rawText || r.surfaceSummary;
   }
-  return r.normalisedText || r.rawText || r.surfaceSummary;
+
+  // Dock needs the complete repaired utterance, not a lossy semantic summary.
+  // Prefer the pre-normalisation transcript: the normaliser/interpretation path
+  // can currently drop leading delivery verbs or clause context in edge cases.
+  // Remove spoken hesitation fillers and the separator around them without
+  // altering ordinary commas between list items.
+  const source = r.rawText || r.normalisedText || r.surfaceSummary;
+  // Re-normalise the complete source transcript rather than using the interpreted
+  // summary. This preserves leading verbs/context and applies number expansion.
+  const sourceNormalised = normaliseSpeech(source).normalisedText || source;
+  const cleaned = sourceNormalised
+    .replace(/\b(to|and|but|so|then)[,;:]\s*(?=(?:um+|uh+|erm+|er+)\b)\s*(?:um+|uh+|erm+|er+)\b[,;:]?\s*/gi, '$1 ')
+    .replace(/\b(?:um+|uh+|erm+|er+)\b[,;:]?/gi, '')
+    .replace(/\s+([,;:])/g, '$1')
+    .replace(/[,;:]\s+(?=[,;:])/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned || sourceNormalised || source;
 }
 
 export type UseCaptureSpeechOptions = {

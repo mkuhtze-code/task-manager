@@ -602,7 +602,7 @@ export function OnboardingScreen(props: {
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .onboard-card {
           max-width: 420px;
         }

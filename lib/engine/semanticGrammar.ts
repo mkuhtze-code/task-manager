@@ -57,7 +57,7 @@ function movement(text:string,v:string):GrammarFrame{
  const nested=purpose?.match(new RegExp('^('+ACTIONS+')\\s+(.+)$','i'));
  const nv=clean(nested?.[1])?.toLowerCase()??null, no=clean(nested?.[2]);
  const items=nv&&PICKUP.test(nv)&&no?splitItems(no):[];
- const object=items.length?items.map(i=>i.quantity!=null?i.quantity+' '+i.text:i.text).join(' and '):no;
+ const object=items.length?items.map(i=>i.quantity!=null?i.quantity+' '+i.text:i.text).join(' and '):(nv && no && !PICKUP.test(nv)?`${nv} ${no}`:no);
  return{...base(v),purposeText:purpose,subjectText:no,locationText:destination,objectText:object,items,relations:['action→destination',...(purpose?['destination→purpose']:[]),...(no?['purpose→object']:[])]};
 }
 function delivery(text:string,v:string):GrammarFrame{
