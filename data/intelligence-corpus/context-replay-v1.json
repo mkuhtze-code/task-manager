@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "purpose": "Deterministic context-replay fixtures for reference resolution and safe interaction policy.",
+  "policy": "Each case supplies only explicit prior-turn facts. These fixtures test how the engine uses supplied working memory and current context; they do not claim to test persistence, automatic memory extraction, or database retrieval.",
+  "cases": [
+    {
+      "id": "resolve-it-to-current-task",
+      "priorTurns": [
+        { "text": "Check the flashing at Smith Street." }
+      ],
+      "memory": {
+        "focus": { "kind": "task", "id": "task-flashing", "label": "Check the flashing at Smith Street." },
+        "tasks": [
+          { "id": "task-flashing", "label": "Check the flashing at Smith Street.", "timestamp": "2026-10-09T08:00:00.000Z", "salience": 0.8 }
+        ],
+        "locations": [
+          { "id": "location-smith-street", "label": "Smith Street", "timestamp": "2026-10-09T08:00:00.000Z", "salience": 0.8 }
+        ]
+      },
+      "followup": "Move it to Friday.",
+      "expected": { "referenceStatus": "resolved", "targetId": "task-flashing" }
+    },
+    {
+      "id": "resolve-there-to-explicit-location",
+      "priorTurns": [
+        { "text": "The flashing check is at Smith Street." }
+      ],
+      "memory": {
+        "focus": { "kind": "task", "id": "task-flashing", "label": "Check the flashing." },
+        "tasks": [
+          { "id": "task-flashing", "label": "Check the flashing.", "timestamp": "2026-10-09T08:00:00.000Z", "salience": 0.8 }
+        ],
+        "locations": [
+          { "id": "location-smith-street", "label": "Smith Street", "timestamp": "2026-10-09T08:00:00.000Z", "salience": 0.8 }
+        ]
+      },
+      "followup": "Do it there after lunch.",
+      "expected": { "referenceStatus": "resolved", "targetId": "location-smith-street" }
+    },
+    {
+      "id": "ambiguous-job-must-clarify",
+      "priorTurns": [
+        { "text": "There are two open jobs: Smith renovation and Jones renovation." }
+      ],
+      "memory": {},
+      "context": {
+        "jobs": [
+          { "id": "job-smith", "name": "Smith renovation" },
+          { "id": "job-jones", "name": "Jones renovation" }
+        ]
+      },
+      "followup": "Update that job.",
+      "expected": { "referenceStatus": "ambiguous", "targetId": null, "interactionOutcome": "CLARIFY" }
+    },
+    {
+      "id": "missing-referent-must-not-guess",
+      "priorTurns": [],
+      "memory": {},
+      "followup": "Move that to Friday.",
+      "expected": { "referenceStatus": "unknown", "targetId": null }
+    },
+    {
+      "id": "temporal-wording-is-not-a-reference",
+      "priorTurns": [],
+      "memory": {},
+      "followup": "I need to call Jordan on Friday.",
+      "expected": { "referenceStatus": "unknown", "phrase": null }
+    }
+  ]
+}
