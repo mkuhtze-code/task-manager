@@ -55,9 +55,10 @@ export function stripFillers(text: string): { text: string; removed: string[] } 
       // The previous token may contain the comma that introduced this filler
       // ("I need to, um, call"). Keep meaningful punctuation, but not a
       // separator stranded immediately before a deleted hesitation.
-      if (out.length > 0) {
-        const previous = out[out.length - 1];
-        if (/[,;:]$/.test(previous)) out[out.length - 1] = previous.replace(/[,;:]$/, '');
+      for (let i = out.length - 1; i >= 0; i -= 1) {
+        if (/^\\s+$/.test(out[i])) continue;
+        if (/[,;:]$/.test(out[i])) out[i] = out[i].replace(/[,;:]$/, '');
+        break;
       }
       continue;
     }
