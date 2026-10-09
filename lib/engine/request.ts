@@ -171,7 +171,7 @@ function normaliseSpeechLead(text: string): string {
 function extractPrimaryTaskVerb(text: string): string | null {
   const candidate = normaliseSpeechLead(text);
   const match = candidate.match(
-    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|deliver|take|leave|remind|schedule|go|head|drive|travel|walk|return)\b/i
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|deliver|take|leave|remind|schedule|go|head|drive|travel|walk|return)\b/i
   );
   return match?.[1]?.toLowerCase() ?? null;
 }
@@ -910,7 +910,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
      * must bind to CALL. Do not let the nested "get" pattern below steal
      * "the measurements" and turn the whole task into a pickup.
      */
-    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)\s*(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)\s*(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     /\b(?:drop\s+off|dropoff|deliver|take|leave)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
@@ -925,7 +925,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     /\b(?:i\s+)?(?:need|have|got)\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     // Bare imperative fallback.
-    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
   ];
 
@@ -1510,6 +1510,7 @@ export function requestTaskText(req: EngineRequest): string {
       .replace(/\btext\b/i, 'Text')
       .replace(/\bmessage\b/i, 'Message')
       .replace(/\bcontact\b/i, 'Contact')
+      .replace(/\bquote\b/i, 'Quote')
       .replace(/\bcheck\b/i, 'Check')
       .replace(/\binspect\b/i, 'Inspect')
       .replace(/\bconfirm\b/i, 'Confirm')
