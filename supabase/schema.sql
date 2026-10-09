@@ -23,6 +23,9 @@ create table if not exists user_settings (
   work_location_text text,
   work_lat double precision,
   work_lng double precision,
+  -- Deterministic short-term context used to resolve references across captures.
+  engine_working_memory jsonb,
+  engine_active_request jsonb,
   updated_at timestamptz not null default now()
 );
 
