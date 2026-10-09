@@ -1,0 +1,60 @@
+{
+  "corpus_id": "dokkit-cross-domain-intelligence",
+  "corpus_version": "0.1.0",
+  "schema_version": "1.0.0",
+  "status": "skeleton",
+  "target_examples": {
+    "minimum": 3000,
+    "maximum": 5000
+  },
+  "current_example_count": 10,
+  "current_split_counts": {
+    "development": 10,
+    "validation": 0,
+    "held_out": 0
+  },
+  "domains": [
+    "everyday_personal",
+    "home_and_family",
+    "communication",
+    "education_research",
+    "office_client",
+    "creative",
+    "travel_logistics",
+    "construction_site",
+    "healthcare_administration",
+    "finance_administration",
+    "technology",
+    "customer_service",
+    "unfamiliar_specialist",
+    "cross_domain",
+    "non_action_boundary"
+  ],
+  "capabilities": [
+    "intent_classification",
+    "action_composition",
+    "entity_and_argument_binding",
+    "temporal_resolution",
+    "location_resolution",
+    "correction_handling",
+    "negation_and_polarity",
+    "modality_and_uncertainty",
+    "condition_and_dependency",
+    "discourse_and_disfluency",
+    "reference_resolution",
+    "multi_action_sequencing",
+    "question_vs_action",
+    "report_vs_commitment",
+    "contextual_update",
+    "unknown_vocabulary",
+    "safe_preservation",
+    "interaction_policy"
+  ],
+  "split_policy": "Keep scenario families and close paraphrases in one split. Held-out examples must not be used to author or tune interpretation rules.",
+  "provenance_policy": "Label synthetic examples explicitly. Include observed user failures only after privacy review and de-identification.",
+  "notes": [
+    "Pilot examples are illustrative schema fixtures, not a performance benchmark.",
+    "Domains are descriptive tags; capabilities are cross-domain.",
+    "Runtime must not use this corpus as a nearest-sentence lookup table."
+  ]
+}
