@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { processCaptureSpeech } from '@/lib/speech/captureAdapter';
 import { textForCaptureField } from '@/hooks/useCaptureSpeech';
 import { runCaptureDock, type CaptureDockResult } from '@/lib/engine/captureDock';
+import { applyUtteranceToRequest, emptyRequest, requestTaskText } from '@/lib/engine/request';
+import { emptyWorkingMemory } from '@/lib/engine/workingMemory';
 
 /**
  * Phase 18: broad end-to-end Capture -> speech interpretation -> Dock torture suite.
@@ -145,4 +147,38 @@ describe('Phase 18 — end-to-end Capture → speech → Dock torture suite', ()
       expect(dock.kind, `Fresh task incorrectly gated: ${input}; result=${dock.kind}`).not.toBe('clarify');
     }
   });
+
+  it('creates a fresh quote through Capture → Dock while a prior materials pickup is active', () => {
+    const materials = applyUtteranceToRequest(
+      emptyRequest(),
+      'I need to go to Bunnings to grab 2 cartridges of clear Sika MS and 2 sausages of Sika White MS',
+      emptyWorkingMemory(),
+    );
+
+    expect(requestTaskText(materials)).toContain('Sika MS');
+
+    const dock = runCaptureDock({
+      line: 'Quote for Korohata Terrace',
+      userId: null,
+      priorRequest: materials,
+      jobs: [
+        { id: 'job-korohata', name: 'Korohata Terrace', locationText: '12 Korohata Terrace' },
+      ],
+      captureJobId: null,
+      captureSurfaceDate: '2026-10-09',
+      remainingMinsToday: 240,
+      openTaskCount: 1,
+      inputType: 'text',
+    });
+
+    expect(dock.kind, `Quote was not dockable: ${dock.kind === 'act_create' || dock.kind === 'act_update' ? dock.overrides.text : dock.message}`).toBe('act_create');
+    if (dock.kind === 'act_create') {
+      expect(dock.overrides.text).toMatch(/quote/i);
+      expect(dock.overrides.text).toMatch(/korohata terrace/i);
+      expect(dock.overrides.text).not.toMatch(/sika|cartridges|sausages/i);
+      expect(dock.overrides.locationText?.toLowerCase()).toContain('korohata terrace');
+      expect(dock.request.rawUtterances).toEqual(['Quote for Korohata Terrace']);
+    }
+  });
+
 });
