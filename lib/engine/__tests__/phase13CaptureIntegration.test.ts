@@ -99,4 +99,13 @@ describe('Phase 13 — end-to-end semantic capture', () => {
     expect(result.authority.mayAct).toBe(false);
     expect(result.action.kind).not.toBe('create_task');
   });
+  it('preserves a named recipient for an ordinary check request', () => {
+    const result = interpretSemanticInput(
+      'I need to check Jordan about whether the flashings can be fixed',
+      { workingMemory: memory() }
+    );
+    expect(result.primaryVerb).toBe('check');
+    expect(result.personText).toBe('Jordan');
+  });
+
 });
