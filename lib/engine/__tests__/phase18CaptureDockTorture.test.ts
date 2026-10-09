@@ -71,7 +71,7 @@ const cases: Case[] = [
   { category: 'messy-speech', input: 'I need to call Jordan — actually, to get the downpipe measurements for Angela Place', expectedText: ['call jordan', 'measurements'], expectedLocation: 'Angela Place' },
   { category: 'messy-speech', input: 'Please call Jordan about the measurements for 12 Queen Street today', expectedText: ['call jordan', 'measurements'], expectedLocation: '12 Queen Street' },
   { category: 'materials', input: 'Buy four tubes of white MS at Bunnings', expectedText: ['four tubes', 'white ms'], expectedLocation: 'Bunnings' },
-  { category: 'materials', input: 'Order ten downpipe clips for Angela Place', expectedText: ['ten downpipe clips'], expectedLocation: 'Angela Place' },
+  { category: 'materials', input: 'Order ten downpipe clips for Angela Place', expectedText: ['10 downpipe clips'], expectedLocation: 'Angela Place' },
   { category: 'materials', input: 'Purchase flashing for 12 Queen Street', expectedText: ['flashing'], expectedLocation: '12 Queen Street' },
   { category: 'materials', input: 'Get six lengths of gutter from the supplier for Smith Road', expectedText: ['six lengths', 'gutter'] },
 ];
