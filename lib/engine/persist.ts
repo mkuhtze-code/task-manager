@@ -27,9 +27,9 @@ function readJsonKey(key: string): string | null {
 export function loadWorkingMemoryLocal(userId?: string | null): WorkingMemorySnapshot {
   if (typeof localStorage === 'undefined') return emptyWorkingMemory();
   try {
-    const raw =
-      readJsonKey(WM_KEY + userSuffix(userId)) ||
-      (userId ? readJsonKey(WM_KEY) : null);
+    // Authenticated users must never fall back to the legacy unscoped key:
+    // that key may belong to a different account used in the same browser.
+    const raw = readJsonKey(WM_KEY + userSuffix(userId));
     if (!raw) return emptyWorkingMemory();
     const parsed = JSON.parse(raw) as WorkingMemorySnapshot;
     if (parsed?.version !== 1) return emptyWorkingMemory();
@@ -47,7 +47,6 @@ export function saveWorkingMemoryLocal(
   try {
     const payload = JSON.stringify(mem);
     localStorage.setItem(WM_KEY + userSuffix(userId), payload);
-    localStorage.setItem(WM_KEY, payload);
   } catch {
     /* quota */
   }
@@ -56,9 +55,8 @@ export function saveWorkingMemoryLocal(
 export function loadActiveRequestLocal(userId?: string | null): EngineRequest | null {
   if (typeof localStorage === 'undefined') return null;
   try {
-    const raw =
-      readJsonKey(REQ_KEY + userSuffix(userId)) ||
-      (userId ? readJsonKey(REQ_KEY) : null);
+    // Keep active requests isolated by account for the same reason as memory.
+    const raw = readJsonKey(REQ_KEY + userSuffix(userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as EngineRequest;
     if (!parsed?.id) return null;
@@ -77,12 +75,10 @@ export function saveActiveRequestLocal(
     const key = REQ_KEY + userSuffix(userId);
     if (!req) {
       localStorage.removeItem(key);
-      if (userId) localStorage.removeItem(REQ_KEY);
       return;
     }
     const payload = JSON.stringify(req);
     localStorage.setItem(key, payload);
-    localStorage.setItem(REQ_KEY, payload);
   } catch {
     /* quota */
   }
