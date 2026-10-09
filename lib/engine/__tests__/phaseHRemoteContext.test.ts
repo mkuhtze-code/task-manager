@@ -133,6 +133,21 @@ describe('Phase H — remote context persistence round-trip', () => {
     expect(loadActiveRequestLocal(userId)).toBeNull();
   });
 
+  it('preserves account-local context when the migrated remote snapshot is still uninitialized', async () => {
+    installStorage();
+    const userId = 'phase-h-migration-user';
+    saveActiveRequestLocal(makeRequest('existing-local-request'), userId);
+    const client = makeClient({
+      user_id: userId,
+      engine_working_memory: null,
+      engine_active_request: null,
+    });
+
+    const hydrated = await hydrateEngineStateRemote(client, userId);
+    expect(hydrated.activeRequest?.id).toBe('existing-local-request');
+    expect(loadActiveRequestLocal(userId)?.id).toBe('existing-local-request');
+  });
+
   it('does not hydrate another account’s remote snapshot', async () => {
     installStorage();
     const client = makeClient({
