@@ -4,7 +4,7 @@
  */
 
 import type { EngineRequest, LearningEvidence, WorkingMemorySnapshot } from './types';
-import { emptyWorkingMemory } from './workingMemory';
+import { emptyWorkingMemory, makeMemoryItem, remember, setActiveRequest, setFocus } from './workingMemory';
 
 const WM_KEY = 'dokkit.engine.workingMemory.v1';
 const REQ_KEY = 'dokkit.engine.activeRequest.v1';
@@ -193,6 +193,49 @@ export async function hydrateEngineStateRemote(
   } catch {
     return { memory: loadWorkingMemoryLocal(userId), activeRequest: loadActiveRequestLocal(userId) };
   }
+}
+
+/**
+ * Bind a successfully persisted task row into short-term working memory.
+ *
+ * The engine cannot know the database task id before the surface commits the
+ * task. Call this only after the task insert/update succeeds, so later turns
+ * resolve references to the real task row rather than a transient request.
+ */
+export function bindTaskToWorkingMemory(
+  memory: WorkingMemorySnapshot,
+  input: {
+    taskId: string;
+    taskText: string;
+    locationText?: string | null;
+    jobId?: string | null;
+    requestId?: string | null;
+  }
+): WorkingMemorySnapshot {
+  const taskText = input.taskText.trim();
+  if (!input.taskId.trim() || !taskText) return memory;
+
+  const relationships: Record<string, string> = {};
+  if (input.locationText?.trim()) relationships.locationText = input.locationText.trim();
+  if (input.jobId?.trim()) relationships.jobId = input.jobId.trim();
+  if (input.requestId?.trim()) relationships.requestId = input.requestId.trim();
+
+  let next = remember(
+    memory,
+    makeMemoryItem({
+      id: input.taskId,
+      type: 'task',
+      label: taskText,
+      source: 'persisted_task',
+      confidence: 'high',
+      salience: 1,
+      relationships,
+      payload: { taskId: input.taskId },
+    })
+  );
+  next = setFocus(next, { kind: 'task', id: input.taskId, label: taskText });
+  if (input.requestId) next = setActiveRequest(next, input.requestId);
+  return next;
 }
 
 /** Bind a created/updated task id onto the active request for multi-turn refine. */
