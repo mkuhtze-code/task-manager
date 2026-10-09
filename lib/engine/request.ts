@@ -719,6 +719,22 @@ function extractLocation(text: string): string | null {
     }
   }
 
+  if (!location) {
+    // A named trade supplier can be a real pickup destination even when it
+    // is not an address-shaped street name. Keep this deliberately narrow:
+    // do not promote generic "the supplier" or a trailing job reference into
+    // the physical stop.
+    const namedTradeSource = text.match(
+      /\\bfrom\\s+((?:[A-Z][A-Za-z0-9&'’-]*)(?:\\s+[A-Z][A-Za-z0-9&'’-]*){0,4})(?=\\s*[.,!?]?\\s*$)/
+    );
+    if (
+      namedTradeSource?.[1] &&
+      /\\b(?:roofing|builder|builders|building|construction|supplies|hardware|plumbing|electrical|limited|ltd|services|trades?|depot|yard)\\b/i.test(namedTradeSource[1])
+    ) {
+      location = namedTradeSource[1].trim();
+    }
+  }
+
   if (!location) return null;
 
   // Duration phrases must never leak into location semantics.
