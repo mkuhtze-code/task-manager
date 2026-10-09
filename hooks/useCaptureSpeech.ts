@@ -110,7 +110,21 @@ export function textForCaptureField(r: CaptureSpeechResult): string {
     if (items.length > 0) return items.join(', ');
     return r.normalisedText || r.rawText || r.surfaceSummary;
   }
-  return r.normalisedText || r.rawText || r.surfaceSummary;
+
+  // Dock needs the complete repaired utterance, not a lossy semantic summary.
+  // Prefer the pre-normalisation transcript: the normaliser/interpretation path
+  // can currently drop leading delivery verbs or clause context in edge cases.
+  // Remove spoken hesitation fillers and the separator around them without
+  // altering ordinary commas between list items.
+  const source = r.rawText || r.normalisedText || r.surfaceSummary;
+  const cleaned = source
+    .replace(/\\b(to|and|but|so|then)[,;:]\\s*(?=(?:um+|uh+|erm+|er+)\\b)\\s*(?:um+|uh+|erm+|er+)\\b[,;:]?\\s*/gi, '$1 ')
+    .replace(/\\b(?:um+|uh+|erm+|er+)\\b[,;:]?/gi, '')
+    .replace(/\\s+([,;:])/g, '$1')
+    .replace(/[,;:]\\s+(?=[,;:])/g, ' ')
+    .replace(/\\s+/g, ' ')
+    .trim();
+  return cleaned || r.normalisedText || r.surfaceSummary;
 }
 
 export type UseCaptureSpeechOptions = {
