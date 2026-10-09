@@ -98,6 +98,13 @@ describe('detectCollectionIntent', () => {
     expect(detectCollectionIntent('Remove bananas.')?.type).toBe(
       'remove_collection_items'
     );
+    expect(detectCollectionIntent('Take bread off the list')?.type).toBe(
+      'remove_collection_items'
+    );
+  });
+
+  it('does not mistake a delivery using “take … to” for list removal', () => {
+    expect(detectCollectionIntent('Take the materials to Smith Road on Monday')).toBeNull();
   });
 });
 
