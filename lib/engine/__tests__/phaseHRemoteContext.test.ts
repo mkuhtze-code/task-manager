@@ -75,8 +75,11 @@ function makeClient(initial: Record<string, unknown> | null = null, failUpsert =
         }),
         insert: async (_value: Record<string, unknown> | Record<string, unknown>[]) => ({ error: null }),
         select: (_columns: string) => ({
-          eq: (_column: string, _value: string) => ({
-            maybeSingle: async () => ({ data: row, error: null }),
+          eq: (column: string, value: string) => ({
+            maybeSingle: async () => ({
+              data: column === 'user_id' && row?.user_id === value ? row : null,
+              error: null,
+            }),
           }),
         }),
       };
@@ -128,6 +131,23 @@ describe('Phase H — remote context persistence round-trip', () => {
     const hydrated = await hydrateEngineStateRemote(client, userId);
     expect(hydrated.activeRequest).toBeNull();
     expect(loadActiveRequestLocal(userId)).toBeNull();
+  });
+
+  it('does not hydrate another account’s remote snapshot', async () => {
+    installStorage();
+    const client = makeClient({
+      user_id: 'phase-h-user-a',
+      engine_working_memory: setFocus(emptyWorkingMemory(), {
+        kind: 'task',
+        id: 'private-task-a',
+        label: 'Private account A task',
+      }),
+      engine_active_request: makeRequest('private-request-a'),
+    });
+
+    const hydrated = await hydrateEngineStateRemote(client, 'phase-h-user-b');
+    expect(hydrated.memory.currentFocus.kind).toBe('none');
+    expect(hydrated.activeRequest).toBeNull();
   });
 
   it('reports a failed remote write instead of claiming the snapshot is durable', async () => {
