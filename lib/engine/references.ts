@@ -11,16 +11,57 @@ export type ReferenceResolution =
   | { status: 'ambiguous'; candidates: MemoryItem[]; reason: string }
   | { status: 'unknown'; reason: string };
 
-const REF_RE =
-  /\b(this|that|it|these|those|the\s+last\s+one|the\s+other\s+one|the\s+previous\s+(?:one|task|job)|the\s+job|that\s+job|the\s+meeting|there|here)\b/i;
+// Strong, typed references always qualify. Bare demonstratives and
+// locatives qualify only when used anaphorically, not in ordinary time phrases
+// ("this morning", "that week") or existential constructions ("there is a
+// meeting"). False positives route complete new requests into an ambiguity
+// gate before the task interpreter can act on their explicit intent.
+const STRONG_REF_RE =
+  /\b(the\s+last\s+one|the\s+other\s+one|the\s+previous\s+(?:one|task|job)|the\s+job|that\s+job|the\s+meeting)\b/i;
+const DEMONSTRATIVE_REF_RE = /\b(this|that|it|these|those)\b/i;
+const LOCATIVE_REF_RE = /\b(there|here)\b/i;
+const TEMPORAL_DEMONSTRATIVE_TAIL =
+  /^(?:morning|afternoon|evening|night|week|weekend|month|year|time|day|monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow)\b/i;
+
+function isAnaphoricDemonstrative(text: string): boolean {
+  const match = DEMONSTRATIVE_REF_RE.exec(text);
+  if (!match || match.index == null) return false;
+  const tail = text.slice(match.index + match[0].length).trimStart();
+  if (TEMPORAL_DEMONSTRATIVE_TAIL.test(tail)) return false;
+  if (/^is\s+(?:a|an|the|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(tail)) {
+    return false;
+  }
+  return true;
+}
+
+function isAnaphoricLocative(text: string): boolean {
+  const match = LOCATIVE_REF_RE.exec(text);
+  if (!match || match.index == null) return false;
+  const before = text.slice(0, match.index).trimEnd();
+  const after = text.slice(match.index + match[0].length).trimStart();
+  if (/^(?:is|are|was|were|has been|have been)\b/i.test(after)) return false;
+  return /\b(?:go|going|head|heading|come|coming|return|back|meet|meeting|drop|leave|put|send|drive|walk|work|stay|wait)\b/i.test(before);
+}
 
 export function containsReference(text: string): boolean {
-  return REF_RE.test(text);
+  return STRONG_REF_RE.test(text) ||
+    isAnaphoricDemonstrative(text) ||
+    isAnaphoricLocative(text);
 }
 
 export function extractReferencePhrase(text: string): string | null {
-  const m = text.match(REF_RE);
-  return m ? m[1].toLowerCase() : null;
+  const strong = text.match(STRONG_REF_RE);
+  if (strong) return strong[1].toLowerCase();
+  const demo = DEMONSTRATIVE_REF_RE.exec(text);
+  if (demo && demo.index != null) {
+    const tail = text.slice(demo.index + demo[0].length).trimStart();
+    if (!TEMPORAL_DEMONSTRATIVE_TAIL.test(tail)) return demo[1].toLowerCase();
+  }
+  if (isAnaphoricLocative(text)) {
+    const loc = LOCATIVE_REF_RE.exec(text);
+    return loc?.[1].toLowerCase() ?? null;
+  }
+  return null;
 }
 
 function prefersType(phrase: string): MemoryItem['type'][] | null {
