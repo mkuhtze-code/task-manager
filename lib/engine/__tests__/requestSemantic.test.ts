@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyUtteranceToRequest,
   interpretRequestUtterance,
+  requestTaskText,
   emptyRequest,
 } from '../request';
 import { emptyWorkingMemory } from '../workingMemory';
@@ -104,6 +105,27 @@ describe('material errand semantic extraction', () => {
     expect(parsed.objectText).toBe('clips');
     expect(parsed.timeHint).toBe('16:00');
     expect(parsed.dateHint).toBe('today');
+  });
+
+  it('starts a fresh quote task instead of reusing the previous materials pickup', () => {
+    const previous = applyUtteranceToRequest(
+      emptyRequest(),
+      INPUT,
+      emptyWorkingMemory()
+    );
+
+    const quote = applyUtteranceToRequest(
+      previous,
+      'Quote for Korohata Terrace',
+      { ...emptyWorkingMemory(), activeRequestId: previous.id }
+    );
+
+    expect(quote.action).toBe('create_task');
+    expect(quote.primaryVerb).toBe('quote');
+    expect(quote.objectText).toBe('for Korohata Terrace');
+    expect(quote.locationText).toBe('Korohata Terrace');
+    expect(quote.objectText).not.toContain('Sika MS');
+    expect(requestTaskText(quote)).toBe('Quote for Korohata Terrace');
   });
 });
 
