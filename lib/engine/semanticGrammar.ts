@@ -58,7 +58,8 @@ function movement(text:string,v:string):GrammarFrame{
  const nv=clean(nested?.[1])?.toLowerCase()??null, no=clean(nested?.[2]);
  const items=nv&&PICKUP.test(nv)&&no?splitItems(no):[];
  const object=items.length?items.map(i=>i.quantity!=null?i.quantity+' '+i.text:i.text).join(' and '):no;
- return{...base(v),purposeText:purpose,subjectText:no,locationText:destination,objectText:object,items,relations:['action→destination',...(purpose?['destination→purpose']:[]),...(no?['purpose→object']:[])]};
+ // When movement is only the means of reaching a site, the nested work verb is the task to perform. Keep the travel destination as location, but do not drop the work verb from the task title.
+ return{...base(nv ?? v),purposeText:purpose,subjectText:no,locationText:destination,objectText:object,items,relations:['action→destination',...(purpose?['destination→purpose']:[]),...(no?['purpose→object']:[])]};
 }
 function delivery(text:string,v:string):GrammarFrame{
  const after=text.match(new RegExp('^.*?\\b'+v.replace(/\s+/g,'\\s+')+'\\s+(.+)$','i'))?.[1];
