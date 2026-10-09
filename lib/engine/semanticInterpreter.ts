@@ -188,17 +188,48 @@ export function interpretSemanticInput(
     }
   }
 
+  const hasGrammarRelations = grammar.relations.length > 0;
+  const grammarOwnsCommunicationSlots =
+    grammar.primaryVerb != null &&
+    /^(?:call|ring|phone|email|text|message|contact|ask|tell|chase|follow\s*up|check)$/i.test(
+      grammar.primaryVerb
+    );
+
+  // Keep the semantic interpretation contract aligned with the structured
+  // grammar consumed by orchestration. For supported role frames, grammar
+  // slots are authoritative; legacy parsing remains the fallback elsewhere.
+  const primaryVerb = grammar.primaryVerb ?? parsed.primaryVerb ?? null;
+  const personText = hasGrammarRelations
+    ? grammar.personText ?? null
+    : grammarOwnsCommunicationSlots
+      ? null
+      : parsed.personText ?? null;
+  const purposeText = hasGrammarRelations
+    ? grammar.purposeText ?? null
+    : grammarOwnsCommunicationSlots
+      ? null
+      : parsed.purposeText ?? null;
+  const subjectText = hasGrammarRelations
+    ? grammar.subjectText ?? null
+    : parsed.subjectText ?? null;
+  const objectText = hasGrammarRelations
+    ? grammar.objectText ?? null
+    : parsed.objectText ?? null;
+  const locationText = hasGrammarRelations
+    ? grammar.locationText ?? null
+    : parsed.locationText ?? null;
+
   const evidence: string[] = [];
 
   if (parsed.action && parsed.action !== 'unknown') {
     evidence.push(`intent:${parsed.action}`);
   }
-  if (parsed.primaryVerb) evidence.push(`primary_verb:${parsed.primaryVerb}`);
-  if (parsed.personText) evidence.push('person:explicit');
-  if (parsed.purposeText) evidence.push('purpose:explicit');
-  if (parsed.subjectText) evidence.push('subject:explicit');
-  if (parsed.objectText) evidence.push('object:explicit');
-  if (parsed.locationText) evidence.push('location:explicit');
+  if (primaryVerb) evidence.push(`primary_verb:${primaryVerb}`);
+  if (personText) evidence.push('person:explicit');
+  if (purposeText) evidence.push('purpose:explicit');
+  if (subjectText) evidence.push('subject:explicit');
+  if (objectText) evidence.push('object:explicit');
+  if (locationText) evidence.push('location:explicit');
   if (parsed.dateHint) evidence.push(`date:${parsed.dateHint}`);
   if (parsed.timeHint) evidence.push(`time:${parsed.timeHint}`);
   if (parsed.isCorrection) evidence.push('speech_act:correction');
@@ -214,12 +245,12 @@ export function interpretSemanticInput(
     normalizedText,
     speechAct: speechActFor(normalizedText, parsed),
     intent: parsed.action ?? 'unknown',
-    primaryVerb: parsed.primaryVerb ?? null,
-    personText: parsed.personText ?? null,
-    purposeText: parsed.purposeText ?? null,
-    subjectText: parsed.subjectText ?? null,
-    objectText: parsed.objectText ?? null,
-    locationText: parsed.locationText ?? null,
+    primaryVerb,
+    personText,
+    purposeText,
+    subjectText,
+    objectText,
+    locationText,
     dateHint: parsed.dateHint ?? null,
     timeHint: parsed.timeHint ?? null,
     relatedJobText: parsed.relatedJobText ?? null,
