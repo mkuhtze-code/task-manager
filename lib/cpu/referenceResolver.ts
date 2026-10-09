@@ -154,6 +154,7 @@ export function resolveContextReference(
   }
 
   const preferred = preferredKinds(phrase);
+  const locationDeixis = /^(?:there|here)$/.test(phrase);
   const map = new Map<string, ContextReferenceCandidate>();
   for (const c of [...memoryCandidates(workingMemory), ...contextCandidates(input)]) {
     let score = c.score;
@@ -162,6 +163,10 @@ export function resolveContextReference(
     if (preferred.includes(c.kind)) {
       score += 0.35;
       reasons.push('type_match');
+    }
+    if (locationDeixis && c.kind === 'location') {
+      score += 0.2;
+      reasons.push('location_deixis_match');
     }
     if (workingMemory.currentFocus.id === c.id) {
       score += 0.55;
@@ -201,7 +206,7 @@ export function resolveContextReference(
   // a high-scoring current task focus override the grammatical target type.
   // If no location evidence exists, leave the reference unresolved rather than
   // silently binding it to an unrelated task.
-  if (/^(?:there|here)$/.test(phrase)) {
+  if (locationDeixis) {
     candidates = candidates.filter((candidate) => candidate.kind === 'location');
   }
 
