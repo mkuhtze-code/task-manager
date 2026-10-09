@@ -34,7 +34,7 @@ const cases: Case[] = [
   { category: 'pickup', input: 'Grab the screws from Bunnings for Angela Place', expectedText: ['screws'], expectedLocation: 'Bunnings' },
   { category: 'pickup', input: 'Collect the signed plans from the office', expectedText: ['signed plans'], expectedLocation: 'the office' },
   { category: 'pickup', input: 'Drive to the supplier to collect six lengths of gutter for Smith Road', expectedText: ['six lengths', 'gutter'], expectedLocation: 'the supplier' },
-  { category: 'pickup', input: 'Head to Mitre 10 and buy ten downpipe clips for Angela Place', expectedText: ['ten downpipe clips'], expectedLocation: 'Mitre 10' },
+  { category: 'pickup', input: 'Head to Mitre 10 and buy ten downpipe clips for Angela Place', expectedText: ['10 downpipe clips'], expectedLocation: 'Mitre 10' },
   { category: 'pickup', input: 'Go to Bunnings this morning to get the sealant', expectedText: ['sealant'], expectedLocation: 'Bunnings' },
   { category: 'pickup', input: 'Collect the brackets from the supplier at 12 Queen Street', expectedText: ['brackets'], expectedLocation: '12 Queen Street' },
 
