@@ -52,6 +52,13 @@ export function stripFillers(text: string): { text: string; removed: string[] } 
     const lower = t.toLowerCase().replace(/[.,!?]+$/, '');
     if (FILLER_WORDS.has(lower)) {
       removed.push(t.trim());
+      // The previous token may contain the comma that introduced this filler
+      // ("I need to, um, call"). Keep meaningful punctuation, but not a
+      // separator stranded immediately before a deleted hesitation.
+      if (out.length > 0) {
+        const previous = out[out.length - 1];
+        if (/[,;:]$/.test(previous)) out[out.length - 1] = previous.replace(/[,;:]$/, '');
+      }
       continue;
     }
     out.push(t);
