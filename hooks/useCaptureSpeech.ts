@@ -118,23 +118,17 @@ export function textForCaptureField(r: CaptureSpeechResult): string {
   // Remove spoken hesitation fillers and the separator around them without
   // altering ordinary commas between list items.
   const source = r.rawText || r.normalisedText || r.surfaceSummary;
-  // Re-normalise the source transcript when interpretation has lost its leading
-  // action or clause. This retains number expansion while restoring source intent.
+  // Re-normalise the complete source transcript rather than using the interpreted
+  // summary. This preserves leading verbs/context and applies number expansion.
   const sourceNormalised = normaliseSpeech(source).normalisedText || source;
-  const current = r.normalisedText || '';
-  const startsWithAction = /^(?:call|ring|phone|email|text|message|contact|ask|tell|check|inspect|measure|fix|repair|send|write|order|clean|install|remove|replace|drop\s+off|dropoff|deliver|take|leave|go|head|drive|travel|walk|return|pick\s+up|pickup|grab|collect|fetch|get|buy|purchase)\b/i;
-  const currentMissingLeadingAction = startsWithAction.test(sourceNormalised) && !startsWithAction.test(current);
-  const currentLostCommitmentLead =
-    /^(?:i\s+need\s+to|i\s+have\s+to|i\s+got\s+to)\b/i.test(sourceNormalised) &&
-    !/^(?:i\s+need\s+to|i\s+have\s+to|i\s+got\s+to)\b/i.test(current);
-  const cleaned = (currentMissingLeadingAction || currentLostCommitmentLead ? sourceNormalised : current)
+  const cleaned = sourceNormalised
     .replace(/\b(to|and|but|so|then)[,;:]\s*(?=(?:um+|uh+|erm+|er+)\b)\s*(?:um+|uh+|erm+|er+)\b[,;:]?\s*/gi, '$1 ')
     .replace(/\b(?:um+|uh+|erm+|er+)\b[,;:]?/gi, '')
     .replace(/\s+([,;:])/g, '$1')
     .replace(/[,;:]\s+(?=[,;:])/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return cleaned || r.normalisedText || r.rawText || r.surfaceSummary;
+  return cleaned || sourceNormalised || source;
 }
 
 export type UseCaptureSpeechOptions = {
