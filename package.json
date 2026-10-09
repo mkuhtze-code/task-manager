@@ -25,7 +25,7 @@
     "test:phase12-integration": "vitest run lib/engine/__tests__/verticalSlice.test.ts -t \"understands a concrete drop-off with address, time and today as executable work\"",
     "test:phase13": "vitest run lib/engine/__tests__/phase13CaptureIntegration.test.ts",
     "test:phase14": "vitest run lib/speech/__tests__/phase14CaptureSafety.test.ts",
-    "test:phase15": "vitest run lib/engine/__tests__/phase15CaptureContract.test.ts"
+    "test:phase15": "vitest run lib/engine/__tests__/requestSemantic.test.ts lib/engine/__tests__/phase15CaptureContract.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
