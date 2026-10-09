@@ -22,7 +22,7 @@ describe('Phase 15 — capture contract repair', () => {
 
     expect(parsed.locationText).toBe('Smith Street');
     expect(parsed.objectText).toBe('flashings for Smith Street');
-    expect(requestTaskText(request).toLowerCase()).toContain('check flashings');
+    expect(requestTaskText(request).toLowerCase()).toContain('check the flashings');
   });
 
   it('replaces the full material object when a correction begins with a quantity', () => {
