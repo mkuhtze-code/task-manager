@@ -4,6 +4,7 @@
  */
 
 import type { EngineRequest, LearningEvidence, WorkingMemorySnapshot } from './types';
+import { isEngineRequest, isWorkingMemorySnapshot } from './persistValidation';
 import { emptyWorkingMemory, makeMemoryItem, remember, setActiveRequest, setFocus } from './workingMemory';
 
 const WM_KEY = 'dokkit.engine.workingMemory.v1';
@@ -191,23 +192,22 @@ export async function hydrateEngineStateRemote(
     // A successful remote row is authoritative, including an explicit null
     // active request. Do not resurrect a stale local request after it was
     // cleared remotely.
-    const remoteMemory =
-      data.engine_working_memory && typeof data.engine_working_memory === 'object'
-        ? (data.engine_working_memory as WorkingMemorySnapshot)
-        : null;
-    // A newly migrated settings row has NULL context columns. That means
-    // "not initialized remotely", not "clear existing local context".
-    // Only a valid versioned snapshot makes remote null request state authoritative.
-    if (remoteMemory?.version !== 1) {
+    // JSONB is persisted across deployments and must be validated at runtime;
+    // a TypeScript cast cannot establish that a stored payload is well formed.
+    // A NULL, unsupported, or malformed snapshot means remote state is not
+    // authoritative yet, so preserve this account's known-good local context.
+    if (!isWorkingMemorySnapshot(data.engine_working_memory)) {
       return { memory: loadWorkingMemoryLocal(userId), activeRequest: loadActiveRequestLocal(userId) };
     }
-    const memory = remoteMemory;
+    const memory = data.engine_working_memory;
+    // An explicit NULL means cleared. A malformed non-null request is not
+    // trusted; retain only this same account's known-good local request.
     const remoteRequest =
-      data.engine_active_request &&
-      typeof data.engine_active_request === 'object' &&
-      typeof (data.engine_active_request as EngineRequest).id === 'string'
-        ? (data.engine_active_request as EngineRequest)
-        : null;
+      data.engine_active_request === null
+        ? null
+        : isEngineRequest(data.engine_active_request)
+          ? data.engine_active_request
+          : loadActiveRequestLocal(userId);
 
     saveWorkingMemoryLocal(memory, userId);
     saveActiveRequestLocal(remoteRequest, userId);
