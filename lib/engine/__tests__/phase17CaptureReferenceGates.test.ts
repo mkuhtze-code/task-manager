@@ -16,7 +16,7 @@ describe('Phase 17 — capture reference gates', () => {
   it.each([
     ['Update that job', 'that job'],
     ['Move it to tomorrow', 'it'],
-    ['I am heading there after the meeting', 'there'],
+    ['I am heading there after lunch', 'there'],
     ['Add this to the job', 'the job'],
   ])('still recognises an intentional reference in: %s', (text, phrase) => {
     expect(containsReference(text)).toBe(true);
