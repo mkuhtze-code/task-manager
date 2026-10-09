@@ -112,6 +112,10 @@ describe('detectCollectionIntent', () => {
   it('does not mistake a delivery using “take … to” for list removal', () => {
     expect(detectCollectionIntent('Take the materials to Smith Road on Monday')).toBeNull();
   });
+
+  it('does not turn travel followed by a purchase into a collection', () => {
+    expect(detectCollectionIntent('Head to Mitre 10 and buy ten downpipe clips for Angela Place')).toBeNull();
+  });
 });
 
 describe('Scenario A–D — grocery create append continue', () => {
