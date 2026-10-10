@@ -1404,6 +1404,12 @@ export function TodayPage() {
         job_id: jobId,
         surface_date: surfaceDate,
       };
+      // A clock-time correction updates the existing task's distinct time
+      // field. If this utterance only changes the date, omit intended_time so
+      // the previous clock time is preserved rather than accidentally cleared.
+      if (parsed?.time?.label) {
+        patch.intended_time = parsed.time.label;
+      }
       const refineLine = originalInput.trim();
       const looksLikeRefineUtterance =
         /^(?:actually|sorry|no[, ]|i\s+need\s+it|make\s+that)\b/i.test(refineLine) ||
