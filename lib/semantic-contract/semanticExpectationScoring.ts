@@ -52,6 +52,15 @@ function normalized(text: string): string {
   return text.normalize('NFKC').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+function containsTerm(text: string, term: string): boolean {
+  const escaped = normalized(term).replace(/[.*+?^${}()|[\]\\]/g, '\\function normalized(text: string): string {
+  return text.normalize('NFKC').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+');
+  return new RegExp('(^|[^a-z0-9])' + escaped + '([^a-z0-9]|$)').test(normalized(text));
+}
+
 export function evaluateSemanticExpectation(
   label: SemanticExpectation,
   observed: ObservedSemanticFacts,
@@ -75,16 +84,16 @@ export function evaluateSemanticExpectation(
     add(`forbiddenActKind:${kind}`, kind, observed.actKinds.join(','), !observed.actKinds.includes(kind));
   }
   for (const term of expected.requiredActionTerms ?? []) {
-    add(`requiredActionTerm:${term}`, term, observed.actionText, normalized(observed.actionText).includes(normalized(term)));
+    add(`requiredActionTerm:${term}`, term, observed.actionText, containsTerm(observed.actionText, term));
   }
   for (const term of expected.forbiddenActionTerms ?? []) {
-    add(`forbiddenActionTerm:${term}`, term, observed.actionText, !normalized(observed.actionText).includes(normalized(term)));
+    add(`forbiddenActionTerm:${term}`, term, observed.actionText, !containsTerm(observed.actionText, term));
   }
   for (const term of expected.requiredEntityTerms ?? []) {
-    add(`requiredEntityTerm:${term}`, term, observed.entityText, normalized(observed.entityText).includes(normalized(term)));
+    add(`requiredEntityTerm:${term}`, term, observed.entityText, containsTerm(observed.entityText, term));
   }
   for (const term of expected.requiredTemporalTerms ?? []) {
-    add(`requiredTemporalTerm:${term}`, term, observed.temporalText, normalized(observed.temporalText).includes(normalized(term)));
+    add(`requiredTemporalTerm:${term}`, term, observed.temporalText, containsTerm(observed.temporalText, term));
   }
 
   const booleanChecks: Array<[keyof SemanticExpectation['expected'], string, boolean | undefined, boolean]> = [
