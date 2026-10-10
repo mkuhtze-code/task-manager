@@ -53,12 +53,13 @@ function normalized(text: string): string {
 }
 
 function containsTerm(text: string, term: string): boolean {
-  const escaped = normalized(term).replace(/[.*+?^${}()|[\]\\]/g, '\\function normalized(text: string): string {
-  return text.normalize('NFKC').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
-}
-
-');
-  return new RegExp('(^|[^a-z0-9])' + escaped + '([^a-z0-9]|$)').test(normalized(text));
+  const words = normalized(text).split(/[^a-z0-9]+/).filter(Boolean);
+  const wanted = normalized(term).split(/[^a-z0-9]+/).filter(Boolean);
+  if (wanted.length === 0 || wanted.length > words.length) return false;
+  for (let start = 0; start <= words.length - wanted.length; start += 1) {
+    if (wanted.every((word, offset) => words[start + offset] === word)) return true;
+  }
+  return false;
 }
 
 export function evaluateSemanticExpectation(
