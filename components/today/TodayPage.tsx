@@ -1408,7 +1408,17 @@ export function TodayPage() {
       const looksLikeRefineUtterance =
         /^(?:actually|sorry|no[, ]|i\s+need\s+it|make\s+that)\b/i.test(refineLine) ||
         (engineOverrides.text?.trim() === refineLine);
-      if (engineOverrides.text && !looksLikeRefineUtterance) {
+      const existingTaskText = tasks.find((task) => task.id === engineOverrides.updateTaskId)?.text ?? '';
+      const hasLegacyTemporalLocationSuffix =
+        /\s+at\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|this afternoon|next week)$/i.test(existingTaskText);
+      const correctedTitleRemovesTemporalSuffix =
+        !!engineOverrides.text &&
+        hasLegacyTemporalLocationSuffix &&
+        !/\s+at\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|this afternoon|next week)$/i.test(engineOverrides.text);
+      // A temporal correction must normally preserve the title. Exception:
+      // clean up a known legacy parser defect that saved "at Monday" as part
+      // of the title. This is a repair, not a title change requested by the user.
+      if (engineOverrides.text && (!looksLikeRefineUtterance || correctedTitleRemovesTemporalSuffix)) {
         patch.text = engineOverrides.text;
       }
       if (mins > 0) patch.estimate_mins = mins;
