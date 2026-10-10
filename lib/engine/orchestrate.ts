@@ -378,9 +378,21 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
 
   let request = applyUtteranceToRequest(
     input.priorRequest ?? null,
-    input.utterance,
+    semanticUtterance,
     mem
   );
+
+  // Preserve the complete user utterance for learning/audit, while parsing
+  // only the explicit new-task clause as the task's semantic content.
+  if (semanticUtterance !== input.utterance) {
+    request = {
+      ...request,
+      rawUtterances: [
+        ...request.rawUtterances.slice(0, -1),
+        input.utterance.trim(),
+      ].slice(-12),
+    };
+  }
 
   // Phase 12 grammar is the authoritative semantic-role refinement for
   // compound captures. The legacy request parser remains the fallback for
