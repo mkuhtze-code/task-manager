@@ -14,10 +14,10 @@ import {
 const TODAY = '2026-10-12';
 
 /**
- * Reviewed semantic assertions. These deliberately encode positive AND
- * negative expectations rather than treating unlabelled observations as truth.
- * The scores are diagnostic until reviewers agree on label interpretation and
- * release thresholds; no current producer is presumed correct.
+ * Candidate semantic assertions authored for evaluation development. They encode
+ * positive AND negative expectations but are NOT yet human-reviewed gold labels.
+ * Scores remain diagnostic until each expectation is reviewed and release rules
+ * are agreed; no current producer is presumed correct.
  */
 const EXPECTATIONS: SemanticExpectation[] = [
   { id: 'reminder-cake-time', domain: 'personal', input: 'Remind me to take the birthday cake out of the freezer at 3pm tomorrow.', expected: { minActs: 1, requiredActionTerms: ['take'], requiredTemporalTerms: ['3pm'], mustNotCreateTask: false } },
@@ -98,6 +98,7 @@ describe('Phase N semantic expectation scoring (diagnostic, no release threshold
     console.info('PHASE_N_SEMANTIC_ACCURACY=' + JSON.stringify({
       benchmark: 'phase-n-semantic-expectations-v1',
       labelCount: EXPECTATIONS.length,
+      annotationStatus: { candidatePendingHumanReview: EXPECTATIONS.length, reviewed: 0 },
       domains: [...new Set(EXPECTATIONS.map((label) => label.domain))].sort(),
       speech: speechSummary,
       engine: engineSummary,
@@ -106,6 +107,7 @@ describe('Phase N semantic expectation scoring (diagnostic, no release threshold
     }));
 
     expect(EXPECTATIONS).toHaveLength(16);
+    expect(EXPECTATIONS.every((label) => label.id.length > 0)).toBe(true);
     expect(new Set(EXPECTATIONS.map((label) => label.id)).size).toBe(EXPECTATIONS.length);
     expect(new Set(EXPECTATIONS.map((label) => label.domain)).size).toBeGreaterThanOrEqual(8);
     expect(EXPECTATIONS.every((label) => Object.keys(label.expected).length > 0)).toBe(true);
