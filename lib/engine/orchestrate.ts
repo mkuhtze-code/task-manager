@@ -52,6 +52,34 @@ function evidence(
   };
 }
 
+const WEEKDAY_INDEX: Record<string, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
+
+/**
+ * Resolve a weekday-only commitment to the next occurrence on or after the
+ * current surface date. Use UTC calendar arithmetic so the date-only value
+ * cannot shift across local timezone boundaries.
+ */
+function resolveWeekdayDate(dateHint: string, todayDate: string | undefined): string | null {
+  const targetDay = WEEKDAY_INDEX[dateHint.toLowerCase()];
+  if (targetDay === undefined || !todayDate || !/^\d{4}-\d{2}-\d{2}$/.test(todayDate)) {
+    return null;
+  }
+
+  const [year, month, day] = todayDate.split('-').map(Number);
+  const today = new Date(Date.UTC(year, month - 1, day));
+  const dayDelta = (targetDay - today.getUTCDay() + 7) % 7;
+  today.setUTCDate(today.getUTCDate() + dayDelta);
+  return today.toISOString().slice(0, 10);
+}
+
 function planForRequest(
   req: EngineRequest,
   ctx: ReasoningContext,
@@ -132,12 +160,17 @@ function planForRequest(
     });
     facts.push('Targeted for tomorrow.');
   } else if (req.dateHint && req.dateHint !== 'today') {
+    const weekdayDate = resolveWeekdayDate(req.dateHint, todayDate);
     steps.push({
       kind: 'place',
-      surfaceDate: null,
+      surfaceDate: weekdayDate,
       reason: `date_hint_${req.dateHint}`,
     });
-    facts.push(`Targeted for ${req.dateHint}.`);
+    facts.push(
+      weekdayDate
+        ? `Placed for ${req.dateHint} (${weekdayDate}).`
+        : `Targeted for ${req.dateHint}.`
+    );
   } else if (req.timeHint) {
     steps.push({
       kind: 'place',

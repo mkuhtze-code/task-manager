@@ -89,6 +89,13 @@ describe('Phase 20 — production acceptance: Capture → speech → Dock', () =
     expect(action.overrides.surfaceDate).toBe(TODAY);
   });
 
+  it('resolves an explicit weekday to a concrete date for task placement', () => {
+    const input = 'I need to call Jordan about the Smith Street flashing on Monday';
+    const { dock } = captureAndDock(input);
+    const action = expectDockable(dock, input);
+    expect(action.overrides.surfaceDate).toBe('2026-10-12');
+  });
+
   it('keeps a hesitant call request out of list/collection intent', () => {
     const input = 'I need to, um, call Jordan and get the measurements for Angela Place';
     const { speech, dock } = captureAndDock(input);
