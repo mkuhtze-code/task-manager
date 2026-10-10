@@ -4,6 +4,7 @@ import type { SemanticEnvelope } from '@/lib/semantic-contract/envelope';
 import { interpretSemanticInput } from '@/lib/engine/semanticInterpreter';
 import { emptyWorkingMemory } from '@/lib/engine/workingMemory';
 import { processCaptureSpeech } from '@/lib/speech/captureAdapter';
+import { summarizeFeatureRecall } from '@/lib/semantic-contract/featureRecall';
 
 /**
  * Phase N reviewed-label baseline.
@@ -116,6 +117,15 @@ describe('Phase N — reviewed semantic label baseline (diagnostic, no score gat
       };
     });
 
+    const speechRecall = summarizeFeatureRecall(rows.map((row) => ({
+      id: row.id, domain: row.domain, requiredFeatures: row.requiredFeatures,
+      observedFeatures: row.speech.observedFeatures,
+    })));
+    const engineRecall = summarizeFeatureRecall(rows.map((row) => ({
+      id: row.id, domain: row.domain, requiredFeatures: row.requiredFeatures,
+      observedFeatures: row.engine.observedFeatures,
+    })));
+
     const report = {
       benchmark: 'phase-n-reviewed-semantic-labels-v1',
       purpose: 'reviewed expectation coverage; diagnostic only; no correctness threshold yet',
@@ -124,6 +134,12 @@ describe('Phase N — reviewed semantic label baseline (diagnostic, no score gat
       domains: [...new Set(rows.map((row) => row.domain))].sort(),
       speechMissingFeatureCount: rows.reduce((n, row) => n + row.speech.missingFeatures.length, 0),
       engineMissingFeatureCount: rows.reduce((n, row) => n + row.engine.missingFeatures.length, 0),
+      speechPositiveFeatureRecall: speechRecall.recall,
+      enginePositiveFeatureRecall: engineRecall.recall,
+      speechRecallByDomain: speechRecall.byDomain,
+      engineRecallByDomain: engineRecall.byDomain,
+      speechRecallByFeature: speechRecall.byFeature,
+      engineRecallByFeature: engineRecall.byFeature,
       speechGaps: rows.filter((row) => row.speech.missingFeatures.length > 0).map((row) => ({
         id: row.id, missing: row.speech.missingFeatures,
       })),
@@ -138,6 +154,10 @@ describe('Phase N — reviewed semantic label baseline (diagnostic, no score gat
       domains: report.domains,
       speechMissingFeatureCount: report.speechMissingFeatureCount,
       engineMissingFeatureCount: report.engineMissingFeatureCount,
+      speechPositiveFeatureRecall: report.speechPositiveFeatureRecall,
+      enginePositiveFeatureRecall: report.enginePositiveFeatureRecall,
+      speechRecallByDomain: report.speechRecallByDomain,
+      engineRecallByDomain: report.engineRecallByDomain,
     }));
     rows.forEach((row) => {
       console.info('PHASE_N_REVIEWED_SEMANTIC_LABEL_CASE=' + JSON.stringify({
@@ -156,5 +176,10 @@ describe('Phase N — reviewed semantic label baseline (diagnostic, no score gat
     expect(report.domains.length).toBeGreaterThanOrEqual(8);
     expect(rows.every((row) => row.expectedMeaning.length > 0 && row.requiredFeatures.length > 0)).toBe(true);
     expect(rows.every((row) => row.engine.lossyProjection)).toBe(true);
+    expect(speechRecall.required).toBe(rows.reduce((n, row) => n + row.requiredFeatures.length, 0));
+    expect(speechRecall.missing).toBe(report.speechMissingFeatureCount);
+    expect(engineRecall.missing).toBe(report.engineMissingFeatureCount);
+    expect(speechRecall.byDomain).toHaveProperty('personal');
+    expect(engineRecall.byFeature).toHaveProperty('action');
   });
 });
