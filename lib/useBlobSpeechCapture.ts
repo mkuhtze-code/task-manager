@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { DEFAULT_SPEECH_LOCALE, normalizeSpeechLocale } from '@/lib/speech/locale';
 
 export type BlobSpeechHandlers = {
   onResult: (text: string) => void;
@@ -49,7 +50,7 @@ export function useBlobSpeechCapture({
   onError,
   onStatus,
   endpoint = '/api/stt',
-  language = 'en-NZ',
+  language = DEFAULT_SPEECH_LOCALE,
   maxDurationMs = DEFAULT_MAX_MS,
 }: BlobSpeechHandlers) {
   const [isListening, setIsListening] = useState(false);
@@ -99,7 +100,7 @@ export function useBlobSpeechCapture({
 
       const form = new FormData();
       form.append('audio', blob, 'speech.webm');
-      form.append('language', language);
+      form.append('language', normalizeSpeechLocale(language));
 
       const headers: Record<string, string> = {};
       if (token) headers.Authorization = `Bearer ${token}`;
