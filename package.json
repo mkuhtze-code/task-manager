@@ -32,6 +32,7 @@
     "test:phase18": "vitest run lib/engine/__tests__/phase18CaptureDockTorture.test.ts",
     "test:phase20": "vitest run lib/engine/__tests__/phase20ProductionAcceptance.test.ts",
     "test:phaseM": "vitest run lib/engine/__tests__/phaseMAdversarialTaskContinuity.test.ts",
+    "test:phaseN": "vitest run lib/engine/__tests__/phaseNPairedSemanticReplay.test.ts",
     "test:phaseB": "vitest run lib/engine/__tests__/phaseBUniversalIntelligenceBaseline.test.ts",
     "test:corpus-schema": "node scripts/validate-intelligence-corpus.mjs",
     "test:corpus-runner": "vitest run lib/engine/__tests__/intelligenceCorpusRunner.test.ts",
