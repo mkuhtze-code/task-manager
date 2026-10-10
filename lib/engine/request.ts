@@ -834,6 +834,20 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     return out;
   }
 
+  // Schedule-only edits refine the active request; they are not new task objects.
+  const temporalOnlyCorrection =
+    /^(?:actually[, ]*)?(?:change|set|adjust|update)\s+(?:the\s+)?time\s+(?:to|for)\s+(.+?)(?:[,;]\s*(?:but\s+)?(?:leave|keep)\s+(?:the\s+)?date\s+(?:alone|unchanged))?[.!?]?$/i.test(text);
+  if (temporalOnlyCorrection) {
+    const timeHint = extractTimeHint(text);
+    if (timeHint) {
+      out.timeHint = timeHint;
+      out.constraints = pushConstraint(out.constraints ?? [], 'temporal', \`time:\${timeHint}\`, 'high', 'correction');
+      out.isRefinement = true;
+      out.isCorrection = true;
+      return out;
+    }
+  }
+
   const primaryVerb = extractPrimaryTaskVerb(text);
   const parseText = normaliseSpeechLead(text);
   if (primaryVerb) {
