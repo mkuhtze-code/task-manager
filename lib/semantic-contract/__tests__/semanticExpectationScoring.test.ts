@@ -119,16 +119,29 @@ describe('Phase N semantic expectation scoring (diagnostic, no release threshold
     const speechSummary = summarizeSemanticExpectationResults(speech.map((row) => row.result));
     const engineSummary = summarizeSemanticExpectationResults(engine.map((row) => row.result));
 
-    console.info('PHASE_N_SEMANTIC_ACCURACY=' + JSON.stringify({
+    console.info('PHASE_N_SEMANTIC_ACCURACY_SUMMARY=' + JSON.stringify({
       benchmark: 'phase-n-semantic-expectations-v1',
       labelCount: EXPECTATIONS.length,
       annotationStatus: { candidatePendingHumanReview: EXPECTATIONS.length, reviewed: 0 },
       domains: [...new Set(EXPECTATIONS.map((label) => label.domain))].sort(),
       speech: speechSummary,
       engine: engineSummary,
-      speechFailures: speech.filter((row) => row.result.failed > 0).map((row) => ({ id: row.label.id, criteria: row.result.criteria.filter((item) => !item.passed) })),
-      engineFailures: engine.filter((row) => row.result.failed > 0).map((row) => ({ id: row.label.id, criteria: row.result.criteria.filter((item) => !item.passed) })),
     }));
+    for (const [producer, rows] of [['speech', speech], ['engine', engine]] as const) {
+      for (const row of rows.filter((item) => item.result.failed > 0)) {
+        console.info('PHASE_N_SEMANTIC_ACCURACY_CASE=' + JSON.stringify({
+          producer,
+          id: row.label.id,
+          passed: row.result.passed,
+          failed: row.result.failed,
+          failures: row.result.criteria.filter((item) => !item.passed).map((item) => ({
+            criterion: item.criterion,
+            expected: item.expected,
+            actual: String(item.actual).slice(0, 80),
+          })),
+        }));
+      }
+    }
 
     expect(EXPECTATIONS).toHaveLength(16);
     expect(EXPECTATIONS.every((label) => label.id.length > 0)).toBe(true);
@@ -139,6 +152,8 @@ describe('Phase N semantic expectation scoring (diagnostic, no release threshold
     expect(engineSummary.cases).toBe(EXPECTATIONS.length);
     expect(speechSummary.criteria).toBeGreaterThan(0);
     expect(engineSummary.criteria).toBe(speechSummary.criteria);
+    expect(speechSummary.byCriterion).toHaveProperty('requiredPredicateTerm');
+    expect(engineSummary.byCriterion).toHaveProperty('requiredCorrectionFacet');
   });
 });
 
