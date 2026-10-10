@@ -760,6 +760,14 @@ function extractLocation(text: string): string | null {
 
   if (!location) return null;
 
+  // Temporal expressions can follow the same prepositions as destinations
+  // ("move it to Monday", "put that at Friday"). They are schedule facets,
+  // never physical locations. Reject them before they can leak into the task
+  // title as "at Monday" or persist as a stale location during corrections.
+  if (/^(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|this afternoon|next week)$/i.test(location.trim())) {
+    return null;
+  }
+
   // Duration phrases must never leak into location semantics.
   location = stripExplicitDurationPhrase(location);
   location = location
