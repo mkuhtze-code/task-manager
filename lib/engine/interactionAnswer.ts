@@ -74,7 +74,9 @@ export function answerFeasibility(
   const targetDate = cycle.request.dateHint ? hintedDate : capacityDate;
   const capacityApplies = targetDate != null && targetDate === capacityDate;
   let remaining = capacityApplies
-    ? input.context.remainingMinsToday ?? travelCtx?.remainingMins ?? null
+    ? onTrip
+      ? travelCtx?.remainingMins ?? input.context.remainingMinsToday ?? null
+      : input.context.remainingMinsToday ?? null
     : null;
   if (!capacityApplies) {
     facts.push(
