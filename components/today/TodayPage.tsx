@@ -1422,16 +1422,33 @@ export function TodayPage() {
         patch.text = engineOverrides.text;
       }
       if (mins > 0) patch.estimate_mins = mins;
+      // PostgREST .single() throws "Cannot coerce the result into a single
+      // JSON object" when the update returns zero visible rows (for example,
+      // a stale task binding or an RLS-filtered row). Use maybeSingle so this
+      // path can distinguish a database error from a missing update target.
       const { data: updated, error: updErr } = await supabase
         .from('tasks')
         .update(patch)
         .eq('id', engineOverrides.updateTaskId)
         .eq('user_id', userId)
         .select()
-        .single();
+        .maybeSingle();
       if (updErr) {
-        console.error(updErr);
+        console.error('[capture] task update failed', {
+          taskId: engineOverrides.updateTaskId,
+          userId,
+          code: updErr.code,
+          message: updErr.message,
+        });
         alert(updErr.message);
+        return;
+      }
+      if (!updated) {
+        console.error('[capture] task update matched no visible row', {
+          taskId: engineOverrides.updateTaskId,
+          userId,
+        });
+        alert("I couldn't confirm that task update. The task may have changed or the saved reference may be out of date. Your existing task has not been replaced.");
         return;
       }
       setTasks((prev) =>
