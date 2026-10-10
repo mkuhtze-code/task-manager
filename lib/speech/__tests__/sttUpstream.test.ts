@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   parseSttUpstreamConfig,
+  MAX_AUDIO_BYTES,
   assertAudioSize,
   transcribeUpstream,
 } from '../sttUpstream';
@@ -20,6 +21,11 @@ describe('sttUpstream', () => {
 
   it('assertAudioSize rejects empty', () => {
     expect(() => assertAudioSize(0)).toThrow(/empty/i);
+  });
+
+  it('enforces the same 8 MB limit used by the route', () => {
+    expect(() => assertAudioSize(MAX_AUDIO_BYTES + 1)).toThrow(/too large/i);
+    expect(() => assertAudioSize(MAX_AUDIO_BYTES)).not.toThrow();
   });
 
   it('deepgram path extracts transcript', async () => {
