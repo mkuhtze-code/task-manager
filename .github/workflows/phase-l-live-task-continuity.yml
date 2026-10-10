@@ -25,7 +25,10 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        run: npm install
+        # The repository lockfile currently contains only the root package entry.
+        # Ignore it for this isolated live-test job rather than letting npm's
+        # dependency-tree resolver fail on the incomplete lockfile.
+        run: npm install --package-lock=false --no-audit --no-fund
 
       - name: Run Phase L against live Supabase
         run: npm run test:context-live-l
