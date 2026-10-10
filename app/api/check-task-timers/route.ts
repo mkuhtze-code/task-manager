@@ -5,6 +5,11 @@ import { getUserLocalTime, timeStringToMinutes } from '@/lib/timezone';
 import { logError } from '@/lib/logError';
 import { deliverFcmToUser } from '@/lib/fcm/deliverToUser';
 
+// This endpoint performs cron work and must run only at request time. Without
+// this declaration Next may execute GET during static prerendering, which
+// requires production-only Supabase admin secrets during a build.
+export const dynamic = 'force-dynamic';
+
 function fmtMinsServer(mins: number): string {
   const m = Math.max(0, Math.round(mins));
   if (m < 60) return `${m}m`;
