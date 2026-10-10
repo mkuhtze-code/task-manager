@@ -3,6 +3,25 @@ import type { SpeechInterpretation } from '@/lib/speech/types';
 import type { SemanticAct } from '@/lib/speech/semantic/types';
 import type { SemanticEnvelope, SemanticEnvelopeAct, SemanticEnvelopeSource } from './envelope';
 
+const DATE_TEMPORAL_KINDS = new Set([
+  'today', 'tomorrow', 'yesterday', 'weekday', 'relative_day', 'relative_week', 'deadline',
+]);
+const TIME_TEMPORAL_KINDS = new Set(['clock_time', 'time_of_day']);
+
+function lastTemporalHint(
+  interpretation: SpeechInterpretation,
+  kinds: Set<string>,
+  resolvedField: 'resolvedDate' | 'resolvedTime'
+): string | null {
+  const temporal = [...interpretation.temporalReferences].reverse().find((item) => kinds.has(item.kind));
+  if (!temporal) return null;
+  return temporal[resolvedField] ?? temporal.raw ?? null;
+}
+
+function resolvedIsoDate(value: string | null | undefined): string | null {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
 function speechActToEnvelope(
   act: SemanticAct,
   source: SemanticEnvelopeSource
@@ -105,8 +124,8 @@ export function fromSpeechInterpretation(
       certainty: interpretation.certainty,
       commitment: interpretation.commitmentStrength,
       urgency: interpretation.urgency,
-      dateHint: null,
-      timeHint: null,
+      dateHint: lastTemporalHint(interpretation, DATE_TEMPORAL_KINDS, 'resolvedDate'),
+      timeHint: lastTemporalHint(interpretation, TIME_TEMPORAL_KINDS, 'resolvedTime'),
       relatedJobText: null,
       relatedMeetingText: null,
       isRefinement: false,
@@ -158,7 +177,7 @@ export function fromEngineInterpretation(
         sourceSpeaker: interpretation.personText,
         temporalRaw: [interpretation.dateHint, interpretation.timeHint].filter(Boolean).join(' ') || null,
         temporalRelation: null,
-        temporalResolvedDate: interpretation.dateHint,
+        temporalResolvedDate: resolvedIsoDate(interpretation.dateHint),
         certainty: null,
         commitment: null,
         condition: null,
@@ -207,7 +226,7 @@ export function fromEngineInterpretation(
       provenance: 'engine-reference-resolution',
     }] : [],
     temporalExpressions: [
-      ...(interpretation.dateHint ? [{ raw: interpretation.dateHint, kind: 'date_hint', resolvedDate: interpretation.dateHint, resolvedTime: null, isCorrection: interpretation.isCorrection, confidence: interpretation.confidence, provenance: 'engine-interpreter' }] : []),
+      ...(interpretation.dateHint ? [{ raw: interpretation.dateHint, kind: 'date_hint', resolvedDate: resolvedIsoDate(interpretation.dateHint), resolvedTime: null, isCorrection: interpretation.isCorrection, confidence: interpretation.confidence, provenance: 'engine-interpreter' }] : []),
       ...(interpretation.timeHint ? [{ raw: interpretation.timeHint, kind: 'time_hint', resolvedDate: null, resolvedTime: interpretation.timeHint, isCorrection: interpretation.isCorrection, confidence: interpretation.confidence, provenance: 'engine-interpreter' }] : []),
     ],
     relations: interpretation.grammar.relations.map((relation) => ({ kind: 'grammar_relation', sourceActId: null, target: null, raw: String(relation), confidence: interpretation.confidence, provenance: 'engine-semantic-grammar' })),

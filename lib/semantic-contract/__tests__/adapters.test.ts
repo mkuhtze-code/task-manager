@@ -81,6 +81,8 @@ describe('Phase N semantic envelope adapters', () => {
     expect(envelope.correctionChain[0].marker).toBe('no wait');
     expect(envelope.entities[0]).toMatchObject({ raw: 'Alex', kind: 'person', resolvedId: null });
     expect(envelope.temporalExpressions[0]).toMatchObject({ raw: 'Thursday', kind: 'weekday', isCorrection: true });
+    expect(envelope.context.dateHint).toBe('Thursday');
+    expect(envelope.context.timeHint).toBeNull();
     expect(envelope.acts[0].evidence[0].source).toBe('correction-parser');
     expect(envelope.provenance.lossyProjection).toBe(false);
   });
@@ -97,6 +99,37 @@ describe('Phase N semantic envelope adapters', () => {
     expect(envelope.provenance.lossNotes.length).toBeGreaterThan(0);
     expect(envelope.acts.length).toBeLessThanOrEqual(1);
     expect(envelope.context.dateHint).toBe(interpretation.dateHint);
+    expect(envelope.temporalExpressions.find((item) => item.kind === 'date_hint')?.resolvedDate)
+      .toBeNull();
+    expect(envelope.acts[0]?.temporalResolvedDate).toBeNull();
+
+    const resolvedDateEnvelope = fromEngineInterpretation({
+      ...interpretation,
+      dateHint: '2026-10-15',
+    });
+    expect(resolvedDateEnvelope.temporalExpressions.find((item) => item.kind === 'date_hint')?.resolvedDate)
+      .toBe('2026-10-15');
+    expect(resolvedDateEnvelope.acts[0]?.temporalResolvedDate).toBe('2026-10-15');
+  });
+
+  it('projects explicit speech clock times into context without inventing a resolved date', () => {
+    const timedInterpretation: SpeechInterpretation = {
+      ...speechFixture,
+      temporalReferences: [
+        ...speechFixture.temporalReferences,
+        {
+          raw: '4pm',
+          kind: 'clock_time',
+          resolvedDate: null,
+          resolvedTime: '16:00',
+          isCorrection: false,
+          confidence: 'high',
+        },
+      ],
+    };
+    const envelope = fromSpeechInterpretation(timedInterpretation);
+    expect(envelope.context.dateHint).toBe('Thursday');
+    expect(envelope.context.timeHint).toBe('16:00');
   });
 
   it('keeps interpretation separate from action authority', () => {

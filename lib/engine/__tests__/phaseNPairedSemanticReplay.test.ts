@@ -3,6 +3,8 @@ import { textForCaptureField } from '@/hooks/useCaptureSpeech';
 import { interpretSemanticInput } from '@/lib/engine/semanticInterpreter';
 import { emptyWorkingMemory } from '@/lib/engine/workingMemory';
 import { processCaptureSpeech } from '@/lib/speech/captureAdapter';
+import { fromEngineInterpretation, fromSpeechInterpretation } from '@/lib/semantic-contract/adapters';
+import { compareSemanticEnvelopes, SHADOW_SIGNALS } from '@/lib/semantic-contract/shadowComparison';
 
 /**
  * Phase N paired replay harness.
@@ -102,7 +104,19 @@ describe('Phase N — paired typed/transcript semantic replay (diagnostic baseli
       const transcript = textForCaptureField(speech);
       const typedEngine = projectEngine(item.input);
       const transcriptEngine = projectEngine(transcript);
-      const speechActs = (speech.pipeline.interpretation?.semantic?.acts ?? []).map((act) => ({
+      const speechInterpretation = speech.pipeline.interpretation;
+      const pairedEngineInterpretation = interpretSemanticInput(speechInterpretation?.normalisedText ?? item.input, {
+        workingMemory: emptyWorkingMemory(TODAY),
+        jobs: [],
+        meetings: [],
+      });
+      const semanticShadow = speechInterpretation
+        ? compareSemanticEnvelopes(
+            fromSpeechInterpretation(speechInterpretation),
+            fromEngineInterpretation(pairedEngineInterpretation),
+          )
+        : null;
+      const speechActs = (speechInterpretation?.semantic?.acts ?? []).map((act) => ({
         kind: act.kind,
         rawSpan: act.rawSpan,
         polarity: act.polarity,
@@ -139,6 +153,16 @@ describe('Phase N — paired typed/transcript semantic replay (diagnostic baseli
         engineFieldDifferences: differences(typedEngine, transcriptEngine),
         engineParity: differences(typedEngine, transcriptEngine).length === 0,
         speechActCount: speechActs.length,
+        semanticShadow: semanticShadow ? {
+          sameUtterance: semanticShadow.input.sameUtterance,
+          summary: semanticShadow.summary,
+          comparisons: semanticShadow.comparisons.map((comparison) => ({
+            signal: comparison.signal,
+            speech: comparison.speech.value,
+            engine: comparison.engine.value,
+            status: comparison.status,
+          })),
+        } : null,
       };
     });
 
@@ -161,6 +185,22 @@ describe('Phase N — paired typed/transcript semantic replay (diagnostic baseli
       ],
       summary: {
         exactEngineProjectionParity: observations.filter((row) => row.engineParity).length,
+        semanticShadow: {
+          comparedCases: observations.filter((row) => row.semanticShadow !== null).length,
+          sameUtteranceCases: observations.filter((row) => row.semanticShadow?.sameUtterance).length,
+          bySignal: SHADOW_SIGNALS.map((signal) => {
+            const comparisons = observations.flatMap((row) =>
+              row.semanticShadow?.comparisons.filter((comparison) => comparison.signal === signal) ?? []
+            );
+            return {
+              signal,
+              agree: comparisons.filter((comparison) => comparison.status === 'agree').length,
+              disagree: comparisons.filter((comparison) => comparison.status === 'disagree').length,
+              notComparable: comparisons.filter((comparison) => comparison.status === 'not_comparable').length,
+              differentInput: comparisons.filter((comparison) => comparison.status === 'different_input').length,
+            };
+          }),
+        },
         engineProjectionDifferences: observations.filter((row) => !row.engineParity).map((row) => ({
           id: row.id,
           fields: row.engineFieldDifferences,
@@ -182,5 +222,13 @@ describe('Phase N — paired typed/transcript semantic replay (diagnostic baseli
     expect(report.domains.length).toBeGreaterThanOrEqual(8);
     expect(observations.every((row) => row.input.length > 0 && row.transcriptAfterSpeechPipeline.length > 0)).toBe(true);
     expect(observations.every((row) => Array.isArray(row.engineFieldDifferences) && Array.isArray(row.speech.acts))).toBe(true);
+    expect(report.summary.semanticShadow.comparedCases).toBeGreaterThan(0);
+    expect(report.summary.semanticShadow.bySignal).toHaveLength(SHADOW_SIGNALS.length);
+    expect(observations.filter((row) => row.semanticShadow !== null).every((row) => {
+      if (!row.semanticShadow) return false;
+      const summary = row.semanticShadow.summary;
+      return summary.agreements + summary.disagreements
+        + summary.notComparable + summary.differentInput === SHADOW_SIGNALS.length;
+    })).toBe(true);
   });
 });
