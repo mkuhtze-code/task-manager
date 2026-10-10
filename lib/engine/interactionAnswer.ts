@@ -22,7 +22,7 @@ function dateForHint(hint: string | null, todayDate: string): string | null {
     date.setUTCDate(date.getUTCDate() + 1);
     return date.toISOString().slice(0, 10);
   }
-  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return value;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
 
   const weekdays: Record<string, number> = {
     sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
@@ -64,7 +64,7 @@ export function answerFeasibility(
   }, 0);
 
   const todayDate =
-    input.context.todayDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(input.context.todayDate)
+    input.context.todayDate && /^\d{4}-\d{2}-\d{2}$/.test(input.context.todayDate)
       ? input.context.todayDate
       : new Date().toISOString().slice(0, 10);
   const capacityDate = onTrip && travelCtx?.dayDate ? travelCtx.dayDate : todayDate;
