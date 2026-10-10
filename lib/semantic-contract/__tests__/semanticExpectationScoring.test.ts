@@ -198,6 +198,25 @@ describe('semantic expectation scorer', () => {
     expect(result.criteria.find((item) => item.criterion === 'requiredObjectTerm:birthday cake')?.passed).toBe(true);
   });
 
+  it('scores subject, person mention and relation as separate semantic roles', () => {
+    const label: SemanticExpectation = {
+      id: 'role-fields', domain: 'communication', input: 'I will send it to Lee after approval',
+      expected: {
+        requiredSubjectTerms: ['I'],
+        requiredPersonTerms: ['Lee'],
+        requiredRelationTerms: ['after'],
+      },
+    };
+    const result = evaluateSemanticExpectation(label, {
+      ...observed,
+      subjectText: 'I',
+      personText: 'Lee',
+      relationText: 'after approval',
+    });
+    expect(result.passed).toBe(3);
+    expect(result.failed).toBe(0);
+  });
+
   it('checks correction facets rather than only correction presence', () => {
     const label: SemanticExpectation = {
       id: 'time-correction', domain: 'office', input: 'Move it to 3:30, no wait, 4',
