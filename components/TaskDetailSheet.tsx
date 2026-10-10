@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Subtask, Task, TaskContext } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
-import { fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
+import { fmtClock, fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
 import {
   explainEstimate,
   type EstimateSuggestion,
@@ -1248,6 +1248,9 @@ export function TaskDetailSheet(props: {
           <div className="desk-detail-grid">
             <section className="desk-detail-panel">
               <h3 className="desk-detail-panel-title">Schedule</h3>
+              {task.intended_time ? (
+                <p className="task-detail-scheduled-time">Scheduled for {fmtClock(task.intended_time)}</p>
+              ) : null}
               <label className="desk-detail-field">
                 <span className="desk-detail-label">Estimate</span>
                 <input
@@ -1383,6 +1386,9 @@ export function TaskDetailSheet(props: {
           </button>
         </div>
 
+        {task.intended_time ? (
+          <div className="task-detail-scheduled-time">Scheduled for {fmtClock(task.intended_time)}</div>
+        ) : null}
         <input
           type="text"
           className="task-detail-name"

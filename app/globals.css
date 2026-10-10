@@ -8371,6 +8371,28 @@ select:-webkit-autofill {
 .task-card-context {
   max-width: min(100%, 420px);
 }
+
+.task-card-intended-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.task-detail-scheduled-time {
+  margin: 3px 0 8px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
  .desk-job-card-context {
   margin-top: 8px;
 }

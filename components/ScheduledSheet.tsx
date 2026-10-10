@@ -1,7 +1,7 @@
 'use client';
 
 import type { Task } from '@/lib/taskTypes';
-import { fmtSurfaceDate } from '@/lib/timeFormat';
+import { fmtClock, fmtSurfaceDate } from '@/lib/timeFormat';
 import { CloseIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 
@@ -35,7 +35,7 @@ export function ScheduledSheet(props: {
                 onClick={() => { onOpenTask(t.id); onClose(); }}
                 aria-label="Edit reminder"
               >
-                {t.surface_date ? fmtSurfaceDate(t.surface_date) : ''}
+                {[t.surface_date ? fmtSurfaceDate(t.surface_date) : null, t.intended_time ? fmtClock(t.intended_time) : null].filter(Boolean).join(' · ')}
               </button>
             </div>
           ))
