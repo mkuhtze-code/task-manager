@@ -115,6 +115,25 @@ describe('detectCollectionIntent', () => {
     );
   });
 
+  it('routes short weekday corrections away from list detection', () => {
+    for (const phrase of [
+      'Actually, make that Friday.',
+      'Move it to Monday.',
+      'Change it to Friday.',
+      'Change the date to Monday.',
+    ]) {
+      expect(detectCollectionIntent(phrase, {
+        activeCollectionId: 'active-list',
+        msSinceLastActivity: 1000,
+      })).toBeNull();
+    }
+  });
+
+  it('still detects explicit list creation after the correction guard', () => {
+    expect(detectCollectionIntent('Start a grocery list and add milk to it')?.type)
+      .toBe('create_collection');
+  });
+
   it('detects close', () => {
     expect(detectCollectionIntent("That's everything for groceries.")?.type).toBe(
       'close_collection'
