@@ -16,7 +16,7 @@ import { decideAuthority } from './authority';
 import { assembleContext, resolveJobName, resolveLocationAgainstJobs } from './contextAssembly';
 import { explainDecision } from './explain';
 import { containsReference, resolveReference } from './references';
-import { applyUtteranceToRequest, requestTaskText } from './request';
+import { applyUtteranceToRequest, extractExplicitSeparateTaskClause, requestTaskText } from './request';
 import { interpretSemanticInput } from './semanticInterpreter';
 import {
   emptyWorkingMemory,
@@ -318,7 +318,12 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     })
   );
 
-  const semantic = interpretSemanticInput(input.utterance, {
+  // When a sentence explicitly asks for a separate task, the task clause is
+  // the semantic subject. Do not let an earlier preservation clause (for
+  // example, “leave the original unchanged”) overwrite its action/object roles.
+  const semanticUtterance =
+    extractExplicitSeparateTaskClause(input.utterance) ?? input.utterance;
+  const semantic = interpretSemanticInput(semanticUtterance, {
     workingMemory: mem,
     currentFocus: mem.currentFocus,
     jobs: input.context?.jobs ?? [],
