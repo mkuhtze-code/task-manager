@@ -197,4 +197,71 @@ describe('Phase 20 — production acceptance: Capture → speech → Dock', () =
     expect(dock.cpuCycle.decision.authority.mayAct).toBe(true);
   });
 
+  it('does not score a tomorrow visit against today capacity', () => {
+    const input = 'I need to drop off the clips to 64 Grace James Road in Pukekohe at 9am tomorrow';
+    const speech = processCaptureSpeech({ text: input, todayIso: TODAY });
+    const dock = runCaptureDock({
+      line: textForCaptureField(speech),
+      userId: null,
+      priorRequest: null,
+      jobs,
+      captureJobId: null,
+      captureSurfaceDate: TODAY,
+      remainingMinsToday: 1,
+      openTaskCount: 0,
+      inputType: 'speech_transcript',
+      travelMins: 30,
+      visitDurationMins: 60,
+    });
+
+    expect(dock.kind).toBe('act_create');
+    if (dock.kind !== 'act_create') throw new Error(`Expected action, got ${dock.kind}`);
+    expect(dock.request.dateHint).toBe('tomorrow');
+    expect(dock.cpuCycle.decision.authority.mayAct).toBe(true);
+    expect(dock.cpuCycle.decision.interaction.decision).toBeNull();
+    expect(dock.cpuCycle.decision.interaction.decisionTrace).toBeNull();
+  });
+
+  it('uses selected travel-day capacity instead of Today capacity and accounts for meetings', () => {
+    const input = 'Go to Henderson to check the flashing';
+    const dock = runCaptureDock({
+      line: input,
+      userId: null,
+      priorRequest: null,
+      jobs,
+      captureJobId: null,
+      captureSurfaceDate: TODAY,
+      remainingMinsToday: 240,
+      openTaskCount: 0,
+      inputType: 'text',
+      travelMins: 20,
+      visitDurationMins: 60,
+      meetings: [
+        {
+          id: 'trip-meeting',
+          text: 'Client meeting',
+          startAt: '2026-10-09T10:00:00.000Z',
+          durationMins: 20,
+        },
+      ],
+      travel: {
+        tripId: 'trip-1',
+        tripName: 'Site visits',
+        intent: 'work',
+        dayId: 'trip-day-1',
+        dayDate: TODAY,
+        remainingMins: 25,
+        plannedMins: 90,
+      },
+      interfaceName: 'travel',
+    });
+
+    expect(dock.kind).toBe('act_create');
+    if (dock.kind !== 'act_create') throw new Error(`Expected action, got ${dock.kind}`);
+    expect(dock.cpuCycle.context.work.today.remainingMins).toBe(25);
+    expect(dock.cpuCycle.decision.interaction.fitState).toBe('poor');
+    expect(dock.cpuCycle.decision.interaction.facts).toContain('meeting_block≈20');
+    expect(dock.cpuCycle.decision.authority.mayAct).toBe(true);
+  });
+
 });
