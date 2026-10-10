@@ -1,7 +1,7 @@
 # Cross-domain Intelligence Corpus — Specification
 
 **Status:** development seed; semantic annotations are still draft  
-**Current size:** 48 examples (10 structural pilot + 38 batch-001 development examples)  
+**Current size:** 106 examples (10 structural pilot + 38 batch-001 + 58 batch-002 development examples; all annotations remain draft)  
 **Target scale:** 3,000–5,000 reviewed synthetic and privacy-safe regression examples  
 **Governing rule:** [Universal Intelligence Rule](./UNIVERSAL_INTELLIGENCE_RULE.md)  
 **Annotation gate:** [Corpus Annotation Rubric](./CORPUS_ANNOTATION_RUBRIC.md)
@@ -18,6 +18,8 @@ The corpus is an evaluation and engineering instrument. It is **not** a runtime 
 - `data/intelligence-corpus/schema.json` — machine-readable record contract.
 - `data/intelligence-corpus/examples/pilot.jsonl` — 10 illustrative structural fixtures.
 - `data/intelligence-corpus/examples/batch-001-development.jsonl` — 38 cross-domain draft examples.
+- `data/intelligence-corpus/examples/batch-002-development.jsonl` — 58 additional compositional, cross-domain draft examples.
+- `docs/architecture/PHASE_N_CORPUS_REVIEW_PROTOCOL.md` — independent review, disagreement handling, and safe split-promotion rules.
 - `scripts/validate-intelligence-corpus.mjs` — dependency-free structure, taxonomy, split, and annotation-count validation.
 - `npm run test:corpus-schema` — run validation locally and in CI/build.
 
@@ -50,7 +52,7 @@ The schema should evolve deliberately and be versioned. Do not make fields manda
 
 Use three disjoint splits: `development`, `validation`, and `held_out`. The held-out split is not used to author rules or tune heuristics. Keep paraphrases, template siblings, and same-scenario variants in one split; `family_id` identifies related cases. Never split siblings across development and held-out sets.
 
-Current state: all 48 records are development examples. There are **zero** validation and held-out records. Do not report held-out performance or use corpus scores as release gates until reviewed gold labels and a leakage-controlled held-out set exist.
+Current state: all 106 records are development examples and all annotations remain draft. There are **zero** validation and held-out records and zero independently reviewed labels. Do not report held-out performance or use corpus scores as release gates until labels are independently reviewed and a leakage-controlled held-out set exists.
 
 ## Annotation and review
 
@@ -80,4 +82,4 @@ The proposed 3,000–5,000 examples are a target, not a quota to fill with low-q
 
 ## Current status and limits
 
-Phase D adds a 38-example development batch, manifest annotation accounting, stronger taxonomy/split/semantic-shape structural checks, and an annotation rubric. The corpus now has 48 records, but all 48 remain drafts. This phase does not change runtime interpretation, establish semantic performance, or replace the Phase B 48-case diagnostic benchmark. The next step is independent annotation review and a corpus runner; do not create validation/held-out sets by randomly splitting these existing draft records.
+Phase N adds a 58-example development batch and a review protocol to the original 48-record seed. The corpus now has 106 records across 15 domains and 18 capabilities, but all 106 remain drafts. This does not change runtime interpretation, establish semantic performance, or replace the Phase B 48-case diagnostic benchmark. The next step is independent annotation review and policy-disagreement resolution; do not create validation/held-out sets by randomly splitting these draft records.
