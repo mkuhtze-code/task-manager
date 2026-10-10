@@ -9,7 +9,8 @@ import { decisionFromFit, traceFromFit } from '@/lib/thinking/v3/decisionTrace';
 import type { Decision, DecisionTrace } from '@/lib/thinking/v3/types';
 
 // ANSWER and ACT intentionally share the same V3 fit evaluator below; keep both paths aligned.
-\n// Resolve only dates we can deterministically anchor. Unknown relative expressions
+
+// Resolve only dates we can deterministically anchor. Unknown relative expressions
 // must not be treated as if they referred to the currently selected capacity window.
 function dateForHint(hint: string | null, todayDate: string): string | null {
   if (!hint) return null;
