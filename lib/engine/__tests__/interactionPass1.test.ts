@@ -352,6 +352,66 @@ describe('Integration Pass 1 — capture interpretation boundaries', () => {
 
 
 
+describe('Phase P — capture capacity and trace consistency', () => {
+  it('uses task estimate rather than visit-plus-travel for ordinary captured work', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: {
+        type: 'text',
+        text: 'Add split September invoice to this job',
+      },
+      context: {
+        ...baseContext,
+        remainingMinsToday: 180,
+        travelMins: 30,
+        visitDurationMins: 60,
+        currentFocus: {
+          kind: 'job',
+          id: 'j-henderson',
+          label: 'Henderson',
+        },
+      },
+    });
+
+    expect(r.outcome).toBe('ACT');
+    expect(r.action?.kind).toBe('create_task');
+    expect(r.decision).not.toBeNull();
+    if (r.action?.kind === 'create_task') {
+      expect(r.decision?.effectiveCapacityMins).toBe(r.action.estimateMins);
+      expect(r.decision?.effectiveCapacityMins).toBeLessThan(60);
+    }
+  });
+
+  it('uses actual engine evidence IDs and carries context time into the trace', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: {
+        type: 'text',
+        text: 'Add split September invoice to this job',
+      },
+      context: {
+        ...baseContext,
+        currentFocus: {
+          kind: 'job',
+          id: 'j-henderson',
+          label: 'Henderson',
+        },
+      },
+    });
+
+    expect(r.outcome).toBe('ACT');
+    expect(r.decision).not.toBeNull();
+    expect(r.decisionTrace).not.toBeNull();
+    const evidenceIds = new Set(r.evidence.map((e) => e.id));
+    expect(r.decision!.evidenceIds.every((id) => evidenceIds.has(id))).toBe(true);
+    expect(r.decision!.evidenceIds.every((id) => !id.startsWith('ans-'))).toBe(true);
+    expect(r.decisionTrace!.evidenceIds).toEqual(r.decision!.evidenceIds);
+    expect(r.decisionTrace!.inputs.contextAt).toEqual(r.decision!.createdAt);
+  });
+});
+
 describe('Integration Pass 1 — shared fit authority', () => {
   it('uses the same V3 fit decision for ACT and ANSWER', async () => {
     const { runEngineCycle } = await import('../orchestrate');
