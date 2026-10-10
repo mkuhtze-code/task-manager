@@ -334,7 +334,7 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
   // jobs/meetings are ephemeral candidates; a resolved task reference becomes
   // an explicit dependency so the action layer has a concrete target.
   let resolvedReference: ReturnType<typeof resolveReference> | null = null;
-  if (containsReference(input.utterance)) {
+  if (containsReference(semanticUtterance)) {
     const context = input.context;
     const contextReferents = [
       ...(context?.jobs ?? []).map((job) => ({
@@ -358,7 +358,7 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
         relationships: {},
       })),
     ];
-    resolvedReference = resolveReference(input.utterance, mem, {
+    resolvedReference = resolveReference(semanticUtterance, mem, {
       extraReferents: contextReferents,
     });
     evidenceList.push(
@@ -527,7 +527,7 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
   // Never silently turn "do that", "move it", or "go there" into a new action
   // when working memory cannot resolve what the user means.
   if (
-    containsReference(input.utterance) &&
+    containsReference(semanticUtterance) &&
     resolvedReference &&
     (resolvedReference.status === 'ambiguous' || resolvedReference.status === 'unknown')
   ) {
