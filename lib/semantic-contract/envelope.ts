@@ -4,18 +4,49 @@
  * This is an evidence-preserving interchange contract, not an execution
  * request. It deliberately does not choose which interpretation is correct.
  */
-import type { Confidence } from '@/lib/engine/types';
-import type {
-  ActKind,
-  CorrectionStep,
-  Polarity,
-  ReferenceResolution,
-  SemanticCondition,
-  SemanticDependency,
-  SemanticEvidence,
-  TemporalRelation,
-} from '@/lib/speech/semantic/types';
-import type { SpeechCertainty, CommitmentStrength } from '@/lib/speech/types';
+/**
+ * Contract-owned primitives. This module intentionally imports no producer
+ * contract so speech and engine remain replaceable evidence sources.
+ */
+export type SemanticConfidence = 'low' | 'medium' | 'high';
+export type SemanticActKind =
+  | 'action' | 'observation' | 'question' | 'commitment' | 'correction'
+  | 'condition' | 'dependency' | 'retraction' | 'reported_speech'
+  | 'confirmation' | 'refusal' | 'unknown';
+export type SemanticPolarity = 'positive' | 'negated' | 'unknown';
+export type SemanticTemporalRelation =
+  | 'on' | 'by' | 'after' | 'before' | 'until' | 'not_before' | 'sometime' | 'unknown';
+export type SemanticCorrection = {
+  from: string;
+  to: string;
+  marker: string;
+  facet: 'date' | 'time' | 'entity' | 'action' | 'generic';
+  order: number;
+  actId?: string;
+};
+export type SemanticReference = {
+  pronoun: string;
+  resolvedTo: string | null;
+  candidateIds: string[];
+  confidence: SemanticConfidence;
+  requiresClarification: boolean;
+};
+export type SemanticCondition = {
+  raw: string;
+  kind: 'if' | 'unless' | 'when' | 'unknown';
+  confidence: SemanticConfidence;
+};
+export type SemanticDependency = {
+  raw: string;
+  kind: 'after' | 'before' | 'until' | 'once' | 'unknown';
+  confidence: SemanticConfidence;
+};
+export type SemanticEvidence = {
+  signal: string;
+  source: string;
+  span?: string;
+  weight?: number;
+};
 
 export type SemanticInputKind = 'typed' | 'speech' | 'engine';
 
@@ -30,30 +61,30 @@ export type SemanticEnvelopeSource = {
 
 export type SemanticEnvelopeAct = {
   id: string;
-  kind: ActKind;
+  kind: SemanticActKind;
   rawSpan: string;
-  polarity: Polarity;
+  polarity: SemanticPolarity;
   actionVerb: string | null;
   objectText: string | null;
   subjectText: string | null;
   sourceSpeaker: string | null;
   temporalRaw: string | null;
-  temporalRelation: TemporalRelation | null;
+  temporalRelation: SemanticTemporalRelation | null;
   temporalResolvedDate: string | null;
-  certainty: SpeechCertainty | null;
-  commitment: CommitmentStrength | null;
+  certainty: string | null;
+  commitment: string | null;
   condition: SemanticCondition | null;
   dependency: SemanticDependency | null;
-  references: ReferenceResolution[];
+  references: SemanticReference[];
   entityLinks: Array<{
     entityId: string;
     label: string;
     kind: string;
     confidence?: Confidence;
   }>;
-  corrections: CorrectionStep[];
+  corrections: SemanticCorrection[];
   evidence: SemanticEvidence[];
-  confidence: Confidence;
+  confidence: SemanticConfidence;
   blocksTaskCreation: boolean;
   requiresClarification: boolean;
   targetsExistingContext: boolean;
@@ -68,7 +99,7 @@ export type SemanticEnvelope = {
   version: 1;
   source: SemanticEnvelopeSource;
   acts: SemanticEnvelopeAct[];
-  correctionChain: CorrectionStep[];
+  correctionChain: SemanticCorrection[];
   entities: Array<{
     raw: string;
     kind: string;
