@@ -841,7 +841,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     const timeHint = extractTimeHint(text);
     if (timeHint) {
       out.timeHint = timeHint;
-      out.constraints = pushConstraint(out.constraints ?? [], 'temporal', \`time:\${timeHint}\`, 'high', 'correction');
+      out.constraints = pushConstraint(out.constraints ?? [], 'temporal', 'time:' + timeHint, 'high', 'correction');
       out.isRefinement = true;
       out.isCorrection = true;
       return out;
