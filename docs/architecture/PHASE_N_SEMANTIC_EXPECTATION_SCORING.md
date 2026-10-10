@@ -16,9 +16,9 @@ Each assertion is reported as pass/fail with the expected value and observed evi
 
 ## Interpretation and limitations
 
-The 16 cases are a first reviewed evaluation slice, not a statistically representative corpus. The expected labels are visible and versioned in the test source. Because the labels still use term-level matching for some arguments and time expressions, scores are not equivalent to full semantic accuracy. A term match does not prove correct argument roles, reference resolution, date normalization, or action safety. Criteria and labels must be reviewed before thresholds are introduced.
+The 16 cases are candidate expectation assertions authored for evaluation development; they have not yet been independently human-reviewed and must not be treated as gold labels. The expected assertions are visible and versioned in the test source. The runner explicitly reports them as pending human review. Because the labels still use term-level matching for some arguments and time expressions, scores are not equivalent to full semantic accuracy. A term match does not prove correct argument roles, reference resolution, date normalization, or action safety. Criteria and labels must be reviewed before thresholds are introduced.
 
-No arbitrary minimum score is imposed in this phase. The harness records failures so they can guide reviewed label refinement. The baseline is not to be silently edited to make a producer pass. Add independent validation and held-out cases before using any score as a release gate.
+No arbitrary minimum score is imposed in this phase. Candidate labels do not contribute to release gates until a reviewer confirms or revises each assertion. The harness records failures so they can guide reviewed label refinement. The baseline is not to be silently edited to make a producer pass. Add independent validation and held-out cases before using any score as a release gate.
 
 ## Guardrails
 
