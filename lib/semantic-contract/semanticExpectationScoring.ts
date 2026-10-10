@@ -52,16 +52,6 @@ function normalized(text: string): string {
   return text.normalize('NFKC').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-function includesAll(haystack: string, terms: readonly string[]): boolean {
-  const text = normalized(haystack);
-  return terms.every((term) => text.includes(normalized(term)));
-}
-
-function includesAny(haystack: string, terms: readonly string[]): boolean {
-  const text = normalized(haystack);
-  return terms.some((term) => text.includes(normalized(term)));
-}
-
 export function evaluateSemanticExpectation(
   label: SemanticExpectation,
   observed: ObservedSemanticFacts,
