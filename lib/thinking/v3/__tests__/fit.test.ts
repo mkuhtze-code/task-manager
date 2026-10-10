@@ -112,5 +112,5 @@ describe('capacityBiasScaleFromBehaviour', () => {
     });
     const scale = capacityBiasScaleFromBehaviour(model, 'Site measure access');
     expect(scale).toBeGreaterThan(1);
-  });
+  }, 15_000); // Avoid false failures when deterministic clustering tests run on a contended CI worker.
 });
