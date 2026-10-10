@@ -162,10 +162,10 @@ export function answerFeasibility(
       remainingWindowMins: remaining,
       sameDayRate: null,
       protectFromCarry: false,
-      dueToday: capacityApplies && (visitMode || cycle.request.dateHint === 'today'),
-      hasIntendedTime: capacityApplies && (visitMode
-        ? afternoonHint
-        : Boolean(cycle.request.timeHint)),
+      dueToday: capacityApplies && Boolean(cycle.request.dateHint),
+      hasIntendedTime: capacityApplies && Boolean(
+        cycle.request.timeHint || (visitMode && afternoonHint)
+      ),
       isActive: false,
       behaviour: null,
       clusterBehaviour: null,
