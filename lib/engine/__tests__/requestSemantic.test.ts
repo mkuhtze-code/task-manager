@@ -336,4 +336,58 @@ describe('spoken object and location corrections', () => {
     expect(next.dateHint).toBe('friday');
     expect(next.rawUtterances).toEqual(['I need to call Sarah Friday']);
   });
+  it('does not interpret a weekday correction as a physical location', () => {
+    const parsed = interpretRequestUtterance('Move it to Monday.');
+    expect(parsed.dateHint).toBe('monday');
+    expect(parsed.locationText).toBeNull();
+  });
+
+  it('keeps a date-only correction from contaminating the active task title', () => {
+    const original = applyUtteranceToRequest(
+      null,
+      'I need to email Sarah about the revised proposal.',
+      emptyWorkingMemory(),
+    );
+    const moved = applyUtteranceToRequest(
+      original,
+      'Move it to Monday.',
+      emptyWorkingMemory(),
+    );
+    expect(moved.dateHint).toBe('monday');
+    expect(moved.locationText).toBeNull();
+    expect(requestTaskText(moved).toLowerCase()).not.toContain('at monday');
+
+    const corrected = applyUtteranceToRequest(
+      moved,
+      'Actually, make that Friday.',
+      emptyWorkingMemory(),
+    );
+    expect(corrected.dateHint).toBe('friday');
+    expect(corrected.locationText).toBeNull();
+    expect(requestTaskText(corrected)).toBe(requestTaskText(original));
+    expect(requestTaskText(corrected).toLowerCase()).not.toContain('at monday');
+    expect(requestTaskText(corrected).toLowerCase()).not.toContain('at friday');
+  });
+
+  it('self-heals a weekday already saved as the active request location', () => {
+    const original = applyUtteranceToRequest(
+      null,
+      'I need to email Sarah about the revised proposal.',
+      emptyWorkingMemory(),
+    );
+    const contaminated = {
+      ...original,
+      locationText: 'Monday',
+      dateHint: 'monday',
+    };
+    const corrected = applyUtteranceToRequest(
+      contaminated,
+      'Actually, make that Friday.',
+      emptyWorkingMemory(),
+    );
+    expect(corrected.dateHint).toBe('friday');
+    expect(corrected.locationText).toBeNull();
+    expect(requestTaskText(corrected).toLowerCase()).not.toContain('at monday');
+  });
+
 });
