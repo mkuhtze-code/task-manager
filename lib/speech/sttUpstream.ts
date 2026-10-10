@@ -1,3 +1,5 @@
+import { normalizeSpeechLocale } from './locale';
+
 /**
  * Server-side upstream STT adapters.
  * Secrets stay here — never shipped to the browser.
