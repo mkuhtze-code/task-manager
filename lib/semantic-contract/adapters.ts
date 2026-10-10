@@ -19,7 +19,7 @@ function lastTemporalHint(
 }
 
 function resolvedIsoDate(value: string | null | undefined): string | null {
-  return value && /^\\d{4}-\\d{2}-\\d{2}$/.test(value) ? value : null;
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 }
 
 function speechActToEnvelope(
