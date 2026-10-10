@@ -1286,6 +1286,14 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 /**
  * Merge utterance interpretation into an existing request or start a new one.
  */
+export function extractExplicitSeparateTaskClause(raw: string): string | null {
+  const match = raw.match(
+    /\b(?:create|make|add)\s+(?:a\s+)?(?:separate|new|another)\s+task\s+(?:to|for)\s+(.+)$/i
+  );
+  const clause = match?.[1]?.trim().replace(/[.!?]+$/, '').trim();
+  return clause || null;
+}
+
 export function applyUtteranceToRequest(
   existing: EngineRequest | null,
   raw: string,
@@ -1293,17 +1301,12 @@ export function applyUtteranceToRequest(
 ): EngineRequest {
   // An explicit new/separate-task clause starts a fresh request, even when
   // an earlier clause says to preserve the currently active task.
-  const separateTask = raw.match(
-    /\b(?:create|make|add)\s+(?:a\s+)?(?:separate|new|another)\s+task\s+(?:to|for)\s+(.+)$/i
-  );
-  if (separateTask?.[1]) {
-    const taskClause = separateTask[1].trim().replace(/[.!?]+$/, '').trim();
-    if (taskClause) {
-      const fresh = applyUtteranceToRequest(null, taskClause, mem);
-      fresh.rawUtterances = [...fresh.rawUtterances.slice(0, -1), raw.trim()].slice(-12);
-      fresh.updatedAt = new Date().toISOString();
-      return fresh;
-    }
+  const taskClause = extractExplicitSeparateTaskClause(raw);
+  if (taskClause) {
+    const fresh = applyUtteranceToRequest(null, taskClause, mem);
+    fresh.rawUtterances = [...fresh.rawUtterances.slice(0, -1), raw.trim()].slice(-12);
+    fresh.updatedAt = new Date().toISOString();
+    return fresh;
   }
 
   const partial = interpretRequestUtterance(raw);
