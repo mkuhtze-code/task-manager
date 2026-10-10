@@ -49,7 +49,7 @@ const LABELS: LabelCase[] = [
 function featuresOf(envelope: SemanticEnvelope): Set<Feature> {
   const acts = envelope.acts;
   const features = new Set<Feature>();
-  if (acts.some((act) => act.kind === 'action' && !!act.actionVerb)) features.add('action');
+  if (acts.some((act) => !!act.actionVerb && act.kind !== 'question' && act.kind !== 'observation')) features.add('action');
   if (acts.some((act) => act.polarity === 'negated') ||
       envelope.context.evidence.some((item) => /negat|prohibit|must_not/i.test(item))) features.add('negation');
   if (envelope.correctionChain.length > 0 ||
@@ -65,7 +65,8 @@ function featuresOf(envelope: SemanticEnvelope): Set<Feature> {
       /^(ask|explain|search|question)$/i.test(envelope.context.intent ?? '')) features.add('question');
   if (envelope.temporalExpressions.length > 0 ||
       acts.some((act) => !!act.temporalRaw || !!act.temporalResolvedDate) ||
-      !!envelope.context.dateHint || !!envelope.context.timeHint) features.add('temporal');
+      !!envelope.context.dateHint || !!envelope.context.timeHint ||
+      envelope.relations.some((relation) => /\\b(on|by|after|before|until|not_before|deadline)\\b/i.test(relation.raw))) features.add('temporal');
   if (envelope.entities.length > 0 || acts.some((act) => act.entityLinks.length > 0)) features.add('entity');
   if (acts.some((act) => act.references.length > 0) ||
       envelope.relations.some((relation) => relation.kind === 'reference')) features.add('reference');
