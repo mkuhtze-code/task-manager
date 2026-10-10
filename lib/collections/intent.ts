@@ -215,6 +215,17 @@ export function detectCollectionIntent(
   const raw = collapseWhitespace(text);
   if (!raw) return null;
 
+  // Temporal corrections belong to the task engine, not the list parser.
+  // Without this precedence guard, a short correction such as
+  // "Actually, make that Friday" can be split into list title/items before
+  // the task-continuity engine gets a chance to update the existing task.
+  if (
+    /^(?:actually[,:]?\\s*)?(?:make|change|set|move|reschedule)\\s+(?:that|it|this)\\s+(?:to\\s+)?(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b[.!?]*$/i.test(raw) ||
+    /^(?:actually[,:]?\\s*)?(?:change|set|update)\\s+(?:the\\s+)?date\\s+(?:to\\s+)?(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b[.!?]*$/i.test(raw)
+  ) {
+    return null;
+  }
+
   // --- close ---
   const close = raw.match(CLOSE_RE);
   if (close) {
