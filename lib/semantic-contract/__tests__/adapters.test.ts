@@ -102,6 +102,14 @@ describe('Phase N semantic envelope adapters', () => {
     expect(envelope.temporalExpressions.find((item) => item.kind === 'date_hint')?.resolvedDate)
       .toBeNull();
     expect(envelope.acts[0]?.temporalResolvedDate).toBeNull();
+
+    const resolvedDateEnvelope = fromEngineInterpretation({
+      ...interpretation,
+      dateHint: '2026-10-15',
+    });
+    expect(resolvedDateEnvelope.temporalExpressions.find((item) => item.kind === 'date_hint')?.resolvedDate)
+      .toBe('2026-10-15');
+    expect(resolvedDateEnvelope.acts[0]?.temporalResolvedDate).toBe('2026-10-15');
   });
 
   it('projects explicit speech clock times into context without inventing a resolved date', () => {
