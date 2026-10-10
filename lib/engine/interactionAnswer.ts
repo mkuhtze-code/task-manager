@@ -13,7 +13,8 @@ import type { Decision, DecisionTrace } from '@/lib/thinking/v3/types';
 export function answerFeasibility(
   utterance: string,
   cycle: EngineCycleResult,
-  input: InteractionInput
+  input: InteractionInput,
+  options: { capacityMode?: 'visit' | 'task' } = {}
 ): InteractionAnswer {
   const facts: string[] = [...cycle.facts];
   const travelCtx = input.context.travel;
@@ -45,13 +46,22 @@ export function answerFeasibility(
     );
   }
 
+  const visitMode = options.capacityMode !== 'task';
   const visit =
     input.context.visitDurationMins ??
     (cycle.request.objectText ? 45 : 30);
+  // Ordinary captured work uses its task estimate; only explicit movement/visit
+  // work should consume the visit + travel budget.
+  const taskEstimate =
+    cycle.action.kind === 'create_task' || cycle.action.kind === 'update_task'
+      ? cycle.action.estimateMins
+      : 15;
   // On a trip day, travel is already partly in planned drives; default lower leg cost.
-  const travel = input.context.travelMins ?? (onTrip ? 15 : 20);
-  const roundTrip = onTrip ? travel : travel * 2;
-  const needed = visit + roundTrip;
+  const travel = visitMode
+    ? input.context.travelMins ?? (onTrip ? 15 : 20)
+    : 0;
+  const roundTrip = visitMode ? (onTrip ? travel : travel * 2) : 0;
+  const needed = visitMode ? visit + roundTrip : Math.max(0, taskEstimate);
 
   const nowIso = new Date().toISOString();
   const nowMs = Date.parse(nowIso);
@@ -116,7 +126,7 @@ export function answerFeasibility(
         minsToNextCommitment,
         meetingDensity: meetings.length > 0 ? Math.min(1, meetings.length / 4) : 0,
       },
-      softFloorMins: visit,
+      softFloorMins: visitMode ? visit : Math.min(15, Math.max(1, taskEstimate)),
     });
     fitState = fitDecision.fit;
     facts.push(`v3_fit=${fitDecision.fit}`, `v3_confidence=${fitDecision.confidence}`);
@@ -126,11 +136,14 @@ export function answerFeasibility(
     const dec = decisionFromFit(fitDecision, {
       typedEstimateMins: needed,
       contextAt: nowIso,
-      evidenceIds: facts.slice(0, 8).map((f, i) => `ans-${i}-${f.slice(0, 24)}`),
+      // Trace references must point to real engine evidence, not synthetic IDs
+      // derived from human-readable explanations or diagnostic facts.
+      evidenceIds: cycle.evidence.map((e) => e.id),
     });
     decision = dec;
     decisionTrace = traceFromFit(fitDecision, dec, {
       typedEstimateMins: needed,
+      contextAt: nowIso,
     });
     // FitState: strong | possible | poor | blocked | unknown | protect | carry_safe | needs_context | uncertain
     v3Fits =
@@ -208,8 +221,9 @@ export function answerFeasibility(
 }
 
 /**
- * Light fit Decision for ACT — deliberately reuses the exact same V3
- * feasibility path as ANSWER. ACT must never make a second capacity decision.
+ * Light fit Decision for ACT — reuses the same V3 evaluator as ANSWER, but
+ * sizes the work correctly: visit/travel only for explicit movement intent,
+ * otherwise the task's own estimate. Capacity remains advisory and never vetoes capture.
  */
 export function actFitDecision(
   cycle: EngineCycleResult,
@@ -220,7 +234,13 @@ export function actFitDecision(
   decisionTrace: DecisionTrace | null;
   facts: string[];
 } {
-  const answer = answerFeasibility('', cycle, input);
+  const visitIntent =
+    /\\b(?:go see|see this job|visit|drop off|pick up|collect|deliver|drive to|travel to|head to|stop at|go to)\\b/i.test(
+      input.input.text
+    );
+  const answer = answerFeasibility('', cycle, input, {
+    capacityMode: visitIntent ? 'visit' : 'task',
+  });
   return {
     fitState: answer.fitState ?? null,
     decision: answer.decision ?? null,
