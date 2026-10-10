@@ -224,11 +224,11 @@ describe('Phase N — paired typed/transcript semantic replay (diagnostic baseli
     expect(observations.every((row) => Array.isArray(row.engineFieldDifferences) && Array.isArray(row.speech.acts))).toBe(true);
     expect(report.summary.semanticShadow.comparedCases).toBeGreaterThan(0);
     expect(report.summary.semanticShadow.bySignal).toHaveLength(SHADOW_SIGNALS.length);
-    expect(observations.filter((row) => row.semanticShadow !== null).every((row) =>
-      row.semanticShadow?.summary.agreements
-        + row.semanticShadow?.summary.disagreements
-        + row.semanticShadow?.summary.notComparable
-        + row.semanticShadow?.summary.differentInput === SHADOW_SIGNALS.length
-    )).toBe(true);
+    expect(observations.filter((row) => row.semanticShadow !== null).every((row) => {
+      if (!row.semanticShadow) return false;
+      const summary = row.semanticShadow.summary;
+      return summary.agreements + summary.disagreements
+        + summary.notComparable + summary.differentInput === SHADOW_SIGNALS.length;
+    })).toBe(true);
   });
 });
