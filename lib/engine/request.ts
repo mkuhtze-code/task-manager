@@ -777,6 +777,15 @@ function extractLocation(text: string): string | null {
     .replace(/[?.,]+$/, '')
     .trim();
 
+  // A date/time phrase is scheduling metadata, never a physical location.
+  // The permissive named-place fallback can otherwise misread
+  // "Move it to Monday at 3pm" (or "Change the time to 3pm") as a place.
+  // Keep the existing location intact when the utterance only changes schedule.
+  const temporalOnlyLocation =
+    /^(?:(?:on|next|this)\s+)?(?:today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?|am|pm))?$/i.test(location) ||
+    /^(?:(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?|am|pm)|noon|midnight)$/i.test(location);
+  if (temporalOnlyLocation) return null;
+
   // Avoid treating "at the meeting" as a physical location.
   if (/^(?:the|a|an)\s+meeting$/i.test(location)) {
     return null;
