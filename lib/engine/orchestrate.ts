@@ -69,7 +69,7 @@ const WEEKDAY_INDEX: Record<string, number> = {
  */
 function resolveWeekdayDate(dateHint: string, todayDate: string | undefined): string | null {
   const targetDay = WEEKDAY_INDEX[dateHint.toLowerCase()];
-  if (targetDay === undefined || !todayDate || !/^\\d{4}-\\d{2}-\\d{2}$/.test(todayDate)) {
+  if (targetDay === undefined || !todayDate || !/^\d{4}-\d{2}-\d{2}$/.test(todayDate)) {
     return null;
   }
 
