@@ -9,6 +9,12 @@ export type SemanticExpectation = {
     forbiddenActKinds?: readonly string[];
     requiredActionTerms?: readonly string[];
     forbiddenActionTerms?: readonly string[];
+    requiredPredicateTerms?: readonly string[];
+    requiredObjectTerms?: readonly string[];
+    requiredSubjectTerms?: readonly string[];
+    requiredPersonTerms?: readonly string[];
+    requiredRelationTerms?: readonly string[];
+    requiredCorrectionFacets?: readonly ('date' | 'time' | 'entity' | 'action' | 'generic')[];
     requiredEntityTerms?: readonly string[];
     requiredTemporalTerms?: readonly string[];
     mustNotCreateTask?: boolean;
@@ -23,8 +29,14 @@ export type ObservedSemanticFacts = {
   actCount: number;
   actKinds: readonly string[];
   actionText: string;
+  predicateText: string;
+  objectText: string;
+  subjectText: string;
+  personText: string;
   entityText: string;
   temporalText: string;
+  relationText: string;
+  correctionFacets: readonly string[];
   mustNotCreateTask: boolean;
   hasNegation: boolean;
   hasCorrection: boolean;
@@ -104,6 +116,24 @@ export function evaluateSemanticExpectation(
   }
   for (const term of expected.forbiddenActionTerms ?? []) {
     add(`forbiddenActionTerm:${term}`, term, observed.actionText, !containsTerm(observed.actionText, term));
+  }
+  for (const term of expected.requiredPredicateTerms ?? []) {
+    add(`requiredPredicateTerm:${term}`, term, observed.predicateText, containsTerm(observed.predicateText, term));
+  }
+  for (const term of expected.requiredObjectTerms ?? []) {
+    add(`requiredObjectTerm:${term}`, term, observed.objectText, containsTerm(observed.objectText, term));
+  }
+  for (const term of expected.requiredSubjectTerms ?? []) {
+    add(`requiredSubjectTerm:${term}`, term, observed.subjectText, containsTerm(observed.subjectText, term));
+  }
+  for (const term of expected.requiredPersonTerms ?? []) {
+    add(`requiredPersonTerm:${term}`, term, observed.personText, containsTerm(observed.personText, term));
+  }
+  for (const term of expected.requiredRelationTerms ?? []) {
+    add(`requiredRelationTerm:${term}`, term, observed.relationText, containsTerm(observed.relationText, term));
+  }
+  for (const facet of expected.requiredCorrectionFacets ?? []) {
+    add(`requiredCorrectionFacet:${facet}`, facet, observed.correctionFacets.join(','), observed.correctionFacets.includes(facet));
   }
   for (const term of expected.requiredEntityTerms ?? []) {
     add(`requiredEntityTerm:${term}`, term, observed.entityText, containsTerm(observed.entityText, term));
