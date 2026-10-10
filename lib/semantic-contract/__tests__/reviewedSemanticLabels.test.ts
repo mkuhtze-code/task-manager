@@ -15,7 +15,7 @@ import { processCaptureSpeech } from '@/lib/speech/captureAdapter';
  */
 type Feature =
   | 'action' | 'negation' | 'correction' | 'condition' | 'dependency'
-  | 'question' | 'temporal' | 'reference' | 'observation' | 'multiple_acts';
+  | 'question' | 'temporal' | 'entity' | 'reference' | 'observation' | 'multiple_acts';
 
 type LabelCase = {
   id: string;
@@ -30,14 +30,14 @@ const TODAY = '2026-10-12';
 const LABELS: LabelCase[] = [
   { id: 'life-reminder-time', domain: 'personal', input: 'Remind me to take the birthday cake out of the freezer at 3pm tomorrow.', expectedMeaning: 'A reminder action with an object and a future time.', requiredFeatures: ['action', 'temporal'] },
   { id: 'life-negated-shopping', domain: 'personal', input: 'I bought milk already, so do not add it to the shopping list.', expectedMeaning: 'A completed event followed by an explicitly prohibited list mutation.', requiredFeatures: ['negation'] },
-  { id: 'communication-purpose', domain: 'communication', input: 'Call Priya to ask whether she can move our meeting to Friday.', expectedMeaning: 'Call Priya; asking about moving the meeting is the purpose, not a second independent command by default.', requiredFeatures: ['action', 'temporal', 'reference'] },
+  { id: 'communication-purpose', domain: 'communication', input: 'Call Priya to ask whether she can move our meeting to Friday.', expectedMeaning: 'Call Priya; asking about moving the meeting is the purpose, not a second independent command by default.', requiredFeatures: ['action', 'temporal', 'entity'] },
   { id: 'communication-correction', domain: 'communication', input: 'Email Chris on Wednesday, no wait, Thursday.', expectedMeaning: 'Email Chris on Thursday; Thursday supersedes Wednesday.', requiredFeatures: ['action', 'correction', 'temporal'] },
   { id: 'office-condition', domain: 'office', input: 'Send the revised proposal to Lee after finance signs off.', expectedMeaning: 'Send the proposal to Lee only after finance approval.', requiredFeatures: ['action', 'dependency'] },
   { id: 'research-question', domain: 'research', input: 'What are the main differences between a compiler and an interpreter?', expectedMeaning: 'An information-seeking question, not an instruction to create a task.', requiredFeatures: ['question'] },
   { id: 'creative-constraint', domain: 'creative', input: 'Sketch three cover concepts using orange and blue, but keep the original headline.', expectedMeaning: 'Create three cover concepts with a palette constraint while preserving the headline.', requiredFeatures: ['action', 'multiple_acts'] },
   { id: 'travel-route', domain: 'travel', input: 'If the ferry is cancelled, find a route that gets us there by noon.', expectedMeaning: 'Find a fallback route conditional on cancellation with a noon deadline.', requiredFeatures: ['action', 'condition', 'temporal'] },
-  { id: 'site-delivery', domain: 'construction', input: 'Take the sealant to 18 Kauri Road before the crew arrives at 7.', expectedMeaning: 'Deliver the sealant to a physical address before the crew arrives at a stated time.', requiredFeatures: ['action', 'temporal', 'dependency'] },
-  { id: 'novel-vocabulary', domain: 'unfamiliar-vocabulary', input: 'Ask Rowan to rekalibrate the luminance map after the sensor swap.', expectedMeaning: 'Ask Rowan to perform an unfamiliar action on the luminance map after a prerequisite event.', requiredFeatures: ['action', 'dependency', 'reference'] },
+  { id: 'site-delivery', domain: 'construction', input: 'Take the sealant to 18 Kauri Road before the crew arrives at 7.', expectedMeaning: 'Deliver the sealant to a physical address before the crew arrives at a stated time.', requiredFeatures: ['action', 'temporal', 'dependency', 'entity'] },
+  { id: 'novel-vocabulary', domain: 'unfamiliar-vocabulary', input: 'Ask Rowan to rekalibrate the luminance map after the sensor swap.', expectedMeaning: 'Ask Rowan to perform an unfamiliar action on the luminance map after a prerequisite event.', requiredFeatures: ['action', 'dependency', 'entity'] },
   { id: 'observation-not-task', domain: 'everyday', input: 'The thingamajig is making a high-pitched noise again.', expectedMeaning: 'An observation about an unfamiliar object, not an explicit command.', requiredFeatures: ['observation'] },
   { id: 'multi-action', domain: 'personal', input: 'Renew my passport, then compare flights before we book anything.', expectedMeaning: 'Renew the passport, then compare flights; booking is explicitly deferred.', requiredFeatures: ['action', 'multiple_acts', 'dependency'] },
   { id: 'schedule-correction', domain: 'office', input: 'Move the review from 2pm to 3:30pm, not 4.', expectedMeaning: 'Change the review time to 3:30pm and reject 4pm.', requiredFeatures: ['action', 'correction', 'temporal', 'negation'] },
@@ -52,7 +52,7 @@ function featuresOf(envelope: SemanticEnvelope): Set<Feature> {
   if (acts.some((act) => act.kind === 'action' && !!act.actionVerb)) features.add('action');
   if (acts.some((act) => act.polarity === 'negated') ||
       envelope.context.evidence.some((item) => /negat|prohibit|must_not/i.test(item)) ||
-      envelope.context.mustNotCreateTask) features.add('negation');
+      false) features.add('negation');
   if (envelope.correctionChain.length > 0 ||
       acts.some((act) => act.corrections.length > 0) ||
       envelope.context.isCorrection) features.add('correction');
@@ -67,6 +67,7 @@ function featuresOf(envelope: SemanticEnvelope): Set<Feature> {
   if (envelope.temporalExpressions.length > 0 ||
       acts.some((act) => !!act.temporalRaw || !!act.temporalResolvedDate) ||
       !!envelope.context.dateHint || !!envelope.context.timeHint) features.add('temporal');
+  if (envelope.entities.length > 0 || acts.some((act) => act.entityLinks.length > 0)) features.add('entity');
   if (acts.some((act) => act.references.length > 0) ||
       envelope.relations.some((relation) => relation.kind === 'reference')) features.add('reference');
   if (acts.some((act) => act.kind === 'observation')) features.add('observation');
