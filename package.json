@@ -34,7 +34,7 @@
     "test:phaseM": "vitest run lib/engine/__tests__/phaseMAdversarialTaskContinuity.test.ts",
     "test:phaseN": "vitest run lib/engine/__tests__/phaseNPairedSemanticReplay.test.ts",
     "test:phaseN-contract": "vitest run lib/semantic-contract/__tests__/adapters.test.ts",
-    "test:phaseN-labels": "vitest run lib/semantic-contract/__tests__/reviewedSemanticLabels.test.ts",
+    "test:phaseN-labels": "vitest run lib/semantic-contract/__tests__/reviewedSemanticLabels.test.ts lib/semantic-contract/__tests__/featureRecall.test.ts",
     "test:phaseN-shadow": "vitest run lib/semantic-contract/__tests__/shadowComparison.test.ts",
     "test:phaseB": "vitest run lib/engine/__tests__/phaseBUniversalIntelligenceBaseline.test.ts",
     "test:corpus-schema": "node scripts/validate-intelligence-corpus.mjs",
