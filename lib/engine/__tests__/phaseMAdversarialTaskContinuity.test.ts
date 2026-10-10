@@ -84,7 +84,7 @@ function makeBoundTask() {
 describe('Phase M — adversarial task continuity and reference resolution', () => {
   it('resolves “Move it to Friday” to the same persisted task and a concrete date', () => {
     const result = requireUpdate(dock('Move it to Friday.', makeBoundTask()), 'Move it to Friday.');
-    expect(result.overrides.surfaceDate).toMatch(/^\\d{4}-\\d{2}-\\d{2}$/);
+    expect(result.overrides.surfaceDate).toBe('2026-10-09');
     expect(result.overrides.text.toLowerCase()).toContain('call');
     expect(result.overrides.text.toLowerCase()).toContain('jordan');
   });
