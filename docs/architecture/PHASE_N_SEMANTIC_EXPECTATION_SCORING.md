@@ -30,4 +30,4 @@ No arbitrary minimum score is imposed in this phase. Candidate labels do not con
 
 ## Role-aware scoring extension
 
-The role-aware scorer reports predicate, object, subject, person-mention, relation, and correction-facet assertions separately. A word in the object no longer satisfies a predicate expectation. Person mentions are not assumed to be recipients or speakers; those roles need dedicated schema support before they can be scored as such. This remains diagnostic, and candidate labels require human review.
+The role-aware scorer reports predicate, object, subject, person-mention, relation, and correction-facet assertions separately. The report also aggregates pass/fail counts by criterion family and emits compact per-case failure records so CI logs retain actionable failures rather than one oversized truncated JSON line. A word in the object no longer satisfies a predicate expectation. Person mentions are not assumed to be recipients or speakers; those roles need dedicated schema support before they can be scored as such. This remains diagnostic, and candidate labels require human review.
