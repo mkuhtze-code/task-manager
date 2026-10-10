@@ -26,7 +26,7 @@ const EXPECTATIONS: SemanticExpectation[] = [
   { id: 'date-correction', domain: 'communication', input: 'Email Chris on Wednesday, no wait, Thursday.', expected: { minActs: 1, requiredActionTerms: ['email'], requiredEntityTerms: ['Chris'], requiredTemporalTerms: ['Thursday'], mustHaveCorrection: true } },
   { id: 'approval-dependency', domain: 'office', input: 'Send the revised proposal to Lee after finance signs off.', expected: { minActs: 1, requiredActionTerms: ['send'], requiredEntityTerms: ['Lee'], mustHaveDependency: true } },
   { id: 'information-question', domain: 'research', input: 'What are the main differences between a compiler and an interpreter?', expected: { minActs: 1, requiredActKinds: ['question'], mustNotCreateTask: true, forbiddenActionTerms: ['create task'] } },
-  { id: 'creative-preservation', domain: 'creative', input: 'Sketch three cover concepts using orange and blue, but keep the original headline.', expected: { minActs: 1, requiredActionTerms: ['sketch'], requiredActionTerms: ['sketch'], requiredEntityTerms: ['headline'] } },
+  { id: 'creative-preservation', domain: 'creative', input: 'Sketch three cover concepts using orange and blue, but keep the original headline.', expected: { minActs: 1, requiredActionTerms: ['sketch'], requiredEntityTerms: ['headline'] } },
   { id: 'conditional-travel-fallback', domain: 'travel', input: 'If the ferry is cancelled, find a route that gets us there by noon.', expected: { minActs: 1, requiredActionTerms: ['find'], requiredTemporalTerms: ['noon'], mustHaveCondition: true } },
   { id: 'delivery-address-deadline', domain: 'home-and-business', input: 'Take the sealant to 18 Kauri Road before the crew arrives at 7.', expected: { minActs: 1, requiredActionTerms: ['take'], requiredEntityTerms: ['18 Kauri Road'], requiredTemporalTerms: ['7'], mustHaveDependency: true } },
   { id: 'observation-not-command', domain: 'everyday', input: 'The thingamajig is making a high-pitched noise again.', expected: { minActs: 1, requiredActKinds: ['observation'], mustNotCreateTask: true } },
@@ -38,7 +38,11 @@ const EXPECTATIONS: SemanticExpectation[] = [
   { id: 'conditional-non-task-contrast', domain: 'home', input: 'If the power returns before noon, check whether the router reconnects.', expected: { minActs: 1, requiredActionTerms: ['check'], requiredTemporalTerms: ['noon'], mustHaveCondition: true } },
 ];
 
-function factsOf(envelope: SemanticEnvelope): ObservedSemanticFacts {
+function factsOf(envelope: SemanticEnvelope | null): ObservedSemanticFacts {
+  if (!envelope) return {
+    actCount: 0, actKinds: [], actionText: '', entityText: '', temporalText: '',
+    mustNotCreateTask: false, hasNegation: false, hasCorrection: false, hasCondition: false, hasDependency: false,
+  };
   const acts = envelope.acts;
   const actionText = acts.filter((act) => act.kind === 'action' || act.kind === 'commitment')
     .flatMap((act) => [act.actionVerb, act.objectText].filter(Boolean) as string[]).join(' ');
@@ -67,11 +71,10 @@ function factsOf(envelope: SemanticEnvelope): ObservedSemanticFacts {
   };
 }
 
-function interpret(input: string, producer: 'speech' | 'engine'): SemanticEnvelope {
+function interpret(input: string, producer: 'speech' | 'engine'): SemanticEnvelope | null {
   if (producer === 'speech') {
     const result = processCaptureSpeech({ text: input, todayIso: TODAY }).pipeline.interpretation;
-    if (!result) throw new Error('Speech interpretation unavailable for reviewed case: ' + input);
-    return fromSpeechInterpretation(result);
+    return result ? fromSpeechInterpretation(result) : null;
   }
   const result = interpretSemanticInput(input, {
     workingMemory: emptyWorkingMemory(TODAY),
