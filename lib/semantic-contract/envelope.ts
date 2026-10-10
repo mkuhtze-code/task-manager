@@ -56,7 +56,7 @@ export type SemanticEnvelopeSource = {
   rawText: string;
   normalizedText: string;
   interpretationId?: string;
-  transcriptionSemanticConfidence?: SemanticConfidence;
+  transcriptionConfidence?: SemanticConfidence;
 };
 
 export type SemanticEnvelopeAct = {
