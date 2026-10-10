@@ -170,6 +170,7 @@ export function summarizeSemanticExpectationResults(results: readonly SemanticEx
   const passed = criteria.filter((item) => item.passed).length;
   const failed = criteria.length - passed;
   const byDomain: Record<string, { cases: number; passed: number; failed: number; score: number | null }> = {};
+  const byCriterion: Record<string, { assertions: number; passed: number; failed: number; score: number | null }> = {};
   for (const result of results) {
     const bucket = byDomain[result.domain] ?? { cases: 0, passed: 0, failed: 0, score: null };
     bucket.cases += 1;
@@ -177,6 +178,15 @@ export function summarizeSemanticExpectationResults(results: readonly SemanticEx
     bucket.failed += result.failed;
     bucket.score = bucket.passed + bucket.failed === 0 ? null : bucket.passed / (bucket.passed + bucket.failed);
     byDomain[result.domain] = bucket;
+    for (const criterion of result.criteria) {
+      const family = criterion.criterion.split(':', 1)[0];
+      const familyBucket = byCriterion[family] ?? { assertions: 0, passed: 0, failed: 0, score: null };
+      familyBucket.assertions += 1;
+      if (criterion.passed) familyBucket.passed += 1;
+      else familyBucket.failed += 1;
+      familyBucket.score = familyBucket.passed / familyBucket.assertions;
+      byCriterion[family] = familyBucket;
+    }
   }
   return {
     cases: results.length,
@@ -185,5 +195,6 @@ export function summarizeSemanticExpectationResults(results: readonly SemanticEx
     failed,
     score: criteria.length === 0 ? null : passed / criteria.length,
     byDomain: Object.fromEntries(Object.entries(byDomain).sort(([a], [b]) => a.localeCompare(b))),
+    byCriterion: Object.fromEntries(Object.entries(byCriterion).sort(([a], [b]) => a.localeCompare(b))),
   };
 }
