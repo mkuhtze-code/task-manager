@@ -53,7 +53,7 @@ function factsOf(envelope: SemanticEnvelope | null): ObservedSemanticFacts {
   const subjectText = acts.map((act) => act.subjectText).filter(Boolean).join(' ');
   const personText = [
     ...envelope.entities.filter((entity) => /person|contact|human/i.test(entity.kind)).map((entity) => entity.raw),
-    ...acts.flatMap((act) => [act.sourceSpeaker, ...act.entityLinks.filter((link) => /person|contact|human/i.test(link.kind)).map((link) => link.label)].filter(Boolean) as string[]),
+    ...acts.flatMap((act) => act.entityLinks.filter((link) => /person|contact|human/i.test(link.kind)).map((link) => link.label)),
   ].join(' ');
   const entityText = [
     ...envelope.entities.map((entity) => entity.raw),
