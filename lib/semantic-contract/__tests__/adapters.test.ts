@@ -14,8 +14,21 @@ const speechFixture: SpeechInterpretation = {
   commitmentStrength: 'strong',
   urgency: 'none',
   constraints: [],
-  temporalReferences: [],
-  entities: [],
+  temporalReferences: [{
+    raw: 'Thursday',
+    kind: 'weekday',
+    resolvedDate: null,
+    resolvedTime: null,
+    isCorrection: true,
+    confidence: 'high',
+  }],
+  entities: [{
+    raw: 'Alex',
+    kind: 'person',
+    resolvedId: null,
+    confidence: 'high',
+    wasCorrected: false,
+  }],
   corrections: [],
   ambiguity: 'none',
   surfaceSummary: 'Email Alex on Thursday',
@@ -64,6 +77,8 @@ describe('Phase N semantic envelope adapters', () => {
       actId: 'act-1',
     });
     expect(envelope.correctionChain[0].marker).toBe('no wait');
+    expect(envelope.entities[0]).toMatchObject({ raw: 'Alex', kind: 'person', resolvedId: null });
+    expect(envelope.temporalExpressions[0]).toMatchObject({ raw: 'Thursday', kind: 'weekday', isCorrection: true });
     expect(envelope.acts[0].evidence[0].source).toBe('correction-parser');
     expect(envelope.provenance.lossyProjection).toBe(false);
   });
