@@ -51,8 +51,7 @@ function featuresOf(envelope: SemanticEnvelope): Set<Feature> {
   const features = new Set<Feature>();
   if (acts.some((act) => act.kind === 'action' && !!act.actionVerb)) features.add('action');
   if (acts.some((act) => act.polarity === 'negated') ||
-      envelope.context.evidence.some((item) => /negat|prohibit|must_not/i.test(item)) ||
-      false) features.add('negation');
+      envelope.context.evidence.some((item) => /negat|prohibit|must_not/i.test(item))) features.add('negation');
   if (envelope.correctionChain.length > 0 ||
       acts.some((act) => act.corrections.length > 0) ||
       envelope.context.isCorrection) features.add('correction');
