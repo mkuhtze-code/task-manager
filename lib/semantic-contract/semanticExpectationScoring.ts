@@ -9,6 +9,12 @@ export type SemanticExpectation = {
     forbiddenActKinds?: readonly string[];
     requiredActionTerms?: readonly string[];
     forbiddenActionTerms?: readonly string[];
+    requiredPredicateTerms?: readonly string[];
+    requiredObjectTerms?: readonly string[];
+    requiredSubjectTerms?: readonly string[];
+    requiredPersonTerms?: readonly string[];
+    requiredRelationTerms?: readonly string[];
+    requiredCorrectionFacets?: readonly ('date' | 'time' | 'entity' | 'action' | 'generic')[];
     requiredEntityTerms?: readonly string[];
     requiredTemporalTerms?: readonly string[];
     mustNotCreateTask?: boolean;
@@ -23,8 +29,14 @@ export type ObservedSemanticFacts = {
   actCount: number;
   actKinds: readonly string[];
   actionText: string;
+  predicateText: string;
+  objectText: string;
+  subjectText: string;
+  personText: string;
   entityText: string;
   temporalText: string;
+  relationText: string;
+  correctionFacets: readonly string[];
   mustNotCreateTask: boolean;
   hasNegation: boolean;
   hasCorrection: boolean;
@@ -105,6 +117,24 @@ export function evaluateSemanticExpectation(
   for (const term of expected.forbiddenActionTerms ?? []) {
     add(`forbiddenActionTerm:${term}`, term, observed.actionText, !containsTerm(observed.actionText, term));
   }
+  for (const term of expected.requiredPredicateTerms ?? []) {
+    add(`requiredPredicateTerm:${term}`, term, observed.predicateText, containsTerm(observed.predicateText, term));
+  }
+  for (const term of expected.requiredObjectTerms ?? []) {
+    add(`requiredObjectTerm:${term}`, term, observed.objectText, containsTerm(observed.objectText, term));
+  }
+  for (const term of expected.requiredSubjectTerms ?? []) {
+    add(`requiredSubjectTerm:${term}`, term, observed.subjectText, containsTerm(observed.subjectText, term));
+  }
+  for (const term of expected.requiredPersonTerms ?? []) {
+    add(`requiredPersonTerm:${term}`, term, observed.personText, containsTerm(observed.personText, term));
+  }
+  for (const term of expected.requiredRelationTerms ?? []) {
+    add(`requiredRelationTerm:${term}`, term, observed.relationText, containsTerm(observed.relationText, term));
+  }
+  for (const facet of expected.requiredCorrectionFacets ?? []) {
+    add(`requiredCorrectionFacet:${facet}`, facet, observed.correctionFacets.join(','), observed.correctionFacets.includes(facet));
+  }
   for (const term of expected.requiredEntityTerms ?? []) {
     add(`requiredEntityTerm:${term}`, term, observed.entityText, containsTerm(observed.entityText, term));
   }
@@ -140,6 +170,7 @@ export function summarizeSemanticExpectationResults(results: readonly SemanticEx
   const passed = criteria.filter((item) => item.passed).length;
   const failed = criteria.length - passed;
   const byDomain: Record<string, { cases: number; passed: number; failed: number; score: number | null }> = {};
+  const byCriterion: Record<string, { assertions: number; passed: number; failed: number; score: number | null }> = {};
   for (const result of results) {
     const bucket = byDomain[result.domain] ?? { cases: 0, passed: 0, failed: 0, score: null };
     bucket.cases += 1;
@@ -147,6 +178,15 @@ export function summarizeSemanticExpectationResults(results: readonly SemanticEx
     bucket.failed += result.failed;
     bucket.score = bucket.passed + bucket.failed === 0 ? null : bucket.passed / (bucket.passed + bucket.failed);
     byDomain[result.domain] = bucket;
+    for (const criterion of result.criteria) {
+      const family = criterion.criterion.split(':', 1)[0];
+      const familyBucket = byCriterion[family] ?? { assertions: 0, passed: 0, failed: 0, score: null };
+      familyBucket.assertions += 1;
+      if (criterion.passed) familyBucket.passed += 1;
+      else familyBucket.failed += 1;
+      familyBucket.score = familyBucket.passed / familyBucket.assertions;
+      byCriterion[family] = familyBucket;
+    }
   }
   return {
     cases: results.length,
@@ -155,5 +195,6 @@ export function summarizeSemanticExpectationResults(results: readonly SemanticEx
     failed,
     score: criteria.length === 0 ? null : passed / criteria.length,
     byDomain: Object.fromEntries(Object.entries(byDomain).sort(([a], [b]) => a.localeCompare(b))),
+    byCriterion: Object.fromEntries(Object.entries(byCriterion).sort(([a], [b]) => a.localeCompare(b))),
   };
 }
