@@ -52,9 +52,24 @@ function normalized(text: string): string {
   return text.normalize('NFKC').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+/** Normalize common equivalent clock expressions before term-level comparison. */
+function normalizedForMatching(text: string): string {
+  return normalized(text)
+    .replace(/\bnoon\b/g, ' time_12:00 ')
+    .replace(/\bmidnight\b/g, ' time_00:00 ')
+    .replace(/\b(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b/gi, (_match, hourText: string, minuteText: string | undefined, meridiemText: string) => {
+      const hour = Number(hourText);
+      const minute = minuteText ?? '00';
+      const isPm = meridiemText.toLocaleLowerCase().startsWith('p');
+      const hour24 = (hour % 12) + (isPm ? 12 : 0);
+      return ' time_' + String(hour24).padStart(2, '0') + ':' + minute + ' ';
+    })
+    .replace(/\b(\d{1,2}):(\d{2})\b/g, ' time_$1:$2 ');
+}
+
 function containsTerm(text: string, term: string): boolean {
-  const words = normalized(text).split(/[^a-z0-9]+/).filter(Boolean);
-  const wanted = normalized(term).split(/[^a-z0-9]+/).filter(Boolean);
+  const words = normalizedForMatching(text).split(/[^a-z0-9]+/).filter(Boolean);
+  const wanted = normalizedForMatching(term).split(/[^a-z0-9]+/).filter(Boolean);
   if (wanted.length === 0 || wanted.length > words.length) return false;
   for (let start = 0; start <= words.length - wanted.length; start += 1) {
     if (wanted.every((word, offset) => words[start + offset] === word)) return true;
