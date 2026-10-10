@@ -9,7 +9,7 @@ const speechFixture: SpeechInterpretation = {
   originalTranscript: 'Email Alex on Wednesday, no wait, Thursday.',
   normalisedText: 'Email Alex on Wednesday, no wait, Thursday.',
   intent: 'create',
-  statementType: 'request',
+  statementType: 'REQUEST',
   certainty: 'definite',
   commitmentStrength: 'strong',
   urgency: 'none',
