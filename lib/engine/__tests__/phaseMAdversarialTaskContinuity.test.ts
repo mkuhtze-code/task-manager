@@ -107,6 +107,18 @@ describe('Phase M — adversarial task continuity and reference resolution', () 
     expect(retimed.request.timeHint).toMatch(/3\\s*:?\\s*00?\\s*pm|15:00|3pm/i);
   });
 
+  it('treats weekday-plus-time phrases as scheduling, not as a replacement location', () => {
+    const original = makeBoundTask();
+    const moved = requireUpdate(
+      dock('Move it to Monday at 3pm.', original),
+      'Move it to Monday at 3pm.',
+    );
+    expect(moved.overrides.surfaceDate).toBe('2026-10-12');
+    expect(moved.request.timeHint).toBe('15:00');
+    expect(moved.overrides.locationText).toBe(original.locationText);
+    expect(moved.overrides.text.toLowerCase()).toContain('call jordan');
+  });
+
   it('preserves task identity and title when only the schedule changes', () => {
     const original = makeBoundTask();
     const result = requireUpdate(
