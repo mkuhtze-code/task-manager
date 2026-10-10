@@ -20,7 +20,7 @@ export type SttUpstreamConfig = {
   language?: string;
 };
 
-const MAX_AUDIO_BYTES = 8 * 1024 * 1024; // 8 MB
+export const MAX_AUDIO_BYTES = 8 * 1024 * 1024; // 8 MB
 
 export function parseSttUpstreamConfig(env: NodeJS.ProcessEnv = process.env): SttUpstreamConfig | null {
   const apiKey = (env.DOKKIT_STT_API_KEY || env.STT_API_KEY || '').trim();
@@ -35,7 +35,7 @@ export function parseSttUpstreamConfig(env: NodeJS.ProcessEnv = process.env): St
         : 'deepgram';
 
   const upstreamUrl = (env.DOKKIT_STT_UPSTREAM_URL || '').trim() || undefined;
-  const language = (env.DOKKIT_STT_LANGUAGE || env.NEXT_PUBLIC_DOKKIT_STT_LANGUAGE || 'en-NZ').trim();
+  const language = normalizeSpeechLocale(env.DOKKIT_STT_LANGUAGE || env.NEXT_PUBLIC_DOKKIT_STT_LANGUAGE || 'en-NZ');
 
   return { provider, apiKey, upstreamUrl, language };
 }
@@ -73,7 +73,7 @@ async function transcribeDeepgram(
   config: SttUpstreamConfig,
   fetchImpl: typeof fetch
 ): Promise<SttUpstreamResult> {
-  const lang = (config.language || 'en-NZ').replace('_', '-');
+  const lang = normalizeSpeechLocale(config.language || 'en-NZ');
   const base =
     config.upstreamUrl ||
     `https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=${encodeURIComponent(lang)}`;
