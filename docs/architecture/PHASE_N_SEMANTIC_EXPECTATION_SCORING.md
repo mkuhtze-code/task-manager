@@ -26,3 +26,8 @@ No arbitrary minimum score is imposed in this phase. Candidate labels do not con
 - No producer is selected as canonical authority.
 - No domain-specific grammar or external AI/API is added.
 - No automatic confidence averaging or mutation is introduced.
+
+
+## Role-aware scoring extension
+
+The role-aware scorer reports predicate, object, subject, person-mention, relation, and correction-facet assertions separately. A word in the object no longer satisfies a predicate expectation. Person mentions are not assumed to be recipients or speakers; those roles need dedicated schema support before they can be scored as such. This remains diagnostic, and candidate labels require human review.
