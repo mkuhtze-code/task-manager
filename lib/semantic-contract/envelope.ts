@@ -69,6 +69,31 @@ export type SemanticEnvelope = {
   source: SemanticEnvelopeSource;
   acts: SemanticEnvelopeAct[];
   correctionChain: CorrectionStep[];
+  entities: Array<{
+    raw: string;
+    kind: string;
+    resolvedId: string | null;
+    confidence: Confidence;
+    wasCorrected: boolean;
+    provenance: string;
+  }>;
+  temporalExpressions: Array<{
+    raw: string;
+    kind: string;
+    resolvedDate: string | null;
+    resolvedTime: string | null;
+    isCorrection: boolean;
+    confidence: Confidence;
+    provenance: string;
+  }>;
+  relations: Array<{
+    kind: string;
+    sourceActId: string | null;
+    target: string | null;
+    raw: string;
+    confidence: Confidence | null;
+    provenance: string;
+  }>;
   constraints: Array<{
     kind: string;
     value: string;
