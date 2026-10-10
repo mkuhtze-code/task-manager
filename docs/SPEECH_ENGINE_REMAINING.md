@@ -14,11 +14,11 @@
 ## Remaining
 
 ### A. Collections
-- [ ] Apply `20261004_collections.sql` on production Supabase
+- [x] Confirmed production `collections` / `collection_items` tables and owner-only RLS policies exist (2026-10-11). The migration ledger is empty, so reconcile history rather than blindly reapplying.
 - [ ] Optional Lists entry on Today header
 
 ### B. STT polish
-- [ ] Wire a real `DOKKIT_STT_API_KEY` in Vercel (Deepgram recommended)
+- [ ] Configure `DOKKIT_STT_API_KEY` in Vercel production (not currently configured as of 2026-10-11; cloud STT remains disabled until a provider key is supplied).
 - [ ] Locale packs beyond en-NZ default
 
 ### C. Discourse & learning
