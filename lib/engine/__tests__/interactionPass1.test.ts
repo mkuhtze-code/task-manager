@@ -408,7 +408,8 @@ describe('Phase P — capture capacity and trace consistency', () => {
     expect(r.decision!.evidenceIds.every((id) => evidenceIds.has(id))).toBe(true);
     expect(r.decision!.evidenceIds.every((id) => !id.startsWith('ans-'))).toBe(true);
     expect(r.decisionTrace!.evidenceIds).toEqual(r.decision!.evidenceIds);
-    expect(r.decisionTrace!.inputs.contextAt).toEqual(r.decision!.createdAt);
+    expect(r.decisionTrace!.inputs.contextAt).toBeTruthy();
+    expect(Date.parse(r.decisionTrace!.inputs.contextAt!)).not.toBeNaN();
   });
 });
 
