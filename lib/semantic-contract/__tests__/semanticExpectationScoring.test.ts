@@ -20,32 +20,41 @@ const TODAY = '2026-10-12';
  * are agreed; no current producer is presumed correct.
  */
 const EXPECTATIONS: SemanticExpectation[] = [
-  { id: 'reminder-cake-time', domain: 'personal', input: 'Remind me to take the birthday cake out of the freezer at 3pm tomorrow.', expected: { minActs: 1, requiredActionTerms: ['take'], requiredTemporalTerms: ['3pm'], mustNotCreateTask: false } },
+  { id: 'reminder-cake-time', domain: 'personal', input: 'Remind me to take the birthday cake out of the freezer at 3pm tomorrow.', expected: { minActs: 1, requiredActionTerms: ['take'], requiredPredicateTerms: ['take'], requiredObjectTerms: ['birthday cake'], requiredTemporalTerms: ['3pm'], mustNotCreateTask: false } },
   { id: 'prohibited-list-mutation', domain: 'personal', input: 'I bought milk already, so do not add it to the shopping list.', expected: { minActs: 1, mustHaveNegation: true } },
-  { id: 'call-purpose', domain: 'communication', input: 'Call Priya to ask whether she can move our meeting to Friday.', expected: { minActs: 1, requiredActionTerms: ['call'], requiredEntityTerms: ['Priya'], requiredTemporalTerms: ['Friday'] } },
-  { id: 'date-correction', domain: 'communication', input: 'Email Chris on Wednesday, no wait, Thursday.', expected: { minActs: 1, requiredActionTerms: ['email'], requiredEntityTerms: ['Chris'], requiredTemporalTerms: ['Thursday'], mustHaveCorrection: true } },
-  { id: 'approval-dependency', domain: 'office', input: 'Send the revised proposal to Lee after finance signs off.', expected: { minActs: 1, requiredActionTerms: ['send'], requiredEntityTerms: ['Lee'], mustHaveDependency: true } },
+  { id: 'call-purpose', domain: 'communication', input: 'Call Priya to ask whether she can move our meeting to Friday.', expected: { minActs: 1, requiredActionTerms: ['call'], requiredPredicateTerms: ['call'], requiredPersonTerms: ['Priya'], requiredEntityTerms: ['Priya'], requiredTemporalTerms: ['Friday'] } },
+  { id: 'date-correction', domain: 'communication', input: 'Email Chris on Wednesday, no wait, Thursday.', expected: { minActs: 1, requiredActionTerms: ['email'], requiredPredicateTerms: ['email'], requiredPersonTerms: ['Chris'], requiredEntityTerms: ['Chris'], requiredTemporalTerms: ['Thursday'], requiredCorrectionFacets: ['date'], mustHaveCorrection: true } },
+  { id: 'approval-dependency', domain: 'office', input: 'Send the revised proposal to Lee after finance signs off.', expected: { minActs: 1, requiredActionTerms: ['send'], requiredPredicateTerms: ['send'], requiredObjectTerms: ['proposal'], requiredPersonTerms: ['Lee'], requiredEntityTerms: ['Lee'], requiredRelationTerms: ['after'], mustHaveDependency: true } },
   { id: 'information-question', domain: 'research', input: 'What are the main differences between a compiler and an interpreter?', expected: { minActs: 1, requiredActKinds: ['question'], mustNotCreateTask: true, forbiddenActionTerms: ['create task'] } },
-  { id: 'creative-preservation', domain: 'creative', input: 'Sketch three cover concepts using orange and blue, but keep the original headline.', expected: { minActs: 1, requiredActionTerms: ['sketch'], requiredEntityTerms: ['headline'] } },
-  { id: 'conditional-travel-fallback', domain: 'travel', input: 'If the ferry is cancelled, find a route that gets us there by noon.', expected: { minActs: 1, requiredActionTerms: ['find'], requiredTemporalTerms: ['noon'], mustHaveCondition: true } },
-  { id: 'delivery-address-deadline', domain: 'home-and-business', input: 'Take the sealant to 18 Kauri Road before the crew arrives at 7.', expected: { minActs: 1, requiredActionTerms: ['take'], requiredEntityTerms: ['18 Kauri Road'], requiredTemporalTerms: ['7'], mustHaveDependency: true } },
+  { id: 'creative-preservation', domain: 'creative', input: 'Sketch three cover concepts using orange and blue, but keep the original headline.', expected: { minActs: 1, requiredActionTerms: ['sketch'], requiredPredicateTerms: ['sketch'], requiredObjectTerms: ['cover concepts'], requiredEntityTerms: ['headline'] } },
+  { id: 'conditional-travel-fallback', domain: 'travel', input: 'If the ferry is cancelled, find a route that gets us there by noon.', expected: { minActs: 1, requiredActionTerms: ['find'], requiredPredicateTerms: ['find'], requiredObjectTerms: ['route'], requiredTemporalTerms: ['noon'], requiredRelationTerms: ['if'], mustHaveCondition: true } },
+  { id: 'delivery-address-deadline', domain: 'home-and-business', input: 'Take the sealant to 18 Kauri Road before the crew arrives at 7.', expected: { minActs: 1, requiredActionTerms: ['take'], requiredPredicateTerms: ['take'], requiredObjectTerms: ['sealant'], requiredEntityTerms: ['18 Kauri Road'], requiredTemporalTerms: ['7'], requiredRelationTerms: ['before'], mustHaveDependency: true } },
   { id: 'observation-not-command', domain: 'everyday', input: 'The thingamajig is making a high-pitched noise again.', expected: { minActs: 1, requiredActKinds: ['observation'], mustNotCreateTask: true } },
-  { id: 'multi-act-deferred-booking', domain: 'travel', input: 'Renew my passport, then compare flights before we book anything.', expected: { minActs: 2, requiredActionTerms: ['renew', 'compare'], mustHaveDependency: true, forbiddenActionTerms: ['book'] } },
+  { id: 'multi-act-deferred-booking', domain: 'travel', input: 'Renew my passport, then compare flights before we book anything.', expected: { minActs: 2, requiredActionTerms: ['renew', 'compare'], requiredPredicateTerms: ['renew', 'compare'], mustHaveDependency: true, forbiddenActionTerms: ['book'] } },
   { id: 'question-not-booking', domain: 'travel', input: 'Can you explain whether the train arrives before the connection leaves?', expected: { minActs: 1, requiredActKinds: ['question'], mustNotCreateTask: true, forbiddenActionTerms: ['book'] } },
-  { id: 'spatial-negation', domain: 'creative', input: 'Put the glimmerfold notes beside the atlas, not inside it.', expected: { minActs: 1, requiredActionTerms: ['put'], requiredEntityTerms: ['atlas'], mustHaveNegation: true } },
-  { id: 'explicit-separate-task', domain: 'work', input: 'Keep the current task, and create a separate task to review the budget next Tuesday.', expected: { minActs: 2, requiredActionTerms: ['create', 'review'], requiredTemporalTerms: ['Tuesday'] } },
-  { id: 'unfamiliar-vocabulary', domain: 'unfamiliar-vocabulary', input: 'Ask Rowan to rekalibrate the luminance map after the sensor swap.', expected: { minActs: 1, requiredActionTerms: ['ask'], requiredEntityTerms: ['Rowan'], mustHaveDependency: true } },
-  { id: 'schedule-time-correction', domain: 'office', input: 'Move the review from 2pm to 3:30pm, not 4.', expected: { minActs: 1, requiredActionTerms: ['move'], requiredTemporalTerms: ['3:30pm'], mustHaveCorrection: true, mustHaveNegation: true } },
+  { id: 'spatial-negation', domain: 'creative', input: 'Put the glimmerfold notes beside the atlas, not inside it.', expected: { minActs: 1, requiredActionTerms: ['put'], requiredPredicateTerms: ['put'], requiredObjectTerms: ['glimmerfold notes'], requiredEntityTerms: ['atlas'], requiredRelationTerms: ['beside', 'not inside'], mustHaveNegation: true } },
+  { id: 'explicit-separate-task', domain: 'work', input: 'Keep the current task, and create a separate task to review the budget next Tuesday.', expected: { minActs: 2, requiredActionTerms: ['create', 'review'], requiredPredicateTerms: ['create', 'review'], requiredObjectTerms: ['budget'], requiredTemporalTerms: ['Tuesday'] } },
+  { id: 'unfamiliar-vocabulary', domain: 'unfamiliar-vocabulary', input: 'Ask Rowan to rekalibrate the luminance map after the sensor swap.', expected: { minActs: 1, requiredActionTerms: ['ask'], requiredPredicateTerms: ['ask'], requiredPersonTerms: ['Rowan'], requiredEntityTerms: ['Rowan'], requiredRelationTerms: ['after'], mustHaveDependency: true } },
+  { id: 'schedule-time-correction', domain: 'office', input: 'Move the review from 2pm to 3:30pm, not 4.', expected: { minActs: 1, requiredActionTerms: ['move'], requiredPredicateTerms: ['move'], requiredObjectTerms: ['review'], requiredTemporalTerms: ['3:30pm'], requiredCorrectionFacets: ['time'], mustHaveCorrection: true, mustHaveNegation: true } },
 ];
 
 function factsOf(envelope: SemanticEnvelope | null): ObservedSemanticFacts {
   if (!envelope) return {
-    actCount: 0, actKinds: [], actionText: '', entityText: '', temporalText: '',
+    actCount: 0, actKinds: [], actionText: '', predicateText: '', objectText: '', subjectText: '',
+    personText: '', entityText: '', temporalText: '', relationText: '', correctionFacets: [],
     mustNotCreateTask: false, hasNegation: false, hasCorrection: false, hasCondition: false, hasDependency: false,
   };
   const acts = envelope.acts;
-  const actionText = acts.filter((act) => act.kind === 'action' || act.kind === 'commitment')
+  const executableActs = acts.filter((act) => act.kind === 'action' || act.kind === 'commitment');
+  const actionText = executableActs
     .flatMap((act) => [act.actionVerb, act.objectText].filter(Boolean) as string[]).join(' ');
+  const predicateText = executableActs.map((act) => act.actionVerb).filter(Boolean).join(' ');
+  const objectText = executableActs.map((act) => act.objectText).filter(Boolean).join(' ');
+  const subjectText = acts.map((act) => act.subjectText).filter(Boolean).join(' ');
+  const personText = [
+    ...envelope.entities.filter((entity) => /person|contact|human/i.test(entity.kind)).map((entity) => entity.raw),
+    ...acts.flatMap((act) => [act.sourceSpeaker, ...act.entityLinks.filter((link) => /person|contact|human/i.test(link.kind)).map((link) => link.label)].filter(Boolean) as string[]),
+  ].join(' ');
   const entityText = [
     ...envelope.entities.map((entity) => entity.raw),
     ...acts.flatMap((act) => [act.sourceSpeaker, act.subjectText, ...act.entityLinks.map((link) => link.label)].filter(Boolean) as string[]),
@@ -55,12 +64,27 @@ function factsOf(envelope: SemanticEnvelope | null): ObservedSemanticFacts {
     ...acts.flatMap((act) => [act.temporalRaw, act.temporalResolvedDate].filter(Boolean) as string[]),
     ...envelope.relations.map((relation) => relation.raw),
   ].join(' ');
+  const relationText = [
+    ...acts.flatMap((act) => [act.temporalRelation, act.condition?.raw, act.dependency?.raw].filter(Boolean) as string[]),
+    ...envelope.relations.map((relation) => relation.raw),
+    ...envelope.constraints.map((constraint) => constraint.value),
+  ].join(' ');
+  const correctionFacets = [
+    ...envelope.correctionChain.map((correction) => correction.facet),
+    ...acts.flatMap((act) => act.corrections.map((correction) => correction.facet)),
+  ];
   return {
     actCount: acts.length,
     actKinds: acts.map((act) => act.kind),
     actionText,
+    predicateText,
+    objectText,
+    subjectText,
+    personText,
     entityText,
     temporalText,
+    relationText,
+    correctionFacets,
     mustNotCreateTask: envelope.context.mustNotCreateTask || acts.some((act) => act.blocksTaskCreation),
     hasNegation: acts.some((act) => act.polarity === 'negated') ||
       envelope.context.evidence.some((item) => /negat|prohibit|must_not/i.test(item)),
@@ -123,8 +147,14 @@ describe('semantic expectation scorer', () => {
     actCount: 1,
     actKinds: ['question'],
     actionText: '',
+    predicateText: '',
+    objectText: '',
+    subjectText: '',
+    personText: '',
     entityText: 'compiler interpreter',
     temporalText: '',
+    relationText: '',
+    correctionFacets: [],
     mustNotCreateTask: true,
     hasNegation: false,
     hasCorrection: false,
@@ -149,6 +179,32 @@ describe('semantic expectation scorer', () => {
     }, { ...observed, actionText: 'book train' });
     expect(result.failed).toBe(1);
     expect(result.criteria.find((item) => item.criterion === 'forbiddenActionTerm:book')?.passed).toBe(false);
+  });
+
+  it('keeps predicate and object roles separate instead of accepting a word anywhere', () => {
+    const label: SemanticExpectation = {
+      id: 'role-separation', domain: 'personal', input: 'Remind me to take the birthday cake',
+      expected: { requiredPredicateTerms: ['take'], requiredObjectTerms: ['birthday cake'] },
+    };
+    const result = evaluateSemanticExpectation(label, {
+      ...observed,
+      actionText: 'remind birthday cake out of the freezer',
+      predicateText: 'remind',
+      objectText: 'birthday cake out of the freezer',
+    });
+    expect(result.passed).toBe(1);
+    expect(result.failed).toBe(1);
+    expect(result.criteria.find((item) => item.criterion === 'requiredPredicateTerm:take')?.passed).toBe(false);
+    expect(result.criteria.find((item) => item.criterion === 'requiredObjectTerm:birthday cake')?.passed).toBe(true);
+  });
+
+  it('checks correction facets rather than only correction presence', () => {
+    const label: SemanticExpectation = {
+      id: 'time-correction', domain: 'office', input: 'Move it to 3:30, no wait, 4',
+      expected: { requiredCorrectionFacets: ['time'] },
+    };
+    expect(evaluateSemanticExpectation(label, { ...observed, correctionFacets: ['time'] }).score).toBe(1);
+    expect(evaluateSemanticExpectation(label, { ...observed, correctionFacets: ['date'] }).score).toBe(0);
   });
 
   it('reports null score when no criteria are defined', () => {
