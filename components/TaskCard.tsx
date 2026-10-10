@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import type { Subtask, Task } from '@/lib/taskTypes';
-import { fmtMins } from '@/lib/timeFormat';
+import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import {
   CheckIcon,
   ChevronIcon,
@@ -183,6 +183,12 @@ export function TaskCard(props: {
           aria-label={`${t.text} — ${expanded ? 'collapse' : 'expand'}`}
         >
           <div className="task-text">{t.text}</div>
+          {t.intended_time ? (
+            <div className="task-card-intended-time" aria-label={`Scheduled for ${fmtClock(t.intended_time)}`}>
+              <span aria-hidden="true">◷</span>
+              <span>{fmtClock(t.intended_time)}</span>
+            </div>
+          ) : null}
           {jobLabel || t.location_text ? (
             <ContextLine
               className="task-card-context"
