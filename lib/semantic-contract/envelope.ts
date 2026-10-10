@@ -56,7 +56,7 @@ export type SemanticEnvelopeSource = {
   rawText: string;
   normalizedText: string;
   interpretationId?: string;
-  transcriptionConfidence?: Confidence;
+  transcriptionSemanticConfidence?: SemanticConfidence;
 };
 
 export type SemanticEnvelopeAct = {
@@ -80,7 +80,7 @@ export type SemanticEnvelopeAct = {
     entityId: string;
     label: string;
     kind: string;
-    confidence?: Confidence;
+    confidence?: SemanticConfidence;
   }>;
   corrections: SemanticCorrection[];
   evidence: SemanticEvidence[];
@@ -104,7 +104,7 @@ export type SemanticEnvelope = {
     raw: string;
     kind: string;
     resolvedId: string | null;
-    confidence: Confidence;
+    confidence: SemanticConfidence;
     wasCorrected: boolean;
     provenance: string;
   }>;
@@ -114,7 +114,7 @@ export type SemanticEnvelope = {
     resolvedDate: string | null;
     resolvedTime: string | null;
     isCorrection: boolean;
-    confidence: Confidence;
+    confidence: SemanticConfidence;
     provenance: string;
   }>;
   relations: Array<{
@@ -122,7 +122,7 @@ export type SemanticEnvelope = {
     sourceActId: string | null;
     target: string | null;
     raw: string;
-    confidence: Confidence | null;
+    confidence: SemanticConfidence | null;
     provenance: string;
   }>;
   constraints: Array<{
@@ -144,7 +144,7 @@ export type SemanticEnvelope = {
     isCorrection: boolean;
     mustNotCreateTask: boolean;
     requiresConfirmation: boolean;
-    confidence: Confidence;
+    confidence: SemanticConfidence;
     evidence: string[];
   };
   provenance: {
