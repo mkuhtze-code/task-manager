@@ -70,6 +70,30 @@ export function fromSpeechInterpretation(
     source,
     acts,
     correctionChain: (semantic?.correctionChain ?? []).map((correction) => ({ ...correction })),
+    entities: interpretation.entities.map((entity) => ({
+      raw: entity.raw,
+      kind: entity.kind,
+      resolvedId: entity.resolvedId,
+      confidence: entity.confidence,
+      wasCorrected: entity.wasCorrected,
+      provenance: 'speech-interpretation',
+    })),
+    temporalExpressions: interpretation.temporalReferences.map((temporal) => ({
+      raw: temporal.raw,
+      kind: temporal.kind,
+      resolvedDate: temporal.resolvedDate,
+      resolvedTime: temporal.resolvedTime,
+      isCorrection: temporal.isCorrection,
+      confidence: temporal.confidence,
+      provenance: 'speech-interpretation',
+    })),
+    relations: [
+      ...acts.flatMap((act) => [
+        ...(act.condition ? [{ kind: 'condition', sourceActId: act.id, target: null, raw: act.condition.raw, confidence: act.condition.confidence, provenance: 'speech-semantic-act' }] : []),
+        ...(act.dependency ? [{ kind: 'dependency', sourceActId: act.id, target: null, raw: act.dependency.raw, confidence: act.dependency.confidence, provenance: 'speech-semantic-act' }] : []),
+        ...(act.references ?? []).map((reference) => ({ kind: 'reference', sourceActId: act.id, target: reference.resolvedTo, raw: reference.pronoun, confidence: reference.confidence, provenance: 'speech-semantic-act' })),
+      ]),
+    ],
     constraints: interpretation.constraints.map((constraint) => ({
       kind: String(constraint),
       value: String(constraint),
@@ -174,6 +198,19 @@ export function fromEngineInterpretation(
     },
     acts: act,
     correctionChain: [],
+    entities: interpretation.reference ? [{
+      raw: interpretation.reference.phrase,
+      kind: interpretation.reference.targetKind ?? 'unknown',
+      resolvedId: interpretation.reference.targetId,
+      confidence: interpretation.confidence,
+      wasCorrected: false,
+      provenance: 'engine-reference-resolution',
+    }] : [],
+    temporalExpressions: [
+      ...(interpretation.dateHint ? [{ raw: interpretation.dateHint, kind: 'date_hint', resolvedDate: interpretation.dateHint, resolvedTime: null, isCorrection: interpretation.isCorrection, confidence: interpretation.confidence, provenance: 'engine-interpreter' }] : []),
+      ...(interpretation.timeHint ? [{ raw: interpretation.timeHint, kind: 'time_hint', resolvedDate: null, resolvedTime: interpretation.timeHint, isCorrection: interpretation.isCorrection, confidence: interpretation.confidence, provenance: 'engine-interpreter' }] : []),
+    ],
+    relations: interpretation.grammar.relations.map((relation) => ({ kind: 'grammar_relation', sourceActId: null, target: null, raw: String(relation), confidence: interpretation.confidence, provenance: 'engine-semantic-grammar' })),
     constraints: interpretation.grammar.relations.map((relation) => ({
       kind: 'grammar_relation',
       value: String(relation),
