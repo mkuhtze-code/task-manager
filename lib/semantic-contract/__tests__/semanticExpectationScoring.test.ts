@@ -35,7 +35,7 @@ const EXPECTATIONS: SemanticExpectation[] = [
   { id: 'spatial-negation', domain: 'creative', input: 'Put the glimmerfold notes beside the atlas, not inside it.', expected: { minActs: 1, requiredActionTerms: ['put'], requiredEntityTerms: ['atlas'], mustHaveNegation: true } },
   { id: 'explicit-separate-task', domain: 'work', input: 'Keep the current task, and create a separate task to review the budget next Tuesday.', expected: { minActs: 2, requiredActionTerms: ['create', 'review'], requiredTemporalTerms: ['Tuesday'] } },
   { id: 'unfamiliar-vocabulary', domain: 'unfamiliar-vocabulary', input: 'Ask Rowan to rekalibrate the luminance map after the sensor swap.', expected: { minActs: 1, requiredActionTerms: ['ask'], requiredEntityTerms: ['Rowan'], mustHaveDependency: true } },
-  { id: 'conditional-non-task-contrast', domain: 'home', input: 'If the power returns before noon, check whether the router reconnects.', expected: { minActs: 1, requiredActionTerms: ['check'], requiredTemporalTerms: ['noon'], mustHaveCondition: true } },
+  { id: 'schedule-time-correction', domain: 'office', input: 'Move the review from 2pm to 3:30pm, not 4.', expected: { minActs: 1, requiredActionTerms: ['move'], requiredTemporalTerms: ['3:30pm'], mustHaveCorrection: true, mustHaveNegation: true } },
 ];
 
 function factsOf(envelope: SemanticEnvelope | null): ObservedSemanticFacts {
