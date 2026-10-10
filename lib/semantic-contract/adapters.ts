@@ -71,8 +71,8 @@ export function fromSpeechInterpretation(
     acts,
     correctionChain: (semantic?.correctionChain ?? []).map((correction) => ({ ...correction })),
     constraints: interpretation.constraints.map((constraint) => ({
-      kind: String(constraint.kind),
-      value: String(constraint.value),
+      kind: String(constraint),
+      value: String(constraint),
       source: 'speech-interpretation',
     })),
     context: {
