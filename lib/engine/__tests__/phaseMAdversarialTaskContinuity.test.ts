@@ -1,10 +1,35 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runCaptureDock, type CaptureDockResult } from '@/lib/engine/captureDock';
-import { bindRequestToTask } from '@/lib/engine/persist';
+import { bindRequestToTask, bindTaskToWorkingMemory, saveActiveRequestLocal, saveWorkingMemoryLocal } from '@/lib/engine/persist';
+import { emptyWorkingMemory } from '@/lib/engine/workingMemory';
 import type { EngineRequest } from '@/lib/engine/types';
 
 const TODAY = '2026-10-09';
 const TASK_ID = 'phase-m-persisted-task-001';
+const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+
+class MemoryStorage {
+  private values = new Map<string, string>();
+  getItem(key: string) { return this.values.get(key) ?? null; }
+  setItem(key: string, value: string) { this.values.set(key, String(value)); }
+  removeItem(key: string) { this.values.delete(key); }
+  clear() { this.values.clear(); }
+  key(index: number) { return [...this.values.keys()][index] ?? null; }
+  get length() { return this.values.size; }
+}
+
+beforeEach(() => {
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    writable: true,
+    value: new MemoryStorage(),
+  });
+});
+
+afterEach(() => {
+  if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
+  else Reflect.deleteProperty(globalThis, 'localStorage');
+});
 
 function dock(line: string, priorRequest: EngineRequest | null = null): CaptureDockResult {
   return runCaptureDock({
@@ -43,7 +68,17 @@ function makeBoundTask() {
   const request = first.overrides.engineRequest;
   expect(request, 'Create action must retain its structured request.').toBeTruthy();
   if (!request) throw new Error('Missing engine request');
-  return bindRequestToTask(request, TASK_ID);
+  const boundRequest = bindRequestToTask(request, TASK_ID);
+  const memory = bindTaskToWorkingMemory(first.overrides.workingMemory ?? emptyWorkingMemory(), {
+    taskId: TASK_ID,
+    taskText: first.overrides.text,
+    locationText: first.overrides.locationText,
+    jobId: first.overrides.jobId,
+    requestId: boundRequest.id,
+  });
+  saveActiveRequestLocal(boundRequest, null);
+  saveWorkingMemoryLocal(memory, null);
+  return boundRequest;
 }
 
 describe('Phase M — adversarial task continuity and reference resolution', () => {
