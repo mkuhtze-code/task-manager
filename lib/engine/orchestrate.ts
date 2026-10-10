@@ -16,7 +16,7 @@ import { decideAuthority } from './authority';
 import { assembleContext, resolveJobName, resolveLocationAgainstJobs } from './contextAssembly';
 import { explainDecision } from './explain';
 import { containsReference, resolveReference } from './references';
-import { applyUtteranceToRequest, requestTaskText } from './request';
+import { applyUtteranceToRequest, extractExplicitSeparateTaskClause, requestTaskText } from './request';
 import { interpretSemanticInput } from './semanticInterpreter';
 import {
   emptyWorkingMemory,
@@ -260,7 +260,7 @@ function actionFromPlan(
   const boundTaskId = taskIdFromConstraints(req);
   const isRefinement =
     req.rawUtterances.length > 1 &&
-    /^(?:actually|sorry|no[, ]|i\s+need\s+it|make\s+that|put\s+that|move\s+(?:it|that)|change\s+(?:it|that)|update\s+(?:it|that)|add\s+(?:that|this)|on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|tomorrow|today)\b/i.test(
+    /^(?:actually|sorry|no[, ]|i\s+need\s+it|make\s+that|put\s+that|move\s+(?:it|that)|change\s+(?:it|that)|(?:change|set|adjust|update)\s+(?:the\s+)?time|update\s+(?:it|that)|add\s+(?:that|this)|on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|tomorrow|today)\b/i.test(
       currentUtterance.trim()
     );
   if (boundTaskId && isRefinement) {
@@ -318,7 +318,12 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     })
   );
 
-  const semantic = interpretSemanticInput(input.utterance, {
+  // When a sentence explicitly asks for a separate task, the task clause is
+  // the semantic subject. Do not let an earlier preservation clause (for
+  // example, “leave the original unchanged”) overwrite its action/object roles.
+  const semanticUtterance =
+    extractExplicitSeparateTaskClause(input.utterance) ?? input.utterance;
+  const semantic = interpretSemanticInput(semanticUtterance, {
     workingMemory: mem,
     currentFocus: mem.currentFocus,
     jobs: input.context?.jobs ?? [],
@@ -329,7 +334,7 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
   // jobs/meetings are ephemeral candidates; a resolved task reference becomes
   // an explicit dependency so the action layer has a concrete target.
   let resolvedReference: ReturnType<typeof resolveReference> | null = null;
-  if (containsReference(input.utterance)) {
+  if (containsReference(semanticUtterance)) {
     const context = input.context;
     const contextReferents = [
       ...(context?.jobs ?? []).map((job) => ({
@@ -353,7 +358,7 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
         relationships: {},
       })),
     ];
-    resolvedReference = resolveReference(input.utterance, mem, {
+    resolvedReference = resolveReference(semanticUtterance, mem, {
       extraReferents: contextReferents,
     });
     evidenceList.push(
@@ -373,9 +378,21 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
 
   let request = applyUtteranceToRequest(
     input.priorRequest ?? null,
-    input.utterance,
+    semanticUtterance,
     mem
   );
+
+  // Preserve the complete user utterance for learning/audit, while parsing
+  // only the explicit new-task clause as the task's semantic content.
+  if (semanticUtterance !== input.utterance) {
+    request = {
+      ...request,
+      rawUtterances: [
+        ...request.rawUtterances.slice(0, -1),
+        input.utterance.trim(),
+      ].slice(-12),
+    };
+  }
 
   // Phase 12 grammar is the authoritative semantic-role refinement for
   // compound captures. The legacy request parser remains the fallback for
@@ -522,7 +539,7 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
   // Never silently turn "do that", "move it", or "go there" into a new action
   // when working memory cannot resolve what the user means.
   if (
-    containsReference(input.utterance) &&
+    containsReference(semanticUtterance) &&
     resolvedReference &&
     (resolvedReference.status === 'ambiguous' || resolvedReference.status === 'unknown')
   ) {

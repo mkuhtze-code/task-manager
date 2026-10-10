@@ -834,6 +834,20 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     return out;
   }
 
+  // Schedule-only edits refine the active request; they are not new task objects.
+  const temporalOnlyCorrection =
+    /^(?:actually[, ]*)?(?:change|set|adjust|update)\s+(?:the\s+)?time\s+(?:to|for)\s+(.+?)(?:[,;]\s*(?:but\s+)?(?:leave|keep)\s+(?:the\s+)?date\s+(?:alone|unchanged))?[.!?]?$/i.test(text);
+  if (temporalOnlyCorrection) {
+    const timeHint = extractTimeHint(text);
+    if (timeHint) {
+      out.timeHint = timeHint;
+      out.constraints = pushConstraint(out.constraints ?? [], 'temporal', 'time:' + timeHint, 'high', 'correction');
+      out.isRefinement = true;
+      out.isCorrection = true;
+      return out;
+    }
+  }
+
   const primaryVerb = extractPrimaryTaskVerb(text);
   const parseText = normaliseSpeechLead(text);
   if (primaryVerb) {
@@ -1272,11 +1286,29 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
 /**
  * Merge utterance interpretation into an existing request or start a new one.
  */
+export function extractExplicitSeparateTaskClause(raw: string): string | null {
+  const match = raw.match(
+    /\b(?:create|make|add)\s+(?:a\s+)?(?:separate|new|another)\s+task\s+(?:to|for)\s+(.+)$/i
+  );
+  const clause = match?.[1]?.trim().replace(/[.!?]+$/, '').trim();
+  return clause || null;
+}
+
 export function applyUtteranceToRequest(
   existing: EngineRequest | null,
   raw: string,
   mem: WorkingMemorySnapshot
 ): EngineRequest {
+  // An explicit new/separate-task clause starts a fresh request, even when
+  // an earlier clause says to preserve the currently active task.
+  const taskClause = extractExplicitSeparateTaskClause(raw);
+  if (taskClause) {
+    const fresh = applyUtteranceToRequest(null, taskClause, mem);
+    fresh.rawUtterances = [...fresh.rawUtterances.slice(0, -1), raw.trim()].slice(-12);
+    fresh.updatedAt = new Date().toISOString();
+    return fresh;
+  }
+
   const partial = interpretRequestUtterance(raw);
   const partialAction = partial.action ?? 'unknown';
   const normalisedRaw = raw.replace(/\s+/g, ' ').trim();
