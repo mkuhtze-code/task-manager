@@ -33,6 +33,7 @@ const speechFixture: SpeechInterpretation = {
   ambiguity: 'none',
   surfaceSummary: 'Email Alex on Thursday',
   confidence: 'high',
+  transcriptionConfidence: 'medium',
   reasons: ['correction:date'],
   requiresConfirmation: true,
   semantic: {
@@ -68,6 +69,7 @@ describe('Phase N semantic envelope adapters', () => {
     const envelope = fromSpeechInterpretation(speechFixture);
     expect(envelope.contract).toBe('dokkit.semantic-envelope');
     expect(envelope.version).toBe(1);
+    expect(envelope.source.transcriptionConfidence).toBe('medium');
     expect(envelope.acts).toHaveLength(1);
     expect(envelope.acts[0].polarity).toBe('positive');
     expect(envelope.acts[0].corrections[0]).toMatchObject({
