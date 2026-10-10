@@ -1359,6 +1359,19 @@ export function applyUtteranceToRequest(
         }
       : emptyRequest(partialAction);
 
+  // Self-heal context written by older builds: a weekday may have been
+  // misclassified as a location (for example, "Move it to Monday" ->
+  // locationText="Monday"). Never carry that pseudo-location into a later
+  // correction or task title.
+  if (
+    base.locationText &&
+    /^(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|this afternoon|next week)$/i.test(base.locationText.trim()) &&
+    (!partial.locationText ||
+      /^(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|this afternoon|next week)$/i.test(partial.locationText.trim()))
+  ) {
+    base.locationText = null;
+  }
+
   if (!continueActive) {
     base.action = partial.action ?? 'unknown';
   } else if (partial.action && partial.action !== 'unknown') {
