@@ -131,7 +131,22 @@ describe('Phase N — reviewed semantic label baseline (diagnostic, no score gat
       })),
       rows,
     };
-    console.info('PHASE_N_REVIEWED_SEMANTIC_LABELS=' + JSON.stringify(report));
+    console.info('PHASE_N_REVIEWED_SEMANTIC_LABELS_SUMMARY=' + JSON.stringify({
+      benchmark: report.benchmark,
+      caseCount: report.caseCount,
+      domains: report.domains,
+      speechMissingFeatureCount: report.speechMissingFeatureCount,
+      engineMissingFeatureCount: report.engineMissingFeatureCount,
+    }));
+    rows.forEach((row) => {
+      console.info('PHASE_N_REVIEWED_SEMANTIC_LABEL_CASE=' + JSON.stringify({
+        id: row.id,
+        speechMissingFeatures: row.speech.missingFeatures,
+        engineMissingFeatures: row.engine.missingFeatures,
+        speechActCount: row.speech.actCount,
+        engineActCount: row.engine.actCount,
+      }));
+    });
 
     // Integrity checks only. Gaps remain visible for review rather than hidden
     // behind arbitrary thresholds before the first measured baseline.
