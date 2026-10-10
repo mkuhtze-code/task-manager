@@ -107,10 +107,11 @@ export function runCaptureDock(input: CaptureDockInput): CaptureDockResult {
       : null;
 
   const travelRemaining = input.travel?.remainingMins ?? null;
-  const remaining =
-    input.remainingMinsToday != null
-      ? input.remainingMinsToday
-      : travelRemaining;
+  // A travel surface has its own selected-day capacity. Never let a general
+  // Today value silently override that trip-day window.
+  const remaining = input.travel
+    ? travelRemaining
+    : input.remainingMinsToday ?? travelRemaining;
 
   const cpuResult = processCpuInteraction({
     userId: input.userId,

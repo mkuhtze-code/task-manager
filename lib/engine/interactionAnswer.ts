@@ -10,6 +10,34 @@ import type { Decision, DecisionTrace } from '@/lib/thinking/v3/types';
 
 // ANSWER and ACT intentionally share the same V3 fit evaluator below; keep both paths aligned.
 
+// Resolve only dates we can deterministically anchor. Unknown relative expressions
+// must not be treated as if they referred to the currently selected capacity window.
+function dateForHint(hint: string | null, todayDate: string): string | null {
+  if (!hint) return null;
+  const value = hint.trim().toLowerCase();
+  if (value === 'today') return todayDate;
+  if (value === 'tomorrow') {
+    const [year, month, day] = todayDate.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+  const weekdays: Record<string, number> = {
+    sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+    thursday: 4, friday: 5, saturday: 6,
+  };
+  const targetDay = weekdays[value];
+  if (targetDay === undefined) return null;
+  const [year, month, day] = todayDate.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const delta = (targetDay - date.getUTCDay() + 7) % 7;
+  date.setUTCDate(date.getUTCDate() + delta);
+  return date.toISOString().slice(0, 10);
+}
+
+
 export function answerFeasibility(
   utterance: string,
   cycle: EngineCycleResult,
@@ -35,10 +63,28 @@ export function answerFeasibility(
     return sum + (typeof d === 'number' && d > 0 ? d : 45);
   }, 0);
 
-  let remaining =
-    input.context.remainingMinsToday ?? travelCtx?.remainingMins ?? null;
+  const todayDate =
+    input.context.todayDate && /^\d{4}-\d{2}-\d{2}$/.test(input.context.todayDate)
+      ? input.context.todayDate
+      : new Date().toISOString().slice(0, 10);
+  const capacityDate = onTrip && travelCtx?.dayDate ? travelCtx.dayDate : todayDate;
+  const hintedDate = dateForHint(cycle.request.dateHint, todayDate);
+  // No explicit date means the current selected window; an unresolvable explicit
+  // date is unknown, never silently compared with today's remaining minutes.
+  const targetDate = cycle.request.dateHint ? hintedDate : capacityDate;
+  const capacityApplies = targetDate != null && targetDate === capacityDate;
+  let remaining = capacityApplies
+    ? onTrip
+      ? travelCtx?.remainingMins ?? input.context.remainingMinsToday ?? null
+      : input.context.remainingMinsToday ?? null
+    : null;
+  if (!capacityApplies) {
+    facts.push(
+      targetDate ? `capacity_window_mismatch=target:${targetDate},available:${capacityDate}` : 'capacity_target_date_unknown'
+    );
+  }
   // Trip day: meetings on this calendar day consume workable window (same day capacity).
-  if (onTrip && remaining != null && meetingBlockMins > 0) {
+  if (capacityApplies && onTrip && remaining != null && meetingBlockMins > 0) {
     remaining = Math.max(0, remaining - meetingBlockMins);
     facts.push(
       `meetings_on_day=${meetings.length}`,
@@ -119,10 +165,10 @@ export function answerFeasibility(
       remainingWindowMins: remaining,
       sameDayRate: null,
       protectFromCarry: false,
-      dueToday: visitMode ? true : cycle.request.dateHint === 'today',
-      hasIntendedTime: visitMode
-        ? afternoonHint
-        : Boolean(cycle.request.timeHint),
+      dueToday: capacityApplies && Boolean(cycle.request.dateHint),
+      hasIntendedTime: capacityApplies && Boolean(
+        cycle.request.timeHint || (visitMode && afternoonHint)
+      ),
       isActive: false,
       behaviour: null,
       clusterBehaviour: null,
@@ -165,20 +211,24 @@ export function answerFeasibility(
   let fits: boolean | null = null;
   let textOut = '';
 
-  const dayLabel = onTrip
+  const dayLabel = onTrip && capacityApplies
     ? travelCtx?.dayDate
       ? `on ${travelCtx.dayDate}`
       : 'on this trip day'
-    : 'today';
+    : targetDate && targetDate !== todayDate
+      ? `on ${targetDate}`
+      : 'today';
   const travelPhrase = onTrip
     ? `~${roundTrip} min leg`
     : `~${roundTrip} min round-trip`;
 
   if (remaining == null) {
     fits = null;
-    textOut = onTrip
-      ? 'I do not have a clear remaining-capacity signal for this trip day, so I cannot confirm a fit. Check the day window and planned stops.'
-      : 'I do not have a clear remaining-capacity signal for today, so I cannot confirm a fit. Check your calendar and open work before committing.';
+    textOut = !capacityApplies && targetDate
+      ? `I do not have a clear remaining-capacity signal for ${dayLabel}, so I cannot confirm a fit. The available capacity belongs to a different day.`
+      : onTrip
+        ? 'I do not have a clear remaining-capacity signal for this trip day, so I cannot confirm a fit. Check the day window and planned stops.'
+        : 'I do not have a clear remaining-capacity signal for today, so I cannot confirm a fit. Check your calendar and open work before committing.';
     facts.push('remainingMinsToday unavailable');
   } else if (hardBlock && remaining < needed) {
     fits = false;
