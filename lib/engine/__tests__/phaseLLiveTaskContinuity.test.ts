@@ -263,5 +263,5 @@ describe.skipIf(!enabled)('Phase L — live task persistence and context continu
         throw new Error(`CRITICAL: Phase L cleanup incomplete — ${cleanupErrors.join('; ')}`);
       }
     }
-  });
+  }, 30_000);
 });
