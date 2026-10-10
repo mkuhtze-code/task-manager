@@ -85,7 +85,7 @@ function interpret(input: string, producer: 'speech' | 'engine'): SemanticEnvelo
 }
 
 describe('Phase N semantic expectation scoring (diagnostic, no release threshold)', () => {
-  it('scores reviewed positive and negative expectations separately for both producers', () => {
+  it('scores candidate positive and negative expectations separately for both producers', () => {
     const run = (producer: 'speech' | 'engine') => EXPECTATIONS.map((label) => ({
       label,
       result: evaluateSemanticExpectation(label, factsOf(interpret(label.input, producer))),
