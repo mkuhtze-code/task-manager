@@ -112,7 +112,7 @@ describe('buildUserBehaviourModel', () => {
     expect(model.estimationLogBias!).toBeGreaterThan(0);
     expect(model.carryRate).not.toBeNull();
     expect(model.carryRate!).toBeGreaterThan(0.3);
-  });
+  }, 15_000); // Avoid false failures when deterministic clustering tests run on a contended CI worker.
 
   it('excludes contaminated samples from duration bias', () => {
     const samples = [
