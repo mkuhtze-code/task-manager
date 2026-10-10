@@ -74,7 +74,7 @@ const ENGINE_UNREPRESENTED_SIGNALS = new Set<ShadowSignal>([
 ]);
 
 function normalizedText(text: string): string {
-  return text.normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase();
+  return text.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
 }
 
 function signalValue(envelope: SemanticEnvelope, signal: ShadowSignal): boolean | null {
