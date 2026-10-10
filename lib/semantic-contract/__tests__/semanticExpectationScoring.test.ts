@@ -166,4 +166,22 @@ describe('semantic expectation scorer', () => {
     expect(evaluateSemanticExpectation(label, { ...observed, temporalText: '2026-10-17' }).failed).toBe(1);
     expect(evaluateSemanticExpectation(label, { ...observed, temporalText: 'at 7 tomorrow' }).passed).toBe(1);
   });
+
+  it('normalizes equivalent 12-hour, 24-hour and named midday expressions', () => {
+    const atThreeThirty: SemanticExpectation = {
+      id: 'time-alias-1530', domain: 'personal', input: 'Do this at 3:30pm',
+      expected: { requiredTemporalTerms: ['3:30pm'] },
+    };
+    const atThree: SemanticExpectation = {
+      id: 'time-alias-1500', domain: 'personal', input: 'Do this at 3pm',
+      expected: { requiredTemporalTerms: ['3pm'] },
+    };
+    const atNoon: SemanticExpectation = {
+      id: 'time-alias-noon', domain: 'personal', input: 'Do this at noon',
+      expected: { requiredTemporalTerms: ['noon'] },
+    };
+    expect(evaluateSemanticExpectation(atThreeThirty, { ...observed, temporalText: '15:30' }).score).toBe(1);
+    expect(evaluateSemanticExpectation(atThree, { ...observed, temporalText: '15:00' }).score).toBe(1);
+    expect(evaluateSemanticExpectation(atNoon, { ...observed, temporalText: '12:00' }).score).toBe(1);
+  });
 });
