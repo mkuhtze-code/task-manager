@@ -14,7 +14,7 @@ jobs:
   live-task-continuity:
     name: Real task insert, remote context recovery, and same-row update
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,14 +24,19 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9.15.9'
+
       - name: Install dependencies
-        # The repository lockfile currently contains only the root package entry.
-        # Ignore it for this isolated live-test job rather than letting npm's
-        # dependency-tree resolver fail on the incomplete lockfile.
-        run: npm install --package-lock=false --no-audit --no-fund
+        # Use pnpm rather than npm's Arborist resolver, which has repeatedly
+        # crashed with "Cannot read properties of null (reading 'edgesOut')"
+        # in this repository's live-test workflow.
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run Phase L against live Supabase
-        run: npm run test:context-live-l
+        run: pnpm exec vitest run lib/engine/__tests__/phaseLLiveTaskContinuity.test.ts
         env:
           PHASE_L_LIVE_TESTS: 'true'
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.PHASE_K_SUPABASE_URL }}
