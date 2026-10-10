@@ -52,9 +52,13 @@ export function answerFeasibility(
     (cycle.request.objectText ? 45 : 30);
   // Ordinary captured work uses its task estimate; only explicit movement/visit
   // work should consume the visit + travel budget.
-  const taskEstimate =
+  const actionEstimate =
     cycle.action.kind === 'create_task' || cycle.action.kind === 'update_task'
       ? cycle.action.estimateMins
+      : null;
+  const taskEstimate =
+    typeof actionEstimate === 'number' && actionEstimate > 0
+      ? actionEstimate
       : 15;
   // On a trip day, travel is already partly in planned drives; default lower leg cost.
   const travel = visitMode
