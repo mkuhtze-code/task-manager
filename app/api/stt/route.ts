@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyUser } from '@/lib/verifyUser';
+import { normalizeSpeechLocale } from '@/lib/speech/locale';
 import { checkRateLimit, getClientIp } from '@/lib/ratelimit';
 import {
+  MAX_AUDIO_BYTES,
   parseSttUpstreamConfig,
   transcribeUpstream,
 } from '@/lib/speech/sttUpstream';
@@ -37,6 +39,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Reject oversized uploads before parsing multipart data or allocating an audio buffer.
+  const contentLengthHeader = req.headers.get('content-length');
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0;
+  if (Number.isFinite(contentLength) && contentLength > MAX_AUDIO_BYTES + 256 * 1024) {
+    return NextResponse.json({ error: 'Audio too large (max 8 MB).' }, { status: 413 });
+  }
+
   const config = parseSttUpstreamConfig();
   if (!config) {
     return NextResponse.json(
@@ -63,10 +72,16 @@ export async function POST(req: NextRequest) {
 
   const languageField = form.get('language');
   if (typeof languageField === 'string' && languageField.trim()) {
-    config.language = languageField.trim();
+    config.language = normalizeSpeechLocale(languageField.trim(), config.language);
   }
 
   const blob = file as File;
+  if (blob.size <= 0) {
+    return NextResponse.json({ error: 'Empty audio payload.' }, { status: 400 });
+  }
+  if (blob.size > MAX_AUDIO_BYTES) {
+    return NextResponse.json({ error: 'Audio too large (max 8 MB).' }, { status: 413 });
+  }
   const mimeType = blob.type || 'audio/webm';
   const buffer = await blob.arrayBuffer();
 
