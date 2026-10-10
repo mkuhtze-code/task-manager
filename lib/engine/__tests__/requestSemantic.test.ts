@@ -369,4 +369,25 @@ describe('spoken object and location corrections', () => {
     expect(requestTaskText(corrected).toLowerCase()).not.toContain('at friday');
   });
 
+  it('self-heals a weekday already saved as the active request location', () => {
+    const original = applyUtteranceToRequest(
+      null,
+      'I need to email Sarah about the revised proposal.',
+      emptyWorkingMemory(),
+    );
+    const contaminated = {
+      ...original,
+      locationText: 'Monday',
+      dateHint: 'monday',
+    };
+    const corrected = applyUtteranceToRequest(
+      contaminated,
+      'Actually, make that Friday.',
+      emptyWorkingMemory(),
+    );
+    expect(corrected.dateHint).toBe('friday');
+    expect(corrected.locationText).toBeNull();
+    expect(requestTaskText(corrected).toLowerCase()).not.toContain('at monday');
+  });
+
 });
