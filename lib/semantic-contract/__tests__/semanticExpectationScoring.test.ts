@@ -157,4 +157,13 @@ describe('semantic expectation scorer', () => {
     }, observed);
     expect(result.score).toBeNull();
   });
+
+  it('uses token boundaries so a time of 7 does not match the 7 inside a date', () => {
+    const label: SemanticExpectation = {
+      id: 'time-token', domain: 'personal', input: 'Do this at 7',
+      expected: { requiredTemporalTerms: ['7'] },
+    };
+    expect(evaluateSemanticExpectation(label, { ...observed, temporalText: '2026-10-17' }).failed).toBe(1);
+    expect(evaluateSemanticExpectation(label, { ...observed, temporalText: 'at 7 tomorrow' }).passed).toBe(1);
+  });
 });
