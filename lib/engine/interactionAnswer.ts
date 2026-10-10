@@ -237,7 +237,7 @@ export function actFitDecision(
   facts: string[];
 } {
   const visitIntent =
-    /\\b(?:go see|see this job|visit|drop off|pick up|collect|deliver|drive to|travel to|head to|stop at|go to)\\b/i.test(
+    /\b(?:go see|see this job|visit|drop off|pick up|collect|deliver|drive to|travel to|head to|stop at|go to)\b/i.test(
       input.input.text
     );
   const answer = answerFeasibility('', cycle, input, {
