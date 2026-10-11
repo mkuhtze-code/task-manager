@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.navigation
 import com.dokkit.app.core.theme.DokkitThemeState
 import com.dokkit.app.data.remote.NativeTravelOverviewRepository
+import com.dokkit.app.data.remote.NativeTodayRepository
 import com.dokkit.app.data.remote.SupabaseFactory
 import com.dokkit.app.ui.jobs.JobsPlaceholderScreen
 import com.dokkit.app.ui.lab.DesignLabScreen
@@ -34,6 +35,9 @@ fun DokkitNavHost(
     val currentDestination = backStackEntry?.destination
     val travelRepository = androidx.compose.runtime.remember(supabaseFactory) {
         NativeTravelOverviewRepository(supabaseFactory)
+    }
+    val todayRepository = androidx.compose.runtime.remember(supabaseFactory) {
+        NativeTodayRepository(supabaseFactory)
     }
 
     Scaffold(
@@ -69,6 +73,7 @@ fun DokkitNavHost(
                 TodayScreen(
                     themeState = themeState,
                     onOpenDesignLab = { navController.navigate("lab") },
+                    repository = todayRepository,
                 )
             }
             composable(DokkitDestination.Jobs.route) {
