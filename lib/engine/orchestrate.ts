@@ -416,7 +416,10 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     const hasPurpose = grammar.relations.includes('action→purpose');
     const hasLocationRelation = grammar.relations.includes('purpose→location');
     const legacyLocation = request.locationText?.trim().toLowerCase();
-    const purposeText = request.purposeText?.trim().toLowerCase();
+    const purposeText = request.purposeText
+      ?.trim()
+      .toLowerCase()
+      .replace(/^to\s+/, '');
     const temporalConnectives = [
       'after', 'before', 'during', 'following', 'once', 'when', 'while', 'until', 'since',
     ];
