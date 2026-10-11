@@ -14,7 +14,7 @@ const BASE = {
     meetings: [],
   },
   dryRun: true,
-} as const;
+};
 
 function run(text: string): CpuCycleResult {
   return processCpuInteraction({
