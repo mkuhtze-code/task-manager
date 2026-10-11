@@ -1,0 +1,48 @@
+/* UX-3 — Make capture proposal meaning explicit without turning it into a banner. */
+.capture-speech-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.capture-speech-status-label {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.25rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--hairline, #cbd5e1);
+  border-radius: 999px;
+  color: var(--ink-soft, #64748b);
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.capture-speech-status > span:not(.capture-speech-status-label) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.capture-speech-status-dismiss {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 380px) {
+  .capture-speech-status {
+    flex-wrap: wrap;
+  }
+
+  .capture-speech-status-dismiss {
+    margin-inline-start: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capture-speech-status,
+  .capture-speech-status-label {
+    transition: none !important;
+    animation: none !important;
+  }
+}
