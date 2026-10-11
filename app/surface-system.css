@@ -334,7 +334,7 @@
    DOKKIT VISUAL SYSTEM — canonical object grammar
    One instrument. Four lenses. Quiet surface. Strong object.
    ========================================================================== */
-:root{--dk-radius:14px;--dk-pad-x:16px;--dk-pad-y:15px;--dk-gap:10px;--dk-max:1440px;--dk-title:15px;--dk-meta:12px}
+:root{--dk-radius:var(--radius-md);--dk-pad-x:var(--space-4);--dk-pad-y:15px;--dk-gap:10px;--dk-max:1440px;--dk-title:var(--text-base);--dk-meta:var(--text-xs)}
 
 /* Canvas / orientation */
 .surface-header{position:relative;z-index:5;padding:14px 20px 13px!important;border-bottom:1px solid var(--line)!important;background:var(--paper)!important;box-shadow:none!important}
