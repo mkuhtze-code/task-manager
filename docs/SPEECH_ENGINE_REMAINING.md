@@ -14,6 +14,7 @@
 - Phase AC expanded invariants: correction chains, conditional dependencies, temporal anchors, unresolved references, and unfamiliar-domain/non-action cases
 - Leakage-safe corpus gates: draft labels cannot count as reviewed validation/held-out evidence; exact normalized duplicates are checked across splits
 - Proposed quality exit contract in [SPEECH_ENGINE_QUALITY.md](./SPEECH_ENGINE_QUALITY.md)
+- Phase AE authorization-boundary regression suite added to build/CI via `test:phaseAE`; covers non-actions, denied authority, and explicit-action positive control
 
 ## Remaining
 
@@ -28,7 +29,8 @@
 
 - [ ] Build independently reviewed validation and held-out semantic sets; current draft corpus and parity replay are not gold accuracy evidence.
 - [ ] Report action/non-action classification, critical-field retention, unresolved-reference behavior, and failures by scenario family.
-- [ ] Add mutation-boundary tests proving that interpretation and proposal generation cannot persist without explicit authorization.
+- [x] Add CPU execution-boundary regression tests proving non-actions and denied authority do not dispatch mutations; positive control verifies explicit actions still dispatch. (Phase AE)
+- [ ] Add component-level Capture Dock confirmation tests proving the UI only invokes execution after an explicit Dock interaction.
 - [ ] Use the exit thresholds in [SPEECH_ENGINE_QUALITY.md](./SPEECH_ENGINE_QUALITY.md); do not claim a threshold is met until measured with denominators.
 
 ### C. Discourse & personal learning
