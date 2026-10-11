@@ -130,9 +130,9 @@ for (const file of files) {
       const normalized = record.utterance
         .normalize('NFKC')
         .toLowerCase()
-        .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
         .trim()
-        .replace(/\\s+/g, ' ');
+        .replace(/\s+/g, ' ');
       const previous = normalizedUtterances.get(normalized);
       if (previous && previous.split !== record.split) {
         errors.push(
