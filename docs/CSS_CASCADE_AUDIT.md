@@ -36,6 +36,7 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Added brace-balance validation to catch a class of malformed CSS edits.
 - Consolidated the shared navigation border/background values into the canonical base rule; retained distinct dark-theme, mobile, and desktop variants.
 - Removed a repeated desktop `.meeting-row.pressure-now` declaration after verifying it duplicates the same selector, media scope, and values without any intervening equal-specificity override.
+- Consolidated the duplicate `.context-line-link:focus-visible` rule while retaining its visible keyboard outline in the canonical Relationships section.
 - Wired the audit into the existing production build chain, so the web and Capacitor-test builds execute it.
 
 ## Still to complete
