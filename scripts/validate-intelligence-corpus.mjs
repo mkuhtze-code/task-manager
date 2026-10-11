@@ -10,6 +10,7 @@ const files = (await readdir(exampleDir)).filter((name) => name.endsWith('.jsonl
 const errors = [];
 const ids = new Map();
 const families = new Map();
+const normalizedUtterances = new Map();
 const splitCounts = { development: 0, validation: 0, held_out: 0 };
 const annotationCounts = { draft: 0, reviewed: 0, needs_revision: 0, rejected: 0 };
 const ACT_TYPES = ['action', 'state', 'question', 'report', 'condition', 'correction', 'preference', 'unknown'];
@@ -94,6 +95,18 @@ for (const file of files) {
     }
 
     requireValue(['draft', 'reviewed', 'needs_revision', 'rejected'].includes(record.annotation?.review_status), `${location}: invalid annotation.review_status`);
+    // Validation and held-out examples are evidence, not places to park draft labels.
+    // Keep them empty until a reviewer has explicitly accepted the annotation.
+    if (record.split !== 'development') {
+      requireValue(
+        record.annotation?.review_status === 'reviewed',
+        `${location}: ${record.split} examples must be reviewed before entering an evaluation split`
+      );
+      requireValue(
+        isNonEmptyString(record.annotation?.reviewer),
+        `${location}: ${record.split} examples must identify the reviewer`
+      );
+    }
     requireValue(typeof record.annotation?.review_note === 'string', `${location}: annotation.review_note is required`);
     if (annotationCounts[record.annotation?.review_status] !== undefined) {
       annotationCounts[record.annotation.review_status] += 1;
@@ -108,6 +121,25 @@ for (const file of files) {
         errors.push(`${location}: family "${record.family_id}" crosses split boundary (${previous} vs ${record.split})`);
       } else {
         families.set(record.family_id, record.split);
+      }
+    }
+
+    // Exact normalized duplicates are a detectable form of train/evaluation leakage.
+    // Close paraphrases still need to share family_id by annotation policy.
+    if (isNonEmptyString(record.utterance) && record.split) {
+      const normalized = record.utterance
+        .normalize('NFKC')
+        .toLowerCase()
+        .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+        .trim()
+        .replace(/\\s+/g, ' ');
+      const previous = normalizedUtterances.get(normalized);
+      if (previous && previous.split !== record.split) {
+        errors.push(
+          `${location}: normalized utterance duplicates ${previous.location} across split boundary (${previous.split} vs ${record.split})`
+        );
+      } else if (!previous) {
+        normalizedUtterances.set(normalized, { split: record.split, location });
       }
     }
   }
