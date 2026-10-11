@@ -82,7 +82,7 @@ export function CollectionsPeekSheet(props: {
       >
         <div className="capture-sheet-header">
           <h2 className="capture-sheet-title">Lists</h2>
-          <button type="button" className="btn-text" onClick={onClose}>
+          <button type="button" className="btn-text ux-button ux-button--quiet" onClick={onClose}>
             Close
           </button>
         </div>
