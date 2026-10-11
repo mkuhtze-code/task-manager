@@ -351,13 +351,13 @@
   }
 
   html[data-surface='desktop'] .task-list > .task-card {
-    border-radius: var(--radius-md);
-    border-bottom: none;
-    margin: 2px 4px;
+    border-radius: var(--radius-md) !important;
+    border-bottom: none !important;
+    margin: 2px 4px !important;
   }
 
   html[data-surface='desktop'] .task-list > .task-card:hover {
-    background: color-mix(in srgb, var(--ink) 3%, transparent);
+    background: color-mix(in srgb, var(--ink) 3%, transparent) !important;
   }
 }
 
