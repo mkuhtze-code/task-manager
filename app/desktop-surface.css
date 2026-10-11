@@ -673,7 +673,7 @@ button.task-conn-node:hover {
 }
 
 .task-conn-node-meeting {
-  border-left: 3px solid var(--good, #2a9d6e);
+  border-left: 3px solid var(--success);
 }
 
 .task-conn-node-meeting.is-past {
