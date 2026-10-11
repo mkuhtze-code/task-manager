@@ -139,4 +139,12 @@ describe('Phase 12 — semantic grammar', () => {
     expect(result.request.locationText).toBe('Angela Place');
   });
 
+  it('preserves an explicit at-location in a communication request', () => {
+    const result = runEngineCycle({
+      utterance: 'Ring Mike about the gutter measurements at Smith Road',
+      workingMemory: emptyWorkingMemory(),
+    });
+    expect(result.request.locationText?.toLowerCase()).toContain('smith road');
+  });
+
 });
