@@ -38,7 +38,7 @@
 }
 
 .today-header-card.overloaded {
-  background: color-mix(in srgb, var(--warn) 8%, var(--paper)) !important;
+  background: color-mix(in srgb, var(--hazard) 8%, var(--paper)) !important;
 }
 
 /* Dominant capacity number */
@@ -85,12 +85,12 @@
     var(--steel),
     color-mix(in srgb, var(--steel) 70%, #60a5fa)
   ) !important;
-  transition: width var(--dur, 180ms) var(--ease-out) !important;
+  transition: width var(--dur, 180ms) var(--ease) !important;
 }
 
 .capacity-fill.is-tight,
 .today-capacity-fill.is-tight {
-  background: linear-gradient(90deg, var(--warn), #f59e0b) !important;
+  background: linear-gradient(90deg, var(--hazard), #f59e0b) !important;
 }
 
 .capacity-fill.is-over,
@@ -186,12 +186,12 @@
 
 .task-card[data-fit='good'],
 .task-card.is-fit-good {
-  box-shadow: inset 3px 0 0 var(--ok) !important;
+  box-shadow: inset 3px 0 0 var(--moss) !important;
 }
 
 .task-card[data-fit='tight'],
 .task-card.is-fit-tight {
-  box-shadow: inset 3px 0 0 var(--warn) !important;
+  box-shadow: inset 3px 0 0 var(--hazard) !important;
 }
 
 .task-card[data-fit='over'],
@@ -268,7 +268,7 @@
   box-shadow:
     0 8px 24px color-mix(in srgb, var(--steel) 35%, transparent),
     0 0 0 1px color-mix(in srgb, #fff 12%, transparent) inset !important;
-  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out) !important;
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur) var(--ease) !important;
 }
 
 .capture-fab:active,
