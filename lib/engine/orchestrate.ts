@@ -415,10 +415,10 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     // destinations remain protected by the grammar's purpose→location role.
     const hasPurpose = grammar.relations.includes('action→purpose');
     const hasLocationRelation = grammar.relations.includes('purpose→location');
-    const legacyLocation = request.locationText?.trim().toLocaleLowerCase();
+    const legacyLocation = request.locationText?.trim().toLowerCase();
     const purposeEvidence = [grammar.purposeText, grammar.subjectText, grammar.objectText]
       .filter((value): value is string => !!value)
-      .map((value) => value.toLocaleLowerCase());
+      .map((value) => value.toLowerCase());
     if (
       hasPurpose &&
       !hasLocationRelation &&
@@ -426,6 +426,9 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
       purposeEvidence.some((value) => value.includes(legacyLocation))
     ) {
       request.locationText = null;
+      // Keep the returned semantic projection aligned with the request that
+      // will drive the plan/action, rather than exposing the stale slot.
+      semantic.locationText = null;
     }
   }
 
