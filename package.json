@@ -52,7 +52,7 @@
     "test:phaseN-accuracy": "vitest run lib/semantic-contract/__tests__/semanticExpectationScoring.test.ts",
     "test:phaseAE": "vitest run lib/cpu/__tests__/phaseAEExecutionAuthorization.test.ts",
     "test:stt-production": "node scripts/check-stt-production.mjs",
-    "test:capture-ui": "vitest run components/__tests__/captureSheetDockAuthorization.test.tsx"
+    "test:capture-ui": "NODE_ENV=test vitest run components/__tests__/captureSheetDockAuthorization.test.tsx"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
