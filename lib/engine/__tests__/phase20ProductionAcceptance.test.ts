@@ -114,6 +114,15 @@ describe('Phase 20 — production acceptance: Capture → speech → Dock', () =
     expect(action.overrides.locationText?.toLowerCase()).toContain('smith');
   });
 
+  it('does not treat the infinitive purpose after a named recipient as a location', () => {
+    const input = 'Ask Noor to recalibrate the fluxgate after the firmware swap';
+    const { dock } = captureAndDock(input);
+    const action = expectDockable(dock, input);
+    expect(action.overrides.text.toLowerCase()).toContain('noor');
+    expect(action.overrides.text.toLowerCase()).toContain('fluxgate');
+    expect(action.overrides.locationText ?? null).toBeNull();
+  });
+
   it('preserves a site-work action and location from a short spoken request', () => {
     const input = 'Check the flashings for Smith Street';
     const { dock } = captureAndDock(input);
