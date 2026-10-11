@@ -1,5 +1,6 @@
 import './globals.css';
 import './ux-design-tokens.css';
+import './ux-design-primitives.css';
 import './ux-grammar-foundation.css';
 import './ux-today-calm.css';
 import './ux-capture-proposals.css';
