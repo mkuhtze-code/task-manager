@@ -122,39 +122,40 @@
 /* Kill card chrome — content is the UI */
 .task-list > .task-card,
 .task-list > .task-card.surface-object {
-  border: none !important;
-  border-radius: 0 !important;
-  border-bottom: 1px solid var(--line) !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  transform: none !important;
-  margin: 0 !important;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  box-shadow: none;
+  background: transparent;
+  transform: none;
+  margin: 0;
+  padding: 0;
 }
 
 .task-list > .task-card:last-of-type,
 .task-list > .task-card.surface-object:last-of-type {
-  border-bottom: none !important;
+  border-bottom: none;
 }
 
 .task-list > .task-card:hover,
 .task-list > .task-card.surface-object:hover {
-  transform: none !important;
-  background: color-mix(in srgb, var(--ink) 2.5%, transparent) !important;
-  box-shadow: none !important;
+  transform: none;
+  background: color-mix(in srgb, var(--ink) 2.5%, transparent);
+  box-shadow: none;
 }
 
 .task-list > .task-card:active,
 .task-list > .task-card.surface-object:active {
-  background: color-mix(in srgb, var(--steel) 6%, transparent) !important;
+  background: color-mix(in srgb, var(--steel) 6%, transparent);
 }
 
 /* Row geometry */
 .task-card .task-main,
 .task-card.surface-object .task-main {
-  min-height: var(--row-height) !important;
-  padding: var(--space-3) var(--space-4) !important;
-  gap: 12px !important;
-  align-items: center !important;
+  min-height: var(--row-height);
+  padding: var(--space-3) var(--space-4);
+  gap: 12px;
+  align-items: center;
 }
 
 .task-card .task-title,
@@ -351,13 +352,13 @@
   }
 
   html[data-surface='desktop'] .task-list > .task-card {
-    border-radius: var(--radius-md) !important;
-    border-bottom: none !important;
-    margin: 2px 4px !important;
+    border-radius: var(--radius-md);
+    border-bottom: none;
+    margin: 2px 4px;
   }
 
   html[data-surface='desktop'] .task-list > .task-card:hover {
-    background: color-mix(in srgb, var(--ink) 3%, transparent) !important;
+    background: color-mix(in srgb, var(--ink) 3%, transparent);
   }
 }
 
