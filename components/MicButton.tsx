@@ -7,6 +7,7 @@ import {
   useBlobSpeechCapture,
 } from '@/lib/useBlobSpeechCapture';
 import { isWebSpeechAvailable } from '@/lib/speech';
+import { DEFAULT_SPEECH_LOCALE, normalizeSpeechLocale } from '@/lib/speech/locale';
 
 function MicIcon() {
   return (
@@ -46,8 +47,14 @@ export default function MicButton({
     return false;
   }, []);
 
+  const speechLanguage = normalizeSpeechLocale(
+    process.env.NEXT_PUBLIC_DOKKIT_STT_LANGUAGE,
+    DEFAULT_SPEECH_LOCALE,
+  );
+
   const web = useSpeechToText({
     onResult,
+    language: speechLanguage,
     onError: (err) => {
       if (err === 'not-allowed') {
         console.warn('Dokkit: microphone permission was denied.');
@@ -58,6 +65,7 @@ export default function MicButton({
 
   const blob = useBlobSpeechCapture({
     onResult,
+    language: speechLanguage,
     onError: (err) => {
       if (err === 'not-allowed') {
         console.warn('Dokkit: microphone permission was denied.');

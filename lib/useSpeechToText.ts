@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { DEFAULT_SPEECH_LOCALE, normalizeSpeechLocale } from '@/lib/speech/locale';
 import {
   applySpeechRecognitionEvent,
   type SpeechRecognitionEventLike,
@@ -22,6 +23,7 @@ type SpeechToTextHandlers = {
   onError?: (error: string) => void;
   /** Soft ceiling so a forgotten mic does not run forever. Default 120s. */
   maxDurationMs?: number;
+  language?: string;
 };
 
 const DEFAULT_MAX_DURATION_MS = 120_000;
@@ -30,6 +32,7 @@ export function useSpeechToText({
   onResult,
   onError,
   maxDurationMs = DEFAULT_MAX_DURATION_MS,
+  language = DEFAULT_SPEECH_LOCALE,
 }: SpeechToTextHandlers) {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
@@ -106,8 +109,7 @@ export function useSpeechToText({
     // interimResults true is fine for engine state; we never commit interims
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
-    recognition.lang =
-      typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US';
+    recognition.lang = normalizeSpeechLocale(language);
 
     recognition.onresult = (event: SpeechRecognitionEventLike) => {
       committedRef.current = applySpeechRecognitionEvent(committedRef.current, event);
@@ -158,7 +160,7 @@ export function useSpeechToText({
     maxTimerRef.current = setTimeout(() => {
       stop();
     }, maxDurationMs);
-  }, [clearMaxTimer, flushResult, maxDurationMs, stop]);
+  }, [clearMaxTimer, flushResult, language, maxDurationMs, stop]);
 
   useEffect(() => {
     return () => {
