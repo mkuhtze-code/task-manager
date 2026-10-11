@@ -351,7 +351,7 @@ html[data-surface='desktop']
 
 html[data-surface='desktop']
   .settings-save-status.success {
-  color: var(--moss-text, var(--moss));
+  color: var(--moss-text);
 }
 
 
