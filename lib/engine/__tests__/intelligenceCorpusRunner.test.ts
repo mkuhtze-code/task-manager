@@ -30,7 +30,7 @@ type CorpusRecord = {
     semantic_acts: Array<Record<string, unknown>>;
     rationale: string;
   };
-  annotation: { review_status: 'draft' | 'reviewed' | 'needs_revision' | 'rejected'; review_note: string };
+  annotation: { review_status: 'draft' | 'reviewed' | 'needs_revision' | 'rejected'; review_note: string; reviewer?: string };
 };
 
 type ObservedMode = 'task' | 'answer' | 'clarify' | 'defer' | 'fallthrough';
@@ -204,4 +204,54 @@ describe('Phase E — cross-domain intelligence corpus runner (diagnostic only)'
     expect(observations).toHaveLength(records.length);
     expect(observations.every((row) => row.typed.mode && row.speech.mode)).toBe(true);
   });
+
+  it('keeps evaluation splits reviewed and prevents exact normalized utterance leakage', () => {
+    const directory = join(process.cwd(), 'data/intelligence-corpus/examples');
+    const files = readdirSync(directory).filter((file) => file.endsWith('.jsonl')).sort();
+    const allRecords = files.flatMap((file) =>
+      readFileSync(join(directory, file), 'utf8')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.startsWith('#'))
+        .map((line) => JSON.parse(line) as CorpusRecord),
+    );
+
+    const familySplits = new Map<string, string>();
+    const utteranceSplits = new Map<string, { split: string; id: string }>();
+    for (const record of allRecords) {
+      if (record.split !== 'development') {
+        expect(
+          record.annotation.review_status,
+          record.id + ' cannot enter ' + record.split + ' with a draft/unreviewed annotation',
+        ).toBe('reviewed');
+        expect(
+          record.annotation.reviewer?.trim(),
+          record.id + ' must identify its reviewer',
+        ).toBeTruthy();
+      }
+
+      const previousFamilySplit = familySplits.get(record.family_id);
+      expect(
+        previousFamilySplit == null || previousFamilySplit === record.split,
+        'scenario family ' + record.family_id + ' crosses evaluation split boundaries',
+      ).toBe(true);
+      familySplits.set(record.family_id, record.split);
+
+      const normalized = record.utterance
+        .normalize('NFKC')
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .trim()
+        .replace(/\s+/g, ' ');
+      const previousUtterance = utteranceSplits.get(normalized);
+      expect(
+        previousUtterance == null || previousUtterance.split === record.split,
+        record.id + ' duplicates normalized utterance from ' + previousUtterance?.id + ' across splits',
+      ).toBe(true);
+      if (!previousUtterance) {
+        utteranceSplits.set(normalized, { split: record.split, id: record.id });
+      }
+    }
+  });
+
 });
