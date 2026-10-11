@@ -681,7 +681,7 @@ onClick={(e) => e.stopPropagation()}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <button
           type="button"
-          className="btn-text capture-sheet-close"
+          className="btn-text capture-sheet-close ux-button ux-button--quiet"
           onClick={onClose}
         >
           Close
