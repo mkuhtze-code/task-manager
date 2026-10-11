@@ -125,6 +125,7 @@ describe('Phase 12 — semantic grammar', () => {
     expect(result.request.purposeText?.toLowerCase()).toContain('recalibrate');
     expect(result.request.objectText?.toLowerCase()).toContain('fluxgate');
     expect(result.request.locationText).toBeNull();
+    expect(result.semantic.locationText).toBeNull();
     expect(result.action.kind).toBe('create_task');
     expect(result.action.kind === 'create_task' ? result.action.locationText : null).toBeNull();
   });
