@@ -158,62 +158,6 @@
   align-items: center;
 }
 
-.task-card .task-title,
-.task-card .task-name {
-  font-size: 15px !important;
-  font-weight: 650 !important;
-  letter-spacing: -0.015em !important;
-  line-height: 1.3 !important;
-  color: var(--ink) !important;
-}
-
-.task-card .task-meta,
-.task-card .task-sub {
-  font-size: 12px !important;
-  font-weight: 550 !important;
-  color: var(--ink-faint) !important;
-}
-
-.task-card .task-time,
-.task-card .estimate,
-.task-card .remaining {
-  font-family: "JetBrains Mono", ui-monospace, monospace !important;
-  font-size: 12px !important;
-  font-weight: 650 !important;
-  font-variant-numeric: tabular-nums !important;
-  color: var(--ink-soft) !important;
-  letter-spacing: -0.02em !important;
-}
-
-.task-card[data-fit='good'],
-.task-card.is-fit-good {
-  box-shadow: inset 3px 0 0 var(--moss) !important;
-}
-
-.task-card[data-fit='tight'],
-.task-card.is-fit-tight {
-  box-shadow: inset 3px 0 0 var(--hazard) !important;
-}
-
-.task-card[data-fit='over'],
-.task-card.is-fit-over {
-  box-shadow: inset 3px 0 0 var(--danger) !important;
-}
-
-.task-card.is-live,
-.task-card[data-live='true'] {
-  background: color-mix(in srgb, var(--steel) 5%, transparent) !important;
-  box-shadow: inset 3px 0 0 var(--steel) !important;
-}
-
-.task-card.is-done .task-title,
-.task-card.is-done .task-name {
-  color: var(--ink-faint) !important;
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-  text-decoration-color: color-mix(in srgb, var(--ink) 25%, transparent);
-}
-
 .task-card .task-progress-track {
   height: 3px !important;
   border-radius: 999px !important;
