@@ -30,7 +30,7 @@ type CorpusRecord = {
     semantic_acts: Array<Record<string, unknown>>;
     rationale: string;
   };
-  annotation: { review_status: 'draft' | 'reviewed' | 'needs_revision' | 'rejected'; review_note: string };
+  annotation: { review_status: 'draft' | 'reviewed' | 'needs_revision' | 'rejected'; review_note: string; reviewer?: string };
 };
 
 type ObservedMode = 'task' | 'answer' | 'clarify' | 'defer' | 'fallthrough';
@@ -225,7 +225,7 @@ describe('Phase E — cross-domain intelligence corpus runner (diagnostic only)'
           record.id + ' cannot enter ' + record.split + ' with a draft/unreviewed annotation',
         ).toBe('reviewed');
         expect(
-          (record.annotation as CorpusRecord['annotation'] & { reviewer?: string }).reviewer?.trim(),
+          record.annotation.reviewer?.trim(),
           record.id + ' must identify its reviewer',
         ).toBeTruthy();
       }
