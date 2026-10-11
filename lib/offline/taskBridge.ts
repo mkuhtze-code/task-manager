@@ -12,13 +12,37 @@ import {
   patchEntityInCache,
   removeEntityFromCache,
 } from './entityCache';
-import { enqueueOp } from './queue';
+import { enqueueOp, loadQueue } from './queue';
 import { registerSyncHandler } from './syncWorker';
 import { makeClientOpId } from './types';
 import { isOnline } from './network';
 
 export function cacheOpenTasks(userId: string, tasks: Task[]): void {
-  setEntityCache(userId, 'task', tasks);
+  // Reconcile a fresh remote snapshot with unsynced local intent before it
+  // reaches the UI. Otherwise a refresh can visually undo offline changes.
+  const reconciled = new Map(tasks.map((task) => [task.id, task]));
+  const pending = loadQueue(userId)
+    .filter((op) => op.entity === 'task' &&
+      (op.status === 'pending' || op.status === 'failed' || op.status === 'syncing'))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  for (const op of pending) {
+    const id = op.entityId || String(op.payload.id || '');
+    if (op.action === 'delete') {
+      if (id) reconciled.delete(id);
+      continue;
+    }
+    if (op.action === 'upsert') {
+      const task = op.payload as unknown as Task;
+      if (task.id) reconciled.set(task.id, { ...reconciled.get(task.id), ...task });
+      continue;
+    }
+    if (op.action === 'update' && id) {
+      const prior = reconciled.get(id);
+      if (prior) reconciled.set(id, { ...prior, ...op.payload } as Task);
+    }
+  }
+  setEntityCache(userId, 'task', [...reconciled.values()]);
 }
 
 export function loadCachedOpenTasks(userId: string): {
@@ -89,14 +113,14 @@ export function registerTaskSyncHandler(): void {
     if (op.action === 'update') {
       const { id, ...rest } = op.payload as { id: string } & Record<string, unknown>;
       if (!id) throw new Error('Task update missing id');
-      const { error } = await supabase.from('tasks').update(rest).eq('id', id);
+      const { error } = await supabase.from('tasks').update(rest).eq('id', id).eq('user_id', op.userId);
       if (error) throw error;
       return;
     }
     if (op.action === 'delete') {
       const id = (op.payload as { id?: string }).id || op.entityId;
       if (!id) throw new Error('Task delete missing id');
-      const { error } = await supabase.from('tasks').delete().eq('id', id);
+      const { error } = await supabase.from('tasks').delete().eq('id', id).eq('user_id', op.userId);
       if (error) throw error;
     }
   });
