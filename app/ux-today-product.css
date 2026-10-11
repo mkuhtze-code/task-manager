@@ -25,7 +25,7 @@
 .desk-today-saas.today-header-card {
   position: sticky !important;
   top: 0 !important;
-  z-index: var(--z-sticky, 40) !important;
+  z-index: var(--z-sticky) !important;
   margin: 0 !important;
   padding: 12px var(--space-4) 14px !important;
   background: color-mix(in srgb, var(--paper) 88%, transparent) !important;
@@ -365,7 +365,7 @@
 .sheet-overlay {
   position: fixed !important;
   inset: 0 !important;
-  z-index: var(--z-sheet, 200) !important;
+  z-index: var(--z-sheet) !important;
   background: rgba(15, 23, 42, 0.42) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
@@ -465,7 +465,7 @@
 
 .surface-nav,
 .bottom-nav {
-  z-index: var(--z-nav, 50) !important;
+  z-index: var(--z-nav) !important;
   background: color-mix(in srgb, var(--paper) 90%, transparent) !important;
   backdrop-filter: blur(16px) saturate(160%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
