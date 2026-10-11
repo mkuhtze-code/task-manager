@@ -100,7 +100,7 @@ html[data-surface='desktop'] .job-row {
 }
 
 html[data-surface='desktop'] .job-row:hover {
-  border-color: var(--line-strong, var(--steel-wash));
+  border-color: var(--line-strong);
   box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.08);
   transform: translateY(-1px);
 }
@@ -127,7 +127,7 @@ html[data-surface='desktop'] .job-row-numeral {
   flex-shrink: 0;
   font-size: var(--text-sm);
   font-weight: 700;
-  color: var(--steel-dark, var(--steel));
+  color: var(--steel-dark);
 }
 
 html[data-surface='desktop'] .job-row-meta {
@@ -312,7 +312,7 @@ html[data-surface='desktop'] .meeting-row {
 }
 
 html[data-surface='desktop'] .meeting-row:hover {
-  border-color: var(--line-strong, var(--steel-wash));
+  border-color: var(--line-strong);
   box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.08);
 }
 
