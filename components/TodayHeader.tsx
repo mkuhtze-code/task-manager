@@ -605,19 +605,19 @@ export function TodayHeader(props: {
             />
             <strong>
               {!isWorkDay
-                ? 'Off'
+                ? 'Outside workday'
                 : overloaded
-                  ? 'Over'
+                  ? 'Needs reshaping'
                   : remainingWorkMins > 0
-                    ? 'Fits'
-                    : 'Clear'}
+                    ? 'Work in the day'
+                    : 'Day is clear'}
             </strong>
             <span>
               {overloaded
-                ? `${fmtMins(overBy)} over`
+                ? `${fmtMins(overBy)} beyond today's time`
                 : remainingWorkMins > 0
-                  ? `${fmtMins(remainingWorkMins)} on plate`
-                  : fmtMins(remainingCapacity) + ' free'}
+                  ? `${fmtMins(remainingWorkMins)} planned`
+                  : `${fmtMins(remainingCapacity)} free`}
             </span>
           </div>
         </div>
