@@ -1,0 +1,167 @@
+/* Dokkit shared primitives — L2
+ *
+ * Canonical, opt-in building blocks for incremental surface migration.
+ * These classes intentionally do not target legacy selectors, so introducing
+ * them cannot silently restyle existing screens. Surface CSS composes these
+ * primitives; it must not redefine their geometry or colour roles.
+ */
+
+.ux-kicker {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-none);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+.ux-mono-instrument {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: var(--tracking-tight);
+}
+
+.ux-object-row {
+  display: grid;
+  grid-template-columns: 3px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: var(--row-height);
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-bottom: 1px solid var(--border-default);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.ux-object-row__rail {
+  align-self: stretch;
+  min-height: 24px;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.ux-object-row.is-fit-good .ux-object-row__rail {
+  background: var(--success);
+}
+
+.ux-object-row.is-fit-tight .ux-object-row__rail {
+  background: var(--warning);
+}
+
+.ux-object-row.is-fit-over .ux-object-row__rail {
+  background: var(--destructive);
+}
+
+.ux-object-row__main {
+  min-width: 0;
+}
+
+.ux-object-row__meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ux-field-control {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-height-lg);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--control-radius);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.ux-field-control::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+}
+
+.ux-field-control:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ux-sheet-surface {
+  width: min(100%, var(--sheet-max-width));
+  max-height: var(--sheet-max-height);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border-default);
+  border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+}
+
+.ux-sheet-surface__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ux-sheet-surface__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.ux-sheet-surface__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ux-status-line {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+}
+
+@media (min-width: 900px) {
+  .ux-sheet-surface {
+    border-radius: var(--sheet-radius);
+  }
+}
+
+@media (max-width: 480px) {
+  .ux-object-row {
+    gap: var(--space-2);
+    padding-inline: var(--space-3);
+  }
+
+  .ux-sheet-surface__header {
+    padding-inline: var(--space-4);
+  }
+
+  .ux-sheet-surface__body {
+    padding-inline: var(--space-4);
+  }
+
+  .ux-sheet-surface__actions {
+    padding-inline: var(--space-4);
+  }
+}

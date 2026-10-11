@@ -1,0 +1,39 @@
+/* Dokkit design-system tokens — L1
+ *
+ * globals.css remains the current source of truth for brand colour, semantic
+ * colour aliases, typography, spacing, radii, and control sizes. This layer
+ * centralises shared layout and stacking contracts without changing current
+ * component rendering. Migrate consumers in measured, testable follow-up passes.
+ */
+
+:root {
+  /* Shared geometry */
+  --nav-height: 56px;
+  --add-size: 48px;
+  --row-height: 56px;
+  --header-sticky-max: 140px;
+  --content-max-width: 1200px;
+  --mobile-content-max-width: 560px;
+  --desktop-sidebar-width: 208px;
+  --desktop-detail-ratio: 60%;
+  --sheet-max-width: 480px;
+  --sheet-max-height: min(92dvh, 900px);
+  --sheet-radius: var(--radius-lg);
+  --sheet-radius-mobile-top: var(--radius-lg);
+  --surface-page: var(--paper);
+
+  /* Shared stacking contract: overlays sit above sticky chrome. */
+  --z-base: 0;
+  --z-sticky: 40;
+  --z-player: 50;
+  --z-dropdown: 55;
+  --z-sheet: 60;
+  --z-toast: 70;
+  --z-critical-overlay: 100;
+}
+
+@media (min-width: 900px) {
+  :root {
+    --sheet-max-width: 560px;
+  }
+}
