@@ -244,7 +244,7 @@ export default function LibrarySheet({ tripId, tripName, tripDays, onClose, onSc
       <button className="btn btn-steel" onClick={saveItem} disabled={saving}>
         {saving ? 'Saving…' : editing ? 'Save' : 'Save to library'}
       </button>
-      <button className="btn-text" onClick={() => { setEditing(null); setMode('list'); }}>Cancel</button>
+      <button className="btn-text ux-button ux-button--quiet" onClick={() => { setEditing(null); setMode('list'); }}>Cancel</button>
     </>
   );
 
@@ -313,7 +313,7 @@ export default function LibrarySheet({ tripId, tripName, tripDays, onClose, onSc
               }
             />
             {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-            <button className="btn-text" onClick={() => setMode('list')}>Cancel</button>
+            <button className="btn-text ux-button ux-button--quiet" onClick={() => setMode('list')}>Cancel</button>
           </>
         )}
 
@@ -365,7 +365,7 @@ export default function LibrarySheet({ tripId, tripName, tripDays, onClose, onSc
               })}
             </div>
             {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
-            <button className="btn-text" onClick={() => setMode('list')} disabled={saving}>Cancel</button>
+            <button className="btn-text ux-button ux-button--quiet" onClick={() => setMode('list')} disabled={saving}>Cancel</button>
           </>
         )}
       </div>
