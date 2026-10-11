@@ -329,7 +329,7 @@ export default function AccountPage() {
                 <p className="account-muted">Plan: {planLabel}</p>
               )}
               <div className="account-actions">
-                <Link href="/account/billing" className="btn btn-steel">
+                <Link href="/account/billing" className="btn btn-steel ux-button ux-button--primary">
                   Open billing
                 </Link>
               </div>
@@ -478,7 +478,7 @@ export default function AccountPage() {
                       </button>
                       <button
                         type="button"
-                        className="btn-text"
+                        className="btn-text ux-button ux-button--quiet"
                         onClick={() => {
                           setDeleteOpen(false);
                           setDeleteConfirmText('');
