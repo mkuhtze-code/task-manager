@@ -252,6 +252,12 @@ export function answerFeasibility(
   const travelPhrase = onTrip
     ? `~${roundTrip} min leg`
     : `~${roundTrip} min round-trip`;
+  const requiredWorkPhrase = visitMode
+    ? `A visit (~${visit} min) plus travel (${travelPhrase})`
+    : 'This task';
+  const neededWorkPhrase = visitMode
+    ? `a visit plus travel needs ~${needed} minutes`
+    : `this task needs ~${needed} minutes`;
 
   if (remaining == null) {
     fits = null;
