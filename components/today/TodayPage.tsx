@@ -127,6 +127,8 @@ import {
 import { useNow } from '@/hooks/useNow';
 import { useTodayAuth } from '@/hooks/useTodayAuth';
 import { notifyTaskActivity } from '@/hooks/useActiveTask';
+import { loadActiveRequestLocal, loadWorkingMemoryLocal, saveActiveRequestLocal, saveWorkingMemoryLocal, pushEngineStateRemote } from '@/lib/engine/persist';
+import { releaseCompletedTaskContext } from '@/lib/engine/taskLifecycle';
 import { showActiveTimerNotification } from '@/lib/activeTimerNotify';
 import { OfflineStatusBar } from '@/components/OfflineStatusBar';
 import {
@@ -2205,6 +2207,27 @@ export function TodayPage() {
       }
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
+
+    // Completion closes the task's refinement chain. Keep historical memory,
+    // but do not let the next standalone capture inherit this completed task.
+    const completedUserId = session?.user?.id;
+    if (completedUserId) {
+      const activeRequest = loadActiveRequestLocal(completedUserId);
+      const workingMemory = loadWorkingMemoryLocal(completedUserId);
+      const released = releaseCompletedTaskContext(id, activeRequest, workingMemory);
+      if (released.cleared) {
+        saveActiveRequestLocal(null, completedUserId);
+        saveWorkingMemoryLocal(released.workingMemory, completedUserId);
+        void pushEngineStateRemote(
+          supabase as never,
+          completedUserId,
+          released.workingMemory,
+          null,
+          [],
+        );
+      }
+    }
+
     if (task && loop.trainMins != null) {
       setHistory((prev) => [
         historyRowFromCompletion(task, loop.trainMins!, measured, {
