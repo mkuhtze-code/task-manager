@@ -54,6 +54,14 @@
 - [ ] Evaluate optional, calm TTS only after capture and semantic reliability are measured.
 - [ ] Keep offline-first capture and cross-session continuity as explicit gaps until implemented and tested.
 
+### F. Native client boundary
+
+- [x] Define a React/browser-independent capture contract for typed and transcript text, explicit authorization, cancellation, request-ID conflict handling, and one-time in-session authorization. (Phase AI)
+- [x] Add contract tests for typed/transcript parity, explicit confirmation, cancellation, non-actions, duplicate authorization, request-ID reuse, invalid input, and collection-vs-task authorization. (Phase AI)
+- [ ] Add a native microphone/transcription adapter that supplies transcript text to this contract without changing semantic authority.
+- [ ] Add a separate persistence adapter with durable idempotency enforced at the server/database boundary; the in-memory contract session is not a cross-device lock.
+- [ ] Verify native permission denial, interruption, offline capture, retry, accessibility, and lifecycle restoration on real devices.
+
 ## Enable cloud STT
 
 1. Set in Vercel server environment:
