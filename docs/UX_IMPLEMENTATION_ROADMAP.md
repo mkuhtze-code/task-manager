@@ -46,6 +46,16 @@ Source of truth: World-Class UI & UX Design Report (12 October 2026)
 - [ ] Confirm the proposal label never implies that a task/list mutation has already happened.
 - [ ] Audit mic recording/transcribing/error states and unsupported-native capture fallback.
 
+## Milestone UX-4 — Stable cross-lens identity and shared detail grammar
+
+### This pass
+- [x] Reuse the existing shared ContextLine primitive in both mobile and desktop task details.
+- [x] Show job and location as contextual identity in the same order as Today task rows.
+- [x] Keep job context navigable to its existing job route; keep location descriptive rather than inventing a destination.
+- [x] Preserve task IDs, save paths, object ownership, and existing detail actions.
+- [ ] Audit Meetings and Travel detail headers for the same identity hierarchy before extending this pattern.
+- [ ] Verify job links, narrow screens, and desktop pane interaction.
+
 ## Sequencing
 1. UX-1: grammar lock and shared foundations.
 2. UX-2: Today hierarchy, capacity status, and Reality Check entry points.
