@@ -53,8 +53,10 @@ Source of truth: World-Class UI & UX Design Report (12 October 2026)
 - [x] Show job and location as contextual identity in the same order as Today task rows.
 - [x] Keep job context navigable to its existing job route; keep location descriptive rather than inventing a destination.
 - [x] Preserve task IDs, save paths, object ownership, and existing detail actions.
-- [ ] Audit Meetings and Travel detail headers for the same identity hierarchy before extending this pattern.
-- [ ] Verify job links, narrow screens, and desktop pane interaction.
+- [x] Audit Meetings detail: already uses shared ContextLine for time, linked job, and location; preserve that domain-specific ordering.
+- [x] Audit Travel detail: stop editor already exposes stop name, location, and optional job link, but its header does not clearly anchor the stop to its trip/day.
+- [ ] Add a compact trip → day → stop identity line to Travel stop detail without duplicating navigation or changing stop persistence.
+- [ ] Verify task job links, narrow screens, and desktop pane interaction.
 
 ## Sequencing
 1. UX-1: grammar lock and shared foundations.
