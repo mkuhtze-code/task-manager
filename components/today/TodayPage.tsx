@@ -128,6 +128,17 @@ import { useNow } from '@/hooks/useNow';
 import { useTodayAuth } from '@/hooks/useTodayAuth';
 import { notifyTaskActivity } from '@/hooks/useActiveTask';
 import { showActiveTimerNotification } from '@/lib/activeTimerNotify';
+import { OfflineStatusBar } from '@/components/OfflineStatusBar';
+import {
+  cacheOpenTasks,
+  loadCachedOpenTasks,
+  localPatchTask,
+  localRemoveTask,
+  localUpsertTask,
+  registerTaskSyncHandler,
+  startSyncOnReconnect,
+  flushSyncQueue,
+} from '@/lib/offline';
 
 /** Authenticated Today surface — mounted only after authReady && session. */
 
@@ -673,9 +684,13 @@ export function TodayPage() {
       setTodayDataReady(false);
       return;
     }
-    if (loadedUserIdRef.current === session.user.id) return;
-    loadedUserIdRef.current = session.user.id;
+    const userId = session.user.id;
+    registerTaskSyncHandler();
+    const stopSync = startSyncOnReconnect(userId);
+    if (loadedUserIdRef.current === userId) return stopSync;
+    loadedUserIdRef.current = userId;
     loadEverything();
+    return stopSync;
   }, [session]);
 
   async function loadEverything() {
@@ -815,9 +830,19 @@ export function TodayPage() {
     const { data: taskRows, error: taskError } = await taskPromise;
     if (taskError) {
       console.error('Could not load tasks:', taskError.message);
-      setTaskLoadError(taskError.message);
+      const cached = loadCachedOpenTasks(userId);
+      if (cached.updatedAt && cached.tasks.length > 0) {
+        setTasks(cached.tasks);
+        setTaskLoadError('');
+      } else {
+        setTaskLoadError(taskError.message);
+      }
     } else {
-      setTasks(taskRows || []);
+      const remoteTasks = taskRows || [];
+      cacheOpenTasks(userId, remoteTasks);
+      // Re-read the reconciled snapshot so a refresh cannot erase pending
+      // local mutations that have not reached Supabase yet.
+      setTasks(loadCachedOpenTasks(userId).tasks);
       setTaskLoadError('');
     }
 
@@ -2769,6 +2794,7 @@ export function TodayPage() {
     >
       <TravelAwarenessBanner userId={session.user.id} />
 
+      <OfflineStatusBar userId={session?.user?.id ?? null} />
       <TodayHeader
         overloaded={overloaded}
         weekdayLabel={weekdayLabel}
