@@ -2,6 +2,7 @@ import './globals.css';
 import './ux-grammar-foundation.css';
 import './ux-today-calm.css';
 import './ux-capture-proposals.css';
+import './ux-cross-lens-identity.css';
 import './dokkit-v4-foundation.css';
 import './desktop-surface.css';
 import './desktop-phase-2.css';
