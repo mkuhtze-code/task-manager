@@ -115,6 +115,24 @@ describe('native capture contract', () => {
     })).toEqual({ status: 'request_id_conflict' });
   });
 
+  it('keeps collection authorization separate from task creation', () => {
+    const session = createCaptureContractSession();
+    const prepared = session.prepare({
+      requestId: 'collection-1',
+      source: 'typed',
+      text: 'Grocery list add milk',
+    });
+    expect(prepared.status).toBe('prepared');
+    if (prepared.status !== 'prepared') return;
+
+    if (prepared.proposal.status !== 'collection_confirmation_required') return;
+    expect(prepared.proposal.result.outcome).not.toBe('CREATE_TASK');
+    expect(session.authorize({
+      requestId: 'collection-1',
+      explicitlyConfirmed: true,
+    })).toMatchObject({ status: 'authorized', operation: 'collection' });
+  });
+
   it('rejects missing IDs and blank input without interpretation', () => {
     const session = createCaptureContractSession();
     expect(session.prepare({
