@@ -40,5 +40,9 @@ export function emitSpeechTelemetry(
       ? { durationMs: Math.max(0, Math.min(MAX_DURATION_MS, Math.round(event.durationMs))) }
       : {}),
   };
-  logger(JSON.stringify(safeEvent));
+  try {
+    logger(JSON.stringify(safeEvent));
+  } catch {
+    // Telemetry is best-effort and must never change product behavior.
+  }
 }
