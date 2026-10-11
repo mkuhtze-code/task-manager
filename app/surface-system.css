@@ -1742,7 +1742,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 
 /* Meetings: the current conversation should feel like a live channel. */
 @media (min-width:701px){
-  .meeting-row.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}
   .meeting-row.pressure-now::after{
     content:'LIVE';
     position:absolute;
