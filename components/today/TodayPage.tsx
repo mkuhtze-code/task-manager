@@ -1805,23 +1805,28 @@ export function TodayPage() {
   // never changes the Task itself or Today's scheduling — a Job is a lens,
   // not a constraint. The Task stays exactly where Today would show it.
   async function moveTaskToJob(id: string, jobId: string | null) {
-    const { error } = await supabase.from('tasks').update({ job_id: jobId }).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not move the task: ' + error.message);
-      return;
+    if (!queueTaskPatch(id, { job_id: jobId })) {
+      const { error } = await supabase.from('tasks').update({ job_id: jobId }).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not move the task: ' + error.message);
+        return;
+      }
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, job_id: jobId } : t)));
   }
 
   async function toggleDueToday(id: string, current: boolean) {
-    const { error } = await supabase.from('tasks').update({ due_today: !current }).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not update the task: ' + error.message);
-      return;
+    const due_today = !current;
+    if (!queueTaskPatch(id, { due_today })) {
+      const { error } = await supabase.from('tasks').update({ due_today }).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not update the task: ' + error.message);
+        return;
+      }
     }
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due_today: !current } : t)));
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due_today } : t)));
   }
 
   async function startTask(id: string) {
@@ -1829,14 +1834,22 @@ export function TodayPage() {
     if (alreadyActive) return;
     const task = tasks.find((t) => t.id === id);
     const startedAt = new Date().toISOString();
-    const { error } = await supabase.from('tasks').update({ status: 'active', started_at: startedAt, near_notified: false, over_notified: false, last_overdue_ping_at: null }).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not start the task: ' + error.message);
-      return;
+    const patch: Partial<Task> = {
+      status: 'active',
+      started_at: startedAt,
+      near_notified: false,
+      over_notified: false,
+      last_overdue_ping_at: null,
+    };
+    if (!queueTaskPatch(id, patch)) {
+      const { error } = await supabase.from('tasks').update(patch).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not start the task: ' + error.message);
+        return;
+      }
     }
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'active', started_at: startedAt } : t)));
-    // Fire OS notification immediately (same turn as the Start tap).
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     if (task) {
       void showActiveTimerNotification({
         taskId: id,
@@ -1862,13 +1875,16 @@ export function TodayPage() {
     if (!task || !task.started_at) return;
     const sessionMins = (Date.now() - new Date(task.started_at).getTime()) / 60000;
     const newLogged = task.logged_mins + sessionMins;
-    const { error } = await supabase.from('tasks').update({ status: 'pending', started_at: null, logged_mins: newLogged }).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not stop the task: ' + error.message);
-      return;
+    const patch: Partial<Task> = { status: 'pending', started_at: null, logged_mins: newLogged };
+    if (!queueTaskPatch(id, patch)) {
+      const { error } = await supabase.from('tasks').update(patch).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not stop the task: ' + error.message);
+        return;
+      }
     }
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'pending', started_at: null, logged_mins: newLogged } : t)));
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     notifyTaskActivity({
       type: 'stopped',
       taskId: id,
