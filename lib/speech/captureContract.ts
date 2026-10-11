@@ -117,7 +117,15 @@ export function createCaptureContractSession() {
       return { status: 'prepared', proposal: existing.proposal };
     }
 
-    const { requestId: _requestId, source: _source, ...speechInput } = normalizedInput;
+    const speechInput: ProcessCaptureSpeechInput = {
+      text: normalizedInput.text,
+      todayIso: normalizedInput.todayIso,
+      languageModel: normalizedInput.languageModel,
+      understandingContext: normalizedInput.understandingContext,
+      profile: normalizedInput.profile,
+      userId: normalizedInput.userId,
+      collectionContext: normalizedInput.collectionContext,
+    };
     const result = processCaptureSpeech(speechInput);
     const status = proposalStatus(result);
     const proposal: PreparedCapture = {
