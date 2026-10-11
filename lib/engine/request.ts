@@ -171,7 +171,7 @@ function normaliseSpeechLead(text: string): string {
 function extractPrimaryTaskVerb(text: string): string | null {
   const candidate = normaliseSpeechLead(text);
   const match = candidate.match(
-    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|drop|deliver|take|leave|remind|schedule|go|head|drive|travel|walk|return)\b/i
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+)?(call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|bill\s+out|bill|pick\s*up|pickup|grab|collect|fetch|get|buy|purchase|drop\s+off|dropoff|drop|deliver|take|leave|remind|schedule|go|head|drive|travel|walk|return)\b/i
   );
   const verb = match?.[1]?.toLowerCase() ?? null;
   if (verb === 'drop') {
@@ -201,7 +201,7 @@ function extractCompoundSemantic(text: string, primaryVerb: string | null): {
   }
 
   const communicationVerb =
-    /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up)$/.test(
+    /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up|bill\s+out|bill)$/.test(
       primaryVerb
     );
 
@@ -984,7 +984,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
      * must bind to CALL. Do not let the nested "get" pattern below steal
      * "the measurements" and turn the whole task into a pickup.
      */
-    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)\s*(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+    /^(?:\s*(?:i\s+)?(?:need|have|got)\s+to\s+|\s*(?:please\s+)?)\s*(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|bill\s+out|bill)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     /\b(?:drop\s+off|dropoff|drop|deliver|take|leave)\s+(?:the\s+|a\s+|an\s+)?(.+?)(?=\s+(?:at|to|from)\s+|\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
@@ -999,7 +999,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     /\b(?:i\s+)?(?:need|have|got)\s+to\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
     // Bare imperative fallback.
-    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
+    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|quote|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|bill\s+out|bill)\s+(.+?)(?=\s+\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\s+\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|$)/i,
 
   ];
 
@@ -1036,11 +1036,11 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   // leading communication verb for explicit "I need to..." commitments so
   // both contracts retain the action without affecting bare imperatives.
   const explicitCommunicationCommitment =
-    /^\s*(?:i\s+)?(?:need|have|got)\s+to\s+(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up)\b/i.test(text);
+    /^\s*(?:i\s+)?(?:need|have|got)\s+to\s+(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up|bill\s+out|bill)\b/i.test(text);
   if (
     explicitCommunicationCommitment &&
     primaryVerb &&
-    /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up)$/.test(primaryVerb) &&
+    /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up|bill\s+out|bill)$/.test(primaryVerb) &&
     out.objectText &&
     !new RegExp('^' + primaryVerb.replace(/\s+/g, '\\s+') + '\\b', 'i').test(out.objectText)
   ) {
@@ -1633,7 +1633,7 @@ export function requestTaskText(req: EngineRequest): string {
       .replace(/\bfollow\\s*up\b/i, 'Follow up');
 
     const isCommunication =
-      /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up)$/.test(primaryVerb);
+      /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up|bill\s+out|bill)$/.test(primaryVerb);
 
     if (isCommunication && req.personText) {
       const semanticTail = req.purposeText?.trim();
