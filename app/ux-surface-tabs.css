@@ -74,12 +74,12 @@
 }
 
 .surface-tab.current {
-  color: var(--ink, #0f172a);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .surface-tab.current .surface-tab-icon {
-  color: var(--ink, #0f172a);
+  color: var(--text-primary);
 }
 
 .surface-tab.locked {
