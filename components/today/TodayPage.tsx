@@ -138,6 +138,7 @@ import {
   registerTaskSyncHandler,
   startSyncOnReconnect,
   flushSyncQueue,
+  isOnline,
 } from '@/lib/offline';
 
 /** Authenticated Today surface — mounted only after authReady && session. */
@@ -157,6 +158,16 @@ function estimateContextFrom(
     locationText: source.location_text ?? source.locationText ?? null,
     localHour: now.getHours(),
   };
+}
+
+function makeLocalTaskId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
 }
 
 export function TodayPage() {
@@ -1537,29 +1548,75 @@ export function TodayPage() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert({
-        user_id: userId,
-        text,
-        estimate_mins: mins,
-        source: 'came_up',
-        order_index: maxOrder + 1,
-        surface_date: surfaceDate,
-        intended_time: intendedTime,
-        location_text: locationText,
-        lat,
-        lng,
-        job_id: jobId,
-        original_input: originalInput,
-      })
-      .select()
-      .single();
+    const newTaskId = makeLocalTaskId();
+    let data: Task;
+    const newTask: Task = {
+      id: newTaskId,
+      text,
+      status: 'pending',
+      source: 'came_up',
+      estimate_mins: mins,
+      logged_mins: 0,
+      started_at: null,
+      due_today: false,
+      order_index: maxOrder + 1,
+      created_at: new Date().toISOString(),
+      surface_date: surfaceDate,
+      intended_time: intendedTime,
+      location_text: locationText,
+      lat,
+      lng,
+      requires_visit: null,
+      drive_mins_to_next: 0,
+      route_polyline: null,
+      info: '',
+      job_id: jobId,
+      original_input: originalInput,
+    };
 
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
+    if (!isOnline()) {
+      data = newTask;
+      localUpsertTask(userId, data);
+    } else {
+      const { data: created, error } = await supabase
+        .from('tasks')
+        .insert({
+          id: newTaskId,
+          user_id: userId,
+          text,
+          estimate_mins: mins,
+          source: 'came_up',
+          order_index: maxOrder + 1,
+          surface_date: surfaceDate,
+          intended_time: intendedTime,
+          location_text: locationText,
+          lat,
+          lng,
+          job_id: jobId,
+          original_input: originalInput,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        const transient = /network|fetch|timeout|connection|offline|load failed/i.test(
+          String(error.message || error)
+        );
+        if (transient) {
+          // The request may have reached the server even if its response was
+          // lost. Reuse the same UUID so a later upsert is idempotent.
+          data = newTask;
+          localUpsertTask(userId, data);
+        } else {
+          console.error(error);
+          alert(error.message);
+          return;
+        }
+      } else {
+        data = created as Task;
+        const cached = loadCachedOpenTasks(userId).tasks.filter((task) => task.id !== data.id);
+        cacheOpenTasks(userId, [...cached, data]);
+      }
     }
 
     // Bind engine request → task id so the next utterance can refine this row.
