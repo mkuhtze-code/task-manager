@@ -12,9 +12,9 @@
    ---------- */
 .sheet-backdrop,
 .sheet-overlay {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: var(--z-sheet) !important;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
   background: rgba(15, 23, 42, 0.42);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -362,7 +362,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 0 !important;
+  margin: 0;
 }
 
 .task-progress-track {
@@ -639,7 +639,7 @@
 /* Gear menu portal — always above sheets, panes, sticky chrome */
 .gear-dropdown-portal {
   position: fixed !important;
-  z-index: var(--z-dropdown) !important;
+  z-index: var(--z-dropdown);
   top: auto;
   min-width: 180px;
   background: var(--surface-raised);
