@@ -222,18 +222,18 @@ describe('Phase E — cross-domain intelligence corpus runner (diagnostic only)'
       if (record.split !== 'development') {
         expect(
           record.annotation.review_status,
-          \`\${record.id} cannot enter \${record.split} with a draft/unreviewed annotation\`,
+          record.id + ' cannot enter ' + record.split + ' with a draft/unreviewed annotation',
         ).toBe('reviewed');
         expect(
           (record.annotation as CorpusRecord['annotation'] & { reviewer?: string }).reviewer?.trim(),
-          \`\${record.id} must identify its reviewer\`,
+          record.id + ' must identify its reviewer',
         ).toBeTruthy();
       }
 
       const previousFamilySplit = familySplits.get(record.family_id);
       expect(
         previousFamilySplit == null || previousFamilySplit === record.split,
-        \`scenario family \${record.family_id} crosses evaluation split boundaries\`,
+        'scenario family ' + record.family_id + ' crosses evaluation split boundaries',
       ).toBe(true);
       familySplits.set(record.family_id, record.split);
 
@@ -246,7 +246,7 @@ describe('Phase E — cross-domain intelligence corpus runner (diagnostic only)'
       const previousUtterance = utteranceSplits.get(normalized);
       expect(
         previousUtterance == null || previousUtterance.split === record.split,
-        \`\${record.id} duplicates normalized utterance from \${previousUtterance?.id} across splits\`,
+        record.id + ' duplicates normalized utterance from ' + previousUtterance?.id + ' across splits',
       ).toBe(true);
       if (!previousUtterance) {
         utteranceSplits.set(normalized, { split: record.split, id: record.id });
