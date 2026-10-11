@@ -1617,7 +1617,6 @@ export function requestTaskText(req: EngineRequest): string {
       .replace(/\bcontact\b/i, 'Contact')
       .replace(/\bquote\b/i, 'Quote')
       .replace(/\bbill\b/i, 'Bill')
-      .replace(/\bbill\b/i, 'Bill')
       .replace(/\bdrop\b/i, 'Drop')
       .replace(/\bcheck\b/i, 'Check')
       .replace(/\binspect\b/i, 'Inspect')
