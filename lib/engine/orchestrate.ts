@@ -407,6 +407,26 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     if (grammar.subjectText) request.subjectText = grammar.subjectText;
     if (grammar.objectText) request.objectText = grammar.objectText;
     if (grammar.locationText) request.locationText = grammar.locationText;
+
+    // A legacy extractor can mistake the tail of a communication purpose
+    // (for example, "after the firmware swap") for a physical location.
+    // When the semantic grammar has positively identified a purpose but no
+    // destination relation, remove only that contaminated value. Explicit
+    // destinations remain protected by the grammar's purpose→location role.
+    const hasPurpose = grammar.relations.includes('action→purpose');
+    const hasLocationRelation = grammar.relations.includes('purpose→location');
+    const legacyLocation = request.locationText?.trim().toLocaleLowerCase();
+    const purposeEvidence = [grammar.purposeText, grammar.subjectText, grammar.objectText]
+      .filter((value): value is string => !!value)
+      .map((value) => value.toLocaleLowerCase());
+    if (
+      hasPurpose &&
+      !hasLocationRelation &&
+      legacyLocation &&
+      purposeEvidence.some((value) => value.includes(legacyLocation))
+    ) {
+      request.locationText = null;
+    }
   }
 
   if (grammar.relations.length > 0) {
