@@ -201,7 +201,7 @@ function extractCompoundSemantic(text: string, primaryVerb: string | null): {
   }
 
   const communicationVerb =
-    /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up|bill\s+out|bill)$/.test(
+    /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up)$/.test(
       primaryVerb
     );
 
@@ -1036,7 +1036,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   // leading communication verb for explicit "I need to..." commitments so
   // both contracts retain the action without affecting bare imperatives.
   const explicitCommunicationCommitment =
-    /^\s*(?:i\s+)?(?:need|have|got)\s+to\s+(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up|bill\s+out|bill)\b/i.test(text);
+    /^\s*(?:i\s+)?(?:need|have|got)\s+to\s+(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up)\b/i.test(text);
   if (
     explicitCommunicationCommitment &&
     primaryVerb &&
@@ -1616,6 +1616,7 @@ export function requestTaskText(req: EngineRequest): string {
       .replace(/\bmessage\b/i, 'Message')
       .replace(/\bcontact\b/i, 'Contact')
       .replace(/\bquote\b/i, 'Quote')
+      .replace(/\bbill\b/i, 'Bill')
       .replace(/\bdrop\b/i, 'Drop')
       .replace(/\bcheck\b/i, 'Check')
       .replace(/\binspect\b/i, 'Inspect')
@@ -1633,7 +1634,7 @@ export function requestTaskText(req: EngineRequest): string {
       .replace(/\bfollow\\s*up\b/i, 'Follow up');
 
     const isCommunication =
-      /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up|bill\s+out|bill)$/.test(primaryVerb);
+      /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|check|chase|follow\s*up)$/.test(primaryVerb);
 
     if (isCommunication && req.personText) {
       const semanticTail = req.purposeText?.trim();
