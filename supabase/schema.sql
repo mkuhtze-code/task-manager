@@ -60,6 +60,7 @@ create table if not exists tasks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   text text not null,
+  capture_request_id text,
   status text not null default 'pending' check (status in ('pending', 'active', 'done')),
   source text not null default 'planned' check (source in ('planned', 'came_up')),
   estimate_mins int not null default 15,
@@ -1080,6 +1081,10 @@ alter table account_status enable row level security;
 --     of the older single-column surface_events_created_at_idx, which is
 --     kept to avoid touching existing installs unnecessarily)
 create index if not exists tasks_user_id_status_order_idx on tasks (user_id, status, order_index);
+create unique index if not exists tasks_user_capture_request_unique
+  on tasks (user_id, capture_request_id)
+  where capture_request_id is not null;
+
 create index if not exists tasks_user_id_status_completed_idx on tasks (user_id, status, completed_at desc);
 create index if not exists subtasks_task_id_idx on subtasks (task_id);
 create index if not exists meetings_user_id_start_time_idx on meetings (user_id, start_time);
