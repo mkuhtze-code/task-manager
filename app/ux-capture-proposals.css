@@ -12,9 +12,9 @@
   align-items: center;
   min-height: 1.25rem;
   padding: 0.1rem 0.4rem;
-  border: 1px solid var(--hairline, #cbd5e1);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  color: var(--ink-soft, #64748b);
+  color: var(--ink-soft);
   font-size: 0.72rem;
   font-weight: 650;
   line-height: 1.25;
