@@ -109,6 +109,11 @@ just unconfigured until real credentials are added.
 - Travel first slice: a read-only native trip overview loads from the shared
   `trips` table under existing RLS policies, with loading, empty, error, and
   retry states. Day itinerary editing and routing remain web-only for now.
+- Today capture slice: open tasks load from the shared `tasks` table and users
+  can capture a text or system-speech transcript into Supabase. Speech is only
+  an input method; interpretation remains in Dokkit code. The capture keeps
+  its text on failure so the user can retry. Offline queueing, task lifecycle
+  actions, semantic parsing, and Android Auto remain separate follow-up work.
 - Data foundation: `DokkitConfig`, `SupabaseFactory`, `AuthRepository`,
   `AuthViewModel` session state, and shared domain models/repository boundaries.
 - Unit tests: `TimeFormatTest` (ports lib/timeFormat.ts behaviour) and
