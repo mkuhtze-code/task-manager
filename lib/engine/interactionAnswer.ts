@@ -285,16 +285,16 @@ export function answerFeasibility(
     fits = true;
     const spare = remaining - needed;
     textOut = afternoonHint && visitMode
-      ? \`Yes. You can fit a visit this afternoon \${dayLabel}. After travel and ~\${visit} minutes on site you should still have about \${spare} minutes when you get back.\`
+      ? 'Yes. You can fit a visit this afternoon ' + dayLabel + '. After travel and ~' + visit + ' minutes on site you should still have about ' + spare + ' minutes when you get back.'
       : visitMode
-        ? \`Yes. Roughly \${remaining} minutes remain \${dayLabel}; the stop needs about \${needed} minutes including travel, leaving ~\${spare} minutes.\`
-        : \`Yes. Roughly \${remaining} minutes remain \${dayLabel}; this task needs about \${needed} minutes, leaving ~\${spare} minutes.\`;
+        ? 'Yes. Roughly ' + remaining + ' minutes remain ' + dayLabel + '; the stop needs about ' + needed + ' minutes including travel, leaving ~' + spare + ' minutes.'
+        : 'Yes. Roughly ' + remaining + ' minutes remain ' + dayLabel + '; this task needs about ' + needed + ' minutes, leaving ~' + spare + ' minutes.';
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, `spare≈${spare}`);
   } else if (remaining >= needed) {
     fits = true;
     textOut = visitMode
-      ? \`You can, but it is tight. About \${remaining} minutes remain \${dayLabel} and the visit plus travel is ~\${needed} minutes — little buffer if anything overruns.\`
-      : \`You can, but it is tight. About \${remaining} minutes remain \${dayLabel} and this task needs ~\${needed} minutes — little buffer if anything overruns.\`;
+      ? 'You can, but it is tight. About ' + remaining + ' minutes remain ' + dayLabel + ' and the visit plus travel is ~' + needed + ' minutes — little buffer if anything overruns.'
+      : 'You can, but it is tight. About ' + remaining + ' minutes remain ' + dayLabel + ' and this task needs ~' + needed + ' minutes — little buffer if anything overruns.';
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'tight_fit');
   } else {
     fits = false;
