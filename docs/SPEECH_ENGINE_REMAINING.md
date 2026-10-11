@@ -79,6 +79,8 @@ Cloud STT provider setup and browser-specific production smoke tests are intenti
 
 Phase AH adds a component-level regression gate around the existing web Capture Dock: rendering the sheet must not execute or persist work, and the execution adapter is reached only after an explicit Dock interaction.
 
+Completed-task context isolation: completing a task now closes its bound refinement chain, clears stale active-request state locally and remotely, and keeps historical memory. A regression covers “Chase up Jon for the remaining 6 end caps” followed by “Bill out end caps for Zelo” so shared object nouns cannot cause task replacement.
+
 Phase AI adds `lib/speech/captureContract.ts`, a client-independent lifecycle boundary for typed and transcript text. It prepares a deterministic proposal, requires explicit authorization, supports cancellation, prevents repeated authorization within one in-memory session, and refuses request-ID reuse with different input. It has no React/browser dependencies and performs no task/collection persistence. Its one-time authorization ticket is a client-side coordination mechanism, not a durable or cross-device lock; native persistence must still enforce server/database idempotency.
 
 Phase AJ adds a durable request ID to each native Today capture, reuses it when the user retries, and adds a per-user unique index so a lost response cannot create a duplicate task. Reusing the same ID with different text is rejected. The migration must be applied before releasing the updated native app.
