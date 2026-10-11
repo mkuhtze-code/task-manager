@@ -17,6 +17,10 @@
   --danger: #dc2626;
   --danger-dark: #b91c1c;
   --danger-bg: #f9d8d8;
+  /* End-stop colors for capacity gradients; retain current rendering while centralizing palette ownership. */
+  --steel-highlight: #60a5fa;
+  --hazard-highlight: #f59e0b;
+  --danger-highlight: #f87171;
   --moss: #15803d;
   --moss-bg: #d5e8dc;
   --overflow: #6d28d9;

@@ -83,19 +83,19 @@
   background: linear-gradient(
     90deg,
     var(--steel),
-    color-mix(in srgb, var(--steel) 70%, #60a5fa)
+    color-mix(in srgb, var(--steel) 70%, var(--steel-highlight))
   );
   transition: width var(--dur, 180ms) var(--ease);
 }
 
 .capacity-fill.is-tight,
 .today-capacity-fill.is-tight {
-  background: linear-gradient(90deg, var(--hazard), #f59e0b);
+  background: linear-gradient(90deg, var(--hazard), var(--hazard-highlight));
 }
 
 .capacity-fill.is-over,
 .today-capacity-fill.is-over {
-  background: linear-gradient(90deg, var(--danger), #f87171);
+  background: linear-gradient(90deg, var(--danger), var(--danger-highlight));
 }
 
 /* ── Task list: one continuous sheet ────────────────────────── */
