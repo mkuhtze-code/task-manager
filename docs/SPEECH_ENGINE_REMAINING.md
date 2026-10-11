@@ -16,6 +16,7 @@
 - Proposed quality exit contract in [SPEECH_ENGINE_QUALITY.md](./SPEECH_ENGINE_QUALITY.md)
 - Phase AE authorization-boundary regression suite added to build/CI via `test:phaseAE`; covers non-actions, denied authority, and explicit-action positive control
 - Phase AF bounded speech telemetry wired to `/api/stt`: allowlisted outcome/provider/locale/duration only; upstream error bodies and user identifiers are excluded from logs and client error responses
+- Phase AG read-only production STT configuration probe added as `npm run test:stt-production`; checks endpoint shape, provider configuration, optional expected provider, timeout, and accidental response-field expansion without sending audio
 
 ## Remaining
 
@@ -66,4 +67,4 @@
 
 ## Next recommended pass
 
-Next: verify Phase AF tests and deployment checks; then configure the production STT provider and run authenticated production/device smoke tests. Add aggregate dashboards only after a durable sink and retention policy are selected. In parallel, expand independently reviewed semantic evaluation and component-level Capture Dock confirmation tests. Server-synced learning and richer discourse memory should follow only when semantic outcomes can be measured without treating draft labels or typed/speech parity as ground truth.
+Next: run the Phase AG read-only probe against the deployed URL, then configure the production STT provider if needed and run authenticated transcription/device smoke tests. Add aggregate dashboards only after a durable sink and retention policy are selected. In parallel, expand independently reviewed semantic evaluation and component-level Capture Dock confirmation tests. Server-synced learning and richer discourse memory should follow only when semantic outcomes can be measured without treating draft labels or typed/speech parity as ground truth.
