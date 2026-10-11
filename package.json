@@ -9,7 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:speech": "vitest run lib/speech",
-    "test:stt": "vitest run lib/speech/__tests__/sttUpstream.test.ts lib/speech/__tests__/locale.test.ts lib/__tests__/speechCaptureAssembly.test.ts",
+    "test:stt": "vitest run lib/speech/__tests__/sttUpstream.test.ts lib/speech/__tests__/telemetry.test.ts lib/speech/__tests__/locale.test.ts lib/__tests__/speechCaptureAssembly.test.ts",
     "test:offline": "vitest run lib/offline/__tests__",
     "test:collections": "vitest run lib/collections",
     "test:collection-correction": "vitest run lib/collections/__tests__/weekdayCorrectionRouting.test.ts",
