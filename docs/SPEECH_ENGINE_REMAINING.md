@@ -15,6 +15,7 @@
 - Leakage-safe corpus gates: draft labels cannot count as reviewed validation/held-out evidence; exact normalized duplicates are checked across splits
 - Proposed quality exit contract in [SPEECH_ENGINE_QUALITY.md](./SPEECH_ENGINE_QUALITY.md)
 - Phase AE authorization-boundary regression suite added to build/CI via `test:phaseAE`; covers non-actions, denied authority, and explicit-action positive control
+- Phase AF bounded speech telemetry wired to `/api/stt`: allowlisted outcome/provider/locale/duration only; upstream error bodies and user identifiers are excluded from logs and client error responses
 
 ## Remaining
 
@@ -41,7 +42,8 @@
 
 ### D. Operational quality
 
-- [ ] Implement privacy-safe production telemetry using bounded event fields only; no raw audio, transcript, task text, names, or addresses by default.
+- [x] Implement bounded privacy-safe STT server telemetry using outcome/provider/locale/duration fields only; raw audio, transcript, task text, names, addresses, user IDs, IPs, and upstream error details are excluded.
+- [ ] Add a durable metrics sink/dashboard and alerting; current implementation emits structured server logs only and does not yet provide aggregate dashboards.
 - [ ] Establish production dashboards/alerts for capture success, provider failures, proposal latency, confirmation/correction rates, and locale.
 - [ ] Keep platform/locale smoke-test results separate from unit tests and preview deployment status.
 
@@ -64,4 +66,4 @@
 
 ## Next recommended pass
 
-Prioritise production capture reliability and trustworthy measurement. In parallel, expand independently reviewed semantic evaluation and add an explicit mutation-boundary test. Server-synced learning and richer discourse memory should follow only when semantic outcomes can be measured without treating draft labels or typed/speech parity as ground truth.
+Next: verify Phase AF tests and deployment checks; then configure the production STT provider and run authenticated production/device smoke tests. Add aggregate dashboards only after a durable sink and retention policy are selected. In parallel, expand independently reviewed semantic evaluation and component-level Capture Dock confirmation tests. Server-synced learning and richer discourse memory should follow only when semantic outcomes can be measured without treating draft labels or typed/speech parity as ground truth.
