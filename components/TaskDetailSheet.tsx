@@ -20,6 +20,7 @@ import {
   StopIcon,
 } from '@/components/icons';
 import { TaskInfo } from '@/components/TaskInfo';
+import ContextLine from '@/components/ContextLine';
 import {
   TaskConnections,
   type SiblingTask,
@@ -285,6 +286,14 @@ export function TaskDetailSheet(props: {
     : null;
 
   const jobName = linkedJob?.name ?? null;
+
+  // Reuse Today’s task → job/location identity grammar in detail views.
+  const taskContextItems = [
+    ...(jobName
+      ? [{ label: jobName, href: task.job_id ? `/jobs/${task.job_id}` : undefined }]
+      : []),
+    ...(task.location_text ? [{ label: task.location_text }] : []),
+  ];
 
   const progressPct =
     task.estimate_mins > 0
@@ -1114,8 +1123,12 @@ export function TaskDetailSheet(props: {
               {task.due_today ? (
                 <span className="desk-detail-badge due">Due today</span>
               ) : null}
-              {jobName ? (
-                <span className="desk-detail-badge">{jobName}</span>
+              {taskContextItems.length > 0 ? (
+                <ContextLine
+                  className="task-detail-context-line"
+                  items={taskContextItems}
+                  label="Task context"
+                />
               ) : null}
               {task.status === 'active' ? (
                 <span className="desk-detail-badge live">In progress</span>
@@ -1372,8 +1385,12 @@ export function TaskDetailSheet(props: {
                 Due
               </span>
             ) : null}
-            {jobName ? (
-              <span className="task-detail-job-chip">{jobName}</span>
+            {taskContextItems.length > 0 ? (
+              <ContextLine
+                className="task-detail-context-line"
+                items={taskContextItems}
+                label="Task context"
+              />
             ) : null}
           </div>
           <button
