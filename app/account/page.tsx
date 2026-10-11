@@ -465,7 +465,7 @@ export default function AccountPage() {
                       value={deleteConfirmText}
                       onChange={(e) => setDeleteConfirmText(e.target.value)}
                       autoComplete="off"
-                      className="account-input"
+                      className="account-input ux-field-control"
                     />
                     <div className="account-actions">
                       <button
