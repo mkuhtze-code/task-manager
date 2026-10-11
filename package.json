@@ -34,7 +34,7 @@
     "test:phase17": "vitest run lib/engine/__tests__/phase17CaptureReferenceGates.test.ts",
     "test:phase18": "vitest run lib/engine/__tests__/phase18CaptureDockTorture.test.ts",
     "test:phase20": "vitest run lib/engine/__tests__/phase20ProductionAcceptance.test.ts",
-    "test:phaseM": "vitest run lib/engine/__tests__/phaseMAdversarialTaskContinuity.test.ts",
+    "test:phaseM": "vitest run lib/engine/__tests__/phaseMAdversarialTaskContinuity.test.ts lib/engine/__tests__/taskLifecycle.test.ts lib/engine/__tests__/requestSemantic.test.ts",
     "test:phaseAB": "vitest run lib/engine/__tests__/phaseABCrossPathSemanticInvariants.test.ts",
     "test:phaseAC": "vitest run lib/engine/__tests__/phaseACSemanticInvariantExpansion.test.ts",
     "test:phaseN": "vitest run lib/engine/__tests__/phaseNPairedSemanticReplay.test.ts",

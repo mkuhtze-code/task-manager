@@ -131,6 +131,18 @@ describe('Phase M — adversarial task continuity and reference resolution', () 
     expect(result.overrides.text.toLowerCase()).toContain('flashing');
   });
 
+  it('creates a new billing task when its object noun overlaps the active task', () => {
+    const result = requireCreate(
+      dock('Bill out end caps for Zelo', makeBoundTask()),
+      'Bill out end caps for Zelo',
+    );
+    expect(result.overrides.text.toLowerCase()).toContain('bill');
+    expect(result.overrides.text.toLowerCase()).toContain('end caps');
+    expect(result.overrides.text.toLowerCase()).toContain('zelo');
+    expect(result.overrides.text.toLowerCase()).not.toContain('jordan');
+    expect(result.overrides.text.toLowerCase()).not.toContain('smith street');
+  });
+
   it('starts a fresh quote task instead of contaminating it with the active task', () => {
     const result = requireCreate(
       dock('Quote for Korohata Terrace', makeBoundTask()),

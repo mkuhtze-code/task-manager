@@ -391,3 +391,25 @@ describe('spoken object and location corrections', () => {
   });
 
 });
+
+
+describe('completed task starts a new capture boundary', () => {
+  it('does not carry a completed task into a later action about the same object', () => {
+    const completed = applyUtteranceToRequest(
+      null,
+      'Chase up Jon for the remaining 6 end caps',
+      emptyWorkingMemory(),
+    );
+    const next = applyUtteranceToRequest(
+      completed,
+      'Bill out end caps for Zelo',
+      { ...emptyWorkingMemory(), activeRequestId: completed.id },
+    );
+
+    expect(requestTaskText(next).toLowerCase()).toContain('bill');
+    expect(requestTaskText(next).toLowerCase()).toContain('zelo');
+    expect(requestTaskText(next).toLowerCase()).not.toContain('chase up jon');
+    expect(next.rawUtterances).toEqual(['Bill out end caps for Zelo']);
+    expect(completed.rawUtterances).toEqual(['Chase up Jon for the remaining 6 end caps']);
+  });
+});
