@@ -91,23 +91,61 @@ class NativeTodayRepository(
         }
     }
 
-    suspend fun captureTask(text: String) {
+    /**
+     * Persists one explicitly submitted capture under a stable request ID.
+     *
+     * The database's (user_id, capture_request_id) unique index is the
+     * cross-retry authority. If a request succeeded but its response was lost,
+     * a retry resolves to the existing row instead of creating a duplicate.
+     * Reusing the same key with different text is rejected.
+     */
+    suspend fun captureTask(text: String, requestId: String) {
         val cleanText = text.trim()
         require(cleanText.isNotEmpty()) { "Enter something to capture." }
+        val cleanRequestId = requestId.trim()
+        require(cleanRequestId.isNotEmpty() && cleanRequestId.length <= 128) {
+            "This capture needs a valid request ID. Close it and start again."
+        }
         val userId = supabaseFactory.supabase.auth.currentUserOrNull()?.id
             ?: error("Your session has expired. Sign in again to capture this.")
 
-        supabaseFactory.supabase
-            .from("tasks")
-            .insert(
-                mapOf(
-                    "user_id" to userId,
-                    "text" to cleanText,
-                    "status" to "pending",
-                    "source" to "came_up",
-                    "estimate_mins" to 15,
-                    "due_today" to true,
-                ),
-            )
+        try {
+            supabaseFactory.supabase
+                .from("tasks")
+                .insert(
+                    mapOf(
+                        "user_id" to userId,
+                        "text" to cleanText,
+                        "status" to "pending",
+                        "source" to "came_up",
+                        "estimate_mins" to 15,
+                        "due_today" to true,
+                        "capture_request_id" to cleanRequestId,
+                    ),
+                )
+        } catch (insertError: Exception) {
+            // A uniqueness violation can mean an earlier attempt committed but
+            // its response was lost. Verify the existing row under the current
+            // user's RLS scope before treating the retry as successful.
+            val existing = try {
+                supabaseFactory.supabase
+                    .from("tasks")
+                    .select {
+                        filter { eq("capture_request_id", cleanRequestId) }
+                    }
+                    .decodeList<Task>()
+                    .firstOrNull()
+            } catch (_: Exception) {
+                null
+            }
+
+            if (existing != null) {
+                check(existing.text == cleanText) {
+                    "This capture request was already used for different text. Start a new capture."
+                }
+                return
+            }
+            throw insertError
+        }
     }
 }
