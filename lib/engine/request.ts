@@ -408,7 +408,7 @@ function extractLocation(text: string): string | null {
     // not a physical destination ("need to buy ... from Bunnings").
     const infinitiveToAfterRecipient =
       markerName === 'to' &&
-      /\b(?:ask|tell|remind|invite|instruct|encourage|request|persuade|help|allow|need|want|have|got|try|plan|hope|expect|decide|agree|promise|manage|learn|prepare|start|begin|continue|stop|forget)\s+(?:me|us|him|her|them|[A-Z][A-Za-z'’-]*)(?:\s+[A-Z][A-Za-z'’-]*){0,2}\s*$/i.test(beforeMarker);
+      /\b(?:ask|tell|remind|invite|instruct|encourage|request|persuade|help|allow|need|want|have|got|try|plan|hope|expect|decide|agree|promise|manage|learn|prepare|start|begin|continue|stop|forget)\s+\S+(?:\s+\S+){0,2}\s*$/i.test(beforeMarker);
     if (
       markerName === 'to' &&
       (/\b(?:need|want|have|got|going|try|ought|able|supposed)\s*$/i.test(beforeMarker) ||
