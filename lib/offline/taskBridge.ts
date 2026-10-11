@@ -33,7 +33,10 @@ export function cacheOpenTasks(userId: string, tasks: Task[]): void {
       continue;
     }
     if (op.action === 'upsert') {
-      const task = op.payload as unknown as Task;
+      const payload = { ...op.payload };
+      // user_id belongs to the database row, not the client Task view model.
+      delete payload.user_id;
+      const task = payload as unknown as Task;
       if (task.id) reconciled.set(task.id, { ...reconciled.get(task.id), ...task });
       continue;
     }
