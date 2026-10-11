@@ -6,13 +6,13 @@
 }
 
 .mobile-today-cockpit-fit strong {
-  color: var(--ink, #0f172a);
+  color: var(--ink);
   font-weight: 650;
   letter-spacing: -0.01em;
 }
 
 .mobile-today-cockpit-fit > span:last-child {
-  color: var(--ink-soft, #64748b);
+  color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
@@ -22,7 +22,7 @@
 }
 
 .mobile-today-fit-dot.over {
-  background: var(--danger, #b45309);
+  background: var(--danger);
 }
 
 @media (prefers-reduced-motion: reduce) {

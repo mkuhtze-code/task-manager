@@ -11,17 +11,17 @@
 }
 
 .empty-state-title {
-  font-size: var(--text-lg, 1.125rem);
+  font-size: var(--text-lg);
   font-weight: 650;
   letter-spacing: -0.02em;
-  color: var(--ink, var(--text-primary));
+  color: var(--ink);
   margin: 0 0 6px;
 }
 
 .empty-state-sub {
-  font-size: var(--text-sm, 0.875rem);
+  font-size: var(--text-sm);
   line-height: 1.45;
-  color: var(--ink-soft, var(--text-secondary));
+  color: var(--ink-soft);
   margin: 0;
   font-weight: 500;
 }
@@ -47,7 +47,7 @@
   font-size: 12px;
   font-weight: 550;
   letter-spacing: -0.01em;
-  color: var(--ink-faint, var(--text-tertiary));
+  color: var(--ink-faint);
   line-height: 1.35;
 }
 
@@ -63,25 +63,25 @@
   padding-top: 11px;
   padding-bottom: 11px;
   transition:
-    background 0.15s var(--ease, ease),
-    padding 0.15s var(--ease, ease);
+    background 0.15s var(--ease),
+    padding 0.15s var(--ease);
 }
 
 .task-card.expanded {
   padding-top: 12px;
   padding-bottom: 14px;
-  background: var(--surface-inset, var(--paper-raised, #f8fafc));
+  background: var(--surface-inset);
 }
 
 /* Expand body: opacity only — no vertical shove */
 .task-reveal {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid var(--line, var(--border-subtle));
+  border-top: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  animation: dokkit-reveal 0.18s var(--ease, ease);
+  animation: dokkit-reveal 0.18s var(--ease);
 }
 
 @keyframes dokkit-reveal {
@@ -154,7 +154,7 @@
 .leg-connector-line {
   flex: 1 1 auto;
   height: 1px;
-  background: var(--line, var(--border-subtle));
+  background: var(--line);
   opacity: 0.85;
   min-width: 12px;
 }
@@ -165,7 +165,7 @@
   font-weight: 650;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--ink-faint, var(--text-tertiary));
+  color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -174,7 +174,7 @@
   text-align: center;
   font-size: 11px;
   font-weight: 500;
-  color: var(--ink-faint, var(--text-tertiary));
+  color: var(--ink-faint);
   padding: 0 16px 6px;
   line-height: 1.35;
 }
@@ -194,20 +194,20 @@
   gap: 10px;
   margin-top: 8px;
   padding: 8px 10px;
-  border-radius: var(--radius-sm, 8px);
-  border: 1px solid var(--line, var(--border-subtle));
-  background: var(--paper, var(--surface));
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--paper);
 }
 
 .capture-entity-chip-text {
   font-size: 13px;
   font-weight: 500;
-  color: var(--ink-soft, var(--text-secondary));
+  color: var(--ink-soft);
   min-width: 0;
 }
 
 .capture-entity-chip-text strong {
-  color: var(--ink, var(--text-primary));
+  color: var(--ink);
   font-weight: 650;
 }
 

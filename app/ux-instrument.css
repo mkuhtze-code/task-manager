@@ -7,7 +7,7 @@
   height: 48px;
   min-width: 48px;
   min-height: 48px;
-  box-shadow: 0 4px 14px rgba(var(--shadow-rgb, 15, 23, 42), 0.18);
+  box-shadow: 0 4px 14px rgba(var(--shadow-rgb), 0.18);
 }
 
 .surface-add:hover {
@@ -28,17 +28,17 @@
 /* Bottom bar: room for 48px control */
 .surface-nav {
   height: 56px;
-  padding-left: var(--space-4, 16px);
-  padding-right: var(--space-4, 16px);
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
 }
 
 /* Plain-language fit order (mobile + desktop summary) */
 .today-fit-order-hint {
-  margin: 0 0 var(--space-2, 8px);
-  padding: 0 var(--space-5, 20px);
-  font-size: var(--text-sm, 0.8125rem);
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-5);
+  font-size: var(--text-sm);
   line-height: 1.35;
-  color: var(--ink-soft, #64748b);
+  color: var(--ink-soft);
 }
 
 .today-header-card > .today-fit-order-hint {
@@ -49,17 +49,17 @@
 
 /* Once-only micro-hints in sheets */
 .ux-once-hint {
-  margin: 0 0 var(--space-3, 12px);
-  font-size: var(--text-sm, 0.8125rem);
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
   line-height: 1.4;
-  color: var(--ink-soft, #64748b);
+  color: var(--ink-soft);
 }
 
 .capture-estimate-hint {
   display: block;
   margin: 0 0 4px;
-  font-size: var(--text-xs, 0.75rem);
-  color: var(--ink-faint, #94a3b8);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
 }
 
 /* Keep sticky header from eating the list: commitments stay one row */

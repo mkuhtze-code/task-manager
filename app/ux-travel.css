@@ -1,6 +1,6 @@
 /* Travel overview — one shared surface grammar, with place-specific content. */
 
-.travel-featured-label { padding: 0; background: transparent; color: var(--ink-faint, #64748b); }
+.travel-featured-label { padding: 0; background: transparent; color: var(--ink-faint); }
 .travel-featured { box-shadow: none; border-color: var(--line); }
 .travel-featured:hover { box-shadow: none; border-color: var(--line-strong); }
 
@@ -25,7 +25,7 @@
   margin: 0;
   font-size: 12px;
   font-weight: 550;
-  color: var(--ink-faint, #94a3b8);
+  color: var(--ink-faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -41,8 +41,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 10px var(--space-page, 16px) 8px;
-  border-bottom: 1px solid var(--line, #e2e8f0);
+  padding: 10px var(--space-4) 8px;
+  border-bottom: 1px solid var(--line);
 }
 
 .travel-mobile-consequence {
@@ -50,7 +50,7 @@
   font-size: 12px;
   font-weight: 550;
   line-height: 1.35;
-  color: var(--ink-soft, #64748b);
+  color: var(--ink-soft);
 }
 
 /* Featured object: Travel emphasis within universal object grammar. */
@@ -69,7 +69,7 @@
   grid-row: 1;
   font-size: 11px;
   font-weight: 650;
-  color: var(--ink-faint, #94a3b8);
+  color: var(--ink-faint);
 }
 
 .travel-featured-body {
@@ -85,7 +85,7 @@
   font-size: 15px;
   font-weight: 650;
   letter-spacing: -0.015em;
-  color: var(--ink, #0f172a);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -94,7 +94,7 @@
 .travel-featured-meta {
   font-size: 12px;
   font-weight: 550;
-  color: var(--ink-soft, #64748b);
+  color: var(--ink-soft);
 }
 
 .travel-featured-cta {
@@ -120,7 +120,7 @@ html[data-surface='desktop'] .travel-workspace {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 var(--space-page, 16px) 8px;
+  padding: 0 var(--space-4) 8px;
 }
 
 html[data-surface='desktop'] .trip-section-header {
@@ -133,27 +133,27 @@ html[data-surface='desktop'] .trip-section-header {
   font-weight: 750;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--ink-faint, #94a3b8);
+  color: var(--ink-faint);
 }
 
 .trip-section-lede {
   margin: 0;
   font-size: 12px;
   font-weight: 550;
-  color: var(--ink-faint, #94a3b8);
+  color: var(--ink-faint);
 }
 
 .trip-list-maybach {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--line, #e2e8f0);
-  border-bottom: 1px solid var(--line, #e2e8f0);
-  background: var(--paper, #fff);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
 }
 
 html[data-surface='desktop'] .trip-list-maybach {
   border-radius: 14px;
-  border: 1px solid var(--line, #e2e8f0);
+  border: 1px solid var(--line);
   overflow: hidden;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
 }
@@ -162,7 +162,7 @@ html[data-surface='desktop'] .trip-list-maybach {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: stretch;
-  border-bottom: 1px solid var(--line, #e2e8f0);
+  border-bottom: 1px solid var(--line);
   transition: background 0.14s ease;
 }
 
@@ -179,7 +179,7 @@ html[data-surface='desktop'] .trip-list-maybach {
 }
 
 .trip-row-maybach.pressure-soon {
-  box-shadow: inset 3px 0 0 var(--steel, #1e6be6);
+  box-shadow: inset 3px 0 0 var(--steel);
 }
 
 .trip-row-link {
@@ -187,14 +187,14 @@ html[data-surface='desktop'] .trip-list-maybach {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 14px var(--space-page, 16px);
+  padding: 14px var(--space-4);
   text-decoration: none;
   color: inherit;
   min-width: 0;
 }
 
 .trip-row-link:focus-visible {
-  outline: 2px solid var(--steel, #1e6be6);
+  outline: 2px solid var(--steel);
   outline-offset: -2px;
 }
 
@@ -207,7 +207,7 @@ html[data-surface='desktop'] .trip-list-maybach {
   font-size: 15px;
   font-weight: 650;
   letter-spacing: -0.015em;
-  color: var(--ink, #0f172a);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -220,7 +220,7 @@ html[data-surface='desktop'] .trip-list-maybach {
   gap: 4px 10px;
   margin-top: 4px;
   font-size: 12px;
-  color: var(--ink-soft, #64748b);
+  color: var(--ink-soft);
 }
 
 .trip-row-dates {
@@ -229,7 +229,7 @@ html[data-surface='desktop'] .trip-list-maybach {
 }
 
 .trip-meta {
-  color: var(--ink-faint, #94a3b8);
+  color: var(--ink-faint);
 }
 
 .trip-row-aside {
@@ -245,23 +245,23 @@ html[data-surface='desktop'] .trip-list-maybach {
   font-size: 12px;
   font-weight: 650;
   letter-spacing: -0.01em;
-  color: var(--ink-soft, #64748b);
+  color: var(--ink-soft);
   text-align: right;
 }
 
 .trip-relative.is-urgent {
-  color: var(--steel-dark, #1e40af);
+  color: var(--steel-dark);
 }
 
 .trip-phase {
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.02em;
-  color: var(--ink-faint, #94a3b8);
+  color: var(--ink-faint);
 }
 
 .trip-phase.phase-active {
-  color: var(--steel-dark, #1e40af);
+  color: var(--steel-dark);
 }
 
 .trip-row-delete {
@@ -271,18 +271,18 @@ html[data-surface='desktop'] .trip-list-maybach {
   width: 44px;
   border: none;
   background: transparent;
-  color: var(--ink-faint, #94a3b8);
+  color: var(--ink-faint);
   cursor: pointer;
   opacity: 0.55;
 }
 
 .trip-row-delete:hover {
   opacity: 1;
-  color: var(--hazard, #b91c1c);
+  color: var(--hazard);
 }
 
 .travel-empty {
-  padding: 3rem var(--space-page, 16px);
+  padding: 3rem var(--space-4);
 }
 
 .travel-empty .empty-state-sub {

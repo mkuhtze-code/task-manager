@@ -3,18 +3,18 @@
    New and migrated components should use these semantic aliases. */
 
 :root {
-  --ux-surface: var(--surface, var(--paper-raised));
-  --ux-surface-raised: var(--surface-raised, var(--paper-raised));
-  --ux-ink: var(--text-primary, var(--ink));
-  --ux-ink-soft: var(--text-secondary, var(--ink-soft));
-  --ux-hairline: var(--border-default, var(--line));
-  --ux-accent: var(--accent, var(--steel));
-  --ux-danger: var(--destructive, var(--danger));
-  --ux-focus-ring: var(--border-focus, var(--steel));
-  --ux-offline-surface: var(--surface-inset, var(--paper));
+  --ux-surface: var(--surface);
+  --ux-surface-raised: var(--surface-raised);
+  --ux-ink: var(--text-primary);
+  --ux-ink-soft: var(--text-secondary);
+  --ux-hairline: var(--border-default);
+  --ux-accent: var(--accent);
+  --ux-danger: var(--destructive);
+  --ux-focus-ring: var(--border-focus);
+  --ux-offline-surface: var(--surface-inset);
   --ux-elevation-flat: none;
-  --ux-elevation-sheet: var(--shadow-sm, 0 2px 6px rgba(26, 41, 51, .08));
-  --ux-elevation-modal: var(--shadow-md, 0 8px 24px rgba(26, 41, 51, .12));
+  --ux-elevation-sheet: var(--shadow-sm);
+  --ux-elevation-modal: var(--shadow-md);
   --ux-duration-fast: 100ms;
   --ux-duration-nav: 180ms;
   --ux-easing-standard: cubic-bezier(.2, 0, 0, 1);
@@ -28,7 +28,7 @@
 }
 
 :is(button, [role="button"], a) {
-  scroll-margin-block: var(--space-4, 16px);
+  scroll-margin-block: var(--space-4);
 }
 
 @media (prefers-reduced-motion: reduce) {
