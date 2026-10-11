@@ -412,7 +412,7 @@ html[data-theme='dark'] .task-card.surface-object,html[data-theme='dark'] .desk-
   left:0!important;
   right:0!important;
   bottom:0!important;
-  z-index:30;
+  z-index:var(--z-nav);
   display:flex!important;
   align-items:center!important;
   gap:8px!important;
