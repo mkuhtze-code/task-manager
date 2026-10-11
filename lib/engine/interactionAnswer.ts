@@ -123,7 +123,8 @@ export function answerFeasibility(
     );
   }
 
-  const capacityMode = options.capacityMode ?? capacityModeForUtterance(utterance, input);\n  const visitMode = capacityMode === 'visit';
+  const capacityMode = options.capacityMode ?? capacityModeForUtterance(utterance, input);
+  const visitMode = capacityMode === 'visit';
   const visit =
     input.context.visitDurationMins ??
     (cycle.request.objectText ? 45 : 30);
