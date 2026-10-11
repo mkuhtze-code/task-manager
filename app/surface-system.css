@@ -355,10 +355,10 @@
 /* The object field */
 .meetings-workspace,.travel-workspace,.jobs-workspace{width:100%;max-width:none;background:transparent}
 .meeting-section,.trip-section{width:min(100%,var(--dk-max));margin:0 auto}
-.meeting-list,.trip-list-maybach,.job-list{width:100%;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--dk-gap)!important;border:0!important;background:transparent!important;overflow:visible!important}
+.meeting-list,.trip-list-maybach,.job-list{width:100%;max-width:var(--dk-max);margin:0 auto;display:flex!important;flex-direction:column!important;gap:0!important;border:0!important;background:transparent!important;overflow:visible!important}
 .meeting-section-header,.trip-section-header{min-height:22px;padding:0 0 9px!important}
 .meeting-section-title,.trip-section-title{font-size:10px!important;line-height:1.2!important;font-weight:700!important;letter-spacing:.1em!important;text-transform:uppercase;color:var(--ink-faint)!important}
-.meeting-section-lede,.trip-section-lede{margin-left:7px;font-size:11px!important;color:var(--ink-faint)!important}.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{box-sizing:border-box;min-width:0;border:1px solid var(--line)!important;border-radius:var(--dk-radius)!important;background:var(--paper-raised)!important;box-shadow:none!important;color:var(--ink)!important;transition:border-color .14s ease,background-color .14s ease,transform .14s ease!important}.desk-job-card.surface-object:hover,.meeting-row.surface-object:hover,.trip-row-maybach.surface-object:hover,.job-row:hover{border-color:var(--line-strong)!important;background:var(--paper-raised)!important;box-shadow:none!important;transform:translateY(-1px)!important}
+.meeting-section-lede,.trip-section-lede{margin-left:7px;font-size:11px!important;color:var(--ink-faint)!important}.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{box-sizing:border-box;min-width:0;border:0!important;border-bottom:1px solid var(--border-default)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--text-primary)!important;transform:none!important;transition:background-color .14s ease!important}.desk-job-card.surface-object:hover,.meeting-row.surface-object:hover,.trip-row-maybach.surface-object:hover,.job-row:hover{border-bottom-color:var(--border-strong)!important;background:color-mix(in srgb,var(--text-primary) 2.5%,transparent)!important;box-shadow:none!important;transform:none!important}
 .surface-object:focus-visible{outline:2px solid color-mix(in srgb,var(--steel) 42%,transparent);outline-offset:2px}
 .surface-object-title,.desk-job-card-name,.meeting-row-name,.trip-row-name,.meetings-featured-title,.travel-featured-title,.job-row-name{min-width:0;font-size:var(--dk-title)!important;line-height:1.3!important;font-weight:650!important;letter-spacing:-.012em!important;color:var(--ink)!important}
 .surface-object-time,.meeting-row-time,.trip-row-time,.desk-job-card-state,.job-row-meta{font-size:var(--dk-meta)!important;line-height:1.4!important;font-weight:550!important;color:var(--ink-soft)!important;font-variant-numeric:tabular-nums}
@@ -369,14 +369,14 @@
 .task-card.surface-object{overflow:hidden;}.task-card.surface-object .task-body{min-width:0}.task-card.surface-object .task-text{margin:0}.task-card.surface-object .task-card-glance{align-self:center}
 
 /* Jobs */
-.job-row{display:block!important;min-height:112px!important;padding:var(--dk-pad-y) var(--dk-pad-x)!important;text-decoration:none!important}.job-row-top{min-height:20px}.job-row-meta{margin-top:5px!important}.job-row-next{margin-top:11px!important;padding-top:9px!important;border-top:1px solid var(--line)!important;font-size:12px!important;color:var(--ink-soft)!important}.job-row-numeral,.job-row-done-mark{color:var(--ink-soft)!important}
-.desk-job-card.surface-object{display:block!important;min-height:112px;padding:var(--dk-pad-y) var(--dk-pad-x)!important;text-decoration:none}.desk-job-card.surface-object .desk-job-card-head{margin:0!important;min-height:22px}.desk-job-card.surface-object .desk-job-card-client{margin-top:3px;font-size:12px;color:var(--ink-soft)}.desk-job-card.surface-object .desk-job-card-state{margin-top:10px!important}.desk-job-card.surface-object .desk-job-card-next,.desk-job-card.surface-object .desk-job-card-section{margin-top:10px!important;padding-top:10px!important;border-top:1px solid var(--line)!important}.desk-job-card.surface-object .desk-job-card-chip{border:0!important;background:transparent!important;padding:0!important;font-size:12px!important;color:var(--ink-soft)!important}
+.job-row{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none!important}.job-row-top{min-height:20px}.job-row-meta{margin-top:5px!important}.job-row-next{margin-top:11px!important;padding-top:9px!important;border-top:1px solid var(--line)!important;font-size:12px!important;color:var(--ink-soft)!important}.job-row-numeral,.job-row-done-mark{color:var(--ink-soft)!important}
+.desk-job-card.surface-object{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none}.desk-job-card.surface-object .desk-job-card-head{margin:0!important;min-height:22px}.desk-job-card.surface-object .desk-job-card-client{margin-top:3px;font-size:12px;color:var(--ink-soft)}.desk-job-card.surface-object .desk-job-card-state{margin-top:10px!important}.desk-job-card.surface-object .desk-job-card-next,.desk-job-card.surface-object .desk-job-card-section{margin-top:10px!important;padding-top:10px!important;border-top:1px solid var(--line)!important}.desk-job-card.surface-object .desk-job-card-chip{border:0!important;background:transparent!important;padding:0!important;font-size:12px!important;color:var(--ink-soft)!important}
 
 /* Meetings */
-.meeting-row.surface-object{display:block!important;min-height:112px!important;padding:var(--dk-pad-y) var(--dk-pad-x)!important;text-decoration:none!important}.meeting-row-main{display:block!important;width:100%;min-width:0}.meeting-row-top{display:flex;align-items:baseline;gap:8px;min-width:0}.meeting-row-name{display:block;flex:1}.meeting-source-tag{flex:0 0 auto;padding:0!important;border:0!important;background:transparent!important;color:var(--ink-faint)!important;font-size:10px!important;font-weight:600!important}.meeting-row-time{margin-top:5px!important}.meeting-row-context{display:flex!important;margin-top:4px!important}.meeting-row-aside{display:none!important}.meeting-row-relative.is-urgent{color:var(--steel-dark,var(--steel))!important}.meeting-row.pressure-now{border-color:color-mix(in srgb,var(--steel) 38%,var(--line))!important}
+.meeting-row.surface-object{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none!important}.meeting-row-main{display:block!important;width:100%;min-width:0}.meeting-row-top{display:flex;align-items:baseline;gap:8px;min-width:0}.meeting-row-name{display:block;flex:1}.meeting-source-tag{flex:0 0 auto;padding:0!important;border:0!important;background:transparent!important;color:var(--ink-faint)!important;font-size:10px!important;font-weight:600!important}.meeting-row-time{margin-top:5px!important}.meeting-row-context{display:flex!important;margin-top:4px!important}.meeting-row-aside{display:none!important}.meeting-row-relative.is-urgent{color:var(--steel-dark,var(--steel))!important}.meeting-row.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}
 
 /* Travel */
-.trip-row-maybach.surface-object{position:relative;display:block!important;min-height:112px!important;padding:var(--dk-pad-y) 48px var(--dk-pad-y) var(--dk-pad-x)!important}.trip-row-maybach.surface-object .trip-row-link{display:block!important;min-width:0;padding:0!important;color:inherit;text-decoration:none}.trip-row-main{display:block!important;width:100%;min-width:0}.trip-row-time{margin-top:5px!important}.trip-row-context{display:flex!important;margin-top:4px!important}.trip-row-aside{display:none!important}.trip-row-maybach.pressure-now{border-color:color-mix(in srgb,var(--steel) 38%,var(--line))!important}.trip-row-delete{position:absolute!important;top:8px!important;right:8px!important;width:28px!important;height:28px!important;margin:0!important;border-radius:7px!important;opacity:.38}.trip-row-delete:hover,.trip-row-delete:focus-visible{opacity:1}
+.trip-row-maybach.surface-object{position:relative;display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) 48px var(--space-3) var(--space-4)!important}.trip-row-maybach.surface-object .trip-row-link{display:block!important;min-width:0;padding:0!important;color:inherit;text-decoration:none}.trip-row-main{display:block!important;width:100%;min-width:0}.trip-row-time{margin-top:5px!important}.trip-row-context{display:flex!important;margin-top:4px!important}.trip-row-aside{display:none!important}.trip-row-maybach.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}.trip-row-delete{position:absolute!important;top:8px!important;right:8px!important;width:28px!important;height:28px!important;margin:0!important;border-radius:7px!important;opacity:.38}.trip-row-delete:hover,.trip-row-delete:focus-visible{opacity:1}
 
 /* Featured = same object, more salience */
 .meetings-featured,.travel-featured,.meetings-featured-mobile,.travel-featured-mobile{display:block!important;min-height:68px!important;margin:0 0 12px!important;padding:12px 16px!important;border:1px solid var(--line)!important;border-radius:var(--dk-radius)!important;background:var(--paper-raised)!important;box-shadow:none!important}
@@ -389,14 +389,12 @@
 @media (min-width:701px){
  html[data-surface='desktop'] .meetings-workspace,html[data-surface='desktop'] .travel-workspace,html[data-surface='desktop'] .jobs-workspace{width:100%;max-width:none!important;padding:24px 32px 52px!important;box-sizing:border-box}
  html[data-surface='desktop'] .meeting-section,html[data-surface='desktop'] .trip-section{max-width:var(--dk-max)}
- html[data-surface='desktop'] .meeting-list,html[data-surface='desktop'] .trip-list-maybach,html[data-surface='desktop'] .job-list{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))!important;gap:12px!important}
  html[data-surface='desktop'] .meeting-section-header,html[data-surface='desktop'] .trip-section-header{max-width:var(--dk-max);margin-left:auto;margin-right:auto}
 }
 @media (max-width:700px){
- .surface-header{padding:12px 14px 11px!important}.surface-header-bar{grid-template-columns:auto minmax(0,1fr) auto!important;column-gap:10px!important}.surface-title{font-size:17px!important}.surface-lede{display:none}
- .meeting-list,.trip-list-maybach,.job-list{grid-template-columns:1fr!important;gap:8px!important}.meeting-row.surface-object,.job-row{min-height:0!important;padding:13px 14px!important}.trip-row-maybach.surface-object{min-height:0!important;padding:13px 44px 13px 14px!important}
+ .surface-header{padding:12px 14px 11px!important}.surface-header-bar{grid-template-columns:auto minmax(0,1fr) auto!important;column-gap:10px!important}.surface-title{font-size:17px!important}.surface-lede{display:none}.meeting-row.surface-object,.job-row{min-height:0!important;padding:13px 14px!important}.trip-row-maybach.surface-object{min-height:0!important;padding:13px 44px 13px 14px!important}
 }
-html[data-theme='dark'] .surface-header{background:var(--paper)!important}html[data-theme='dark'] .desk-job-card.surface-object,html[data-theme='dark'] .meeting-row.surface-object,html[data-theme='dark'] .trip-row-maybach.surface-object,html[data-theme='dark'] .job-row,html[data-theme='dark'] .meetings-featured,html[data-theme='dark'] .travel-featured{background:var(--paper-raised)!important}
+html[data-theme='dark'] .surface-header{background:var(--paper)!important}html[data-theme='dark'] .desk-job-card.surface-object,html[data-theme='dark'] .meeting-row.surface-object,html[data-theme='dark'] .trip-row-maybach.surface-object,html[data-theme='dark'] .job-row,html[data-theme='dark'] .meetings-featured,html[data-theme='dark'] .travel-featured{background:transparent!important}
 @media (prefers-reduced-motion:reduce){.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row,.trip-row-delete{transition:none!important}}
 
 /* ==========================================================================
@@ -1592,10 +1590,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     background:var(--dk-orange);
     width:5px;
   }
-  .meeting-row.pressure-now{
-    background:
-      linear-gradient(100deg,color-mix(in srgb,var(--dk-orange) 8%,var(--paper-raised)),var(--paper-raised) 58%)!important;
-  }
+  .meeting-row.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}
   .meeting-row-name{font-size:17px!important;font-weight:780!important}
   .meeting-row-time{margin-top:8px!important;font-size:12px!important}
   .meeting-row-context{margin-top:7px!important}
@@ -1632,10 +1627,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     opacity:.65;
     pointer-events:none;
   }
-  .trip-row-maybach.pressure-now{
-    background:
-      linear-gradient(100deg,color-mix(in srgb,var(--dk-blue) 7%,var(--paper-raised)),var(--paper-raised) 60%)!important;
-  }
+  .trip-row-maybach.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}
   .trip-row-name{font-size:17px!important;font-weight:780!important}
   .trip-row-time{margin-top:8px!important}
   .trip-row-context{margin-top:7px!important}
@@ -1754,9 +1746,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 
 /* Meetings: the current conversation should feel like a live channel. */
 @media (min-width:701px){
-  .meeting-row.pressure-now{
-    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dk-orange) 20%,transparent),0 8px 22px rgba(var(--shadow-rgb),.07)!important;
-  }
+  .meeting-row.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}
   .meeting-row.pressure-now::after{
     content:'LIVE';
     position:absolute;
