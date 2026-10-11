@@ -416,13 +416,30 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     const hasPurpose = grammar.relations.includes('action→purpose');
     const hasLocationRelation = grammar.relations.includes('purpose→location');
     const legacyLocation = request.locationText?.trim().toLowerCase();
+    const purposeText = request.purposeText?.trim().toLowerCase();
+    const temporalConnectives = [
+      'after', 'before', 'during', 'following', 'once', 'when', 'while', 'until', 'since',
+    ];
+    // Case 1: the legacy slot itself is a temporal/dependency tail.
     const isTemporalOrDependencyTail =
       !!legacyLocation &&
       /^(?:after|before|during|following|once|when|while|until|since)\b/i.test(legacyLocation);
+    // Case 2: the legacy parser captured the *purpose's infinitive* as the
+    // location (e.g. "recalibrate the fluxgate" from "...to recalibrate the
+    // fluxgate after the firmware swap"). Clear it only when that exact
+    // captured prefix is immediately followed by a temporal/dependency clause.
+    // A real place at the end of a purpose ("...measurements for Angela Place",
+    // "...gutter measurements at Smith Road") does not satisfy this shape.
+    const locationIsPurposePrefixBeforeTemporalTail =
+      !!legacyLocation &&
+      !!purposeText &&
+      temporalConnectives.some((connective) =>
+        purposeText.startsWith(`${legacyLocation} ${connective} `)
+      );
     if (
       hasPurpose &&
       !hasLocationRelation &&
-      isTemporalOrDependencyTail
+      (isTemporalOrDependencyTail || locationIsPurposePrefixBeforeTemporalTail)
     ) {
       request.locationText = null;
       // Keep the returned semantic projection aligned with the request that
