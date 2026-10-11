@@ -19,7 +19,7 @@ The `npm run audit:css-cascade` command checks brace balance and prevents the `!
 | `app/desktop-settings.css` | 0 |
 | `app/dokkit-player.css` | 0 |
 
-These are ceilings copied from the current mainline, not acceptable end-state targets. The first two files contain the bulk of the remaining cascade debt. A future cleanup should reduce the budgets deliberately. If a change genuinely needs a new `!important`, the PR must explain why and update the ceiling explicitly.
+These are ceilings copied from the current mainline, not acceptable end-state targets. The first two files contain the bulk of the remaining cascade debt. A future cleanup should reduce the budgets deliberately. The first consolidation has lowered `surface-system.css` from 792 to 788 `!important` occurrences. If a change genuinely needs a new `!important`, the PR must explain why and update the ceiling explicitly.
 
 ## Cleanup rules
 
@@ -35,6 +35,7 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Added a hard ceiling against increasing `!important` counts in the six high-impact CSS files.
 - Added brace-balance validation to catch a class of malformed CSS edits.
 - Consolidated the shared navigation border/background values into the canonical base rule; retained distinct dark-theme, mobile, and desktop variants.
+- Removed a repeated desktop `.meeting-row.pressure-now` declaration after verifying it duplicates the same selector, media scope, and values without any intervening equal-specificity override.
 - Wired the audit into the existing production build chain, so the web and Capacitor-test builds execute it.
 
 ## Still to complete
