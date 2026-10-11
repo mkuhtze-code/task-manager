@@ -55,8 +55,9 @@ Source of truth: World-Class UI & UX Design Report (12 October 2026)
 - [x] Preserve task IDs, save paths, object ownership, and existing detail actions.
 - [x] Audit Meetings detail: already uses shared ContextLine for time, linked job, and location; preserve that domain-specific ordering.
 - [x] Audit Travel detail: stop editor already exposes stop name, location, and optional job link, but its header does not clearly anchor the stop to its trip/day.
-- [ ] Add a compact trip → day → stop identity line to Travel stop detail without duplicating navigation or changing stop persistence.
-- [ ] Verify task job links, narrow screens, and desktop pane interaction.
+- [x] Add a compact trip → day → stop identity line to Travel stop detail using the shared ContextLine primitive.
+- [x] Pass the existing trip name and day context into the stop detail sheet without changing stop IDs, persistence, or navigation.
+- [ ] Verify task job links, narrow screens, and desktop pane interaction; check Travel breadcrumb at narrow Android widths.
 
 ## Sequencing
 1. UX-1: grammar lock and shared foundations.
