@@ -502,7 +502,7 @@ export function TodayPage() {
   );
 
   const { rowElsRef, handleDragHandlePointerDown, handleDragHandlePointerMove, handleDragHandlePointerUp, dragRowStyle } =
-    useDragReorder(setTasks);
+    useDragReorder(setTasks, session?.user?.id);
 
   // ── The "brain": completed-task history feeds fuzzy clustering, which
   // powers both the capture-time suggestion chip and the capacity math's
@@ -1712,16 +1712,19 @@ export function TodayPage() {
     if (overflowPlan.carryIds.length > 0) {
       const carryDate = nextWorkSurfaceDate(new Date(), workDays);
       for (const id of overflowPlan.carryIds) {
-        const { error: carryErr } = await supabase
-          .from('tasks')
-          .update({
-            status: 'pending',
-            started_at: null,
-            surface_date: carryDate,
-            due_today: false,
-          })
-          .eq('id', id);
-        if (carryErr) console.error(carryErr);
+        const carryPatch: Partial<Task> = {
+          status: 'pending',
+          started_at: null,
+          surface_date: carryDate,
+          due_today: false,
+        };
+        if (!queueTaskPatch(id, carryPatch)) {
+          const { error: carryErr } = await supabase
+            .from('tasks')
+            .update(carryPatch)
+            .eq('id', id);
+          if (carryErr) console.error(carryErr);
+        }
       }
       setTasks((prev) =>
         prev.map((t) =>
@@ -1778,7 +1781,7 @@ export function TodayPage() {
     lng: number | null,
     requiresVisit?: boolean | null
   ) {
-    const payload: Record<string, unknown> = {
+    const payload: Partial<Task> = {
       text,
       estimate_mins: mins,
       surface_date: surfaceDate,
@@ -1789,11 +1792,13 @@ export function TodayPage() {
     if (requiresVisit !== undefined) {
       payload.requires_visit = requiresVisit;
     }
-    const { error } = await supabase.from('tasks').update(payload).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not save your changes: ' + error.message);
-      return;
+    if (!queueTaskPatch(id, payload)) {
+      const { error } = await supabase.from('tasks').update(payload).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not save your changes: ' + error.message);
+        return;
+      }
     }
     setTasks((prev) =>
       prev.map((t) =>
@@ -1817,12 +1822,13 @@ export function TodayPage() {
 
   async function setRouteIntent(id: string, requiresVisit: boolean | null) {
     const previous = tasksRef.current.find((t) => t.id === id)?.requires_visit ?? null;
-    // Optimistic local update (ref + state) so route membership flips now.
     tasksRef.current = tasksRef.current.map((t) =>
       t.id === id ? { ...t, requires_visit: requiresVisit } : t
     );
     setTasks(tasksRef.current);
     if (sortMode === 'geo_aware') void recalcRoute();
+
+    if (queueTaskPatch(id, { requires_visit: requiresVisit })) return;
 
     const { error } = await supabase
       .from('tasks')
@@ -1849,11 +1855,13 @@ export function TodayPage() {
   // saving info mid-capture must never clobber a text/time edit that is
   // mid-blur elsewhere.
   async function saveTaskInfo(id: string, info: string) {
-    const { error } = await supabase.from('tasks').update({ info }).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not save the information: ' + error.message);
-      return;
+    if (!queueTaskPatch(id, { info })) {
+      const { error } = await supabase.from('tasks').update({ info }).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not save the information: ' + error.message);
+        return;
+      }
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, info } : t)));
   }
