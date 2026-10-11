@@ -650,6 +650,16 @@ function extractLocation(text: string): string | null {
         continue;
       }
 
+      // A communication/action verb followed by a named recipient makes
+      // the next infinitive a purpose clause, not a physical destination:
+      // "Ask Noor to recalibrate the fluxgate" must not yield a location.
+      if (
+        prep === 'to' &&
+        /\b(?:ask|tell|remind|invite|instruct|encourage|request|persuade|help|allow|need|want|have|got|try|plan|hope|expect|decide|agree|promise|manage|learn|prepare|start|begin|continue|stop|forget)\s+(?:me|us|him|her|them|[a-z][a-z'’-]*)(?:\s+[a-z][a-z'’-]*){0,2}\s*$/i.test(before)
+      ) {
+        continue;
+      }
+
       // In "call Jordan to get measurements for Angela Place", this "to"
       // introduces the purpose/action rather than a destination.
       if (
