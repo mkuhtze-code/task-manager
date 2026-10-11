@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -46,6 +47,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 
 /**
  * Native Today capture slice. Tasks are loaded from the shared Supabase
@@ -65,7 +67,8 @@ fun TodayScreen(
     var loading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var captureOpen by remember { mutableStateOf(false) }
-    var draft by remember { mutableStateOf("") }
+    var draft by rememberSaveable { mutableStateOf("") }
+    var captureRequestId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
     var captureError by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
     var updatingTaskIds by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -117,6 +120,8 @@ fun TodayScreen(
                     .joinToString(" ")
                 captureError = null
             }
+        } else if (result.resultCode == android.app.Activity.RESULT_CANCELED) {
+            // Cancellation is not a failed capture. Keep any text already entered.
         }
     }
 
@@ -229,6 +234,7 @@ fun TodayScreen(
         FloatingActionButton(
             onClick = {
                 draft = ""
+                captureRequestId = UUID.randomUUID().toString()
                 captureError = null
                 captureOpen = true
             },
@@ -289,10 +295,11 @@ fun TodayScreen(
                             captureError = null
                             scope.launch {
                                 try {
-                                    repository.captureTask(clean)
+                                    repository.captureTask(clean, captureRequestId)
                                     tasks = repository.loadOpenTasks()
                                     captureOpen = false
                                     draft = ""
+                                    captureRequestId = UUID.randomUUID().toString()
                                 } catch (e: Exception) {
                                     captureError = e.message?.takeIf(String::isNotBlank)
                                         ?: "Capture failed. Your text is still here; retry when ready."
