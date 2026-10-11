@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { authedFetch } from '@/lib/authedFetch';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
+import ContextLine from '@/components/ContextLine';
 import LibrarySheet from '@/components/LibrarySheet';
 import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
@@ -179,6 +180,7 @@ function parseMins(raw: string): number | null {
 
 function ActivityDetailSheet(props: {
   activity: Activity;
+  tripName: string;
   tripDays: TripDay[];
   jobs: Job[];
   dayLabel: string;
@@ -208,6 +210,7 @@ function ActivityDetailSheet(props: {
 }) {
   const {
     activity: a,
+    tripName,
     tripDays,
     jobs,
     dayLabel,
@@ -322,6 +325,16 @@ function ActivityDetailSheet(props: {
             <CloseIcon />
           </button>
         </div>
+
+        <ContextLine
+          className="travel-stop-identity-line"
+          label="Trip, day, and stop"
+          items={[
+            { label: tripName || 'Trip' },
+            { label: `Day ${dayIndex} of ${dayCount} · ${dayLabel}` },
+            { label: text.trim() || a.text, current: true },
+          ]}
+        />
 
         <span className="settings-label">Kind of stop</span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
@@ -1866,6 +1879,7 @@ export default function TripDayView() {
       {openActivity && (
         <ActivityDetailSheet
           activity={openActivity}
+          tripName={trip?.name || 'Trip'}
           tripDays={tripDays}
           jobs={jobs}
           dayLabel={

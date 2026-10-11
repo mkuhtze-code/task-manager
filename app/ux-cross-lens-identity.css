@@ -31,3 +31,8 @@
 .task-detail-header-meta .task-detail-context-line {
   flex-basis: 100%;
 }
+
+.travel-stop-identity-line { min-width: 0; max-width: 100%; flex-wrap: wrap; align-items: baseline; margin: 0 0 12px; color: var(--ink-soft, #64748b); font-size: 0.78rem; line-height: 1.4; }
+.travel-stop-identity-line .context-line-item { min-width: 0; max-width: 100%; }
+.travel-stop-identity-line .context-line-current { color: var(--ink, #1a2933); font-weight: 600; overflow-wrap: anywhere; }
+@media (max-width: 420px) { .travel-stop-identity-line { font-size: 0.75rem; } }
