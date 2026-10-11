@@ -104,7 +104,7 @@ export default function DesktopJobsHeader({
         </div>
 
         <div className="surface-header-actions">
-          <button type="button" className="btn btn-steel" onClick={onCreate}>
+          <button type="button" className="btn btn-steel ux-button ux-button--primary" onClick={onCreate}>
             + New job
           </button>
           <button
