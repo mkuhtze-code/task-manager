@@ -55,7 +55,7 @@ all real theming is driven by Dokkit tokens via `DokkitTheme`.
    involved in the build at all.
 
 Requires Android Studio (with the Android SDK). The version catalog
-(`gradle/libs.versions.toml`) pins AGP 8.13.0, Kotlin 2.2, Gradle 8.14.3,
+(`gradle/libs.versions.toml`) pins AGP 8.13.0, Kotlin 2.4, Gradle 8.14.3,
 and a current stable Compose BOM.
 
 ## Configuring local secrets
@@ -102,11 +102,15 @@ just unconfigured until real credentials are added.
   close, trash, bed, chevron, map pin, refresh, compass, lock, gear,
   today/jobs/travel nav marks).
 - Navigation shell: restrained native bottom bar, **Today → Jobs →
-  Travel**, with Jobs a deliberate placeholder. Feature screens are plain
-  empty shells awaiting their stages.
-- Data foundation: `DokkitConfig`, `SupabaseFactory` (auth + postgrest),
-  `AuthRepository` + `AuthViewModel` state model (session stream → signed
-  in/out), and all domain models + repository boundaries.
+  Travel**, with Jobs a deliberate placeholder.
+- Auth foundation: the root waits for Supabase session restoration, gates
+  feature navigation behind an authenticated session, and offers existing
+  users email/password sign-in (no native sign-up bypass).
+- Travel first slice: a read-only native trip overview loads from the shared
+  `trips` table under existing RLS policies, with loading, empty, error, and
+  retry states. Day itinerary editing and routing remain web-only for now.
+- Data foundation: `DokkitConfig`, `SupabaseFactory`, `AuthRepository`,
+  `AuthViewModel` session state, and shared domain models/repository boundaries.
 - Unit tests: `TimeFormatTest` (ports lib/timeFormat.ts behaviour) and
   `ModelMappingTest` (snake_case → camelCase wire mapping).
 
@@ -115,9 +119,10 @@ just unconfigured until real credentials are added.
 - Full Today UI and its ported sort/route logic (`taskSort`, `todayRoute`,
   `taskIntelligence` ports with behaviour-pinned tests)
 - Jobs feature (entirely — not designed yet)
-- Travel UI and its logic ports (`travelSort`, calculate-day, nearby)
-- Full auth *experience* (the alphabetical email/password/magic-link/Google
-  screens) — only the layer/state model exists
+- Native Travel day/activity editing, route calculations, and offline Room cache
+- Native voice task capture and Android Auto integration (planned after the
+  authenticated native foundation is validated)
+- Magic-link/Google sign-in UI and full account recovery experience
 - Push notifications / FCM (needs the web app's `check-task-timers` cron
   to gain an FCM branch and possibly a small additive schema table)
 - Local cache (Room) — data access is staged behind repository interfaces
