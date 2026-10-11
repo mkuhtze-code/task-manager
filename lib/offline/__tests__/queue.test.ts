@@ -76,4 +76,53 @@ describe('offline queue', () => {
     markOpFailed('u1', op.id, 'network');
     expect(listPendingOps('u1')[0]?.status).toBe('failed');
   });
+  it('does not silently drop pending operations when the queue grows past 200', () => {
+    for (let i = 0; i < 225; i += 1) {
+      enqueueOp('u1', {
+        entity: 'task',
+        action: 'update',
+        entityId: `t${i}`,
+        payload: { id: `t${i}`, order_index: i },
+        clientOpId: `large-queue-${i}`,
+      });
+    }
+    expect(listPendingOps('u1')).toHaveLength(225);
+    expect(loadQueue('u1')).toHaveLength(225);
+  });
+
+  it('dedupes a failed operation instead of creating a second mutation', () => {
+    const first = enqueueOp('u1', {
+      entity: 'task',
+      action: 'update',
+      entityId: 't1',
+      payload: { id: 't1', status: 'done' },
+      clientOpId: 'retry-same-op',
+    });
+    markOpFailed('u1', first.id, 'temporary network error');
+    const second = enqueueOp('u1', {
+      entity: 'task',
+      action: 'update',
+      entityId: 't1',
+      payload: { id: 't1', status: 'done' },
+      clientOpId: 'retry-same-op',
+    });
+    expect(second.id).toBe(first.id);
+    expect(loadQueue('u1').filter((op) => op.clientOpId === 'retry-same-op')).toHaveLength(1);
+  });
+
+  it('makes interrupted syncing operations retryable after a reload', () => {
+    const op = enqueueOp('u1', {
+      entity: 'task',
+      action: 'update',
+      entityId: 't1',
+      payload: { id: 't1', status: 'done' },
+      clientOpId: 'interrupted-sync',
+    });
+    // Simulate the durable state left behind if the tab closes mid-request.
+    const stored = loadQueue('u1');
+    stored[0].status = 'syncing';
+    localStorage.setItem('dokkit.offline.queue.v1:u1', JSON.stringify(stored));
+    expect(listPendingOps('u1').map((entry) => entry.id)).toContain(op.id);
+  });
+
 });

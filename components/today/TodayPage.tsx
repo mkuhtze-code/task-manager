@@ -128,6 +128,18 @@ import { useNow } from '@/hooks/useNow';
 import { useTodayAuth } from '@/hooks/useTodayAuth';
 import { notifyTaskActivity } from '@/hooks/useActiveTask';
 import { showActiveTimerNotification } from '@/lib/activeTimerNotify';
+import { OfflineStatusBar } from '@/components/OfflineStatusBar';
+import {
+  cacheOpenTasks,
+  loadCachedOpenTasks,
+  localPatchTask,
+  localRemoveTask,
+  localUpsertTask,
+  registerTaskSyncHandler,
+  startSyncOnReconnect,
+  flushSyncQueue,
+  isOnline,
+} from '@/lib/offline';
 
 /** Authenticated Today surface — mounted only after authReady && session. */
 
@@ -146,6 +158,16 @@ function estimateContextFrom(
     locationText: source.location_text ?? source.locationText ?? null,
     localHour: now.getHours(),
   };
+}
+
+function makeLocalTaskId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
 }
 
 export function TodayPage() {
@@ -480,7 +502,7 @@ export function TodayPage() {
   );
 
   const { rowElsRef, handleDragHandlePointerDown, handleDragHandlePointerMove, handleDragHandlePointerUp, dragRowStyle } =
-    useDragReorder(setTasks);
+    useDragReorder(setTasks, session?.user?.id);
 
   // ── The "brain": completed-task history feeds fuzzy clustering, which
   // powers both the capture-time suggestion chip and the capacity math's
@@ -673,9 +695,13 @@ export function TodayPage() {
       setTodayDataReady(false);
       return;
     }
-    if (loadedUserIdRef.current === session.user.id) return;
-    loadedUserIdRef.current = session.user.id;
+    const userId = session.user.id;
+    registerTaskSyncHandler();
+    const stopSync = startSyncOnReconnect(userId);
+    if (loadedUserIdRef.current === userId) return stopSync;
+    loadedUserIdRef.current = userId;
     loadEverything();
+    return stopSync;
   }, [session]);
 
   async function loadEverything() {
@@ -815,9 +841,19 @@ export function TodayPage() {
     const { data: taskRows, error: taskError } = await taskPromise;
     if (taskError) {
       console.error('Could not load tasks:', taskError.message);
-      setTaskLoadError(taskError.message);
+      const cached = loadCachedOpenTasks(userId);
+      if (cached.updatedAt) {
+        setTasks(cached.tasks);
+        setTaskLoadError('');
+      } else {
+        setTaskLoadError(taskError.message);
+      }
     } else {
-      setTasks(taskRows || []);
+      const remoteTasks = taskRows || [];
+      cacheOpenTasks(userId, remoteTasks);
+      // Re-read the reconciled snapshot so a refresh cannot erase pending
+      // local mutations that have not reached Supabase yet.
+      setTasks(loadCachedOpenTasks(userId).tasks);
       setTaskLoadError('');
     }
 
@@ -1512,29 +1548,75 @@ export function TodayPage() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert({
-        user_id: userId,
-        text,
-        estimate_mins: mins,
-        source: 'came_up',
-        order_index: maxOrder + 1,
-        surface_date: surfaceDate,
-        intended_time: intendedTime,
-        location_text: locationText,
-        lat,
-        lng,
-        job_id: jobId,
-        original_input: originalInput,
-      })
-      .select()
-      .single();
+    const newTaskId = makeLocalTaskId();
+    let data: Task;
+    const newTask: Task = {
+      id: newTaskId,
+      text,
+      status: 'pending',
+      source: 'came_up',
+      estimate_mins: mins,
+      logged_mins: 0,
+      started_at: null,
+      due_today: false,
+      order_index: maxOrder + 1,
+      created_at: new Date().toISOString(),
+      surface_date: surfaceDate,
+      intended_time: intendedTime,
+      location_text: locationText,
+      lat,
+      lng,
+      requires_visit: null,
+      drive_mins_to_next: 0,
+      route_polyline: null,
+      info: '',
+      job_id: jobId,
+      original_input: originalInput,
+    };
 
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
+    if (!isOnline()) {
+      data = newTask;
+      localUpsertTask(userId, data);
+    } else {
+      const { data: created, error } = await supabase
+        .from('tasks')
+        .insert({
+          id: newTaskId,
+          user_id: userId,
+          text,
+          estimate_mins: mins,
+          source: 'came_up',
+          order_index: maxOrder + 1,
+          surface_date: surfaceDate,
+          intended_time: intendedTime,
+          location_text: locationText,
+          lat,
+          lng,
+          job_id: jobId,
+          original_input: originalInput,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        const transient = /network|fetch|timeout|connection|offline|load failed/i.test(
+          String(error.message || error)
+        );
+        if (transient) {
+          // The request may have reached the server even if its response was
+          // lost. Reuse the same UUID so a later upsert is idempotent.
+          data = newTask;
+          localUpsertTask(userId, data);
+        } else {
+          console.error(error);
+          alert(error.message);
+          return;
+        }
+      } else {
+        data = created as Task;
+        const cached = loadCachedOpenTasks(userId).tasks.filter((task) => task.id !== data.id);
+        cacheOpenTasks(userId, [...cached, data]);
+      }
     }
 
     // Bind engine request → task id so the next utterance can refine this row.
@@ -1630,16 +1712,19 @@ export function TodayPage() {
     if (overflowPlan.carryIds.length > 0) {
       const carryDate = nextWorkSurfaceDate(new Date(), workDays);
       for (const id of overflowPlan.carryIds) {
-        const { error: carryErr } = await supabase
-          .from('tasks')
-          .update({
-            status: 'pending',
-            started_at: null,
-            surface_date: carryDate,
-            due_today: false,
-          })
-          .eq('id', id);
-        if (carryErr) console.error(carryErr);
+        const carryPatch: Partial<Task> = {
+          status: 'pending',
+          started_at: null,
+          surface_date: carryDate,
+          due_today: false,
+        };
+        if (!queueTaskPatch(id, carryPatch)) {
+          const { error: carryErr } = await supabase
+            .from('tasks')
+            .update(carryPatch)
+            .eq('id', id);
+          if (carryErr) console.error(carryErr);
+        }
       }
       setTasks((prev) =>
         prev.map((t) =>
@@ -1696,7 +1781,7 @@ export function TodayPage() {
     lng: number | null,
     requiresVisit?: boolean | null
   ) {
-    const payload: Record<string, unknown> = {
+    const payload: Partial<Task> = {
       text,
       estimate_mins: mins,
       surface_date: surfaceDate,
@@ -1707,11 +1792,13 @@ export function TodayPage() {
     if (requiresVisit !== undefined) {
       payload.requires_visit = requiresVisit;
     }
-    const { error } = await supabase.from('tasks').update(payload).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not save your changes: ' + error.message);
-      return;
+    if (!queueTaskPatch(id, payload)) {
+      const { error } = await supabase.from('tasks').update(payload).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not save your changes: ' + error.message);
+        return;
+      }
     }
     setTasks((prev) =>
       prev.map((t) =>
@@ -1735,12 +1822,13 @@ export function TodayPage() {
 
   async function setRouteIntent(id: string, requiresVisit: boolean | null) {
     const previous = tasksRef.current.find((t) => t.id === id)?.requires_visit ?? null;
-    // Optimistic local update (ref + state) so route membership flips now.
     tasksRef.current = tasksRef.current.map((t) =>
       t.id === id ? { ...t, requires_visit: requiresVisit } : t
     );
     setTasks(tasksRef.current);
     if (sortMode === 'geo_aware') void recalcRoute();
+
+    if (queueTaskPatch(id, { requires_visit: requiresVisit })) return;
 
     const { error } = await supabase
       .from('tasks')
@@ -1767,11 +1855,13 @@ export function TodayPage() {
   // saving info mid-capture must never clobber a text/time edit that is
   // mid-blur elsewhere.
   async function saveTaskInfo(id: string, info: string) {
-    const { error } = await supabase.from('tasks').update({ info }).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not save the information: ' + error.message);
-      return;
+    if (!queueTaskPatch(id, { info })) {
+      const { error } = await supabase.from('tasks').update({ info }).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not save the information: ' + error.message);
+        return;
+      }
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, info } : t)));
   }
@@ -1780,23 +1870,28 @@ export function TodayPage() {
   // never changes the Task itself or Today's scheduling — a Job is a lens,
   // not a constraint. The Task stays exactly where Today would show it.
   async function moveTaskToJob(id: string, jobId: string | null) {
-    const { error } = await supabase.from('tasks').update({ job_id: jobId }).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not move the task: ' + error.message);
-      return;
+    if (!queueTaskPatch(id, { job_id: jobId })) {
+      const { error } = await supabase.from('tasks').update({ job_id: jobId }).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not move the task: ' + error.message);
+        return;
+      }
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, job_id: jobId } : t)));
   }
 
   async function toggleDueToday(id: string, current: boolean) {
-    const { error } = await supabase.from('tasks').update({ due_today: !current }).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not update the task: ' + error.message);
-      return;
+    const due_today = !current;
+    if (!queueTaskPatch(id, { due_today })) {
+      const { error } = await supabase.from('tasks').update({ due_today }).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not update the task: ' + error.message);
+        return;
+      }
     }
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due_today: !current } : t)));
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due_today } : t)));
   }
 
   async function startTask(id: string) {
@@ -1804,14 +1899,22 @@ export function TodayPage() {
     if (alreadyActive) return;
     const task = tasks.find((t) => t.id === id);
     const startedAt = new Date().toISOString();
-    const { error } = await supabase.from('tasks').update({ status: 'active', started_at: startedAt, near_notified: false, over_notified: false, last_overdue_ping_at: null }).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not start the task: ' + error.message);
-      return;
+    const patch: Partial<Task> = {
+      status: 'active',
+      started_at: startedAt,
+      near_notified: false,
+      over_notified: false,
+      last_overdue_ping_at: null,
+    };
+    if (!queueTaskPatch(id, patch)) {
+      const { error } = await supabase.from('tasks').update(patch).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not start the task: ' + error.message);
+        return;
+      }
     }
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'active', started_at: startedAt } : t)));
-    // Fire OS notification immediately (same turn as the Start tap).
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     if (task) {
       void showActiveTimerNotification({
         taskId: id,
@@ -1837,13 +1940,16 @@ export function TodayPage() {
     if (!task || !task.started_at) return;
     const sessionMins = (Date.now() - new Date(task.started_at).getTime()) / 60000;
     const newLogged = task.logged_mins + sessionMins;
-    const { error } = await supabase.from('tasks').update({ status: 'pending', started_at: null, logged_mins: newLogged }).eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not stop the task: ' + error.message);
-      return;
+    const patch: Partial<Task> = { status: 'pending', started_at: null, logged_mins: newLogged };
+    if (!queueTaskPatch(id, patch)) {
+      const { error } = await supabase.from('tasks').update(patch).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not stop the task: ' + error.message);
+        return;
+      }
     }
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'pending', started_at: null, logged_mins: newLogged } : t)));
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     notifyTaskActivity({
       type: 'stopped',
       taskId: id,
@@ -2026,6 +2132,29 @@ export function TodayPage() {
     }
   }
 
+  /** Apply a task mutation locally first, then let the durable queue sync it. */
+  function queueTaskPatch(id: string, patch: Partial<Task>): boolean {
+    const userId = session?.user?.id;
+    if (!userId) return false;
+    const existing = tasks.find((task) => task.id === id);
+    const next = localPatchTask(userId, id, patch);
+    if (!next && existing) {
+      localUpsertTask(userId, { ...existing, ...patch } as Task);
+    } else if (!next) {
+      return false;
+    }
+    void flushSyncQueue(userId);
+    return true;
+  }
+
+  function queueTaskDelete(id: string): boolean {
+    const userId = session?.user?.id;
+    if (!userId) return false;
+    localRemoveTask(userId, id);
+    void flushSyncQueue(userId);
+    return true;
+  }
+
   async function completeTask(id: string) {
     const task = tasks.find((t) => t.id === id);
     let finalLogged = task ? task.logged_mins : 0;
@@ -2060,20 +2189,20 @@ export function TodayPage() {
           },
         });
     const actualForDb = loop.actualForDb;
-    const { error } = await supabase
-      .from('tasks')
-      .update({
-        status: 'done',
-        started_at: null,
-        logged_mins: finalLogged,
-        actual_mins: actualForDb > 0 ? actualForDb : null,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not complete the task: ' + error.message);
-      return;
+    const completionPatch: Partial<Task> = {
+      status: 'done',
+      started_at: null,
+      logged_mins: finalLogged,
+      actual_mins: actualForDb > 0 ? actualForDb : null,
+      completed_at: new Date().toISOString(),
+    };
+    if (!queueTaskPatch(id, completionPatch)) {
+      const { error } = await supabase.from('tasks').update(completionPatch).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not complete the task: ' + error.message);
+        return;
+      }
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
     if (task && loop.trainMins != null) {
@@ -2087,7 +2216,6 @@ export function TodayPage() {
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
     notifyTaskActivity({ type: 'completed', taskId: id });
   }
-
 
   async function confirmPostStopDone() {
     if (!postStopPrompt) return;
@@ -2106,11 +2234,13 @@ export function TodayPage() {
 
   async function deleteTask(id: string) {
     const task = tasks.find((t) => t.id === id);
-    const { error } = await supabase.from('tasks').delete().eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not delete the task: ' + error.message);
-      return;
+    if (!queueTaskDelete(id)) {
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not delete the task: ' + error.message);
+        return;
+      }
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
@@ -2769,6 +2899,7 @@ export function TodayPage() {
     >
       <TravelAwarenessBanner userId={session.user.id} />
 
+      <OfflineStatusBar userId={session?.user?.id ?? null} />
       <TodayHeader
         overloaded={overloaded}
         weekdayLabel={weekdayLabel}

@@ -8416,3 +8416,32 @@ select:-webkit-autofill {
 .today-system-context {
   margin: 0 var(--space-page, 16px) 4px;
 }
+
+
+/* Calm, persistent feedback for local-first task mutations. */
+.offline-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 var(--space-page, 16px) 8px;
+  padding: 7px 10px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm, 12px);
+}
+.offline-status-bar.offline {
+  color: var(--text-primary);
+}
+.offline-status-retry {
+  flex: 0 0 auto;
+  border: 0;
+  padding: 2px 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}

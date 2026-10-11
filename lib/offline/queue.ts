@@ -19,11 +19,13 @@ export function loadQueue(userId: string): SyncOp[] {
 }
 
 function saveQueue(userId: string, ops: SyncOp[]): void {
+  // Never truncate unacknowledged work: silently dropping an offline mutation
+  // is worse than retaining a longer queue. Bound only completed history.
   const pending = ops.filter(
     (o) => o.status === 'pending' || o.status === 'syncing' || o.status === 'failed'
   );
   const done = ops.filter((o) => o.status === 'done').slice(-50);
-  writeJson(key(userId), [...pending, ...done].slice(-200));
+  writeJson(key(userId), [...pending, ...done]);
 }
 
 export function enqueueOp(
@@ -39,7 +41,7 @@ export function enqueueOp(
   const clientOpId = input.clientOpId || makeClientOpId(input.entity);
   const existing = loadQueue(userId);
   const prior = existing.find(
-    (o) => o.clientOpId === clientOpId && (o.status === 'pending' || o.status === 'done')
+    (o) => o.clientOpId === clientOpId
   );
   if (prior) return prior;
 
@@ -62,7 +64,11 @@ export function enqueueOp(
 }
 
 export function listPendingOps(userId: string): SyncOp[] {
-  return loadQueue(userId).filter((o) => o.status === 'pending' || o.status === 'failed');
+  // A persisted 'syncing' op may be left behind by a closed tab or app crash.
+  // Treat it as retryable; handlers must be idempotent for this reason.
+  return loadQueue(userId).filter(
+    (o) => o.status === 'pending' || o.status === 'failed' || o.status === 'syncing'
+  );
 }
 
 export function markOpSyncing(userId: string, opId: string): void {
