@@ -181,7 +181,7 @@ html[data-surface='desktop'] .desk-sidebar-settings .desk-nav-icon {
 }
 
 .desk-context-chip-good {
-  color: var(--moss-text, var(--steel-dark));
+  color: var(--moss-text);
   background: var(--paper-raised);
   box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.06);
 }
