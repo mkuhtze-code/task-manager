@@ -10,7 +10,7 @@
   position: sticky;
   top: 0;
   align-self: flex-start;
-  width: 240px;
+  width: var(--desktop-sidebar-width);
   flex-shrink: 0;
   height: 100vh;
   padding: var(--space-5) var(--space-3);
