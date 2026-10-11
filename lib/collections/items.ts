@@ -93,9 +93,13 @@ export function looksLikeImplicitItem(text: string): boolean {
   if (!t) return false;
   // Active-list context is not a mode. Explicit task language must always
   // fall through to normal task capture instead of becoming a list item.
+  // A live collection is context, not a mode. Corrections, reminders, and
+  // explicit task-boundary language must not be reinterpreted as item lists.
   if (
-    /\b(need to|have to|should|must|please|remind|schedule|meeting)\b/i.test(t) ||
-    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s*up|move|reschedule|postpone|go|head|drive|travel|take|drop\s*off|deliver|pick\s*up|grab|collect|get|fetch)\b/i.test(t)
+    /\b(?:no\s+wait|actually|sorry|i\s+meant)\b/i.test(t) ||
+    /\b(?:set|create|keep|leave)\s+(?:(?:the|a|an)\s+)?(?:reminder|alarm|timer|separate\s+task|task)\b/i.test(t) ||
+    /\b(need to|have to|should|must|please|remind(?:er)?|schedule|meeting)\b/i.test(t) ||
+    /^(?:call|ring|phone|email|text|message|contact|check|inspect|fix|repair|send|write|book|pay|finish|review|confirm|ask|tell|meet|visit|order|clean|measure|install|remove|replace|update|change|chase|follow\s+up|move|reschedule|postpone|go|head|drive|travel|take|drop\s+off|deliver|pick\s*up|grab|collect|get|fetch|quote)\b/i.test(t)
   ) {
     return false;
   }
