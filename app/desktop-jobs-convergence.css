@@ -309,7 +309,7 @@ html[data-surface='desktop'] .desk-job-card {
 }
 
 html[data-surface='desktop'] .desk-job-card:hover {
-  border-color: var(--line-strong, var(--line));
+  border-color: var(--line-strong);
   box-shadow: 0 5px 18px rgba(var(--shadow-rgb), 0.07);
   transform: translateY(-1px);
 }
@@ -375,7 +375,7 @@ html[data-surface='desktop'] .desk-job-card-status.done {
   height: 24px;
   padding: 0;
   border: 0;
-  color: var(--moss-text, var(--ink));
+  color: var(--moss-text);
 }
 
 html[data-surface='desktop'] .desk-job-card-location {
