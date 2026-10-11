@@ -230,12 +230,12 @@ export function answerFeasibility(
       contextAt: nowIso,
     });
     // FitState: strong | possible | poor | blocked | unknown | protect | carry_safe | needs_context | uncertain
+    // "protect" is a carry/commitment instruction, not evidence that the work
+    // cannot fit. The explicit remaining-vs-needed comparison below answers fit.
     v3Fits =
       fitDecision.fit === 'strong' || fitDecision.fit === 'possible'
         ? true
-        : fitDecision.fit === 'blocked' ||
-            fitDecision.fit === 'protect' ||
-            fitDecision.fit === 'poor'
+        : fitDecision.fit === 'blocked' || fitDecision.fit === 'poor'
           ? false
           : null;
   }
