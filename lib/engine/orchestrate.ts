@@ -407,6 +407,48 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     if (grammar.subjectText) request.subjectText = grammar.subjectText;
     if (grammar.objectText) request.objectText = grammar.objectText;
     if (grammar.locationText) request.locationText = grammar.locationText;
+
+    // A legacy extractor can mistake a temporal/dependency clause such as
+    // "after the firmware swap" for a physical location. Only clear a slot
+    // when its value itself begins with a temporal/dependency connective.
+    // Do not infer that a place is invalid merely because it appears inside
+    // a purpose/object phrase: valid locations often occur after "at" or "for".
+    const hasPurpose = grammar.relations.includes('action→purpose');
+    const hasLocationRelation = grammar.relations.includes('purpose→location');
+    const legacyLocation = request.locationText?.trim().toLowerCase();
+    const purposeText = request.purposeText
+      ?.trim()
+      .toLowerCase()
+      .replace(/^to\s+/, '');
+    const temporalConnectives = [
+      'after', 'before', 'during', 'following', 'once', 'when', 'while', 'until', 'since',
+    ];
+    // Case 1: the legacy slot itself is a temporal/dependency tail.
+    const isTemporalOrDependencyTail =
+      !!legacyLocation &&
+      /^(?:after|before|during|following|once|when|while|until|since)\b/i.test(legacyLocation);
+    // Case 2: the legacy parser captured the *purpose's infinitive* as the
+    // location (e.g. "recalibrate the fluxgate" from "...to recalibrate the
+    // fluxgate after the firmware swap"). Clear it only when that exact
+    // captured prefix is immediately followed by a temporal/dependency clause.
+    // A real place at the end of a purpose ("...measurements for Angela Place",
+    // "...gutter measurements at Smith Road") does not satisfy this shape.
+    const locationIsPurposePrefixBeforeTemporalTail =
+      !!legacyLocation &&
+      !!purposeText &&
+      temporalConnectives.some((connective) =>
+        purposeText.startsWith(`${legacyLocation} ${connective} `)
+      );
+    if (
+      hasPurpose &&
+      !hasLocationRelation &&
+      (isTemporalOrDependencyTail || locationIsPurposePrefixBeforeTemporalTail)
+    ) {
+      request.locationText = null;
+      // Keep the returned semantic projection aligned with the request that
+      // will drive the plan/action, rather than exposing the stale slot.
+      semantic.locationText = null;
+    }
   }
 
   if (grammar.relations.length > 0) {
