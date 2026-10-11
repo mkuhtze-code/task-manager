@@ -129,7 +129,7 @@ export default function DesktopMeetingsHeader({
           </button>
           <button
             type="button"
-            className="btn btn-steel surface-primary-action"
+            className="btn btn-steel surface-primary-action ux-button ux-button--primary"
             onClick={onNewMeeting}
           >
             Record
