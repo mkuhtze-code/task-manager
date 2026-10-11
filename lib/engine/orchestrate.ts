@@ -408,22 +408,21 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     if (grammar.objectText) request.objectText = grammar.objectText;
     if (grammar.locationText) request.locationText = grammar.locationText;
 
-    // A legacy extractor can mistake the tail of a communication purpose
-    // (for example, "after the firmware swap") for a physical location.
-    // When the semantic grammar has positively identified a purpose but no
-    // destination relation, remove only that contaminated value. Explicit
-    // destinations remain protected by the grammar's purpose→location role.
+    // A legacy extractor can mistake a temporal/dependency clause such as
+    // "after the firmware swap" for a physical location. Only clear a slot
+    // when its value itself begins with a temporal/dependency connective.
+    // Do not infer that a place is invalid merely because it appears inside
+    // a purpose/object phrase: valid locations often occur after "at" or "for".
     const hasPurpose = grammar.relations.includes('action→purpose');
     const hasLocationRelation = grammar.relations.includes('purpose→location');
     const legacyLocation = request.locationText?.trim().toLowerCase();
-    const purposeEvidence = [grammar.purposeText, grammar.subjectText, grammar.objectText]
-      .filter((value): value is string => !!value)
-      .map((value) => value.toLowerCase());
+    const isTemporalOrDependencyTail =
+      !!legacyLocation &&
+      /^(?:after|before|during|following|once|when|while|until|since)\b/i.test(legacyLocation);
     if (
       hasPurpose &&
       !hasLocationRelation &&
-      legacyLocation &&
-      purposeEvidence.some((value) => value.includes(legacyLocation))
+      isTemporalOrDependencyTail
     ) {
       request.locationText = null;
       // Keep the returned semantic projection aligned with the request that
