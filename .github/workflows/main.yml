@@ -2,6 +2,10 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/main.yml'
   push:
     tags:
       - 'v*'
@@ -28,6 +32,10 @@ jobs:
 
       - name: Make Gradle executable
         run: chmod +x ./android/gradlew
+
+      - name: Run Android unit tests
+        working-directory: android
+        run: ./gradlew testDebugUnitTest
 
       - name: Build Debug APK
         working-directory: android

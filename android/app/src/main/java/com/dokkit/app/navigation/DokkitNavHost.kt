@@ -5,35 +5,35 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.navigation
 import com.dokkit.app.core.theme.DokkitThemeState
+import com.dokkit.app.data.remote.NativeTravelOverviewRepository
+import com.dokkit.app.data.remote.SupabaseFactory
 import com.dokkit.app.ui.jobs.JobsPlaceholderScreen
 import com.dokkit.app.ui.lab.DesignLabScreen
 import com.dokkit.app.ui.today.TodayScreen
 import com.dokkit.app.ui.travel.TravelScreen
 
 /**
- * Navigation shell. A restrained bottom bar (three destinations) — not a
- * web tab bar and not a branded M3 NavigationBar. Each destination is
- * wired through its own composable entry point so it can be lifted into a
- * separate Gradle feature module later without reworking the graph.
- *
- * [DesignLabScreen] is an internal dev surface reachable from the Today
- * header, not a destination in the bar.
+ * Navigation shell. Travel reads the signed-in user's trips through the
+ * existing Supabase/RLS boundary; Today and Jobs remain staged prototypes.
  */
 @Composable
 fun DokkitNavHost(
     themeState: DokkitThemeState,
+    supabaseFactory: SupabaseFactory,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+    val travelRepository = androidx.compose.runtime.remember(supabaseFactory) {
+        NativeTravelOverviewRepository(supabaseFactory)
+    }
 
     Scaffold(
         containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
@@ -60,7 +60,7 @@ fun DokkitNavHost(
         NavHost(
             navController = navController,
             startDestination = DokkitDestination.Today.route,
-            modifier = Modifier
+            modifier = androidx.compose.ui.Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
@@ -74,7 +74,7 @@ fun DokkitNavHost(
                 JobsPlaceholderScreen()
             }
             composable(DokkitDestination.Travel.route) {
-                TravelScreen()
+                TravelScreen(repository = travelRepository)
             }
             composable("lab") {
                 DesignLabScreen(
