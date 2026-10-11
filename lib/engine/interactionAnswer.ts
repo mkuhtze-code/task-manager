@@ -277,13 +277,17 @@ export function answerFeasibility(
   } else if (remaining >= needed + 15 && (v3Fits === true || v3Fits === null)) {
     fits = true;
     const spare = remaining - needed;
-    textOut = afternoonHint
-      ? `Yes. You can fit a visit this afternoon ${dayLabel}. After travel and ~${visit} minutes on site you should still have about ${spare} minutes when you get back.`
-      : visitMode\n        ? `Yes. Roughly ${remaining} minutes remain ${dayLabel}; the stop needs about ${needed} minutes including travel, leaving ~${spare} minutes.`\n        : `Yes. Roughly ${remaining} minutes remain ${dayLabel}; this task needs about ${needed} minutes, leaving ~${spare} minutes.`;
+    textOut = afternoonHint && visitMode
+      ? \`Yes. You can fit a visit this afternoon \${dayLabel}. After travel and ~\${visit} minutes on site you should still have about \${spare} minutes when you get back.\`
+      : visitMode
+        ? \`Yes. Roughly \${remaining} minutes remain \${dayLabel}; the stop needs about \${needed} minutes including travel, leaving ~\${spare} minutes.\`
+        : \`Yes. Roughly \${remaining} minutes remain \${dayLabel}; this task needs about \${needed} minutes, leaving ~\${spare} minutes.\`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, `spare≈${spare}`);
   } else if (remaining >= needed) {
     fits = true;
-    textOut = visitMode\n      ? `You can, but it is tight. About ${remaining} minutes remain ${dayLabel} and the visit plus travel is ~${needed} minutes — little buffer if anything overruns.`\n      : `You can, but it is tight. About ${remaining} minutes remain ${dayLabel} and this task needs ~${needed} minutes — little buffer if anything overruns.`;
+    textOut = visitMode
+      ? \`You can, but it is tight. About \${remaining} minutes remain \${dayLabel} and the visit plus travel is ~\${needed} minutes — little buffer if anything overruns.\`
+      : \`You can, but it is tight. About \${remaining} minutes remain \${dayLabel} and this task needs ~\${needed} minutes — little buffer if anything overruns.\`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'tight_fit');
   } else {
     fits = false;
@@ -321,7 +325,8 @@ export function actFitDecision(
   decisionTrace: DecisionTrace | null;
   facts: string[];
 } {
-  const capacityMode = capacityModeForUtterance(input.input.text, input);\n  const answer = answerFeasibility('', cycle, input, {
+  const capacityMode = capacityModeForUtterance(input.input.text, input);
+  const answer = answerFeasibility('', cycle, input, {
     capacityMode,
   });
   return {
