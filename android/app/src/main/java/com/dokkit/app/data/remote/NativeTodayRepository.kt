@@ -4,7 +4,6 @@ import com.dokkit.app.domain.model.Task
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
-import io.github.jan.supabase.postgrest.query.filter.eq
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.roundToInt
