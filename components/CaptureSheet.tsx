@@ -727,6 +727,15 @@ onClick={(e) => e.stopPropagation()}
         role="status"
         aria-live="polite"
       >
+        {speechStatus.tone !== 'neutral' ? (
+          <span className="capture-speech-status-label">
+            {speechStatus.tone === 'propose'
+              ? 'Suggestion'
+              : speechStatus.tone === 'ask'
+                ? 'Needs your input'
+                : 'No action taken'}
+          </span>
+        ) : null}
         <span>{speechStatus.message}</span>
 
         <button
