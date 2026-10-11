@@ -266,14 +266,14 @@ export function NewMeetingSheet(props: {
             ) : jobs.length === 0 ? (
               <div className="reminder-date-row">
                 <span className="settings-help">No jobs yet — create one from the Jobs tab</span>
-                <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
+                <button type="button" className="btn-text ux-button ux-button--quiet" onClick={() => setShowJobField(false)}>Cancel</button>
               </div>
             ) : (
               <div className="job-picker">
                 {jobs.map((j) => (
                   <button type="button" key={j.id} className="move-day-option" onClick={() => { setJobId(j.id); setShowJobField(false); }}>{j.name}</button>
                 ))}
-                <button type="button" className="btn-text" onClick={() => setShowJobField(false)}>Cancel</button>
+                <button type="button" className="btn-text ux-button ux-button--quiet" onClick={() => setShowJobField(false)}>Cancel</button>
               </div>
             )}
 
@@ -289,7 +289,7 @@ export function NewMeetingSheet(props: {
 
         <div className="capture-row">
           <button className="btn btn-steel" style={{ flex: 1 }} onClick={submit} disabled={saving}>{saving ? 'Saving…' : 'Add meeting'}</button>
-          <button className="btn-text" onClick={onClose}>Cancel</button>
+          <button className="btn-text ux-button ux-button--quiet" onClick={onClose}>Cancel</button>
         </div>
       </div>
     </div>
