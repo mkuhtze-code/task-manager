@@ -18,7 +18,7 @@
   margin: 0;
   font-size: 12px;
   font-weight: 550;
-  color: var(--ink-faint, #94a3b8);
+  color: var(--ink-faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -154,13 +154,13 @@
 .job-mobile-tabs {
   display: flex;
   gap: 4px;
-  padding: 8px var(--space-page, 16px);
+  padding: 8px var(--space-4);
   position: sticky;
   top: 0;
   z-index: 20;
   background: var(--bg);
   border-bottom: 1px solid var(--border-default);
-  margin: 0 calc(-1 * var(--space-page, 16px)) 4px;
+  margin: 0 calc(-1 * var(--space-4)) 4px;
 }
 
 .job-mobile-tab {
