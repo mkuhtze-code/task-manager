@@ -1,14 +1,16 @@
 package com.dokkit.app.data.remote
 
 import com.dokkit.app.domain.model.Task
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 
 /**
  * Authenticated native task-capture boundary.
  *
- * All operations use the app's anon-key client and the current Supabase
- * session. Row-level security remains the authority for tenant isolation.
+ * Uses the app's anon-key client and current Supabase session. Row-level
+ * security remains the authority for tenant isolation; no user id is
+ * accepted from the UI and no privileged key is present.
  */
 class NativeTodayRepository(
     private val supabaseFactory: SupabaseFactory,
@@ -22,10 +24,11 @@ class NativeTodayRepository(
             .decodeList<Task>()
             .filter { it.status != "done" }
 
-    suspend fun captureTask(text: String, userId: String) {
+    suspend fun captureTask(text: String) {
         val cleanText = text.trim()
         require(cleanText.isNotEmpty()) { "Enter something to capture." }
-        require(userId.isNotBlank()) { "Sign in again before capturing a task." }
+        val userId = supabaseFactory.supabase.auth.currentUserOrNull()?.id
+            ?: error("Your session has expired. Sign in again to capture this.")
 
         supabaseFactory.supabase
             .from("tasks")
