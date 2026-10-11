@@ -50,7 +50,8 @@
     "test:context-live-l": "vitest run lib/engine/__tests__/phaseLLiveTaskContinuity.test.ts",
     "test:phaseN-compose": "vitest run lib/semantic-contract/__tests__/shadowComposition.test.ts",
     "test:phaseN-accuracy": "vitest run lib/semantic-contract/__tests__/semanticExpectationScoring.test.ts",
-    "test:phaseAE": "vitest run lib/cpu/__tests__/phaseAEExecutionAuthorization.test.ts"
+    "test:phaseAE": "vitest run lib/cpu/__tests__/phaseAEExecutionAuthorization.test.ts",
+    "test:stt-production": "node scripts/check-stt-production.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
