@@ -40,7 +40,7 @@ function setMeta(
   writeJson(metaKey(userId), { ...cur, ...patch });
 }
 
-let flushing = false;
+const flushingUsers = new Set<string>();
 
 export async function flushSyncQueue(userId: string): Promise<{
   flushed: number;
@@ -49,8 +49,8 @@ export async function flushSyncQueue(userId: string): Promise<{
   if (!isOnline()) {
     return { flushed: 0, failed: 0 };
   }
-  if (flushing) return { flushed: 0, failed: 0 };
-  flushing = true;
+  if (flushingUsers.has(userId)) return { flushed: 0, failed: 0 };
+  flushingUsers.add(userId);
   let flushed = 0;
   let failed = 0;
   try {
@@ -77,7 +77,7 @@ export async function flushSyncQueue(userId: string): Promise<{
       });
     }
   } finally {
-    flushing = false;
+    flushingUsers.delete(userId);
   }
   return { flushed, failed };
 }
