@@ -149,7 +149,11 @@ export function createCaptureContractSession() {
     }
 
     const { proposal } = entry;
-    if (!proposal.authorizationRequired || captureMustNotCreate(proposal.result)) {
+    if (
+      !proposal.authorizationRequired ||
+      (captureMustNotCreate(proposal.result) &&
+        proposal.status !== 'collection_confirmation_required')
+    ) {
       return { status: 'not_authorizable', requestId: input.requestId };
     }
 
