@@ -554,9 +554,9 @@ export default function Preferences() {
       <div className="settings-panel">
         <div className="settings-panel-title">Work hours</div>
         <div className="settings-row">
-          <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
+          <input type="time" className="ux-field-control" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
           <span className="prefs-to">to</span>
-          <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
+          <input type="time" className="ux-field-control" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
         </div>
 
         <span className="settings-label">Work days</span>
