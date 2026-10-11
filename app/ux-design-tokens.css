@@ -2,8 +2,8 @@
  *
  * globals.css remains the current source of truth for brand colour, semantic
  * colour aliases, typography, spacing, radii, and control sizes. This layer
- * centralises shared layout and stacking contracts without changing current
- * component rendering. Migrate consumers in measured, testable follow-up passes.
+ * centralises shared geometry, stacking, and focus-treatment aliases. Migrate
+ * consumers in measured, testable follow-up passes.
  */
 
 :root {
@@ -21,6 +21,9 @@
   --sheet-radius: var(--radius-lg);
   --sheet-radius-mobile-top: var(--radius-lg);
   --surface-page: var(--paper);
+
+  /* One keyboard-focus treatment shared by inputs and interactive surfaces. */
+  --focus-ring: var(--shadow-focus);
 
   /* Shared stacking contract: overlays sit above sticky chrome. */
   --z-base: 0;
