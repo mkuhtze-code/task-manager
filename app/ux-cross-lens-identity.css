@@ -1,0 +1,33 @@
+/* UX-4 — Keep task → job/location identity consistent in both detail presentations. */
+.task-detail-context-line {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: baseline;
+  color: var(--ink-soft, #64748b);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.task-detail-context-line .context-line-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.task-detail-context-line .context-line-link,
+.task-detail-context-line .context-line-current {
+  overflow-wrap: anywhere;
+}
+
+.task-detail-context-line .context-line-link {
+  text-underline-offset: 0.15em;
+}
+
+.desk-detail-toolbar-left .task-detail-context-line {
+  flex-basis: 100%;
+  margin-top: 0.15rem;
+}
+
+.task-detail-header-meta .task-detail-context-line {
+  flex-basis: 100%;
+}
