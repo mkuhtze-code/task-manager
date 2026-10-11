@@ -5,7 +5,9 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.query.filter.eq
+import java.time.Duration
 import java.time.Instant
+import kotlin.math.roundToInt
 
 /**
  * Authenticated native task-capture boundary.
@@ -33,25 +35,48 @@ class NativeTodayRepository(
         completedAt = null,
     )
 
-    suspend fun stopTask(taskId: String) = updateTask(
-        taskId = taskId,
-        status = "pending",
-        startedAt = null,
-        completedAt = null,
-    )
+    suspend fun stopTask(task: Task) {
+        val measuredMinutes = measuredMinutes(task)
+        updateTask(
+            taskId = task.id,
+            status = "pending",
+            startedAt = null,
+            completedAt = null,
+            loggedMins = measuredMinutes,
+            actualMins = null,
+        )
+    }
 
-    suspend fun completeTask(taskId: String) = updateTask(
-        taskId = taskId,
-        status = "done",
-        startedAt = null,
-        completedAt = Instant.now().toString(),
-    )
+    suspend fun completeTask(task: Task) {
+        val measuredMinutes = measuredMinutes(task)
+        updateTask(
+            taskId = task.id,
+            status = "done",
+            startedAt = null,
+            completedAt = Instant.now().toString(),
+            loggedMins = measuredMinutes,
+            actualMins = measuredMinutes.takeIf { it > 0.0 }?.roundToInt()?.coerceAtLeast(1),
+        )
+    }
+
+    private fun measuredMinutes(task: Task): Double {
+        val activeMinutes = task.startedAt?.let { startedAt ->
+            runCatching {
+                Duration.between(Instant.parse(startedAt), Instant.now())
+                    .toMillis()
+                    .coerceAtLeast(0L) / 60_000.0
+            }.getOrDefault(0.0)
+        } ?: 0.0
+        return (task.loggedMins + activeMinutes).coerceAtLeast(0.0)
+    }
 
     private suspend fun updateTask(
         taskId: String,
         status: String,
         startedAt: String?,
         completedAt: String?,
+        loggedMins: Double? = null,
+        actualMins: Int? = null,
     ) {
         check(supabaseFactory.supabase.auth.currentUserOrNull() != null) {
             "Your session has expired. Sign in again to update this task."
@@ -60,6 +85,8 @@ class NativeTodayRepository(
             set("status", status)
             set("started_at", startedAt)
             set("completed_at", completedAt)
+            if (loggedMins != null) set("logged_mins", loggedMins)
+            if (status == "done") set("actual_mins", actualMins)
         }) {
             filter { eq("id", taskId) }
         }
