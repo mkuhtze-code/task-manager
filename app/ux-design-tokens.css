@@ -1,0 +1,74 @@
+/* Dokkit design-system tokens — L1
+ *
+ * Brand colour, typography and spacing values remain defined in globals.css.
+ * This layer owns shared layout/elevation contracts that were previously
+ * scattered across feature styles. Keep feature files free of new token forks.
+ *
+ * Migration rule: add aliases here first, migrate consumers in later passes,
+ * then remove the corresponding legacy declarations only after usage is audited.
+ */
+
+:root {
+  /* Shared geometry */
+  --nav-height: 56px;
+  --add-size: 48px;
+  --row-height: 56px;
+  --header-sticky-max: 140px;
+  --content-max-width: 1200px;
+  --mobile-content-max-width: 560px;
+  --desktop-sidebar-width: 208px;
+  --desktop-detail-ratio: 60%;
+  --sheet-max-width: 480px;
+  --sheet-max-height: min(92dvh, 900px);
+  --sheet-radius: var(--radius-lg);
+  --sheet-radius-mobile-top: var(--radius-lg);
+
+  /* Shared interaction geometry */
+  --target-min: 44px;
+  --control-height: 42px;
+  --control-height-sm: 34px;
+  --control-height-lg: 48px;
+  --control-radius: 10px;
+  --control-radius-pill: 999px;
+
+  /* Shared stacking contract: overlays always sit above sticky chrome. */
+  --z-base: 0;
+  --z-sticky: 40;
+  --z-player: 50;
+  --z-dropdown: 55;
+  --z-sheet: 60;
+  --z-toast: 70;
+  --z-critical-overlay: 100;
+
+  /* Semantic compatibility aliases for gradual legacy migration. */
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-soft);
+  --text-tertiary: var(--ink-faint);
+  --surface-page: var(--paper);
+  --surface-raised: var(--paper-raised);
+  --border-default: var(--line);
+  --border-strong: var(--line-strong);
+  --accent: var(--steel);
+  --accent-hover: var(--steel-dark);
+  --focus-ring: var(--steel);
+}
+
+@media (min-width: 900px) {
+  :root {
+    --sheet-max-width: 560px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-standard: 0ms;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    --motion-duration-fast: 100ms;
+    --motion-duration-standard: 180ms;
+  }
+}
