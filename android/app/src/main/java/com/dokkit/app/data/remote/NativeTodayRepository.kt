@@ -4,6 +4,8 @@ import com.dokkit.app.domain.model.Task
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.postgrest.query.filter.eq
+import java.time.Instant
 
 /**
  * Authenticated native task-capture boundary.
@@ -23,6 +25,45 @@ class NativeTodayRepository(
             }
             .decodeList<Task>()
             .filter { it.status != "done" }
+
+    suspend fun startTask(taskId: String) = updateTask(
+        taskId = taskId,
+        status = "active",
+        startedAt = Instant.now().toString(),
+        completedAt = null,
+    )
+
+    suspend fun stopTask(taskId: String) = updateTask(
+        taskId = taskId,
+        status = "pending",
+        startedAt = null,
+        completedAt = null,
+    )
+
+    suspend fun completeTask(taskId: String) = updateTask(
+        taskId = taskId,
+        status = "done",
+        startedAt = null,
+        completedAt = Instant.now().toString(),
+    )
+
+    private suspend fun updateTask(
+        taskId: String,
+        status: String,
+        startedAt: String?,
+        completedAt: String?,
+    ) {
+        check(supabaseFactory.supabase.auth.currentUserOrNull() != null) {
+            "Your session has expired. Sign in again to update this task."
+        }
+        supabaseFactory.supabase.from("tasks").update({
+            set("status", status)
+            set("started_at", startedAt)
+            set("completed_at", completedAt)
+        }) {
+            filter { eq("id", taskId) }
+        }
+    }
 
     suspend fun captureTask(text: String) {
         val cleanText = text.trim()
