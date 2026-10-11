@@ -223,13 +223,6 @@
   cursor: pointer;
 }
 
-/* Shared object emphasis: relationships are part of the object, not badges. */
-.context-line-link:focus-visible {
-  outline: 2px solid var(--steel);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
 /* Surface depth — shared disclosure */
 .surface-depth {
   display: flex;
@@ -411,8 +404,8 @@ html[data-theme='dark'] .surface-header{background:var(--paper)!important}html[d
   gap:8px!important;
   min-height:64px!important;
   padding:8px max(12px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))!important;
-  border-top:1px solid var(--line)!important;
-  background:color-mix(in srgb,var(--paper) 94%,transparent)!important;
+  border-top:1px solid var(--line-strong)!important;
+  background:color-mix(in srgb,var(--paper) 97%,transparent)!important;
   backdrop-filter:blur(18px) saturate(1.05)!important;
   box-shadow:none!important;
 }
@@ -744,11 +737,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   box-shadow:0 1px 4px rgba(var(--shadow-rgb),.04)!important;
 }
 
-/* Nav is now a product signature rather than a generic tab bar. */
-.surface-nav.surface-nav-tabs{
-  border-top:1px solid var(--line-strong)!important;
-  background:color-mix(in srgb,var(--paper) 97%,transparent)!important;
-}
+/* Current navigation state uses the same palette; responsive variants stay below. */
 .surface-tab.current{
   color:var(--dk-orange)!important;
   background:color-mix(in srgb,var(--dk-orange) 8%,var(--paper-raised))!important;
@@ -1746,7 +1735,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 
 /* Meetings: the current conversation should feel like a live channel. */
 @media (min-width:701px){
-  .meeting-row.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}
   .meeting-row.pressure-now::after{
     content:'LIVE';
     position:absolute;
