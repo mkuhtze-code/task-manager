@@ -26,10 +26,10 @@
   --z-base: 0;
   --z-sticky: 40;
   --z-player: 50;
-  --z-dropdown: 55;
-  --z-sheet: 60;
-  --z-toast: 70;
-  --z-critical-overlay: 100;
+  --z-dropdown: 400;
+  --z-sheet: 200;
+  --z-toast: 500;
+  --z-critical-overlay: 600;
 }
 
 @media (min-width: 900px) {
