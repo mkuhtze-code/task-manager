@@ -3,12 +3,16 @@
 import { useRef, useState } from 'react';
 import type { CSSProperties, Dispatch, PointerEvent, SetStateAction } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { loadCachedOpenTasks, localPatchTask, flushSyncQueue } from '@/lib/offline';
 import { ROW_GAP, type DragState, type Task } from '@/lib/taskTypes';
 
 // Manual drag-to-reorder: tracks the in-flight drag gesture, keeps a ref
 // to each row element (for measuring row height), and persists the new
 // order to the server when the pointer lifts.
-export function useDragReorder(setTasks: Dispatch<SetStateAction<Task[]>>) {
+export function useDragReorder(
+  setTasks: Dispatch<SetStateAction<Task[]>>,
+  userId?: string | null,
+) {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -59,8 +63,20 @@ export function useDragReorder(setTasks: Dispatch<SetStateAction<Task[]>>) {
       return [...reindexed, ...others];
     });
 
+    const cachedIds = new Set(loadCachedOpenTasks(userId || '').tasks.map((task) => task.id));
+    const canQueueOffline = Boolean(userId) && newOrderIds.every((tid) => cachedIds.has(tid));
+    if (canQueueOffline && userId) {
+      newOrderIds.forEach((tid, idx) => {
+        localPatchTask(userId, tid, { order_index: idx });
+      });
+      void flushSyncQueue(userId);
+      return;
+    }
+
     await Promise.all(
-      newOrderIds.map((tid, idx) => supabase.from('tasks').update({ order_index: idx }).eq('id', tid))
+      newOrderIds.map((tid, idx) =>
+        supabase.from('tasks').update({ order_index: idx }).eq('id', tid)
+      )
     );
   }
 
