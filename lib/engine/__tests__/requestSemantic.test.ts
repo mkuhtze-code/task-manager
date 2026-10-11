@@ -401,9 +401,9 @@ describe('completed task starts a new capture boundary', () => {
       emptyWorkingMemory(),
     );
     const next = applyUtteranceToRequest(
-      null,
+      completed,
       'Bill out end caps for Zelo',
-      emptyWorkingMemory(),
+      { ...emptyWorkingMemory(), activeRequestId: completed.id },
     );
 
     expect(requestTaskText(next).toLowerCase()).toContain('bill');
