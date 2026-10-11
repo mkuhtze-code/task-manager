@@ -199,7 +199,7 @@ fun TodayScreen(
                                 ) {
                                     if (task.status == "active") {
                                         TextButton(
-                                            onClick = { runTaskAction(task) { repository.stopTask(task.id) } },
+                                            onClick = { runTaskAction(task) { repository.stopTask(task) } },
                                             enabled = task.id !in updatingTaskIds,
                                         ) { Text("Stop") }
                                     } else {
@@ -209,7 +209,7 @@ fun TodayScreen(
                                         ) { Text("Start") }
                                     }
                                     TextButton(
-                                        onClick = { runTaskAction(task) { repository.completeTask(task.id) } },
+                                        onClick = { runTaskAction(task) { repository.completeTask(task) } },
                                         enabled = task.id !in updatingTaskIds,
                                     ) {
                                         if (task.id in updatingTaskIds) {
