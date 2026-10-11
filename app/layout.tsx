@@ -1,6 +1,5 @@
 import './globals.css';
 import './ux-design-tokens.css';
-import './ux-design-primitives.css';
 import './ux-grammar-foundation.css';
 import './ux-today-calm.css';
 import './ux-capture-proposals.css';
@@ -35,6 +34,7 @@ import './ux-world-class-instrument.css';
 import './ux-capture-paper.css';
 import './ux-today-product.css';
 import './ux-act-product.css';
+import './ux-design-primitives.css';
 import DokkitSplash from '@/components/DokkitSplash';
 import AppChrome from '@/components/AppChrome';
 import AppProviders from '@/components/providers/AppProviders';
