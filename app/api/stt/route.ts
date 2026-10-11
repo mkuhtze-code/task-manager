@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyUser } from '@/lib/verifyUser';
 import { normalizeSpeechLocale } from '@/lib/speech/locale';
+import { emitSpeechTelemetry } from '@/lib/speech/telemetry';
 import { checkRateLimit, getClientIp } from '@/lib/ratelimit';
 import {
   MAX_AUDIO_BYTES,
@@ -46,8 +47,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Audio too large (max 8 MB).' }, { status: 413 });
   }
 
+  const requestStartedAt = Date.now();
   const config = parseSttUpstreamConfig();
   if (!config) {
+    emitSpeechTelemetry({ outcome: 'not_configured', provider: 'unknown' });
     return NextResponse.json(
       {
         error:
@@ -87,16 +90,31 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await transcribeUpstream(buffer, mimeType, config);
+    emitSpeechTelemetry({
+      outcome: 'success',
+      provider: result.provider === 'deepgram' || result.provider === 'openai' || result.provider === 'generic' ? result.provider : 'unknown',
+      locale: result.language || config.language,
+      durationMs: Date.now() - requestStartedAt,
+    });
     return NextResponse.json({
       text: result.text,
       confidence: result.confidence,
       language: result.language,
       provider: result.provider,
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Transcription failed.';
-    console.error('[stt]', auth.userId, message);
-    return NextResponse.json({ error: message }, { status: 502 });
+  } catch {
+    emitSpeechTelemetry({
+      outcome: 'provider_error',
+      provider: config.provider,
+      locale: config.language,
+      durationMs: Date.now() - requestStartedAt,
+    });
+    // Upstream error bodies may contain request metadata or user content. Keep them
+    // out of logs and client responses; return a stable, content-free error instead.
+    return NextResponse.json(
+      { error: 'Speech transcription failed. Please try again.' },
+      { status: 502 }
+    );
   }
 }
 
