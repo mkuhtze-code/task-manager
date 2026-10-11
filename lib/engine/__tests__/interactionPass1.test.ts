@@ -504,6 +504,7 @@ describe('Phase AA — shared task-versus-visit capacity sizing', () => {
     expect(r.outcome).toBe('ANSWER');
     expect(r.decision).not.toBeNull();
     expect(r.decision!.effectiveCapacityMins).toBe(95);
+    expect(r.answer!.fits).toBe(true);
     expect(r.answer!.text).toContain('visit');
     expect(r.answer!.text).toContain('travel');
   });
