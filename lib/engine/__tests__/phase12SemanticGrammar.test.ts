@@ -115,4 +115,27 @@ describe('Phase 12 — semantic grammar', () => {
     expect(g.relations).toEqual([]);
   });
 
+  it('does not leak a communication purpose into the task location', () => {
+    const result = runEngineCycle({
+      utterance: 'Ask Noor to recalibrate the fluxgate after the firmware swap.',
+      workingMemory: emptyWorkingMemory(),
+    });
+    expect(result.request.primaryVerb).toBe('ask');
+    expect(result.request.personText).toBe('Noor');
+    expect(result.request.purposeText?.toLowerCase()).toContain('recalibrate');
+    expect(result.request.objectText?.toLowerCase()).toContain('fluxgate');
+    expect(result.request.locationText).toBeNull();
+    expect(result.action.kind).toBe('create_task');
+    expect(result.action.kind === 'create_task' ? result.action.locationText : null).toBeNull();
+  });
+
+  it('preserves an explicit place attached to a communication purpose', () => {
+    const result = runEngineCycle({
+      utterance: 'I need to call Jordan to get the measurements for the downpipes for Angela Place.',
+      workingMemory: emptyWorkingMemory(),
+    });
+    expect(result.request.personText).toBe('Jordan');
+    expect(result.request.locationText).toBe('Angela Place');
+  });
+
 });
