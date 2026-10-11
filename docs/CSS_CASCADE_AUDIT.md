@@ -38,6 +38,7 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Removed a repeated desktop `.meeting-row.pressure-now` declaration after verifying it duplicates the same selector, media scope, and values without any intervening equal-specificity override.
 - Consolidated the duplicate `.context-line-link:focus-visible` rule while retaining its visible keyboard outline in the canonical Relationships section.
 - Migrated the capture speech-status label from an undefined `--hairline` fallback and a redundant `--ink-soft` fallback to the established `--line` and `--ink-soft` semantic tokens. The capture proposal file remains at its existing `!important` ceiling of 2.
+- Centralized the three fixed end-stop colors used by Today capacity gradients as `--steel-highlight`, `--hazard-highlight`, and `--danger-highlight` in `globals.css`. The values are unchanged; this is palette ownership, not a visual redesign. The existing `!important` count remains 104 for Today.
 - Wired the audit into the existing production build chain, so the web and Capacitor-test builds execute it.
 
 ## Still to complete
