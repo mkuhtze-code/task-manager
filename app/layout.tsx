@@ -1,4 +1,5 @@
 import './globals.css';
+import './ux-grammar-foundation.css';
 import './dokkit-v4-foundation.css';
 import './desktop-surface.css';
 import './desktop-phase-2.css';
@@ -82,9 +83,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-  href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=JetBrains+Mono:wght@500;600&family=Space+Mono:wght@400;700&display=swap"
-  rel="stylesheet"
-/>
+          href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=JetBrains+Mono:wght@500;600&family=Space+Mono:wght@400;700&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body>
         <DokkitSplash />
