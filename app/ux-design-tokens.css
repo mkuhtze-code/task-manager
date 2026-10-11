@@ -24,6 +24,7 @@
 
   /* Shared stacking contract: overlays sit above sticky chrome. */
   --z-base: 0;
+  --z-nav: 30;
   --z-sticky: 40;
   --z-player: 50;
   --z-dropdown: 400;
