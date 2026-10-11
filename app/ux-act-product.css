@@ -638,7 +638,7 @@
 
 /* Gear menu portal — always above sheets, panes, sticky chrome */
 .gear-dropdown-portal {
-  position: fixed !important;
+  position: fixed;
   z-index: var(--z-dropdown);
   top: auto;
   min-width: 180px;
