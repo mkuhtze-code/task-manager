@@ -842,7 +842,7 @@ export function TodayPage() {
     if (taskError) {
       console.error('Could not load tasks:', taskError.message);
       const cached = loadCachedOpenTasks(userId);
-      if (cached.updatedAt && cached.tasks.length > 0) {
+      if (cached.updatedAt) {
         setTasks(cached.tasks);
         setTaskLoadError('');
       } else {
