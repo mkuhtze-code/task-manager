@@ -1,0 +1,56 @@
+/* UX-1 — shared grammar foundation.
+   Additive tokens only: existing feature styles keep their current behavior.
+   New and migrated components should use these semantic aliases. */
+
+:root {
+  /* Complete semantic surface and feedback roles. */
+  --ux-surface: var(--surface, var(--paper-raised));
+  --ux-surface-raised: var(--surface-raised, var(--paper-raised));
+  --ux-ink: var(--text-primary, var(--ink));
+  --ux-ink-soft: var(--text-secondary, var(--ink-soft));
+  --ux-hairline: var(--border-default, var(--line));
+  --ux-accent: var(--accent, var(--steel));
+  --ux-danger: var(--destructive, var(--danger));
+  --ux-focus-ring: var(--border-focus, var(--steel));
+  --ux-offline-surface: var(--surface-inset, var(--paper));
+  --ux-elevation-flat: none;
+  --ux-elevation-sheet: var(--shadow-sm, 0 2px 6px rgba(26, 41, 51, .08));
+  --ux-elevation-modal: var(--shadow-md, 0 8px 24px rgba(26, 41, 51, .12));
+
+  /* Shared motion: fast enough to never gate an action. */
+  --ux-duration-fast: 100ms;
+  --ux-duration-nav: 180ms;
+  --ux-easing-standard: cubic-bezier(.2, 0, 0, 1);
+
+  /* Touch geometry; opt-in for controls that can safely grow. */
+  --ux-target-min: 44px;
+}
+
+/* Keep focus visible and consistent across legacy and migrated surfaces. */
+:where(button, [role="button"], a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ux-focus-ring);
+  outline-offset: 3px;
+}
+
+/* Interaction feedback must not delay or exaggerate routine work. */
+:where(button, [role="button"], a) {
+  scroll-margin-block: var(--space-4, 16px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* On small screens, prevent form controls from zooming and keep them legible. */
+@media (max-width: 700px) {
+  :where(input, select, textarea) {
+    font-size: max(16px, 1em);
+  }
+}
