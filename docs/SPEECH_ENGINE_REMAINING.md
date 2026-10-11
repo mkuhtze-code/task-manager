@@ -32,7 +32,7 @@
 - [ ] Build independently reviewed validation and held-out semantic sets; current draft corpus and parity replay are not gold accuracy evidence.
 - [ ] Report action/non-action classification, critical-field retention, unresolved-reference behavior, and failures by scenario family.
 - [x] Add CPU execution-boundary regression tests proving non-actions and denied authority do not dispatch mutations; positive control verifies explicit actions still dispatch. (Phase AE)
-- [ ] Add component-level Capture Dock confirmation tests proving the UI only invokes execution after an explicit Dock interaction.
+- [x] Add component-level Capture Dock authorization tests proving render alone does not invoke execution and the task executor is reached only after an explicit Dock interaction. (Phase AH; wired into build/CI)
 - [ ] Use the exit thresholds in [SPEECH_ENGINE_QUALITY.md](./SPEECH_ENGINE_QUALITY.md); do not claim a threshold is met until measured with denominators.
 
 ### C. Discourse & personal learning
@@ -65,6 +65,10 @@
    - `GET /api/stt` should return `{ configured: true, provider: "deepgram" }` when configured.
 4. Do not commit credentials or report cloud STT as production-ready until the production probe and real-device smoke tests pass.
 
-## Next recommended pass
+## Native-app direction and next recommended pass
 
-Next: run the Phase AG read-only probe against the deployed URL, then configure the production STT provider if needed and run authenticated transcription/device smoke tests. Add aggregate dashboards only after a durable sink and retention policy are selected. In parallel, expand independently reviewed semantic evaluation and component-level Capture Dock confirmation tests. Server-synced learning and richer discourse memory should follow only when semantic outcomes can be measured without treating draft labels or typed/speech parity as ground truth.
+Cloud STT provider setup and browser-specific production smoke tests are intentionally deferred while Dokkit moves toward a native app; do not treat a missing provider key as a blocker for the next engine milestone. The existing browser/cloud path remains a transport option, not the semantic authority.
+
+Phase AH adds a component-level regression gate around the existing web Capture Dock: rendering the sheet must not execute or persist work, and the execution adapter must only be reached after the user explicitly presses Dock. This complements (but does not replace) the CPU authorization tests.
+
+Next: define a client-independent capture/authorization contract that native clients can call without importing React or assuming browser speech APIs. Keep transcription, deterministic interpretation, proposal, user authorization, and persistence as separate boundaries. Add contract tests for typed and transcript inputs, cancellation, repeat submissions, non-actions, and explicit confirmation before wiring a native microphone implementation. In parallel, expand independently reviewed semantic evaluation; do not treat draft labels or typed/speech parity as ground truth. Add aggregate dashboards only after a durable sink and retention policy are selected.
