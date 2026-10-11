@@ -23,22 +23,22 @@
 
 .today-header-card,
 .desk-today-saas.today-header-card {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: var(--z-sticky, 40) !important;
-  margin: 0 !important;
-  padding: 12px var(--space-4) 14px !important;
-  background: color-mix(in srgb, var(--paper) 88%, transparent) !important;
-  backdrop-filter: blur(18px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
-  border: none !important;
-  border-bottom: 1px solid var(--line) !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky, 40);
+  margin: 0;
+  padding: 12px var(--space-4) 14px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .today-header-card.overloaded {
-  background: color-mix(in srgb, var(--hazard) 8%, var(--paper)) !important;
+  background: color-mix(in srgb, var(--hazard) 8%, var(--paper));
 }
 
 /* Dominant capacity number */
@@ -46,171 +46,116 @@
 .today-header-card .today-capacity-value,
 .desk-today-saas .capacity-num,
 .today-header-card .mono.capacity {
-  font-family: "JetBrains Mono", "Space Mono", ui-monospace, monospace !important;
-  font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem) !important;
-  font-weight: 750 !important;
-  letter-spacing: -0.045em !important;
-  line-height: 1 !important;
-  font-variant-numeric: tabular-nums !important;
-  color: var(--ink) !important;
+  font-family: "JetBrains Mono", "Space Mono", ui-monospace, monospace;
+  font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
 
 .today-header-weekday,
 .today-header-date,
 .today-header-card .kicker {
-  font-size: 11px !important;
-  font-weight: 650 !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
-  color: var(--ink-faint) !important;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
 
 /* Capacity track — quiet instrument */
 .capacity-track,
 .today-capacity-track,
 .desk-capacity-track {
-  height: 6px !important;
-  border-radius: 999px !important;
-  background: color-mix(in srgb, var(--ink) 8%, transparent) !important;
-  overflow: hidden !important;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  overflow: hidden;
 }
 
 .capacity-fill,
 .today-capacity-fill,
 .desk-capacity-fill {
-  height: 100% !important;
-  border-radius: 999px !important;
+  height: 100%;
+  border-radius: 999px;
   background: linear-gradient(
     90deg,
     var(--steel),
     color-mix(in srgb, var(--steel) 70%, #60a5fa)
-  ) !important;
-  transition: width var(--dur, 180ms) var(--ease) !important;
+  );
+  transition: width var(--dur, 180ms) var(--ease);
 }
 
 .capacity-fill.is-tight,
 .today-capacity-fill.is-tight {
-  background: linear-gradient(90deg, var(--hazard), #f59e0b) !important;
+  background: linear-gradient(90deg, var(--hazard), #f59e0b);
 }
 
 .capacity-fill.is-over,
 .today-capacity-fill.is-over {
-  background: linear-gradient(90deg, var(--danger), #f87171) !important;
+  background: linear-gradient(90deg, var(--danger), #f87171);
 }
 
 /* ── Task list: one continuous sheet ────────────────────────── */
 
 .app-shell:has(> .today-header-card) > .task-list,
 .task-list {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 0 !important;
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
 @media (max-width: 899px) {
   .app-shell:has(> .today-header-card) > .task-list {
-    margin: 10px 12px 0 !important;
-    border: 1px solid var(--line) !important;
-    border-radius: var(--radius-lg) !important;
-    background: var(--paper-raised) !important;
-    overflow: hidden !important;
-    box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.04) !important;
+    margin: 10px 12px 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--paper-raised);
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.04);
   }
 }
 
 /* Kill card chrome — content is the UI */
 .task-list > .task-card,
 .task-list > .task-card.surface-object {
-  border: none !important;
-  border-radius: 0 !important;
-  border-bottom: 1px solid var(--line) !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  transform: none !important;
-  margin: 0 !important;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  box-shadow: none;
+  background: transparent;
+  transform: none;
+  margin: 0;
+  padding: 0;
 }
 
 .task-list > .task-card:last-of-type,
 .task-list > .task-card.surface-object:last-of-type {
-  border-bottom: none !important;
+  border-bottom: none;
 }
 
 .task-list > .task-card:hover,
 .task-list > .task-card.surface-object:hover {
-  transform: none !important;
-  background: color-mix(in srgb, var(--ink) 2.5%, transparent) !important;
-  box-shadow: none !important;
+  transform: none;
+  background: color-mix(in srgb, var(--ink) 2.5%, transparent);
+  box-shadow: none;
 }
 
 .task-list > .task-card:active,
 .task-list > .task-card.surface-object:active {
-  background: color-mix(in srgb, var(--steel) 6%, transparent) !important;
+  background: color-mix(in srgb, var(--steel) 6%, transparent);
 }
 
 /* Row geometry */
 .task-card .task-main,
 .task-card.surface-object .task-main {
-  min-height: var(--row-height) !important;
-  padding: var(--space-3) var(--space-4) !important;
-  gap: 12px !important;
-  align-items: center !important;
-}
-
-.task-card .task-title,
-.task-card .task-name {
-  font-size: 15px !important;
-  font-weight: 650 !important;
-  letter-spacing: -0.015em !important;
-  line-height: 1.3 !important;
-  color: var(--ink) !important;
-}
-
-.task-card .task-meta,
-.task-card .task-sub {
-  font-size: 12px !important;
-  font-weight: 550 !important;
-  color: var(--ink-faint) !important;
-}
-
-.task-card .task-time,
-.task-card .estimate,
-.task-card .remaining {
-  font-family: "JetBrains Mono", ui-monospace, monospace !important;
-  font-size: 12px !important;
-  font-weight: 650 !important;
-  font-variant-numeric: tabular-nums !important;
-  color: var(--ink-soft) !important;
-  letter-spacing: -0.02em !important;
-}
-
-.task-card[data-fit='good'],
-.task-card.is-fit-good {
-  box-shadow: inset 3px 0 0 var(--moss) !important;
-}
-
-.task-card[data-fit='tight'],
-.task-card.is-fit-tight {
-  box-shadow: inset 3px 0 0 var(--hazard) !important;
-}
-
-.task-card[data-fit='over'],
-.task-card.is-fit-over {
-  box-shadow: inset 3px 0 0 var(--danger) !important;
-}
-
-.task-card.is-live,
-.task-card[data-live='true'] {
-  background: color-mix(in srgb, var(--steel) 5%, transparent) !important;
-  box-shadow: inset 3px 0 0 var(--steel) !important;
-}
-
-.task-card.is-done .task-title,
-.task-card.is-done .task-name {
-  color: var(--ink-faint) !important;
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-  text-decoration-color: color-mix(in srgb, var(--ink) 25%, transparent);
+  min-height: var(--row-height);
+  padding: var(--space-3) var(--space-4);
+  gap: 12px;
+  align-items: center;
 }
 
 .task-card .task-progress-track {
@@ -230,12 +175,12 @@
 .task-list-empty,
 .today-empty,
 .empty-today {
-  padding: 48px 24px !important;
-  text-align: center !important;
-  color: var(--ink-soft) !important;
-  font-size: 14px !important;
-  font-weight: 550 !important;
-  line-height: 1.45 !important;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.45;
 }
 
 .travel-aware-banner,
@@ -309,13 +254,13 @@
   html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .task-list {
     grid-column: 1;
     grid-row: 3;
-    margin: 0 !important;
-    border: none !important;
-    border-radius: 0 !important;
-    overflow-y: auto !important;
-    padding: 0 8px 32px !important;
-    background: transparent !important;
-    box-shadow: none !important;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    overflow-y: auto;
+    padding: 0 8px 32px;
+    background: transparent;
+    box-shadow: none;
   }
 
   html[data-surface='desktop'] .app-shell:has(> .today-header-card) > .desk-split-handle {
@@ -351,13 +296,13 @@
   }
 
   html[data-surface='desktop'] .task-list > .task-card {
-    border-radius: var(--radius-md) !important;
-    border-bottom: none !important;
-    margin: 2px 4px !important;
+    border-radius: var(--radius-md);
+    border-bottom: none;
+    margin: 2px 4px;
   }
 
   html[data-surface='desktop'] .task-list > .task-card:hover {
-    background: color-mix(in srgb, var(--ink) 3%, transparent) !important;
+    background: color-mix(in srgb, var(--ink) 3%, transparent);
   }
 }
 

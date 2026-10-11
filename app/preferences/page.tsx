@@ -554,9 +554,9 @@ export default function Preferences() {
       <div className="settings-panel">
         <div className="settings-panel-title">Work hours</div>
         <div className="settings-row">
-          <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
+          <input type="time" className="ux-field-control" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
           <span className="prefs-to">to</span>
-          <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
+          <input type="time" className="ux-field-control" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
         </div>
 
         <span className="settings-label">Work days</span>
@@ -790,7 +790,7 @@ export default function Preferences() {
             <p className="settings-help">
               Meetings block capacity in Today while they run. Read-only, synced automatically.
             </p>
-            <button className="btn btn-steel" onClick={connectCalendar} disabled={connecting}>
+            <button className="btn btn-steel ux-button ux-button--primary" onClick={connectCalendar} disabled={connecting}>
               {connecting ? 'Connecting…' : 'Connect Microsoft Calendar'}
             </button>
           </>
@@ -807,8 +807,8 @@ export default function Preferences() {
         </p>
 
         <div className="settings-row">
-          <button className="btn btn-steel" onClick={enableNotifications}>Enable notifications</button>
-          <button className="btn-text" onClick={sendTestNotification}>Send test</button>
+          <button className="btn btn-steel ux-button ux-button--primary" onClick={enableNotifications}>Enable notifications</button>
+          <button className="btn-text ux-button ux-button--quiet" onClick={sendTestNotification}>Send test</button>
         </div>
 
         <div className="settings-row">

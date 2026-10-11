@@ -358,19 +358,15 @@
 .meeting-list,.trip-list-maybach,.job-list{width:100%;display:grid!important;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--dk-gap)!important;border:0!important;background:transparent!important;overflow:visible!important}
 .meeting-section-header,.trip-section-header{min-height:22px;padding:0 0 9px!important}
 .meeting-section-title,.trip-section-title{font-size:10px!important;line-height:1.2!important;font-weight:700!important;letter-spacing:.1em!important;text-transform:uppercase;color:var(--ink-faint)!important}
-.meeting-section-lede,.trip-section-lede{margin-left:7px;font-size:11px!important;color:var(--ink-faint)!important}
-
-/* Canonical object: identity → time → context → state */
-.task-card.surface-object,.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{box-sizing:border-box;min-width:0;border:1px solid var(--line)!important;border-radius:var(--dk-radius)!important;background:var(--paper-raised)!important;box-shadow:none!important;color:var(--ink)!important;transition:border-color .14s ease,background-color .14s ease,transform .14s ease!important}
-.task-card.surface-object:hover,.desk-job-card.surface-object:hover,.meeting-row.surface-object:hover,.trip-row-maybach.surface-object:hover,.job-row:hover{border-color:var(--line-strong)!important;background:var(--paper-raised)!important;box-shadow:none!important;transform:translateY(-1px)!important}
+.meeting-section-lede,.trip-section-lede{margin-left:7px;font-size:11px!important;color:var(--ink-faint)!important}.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{box-sizing:border-box;min-width:0;border:1px solid var(--line)!important;border-radius:var(--dk-radius)!important;background:var(--paper-raised)!important;box-shadow:none!important;color:var(--ink)!important;transition:border-color .14s ease,background-color .14s ease,transform .14s ease!important}.desk-job-card.surface-object:hover,.meeting-row.surface-object:hover,.trip-row-maybach.surface-object:hover,.job-row:hover{border-color:var(--line-strong)!important;background:var(--paper-raised)!important;box-shadow:none!important;transform:translateY(-1px)!important}
 .surface-object:focus-visible{outline:2px solid color-mix(in srgb,var(--steel) 42%,transparent);outline-offset:2px}
-.surface-object-title,.task-card .task-text,.desk-job-card-name,.meeting-row-name,.trip-row-name,.meetings-featured-title,.travel-featured-title,.job-row-name{min-width:0;font-size:var(--dk-title)!important;line-height:1.3!important;font-weight:650!important;letter-spacing:-.012em!important;color:var(--ink)!important}
+.surface-object-title,.desk-job-card-name,.meeting-row-name,.trip-row-name,.meetings-featured-title,.travel-featured-title,.job-row-name{min-width:0;font-size:var(--dk-title)!important;line-height:1.3!important;font-weight:650!important;letter-spacing:-.012em!important;color:var(--ink)!important}
 .surface-object-time,.meeting-row-time,.trip-row-time,.desk-job-card-state,.job-row-meta{font-size:var(--dk-meta)!important;line-height:1.4!important;font-weight:550!important;color:var(--ink-soft)!important;font-variant-numeric:tabular-nums}
 .surface-object-context,.task-card-context,.desk-job-card-context,.meeting-row-context,.trip-row-context{margin-top:4px!important;font-size:var(--dk-meta)!important;line-height:1.4!important;color:var(--ink-soft)!important}
 .surface-object-state,.meeting-row-state,.trip-row-state{margin-top:11px!important;padding-top:9px!important;border-top:1px solid var(--line)!important;font-size:12px!important;line-height:1.35!important;color:var(--ink-soft)!important}
 
 /* Today */
-.task-card.surface-object{overflow:hidden;padding:0!important}.task-card.surface-object .task-main{min-height:68px!important;padding:13px 14px!important;border:0!important;background:transparent!important}.task-card.surface-object .task-body{min-width:0}.task-card.surface-object .task-text{margin:0}.task-card.surface-object .task-card-glance{align-self:center}.task-card.surface-object .task-reveal{border-top:1px solid var(--line)!important}
+.task-card.surface-object{overflow:hidden;}.task-card.surface-object .task-body{min-width:0}.task-card.surface-object .task-text{margin:0}.task-card.surface-object .task-card-glance{align-self:center}
 
 /* Jobs */
 .job-row{display:block!important;min-height:112px!important;padding:var(--dk-pad-y) var(--dk-pad-x)!important;text-decoration:none!important}.job-row-top{min-height:20px}.job-row-meta{margin-top:5px!important}.job-row-next{margin-top:11px!important;padding-top:9px!important;border-top:1px solid var(--line)!important;font-size:12px!important;color:var(--ink-soft)!important}.job-row-numeral,.job-row-done-mark{color:var(--ink-soft)!important}
@@ -398,11 +394,10 @@
 }
 @media (max-width:700px){
  .surface-header{padding:12px 14px 11px!important}.surface-header-bar{grid-template-columns:auto minmax(0,1fr) auto!important;column-gap:10px!important}.surface-title{font-size:17px!important}.surface-lede{display:none}
- .meeting-list,.trip-list-maybach,.job-list{grid-template-columns:1fr!important;gap:8px!important}.meeting-row.surface-object,.job-row{min-height:0!important;padding:13px 14px!important}.trip-row-maybach.surface-object{min-height:0!important;padding:13px 44px 13px 14px!important}.task-card.surface-object .task-main{min-height:64px!important;padding:12px 13px!important}
+ .meeting-list,.trip-list-maybach,.job-list{grid-template-columns:1fr!important;gap:8px!important}.meeting-row.surface-object,.job-row{min-height:0!important;padding:13px 14px!important}.trip-row-maybach.surface-object{min-height:0!important;padding:13px 44px 13px 14px!important}
 }
-html[data-theme='dark'] .surface-header{background:var(--paper)!important}
-html[data-theme='dark'] .task-card.surface-object,html[data-theme='dark'] .desk-job-card.surface-object,html[data-theme='dark'] .meeting-row.surface-object,html[data-theme='dark'] .trip-row-maybach.surface-object,html[data-theme='dark'] .job-row,html[data-theme='dark'] .meetings-featured,html[data-theme='dark'] .travel-featured{background:var(--paper-raised)!important}
-@media (prefers-reduced-motion:reduce){.task-card.surface-object,.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row,.trip-row-delete{transition:none!important}}
+html[data-theme='dark'] .surface-header{background:var(--paper)!important}html[data-theme='dark'] .desk-job-card.surface-object,html[data-theme='dark'] .meeting-row.surface-object,html[data-theme='dark'] .trip-row-maybach.surface-object,html[data-theme='dark'] .job-row,html[data-theme='dark'] .meetings-featured,html[data-theme='dark'] .travel-featured{background:var(--paper-raised)!important}
+@media (prefers-reduced-motion:reduce){.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row,.trip-row-delete{transition:none!important}}
 
 /* ==========================================================================
    NAVIGATION — the stable map, not a toolbar
@@ -522,16 +517,16 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 
 /* Today is the whole day, so it gets more weight — not a different material. */
 .today-header-card{
-  background:var(--paper-raised)!important;
-  border:1px solid var(--line)!important;
-  border-radius:var(--dk-radius,14px)!important;
-  box-shadow:none!important;
-  backdrop-filter:none!important;
-  -webkit-backdrop-filter:none!important;
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:var(--dk-radius,14px);
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
 }
 .today-header-card.overloaded{
-  background:color-mix(in srgb,var(--paper-raised) 92%,var(--warning) 8%)!important;
-  border-color:color-mix(in srgb,var(--warning) 38%,var(--line))!important;
+  background:color-mix(in srgb,var(--paper-raised) 92%,var(--warning) 8%);
+  border-color:color-mix(in srgb,var(--warning) 38%,var(--line));
 }
 .today-header-summary-toggle{border-radius:10px!important}
 .today-commitment{background:var(--paper)!important;border-color:var(--line)!important}
@@ -628,14 +623,12 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 /* The object field gets a little more presence. */
 .meeting-list,.trip-list-maybach,.job-list{
   gap:14px!important;
-}
-.task-card.surface-object,.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{
+}.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{
   border-radius:16px!important;
   background:var(--paper-raised)!important;
   box-shadow:0 1px 0 rgba(var(--shadow-rgb),.025),0 8px 22px rgba(var(--shadow-rgb),.035)!important;
   transition:transform .18s var(--ease),border-color .18s var(--ease),box-shadow .18s var(--ease)!important;
-}
-.task-card.surface-object:hover,.desk-job-card.surface-object:hover,.meeting-row.surface-object:hover,.trip-row-maybach.surface-object:hover,.job-row:hover{
+}.desk-job-card.surface-object:hover,.meeting-row.surface-object:hover,.trip-row-maybach.surface-object:hover,.job-row:hover{
   transform:translateY(-3px)!important;
   border-color:color-mix(in srgb,var(--dk-orange) 36%,var(--line-strong))!important;
   box-shadow:0 10px 28px rgba(var(--shadow-rgb),.09)!important;
@@ -644,7 +637,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   border-color:color-mix(in srgb,var(--dk-orange) 60%,var(--line))!important;
   box-shadow:inset 4px 0 0 var(--dk-orange),0 8px 24px rgba(var(--shadow-rgb),.06)!important;
 }
-.surface-object-title,.task-card .task-text,.desk-job-card-name,.meeting-row-name,.trip-row-name,.job-row-name{
+.surface-object-title,.desk-job-card-name,.meeting-row-name,.trip-row-name,.job-row-name{
   font-size:16px!important;
   font-weight:700!important;
   letter-spacing:-.02em!important;
@@ -685,8 +678,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   .surface-pulse{min-height:42px!important;padding:6px 10px!important}
   .surface-pulse-body{min-width:0}
   .surface-header-actions .btn-steel{min-height:40px!important;padding:0 13px!important}
-  .meeting-list,.trip-list-maybach,.job-list{gap:10px!important}
-  .task-card.surface-object,.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{
+  .meeting-list,.trip-list-maybach,.job-list{gap:10px!important}.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{
     border-radius:14px!important;
   }
 }
@@ -737,10 +729,10 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 }
 .desk-today-dock-pill:hover{filter:brightness(.96);transform:translateY(-1px)}
 .today-header-card{
-  position:relative!important;
-  overflow:hidden!important;
-  border-radius:18px!important;
-  box-shadow:0 8px 24px rgba(var(--shadow-rgb),.06)!important;
+  position:relative;
+  overflow:hidden;
+  border-radius:18px;
+  box-shadow:0 8px 24px rgba(var(--shadow-rgb),.06);
 }
 .today-header-card::before{
   content:'';
@@ -841,16 +833,14 @@ html[data-theme='dark'] .surface-tab.current{
 .meeting-row.surface-object,
 .trip-row-maybach.surface-object,
 .desk-job-card.surface-object,
-.job-row,
-.task-card.surface-object{
+.job-row{
   position:relative;
   isolation:isolate;
 }
 .meeting-row.surface-object::before,
 .trip-row-maybach.surface-object::before,
 .desk-job-card.surface-object::before,
-.job-row::before,
-.task-card.surface-object::before{
+.job-row::before{
   content:'';
   position:absolute;
   z-index:-1;
@@ -865,8 +855,7 @@ html[data-theme='dark'] .surface-tab.current{
 .meeting-row.surface-object:hover::before,
 .trip-row-maybach.surface-object:hover::before,
 .desk-job-card.surface-object:hover::before,
-.job-row:hover::before,
-.task-card.surface-object:hover::before{
+.job-row:hover::before{
   left:24px;
   right:24px;
   background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
