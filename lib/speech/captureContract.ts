@@ -69,10 +69,10 @@ type SessionEntry = {
 };
 
 function proposalStatus(result: CaptureSpeechResult): CaptureProposalStatus {
-  if (captureIsCollectionMutation(result)) return 'collection_confirmation_required';
   if (result.uiMode === 'ask_clarification' || result.uiMode === 'collection_clarification') {
     return 'clarification_required';
   }
+  if (captureIsCollectionMutation(result)) return 'collection_confirmation_required';
   if (result.outcome === 'RECORD_OBSERVATION' || result.outcome === 'NOTE_REPORTED') {
     return 'observation';
   }
