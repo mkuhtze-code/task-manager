@@ -31,7 +31,7 @@
   width: 100%;
   max-width: 560px;
   border-radius: 20px 20px 0 0;
-  border: 1px solid var(--line));
+  border: 1px solid var(--line);
   box-shadow:
     0 -12px 40px rgba(15, 23, 42, 0.12),
     0 0 0 1px rgba(255, 255, 255, 0.4) inset;
@@ -94,7 +94,7 @@
   font-weight: 600;
   letter-spacing: -0.025em;
   border-radius: 14px;
-  border: 1px solid var(--line));
+  border: 1px solid var(--line);
   background: var(--paper-raised);
   box-shadow: none;
 }
@@ -127,7 +127,7 @@
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
-  border: 1px solid var(--line));
+  border: 1px solid var(--line);
   background: var(--surface-page);
 }
 
@@ -176,7 +176,7 @@
   padding: 12px;
   border-radius: 14px;
   background: var(--wash, rgba(15, 23, 42, 0.03));
-  border: 1px solid var(--line));
+  border: 1px solid var(--line);
 }
 
 .capture-more-body .reveal-reminder-link,
@@ -305,7 +305,7 @@
   margin: 0;
   padding: 8px 0;
   border: 0;
-  border-bottom: 1px solid var(--line));
+  border-bottom: 1px solid var(--line);
   border-radius: 0;
   background: transparent;
   font-size: 1.35rem;
@@ -409,7 +409,7 @@
   font-weight: 700;
   justify-content: center;
   gap: 6px;
-  border: 1px solid var(--line));
+  border: 1px solid var(--line);
   background: var(--surface-page);
   color: var(--ink);
 }
@@ -456,7 +456,7 @@
   margin-top: 8px;
   border-radius: 14px;
   background: var(--wash, rgba(15, 23, 42, 0.03));
-  border: 1px solid var(--line));
+  border: 1px solid var(--line);
 }
 
 .detail-more-body .settings-label {
@@ -484,7 +484,7 @@
   gap: 8px;
   min-height: 40px;
   padding: 4px 0;
-  border-bottom: 1px solid var(--line));
+  border-bottom: 1px solid var(--line);
 }
 
 .subtask-row {
@@ -493,7 +493,7 @@
   gap: 10px;
   min-height: 52px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--line));
+  border-bottom: 1px solid var(--line);
 }
 
 .subtask-row:last-child {
@@ -550,7 +550,7 @@
   min-height: 44px;
   padding: 6px 0 10px;
   border: 0;
-  border-bottom: 1px solid var(--line));
+  border-bottom: 1px solid var(--line);
   background: transparent;
   font-size: 1.5rem;
   font-weight: 750;
@@ -605,7 +605,7 @@
 
 .desk-detail-panel {
   padding: 12px 0 4px;
-  border-top: 1px solid var(--line));
+  border-top: 1px solid var(--line);
 }
 
 .desk-detail-panel-title,
@@ -627,7 +627,7 @@
 .desk-detail-footer {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid var(--line));
+  border-top: 1px solid var(--line);
 }
 
 .desk-detail-fit-note {
@@ -643,7 +643,7 @@
   top: auto;
   min-width: 180px;
   background: var(--surface-raised);
-  border: 1px solid var(--line));
+  border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow:
     0 12px 32px rgba(15, 23, 42, 0.18),
