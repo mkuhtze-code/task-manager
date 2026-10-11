@@ -173,7 +173,7 @@ fun TodayScreen(
 
                 tasks.isEmpty() -> Text(
                     "Nothing captured yet. Add a thought and keep moving.",
-                    color = colors.ink,
+                    color = colors.inkSoft,
                     style = MaterialTheme.typography.bodyLarge,
                 )
 
