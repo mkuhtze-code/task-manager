@@ -452,3 +452,60 @@ describe('Integration Pass 1 — shared fit authority', () => {
     expect(answer.decisionTrace).not.toBeNull();
   });
 });
+
+
+describe('Phase AA — shared task-versus-visit capacity sizing', () => {
+  it('answers ordinary task questions with the same task-sized estimate used by ACT', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: {
+        type: 'text',
+        text: 'Do I have time to review the contract?',
+      },
+      context: {
+        ...baseContext,
+        remainingMinsToday: 40,
+        travelMins: 30,
+        visitDurationMins: 60,
+      },
+    });
+
+    expect(r.outcome).toBe('ANSWER');
+    expect(r.action).toBeNull();
+    expect(r.decision).not.toBeNull();
+    expect(r.decision!.effectiveCapacityMins).toBe(15);
+    expect(r.answer!.fits).toBe(true);
+    expect(r.answer!.text).toContain('this task needs about 15 minutes');
+    expect(r.answer!.text).not.toContain('visit plus travel');
+  });
+
+  it('keeps explicit movement questions on the visit-plus-travel budget', () => {
+    const r = processInteraction({
+      userId: 'u1',
+      dryRun: true,
+      input: {
+        type: 'text',
+        text: 'Do I have time to go see Henderson this afternoon?',
+      },
+      context: {
+        ...baseContext,
+        remainingMinsToday: 180,
+        travelMins: 25,
+        visitDurationMins: 45,
+        currentFocus: {
+          kind: 'job',
+          id: 'j-henderson',
+          label: 'Henderson',
+        },
+      },
+    });
+
+    expect(r.outcome).toBe('ANSWER');
+    expect(r.decision).not.toBeNull();
+    expect(r.decision!.effectiveCapacityMins).toBe(95);
+    expect(r.answer!.fits).toBe(true);
+    expect(r.answer!.text).toContain('visit');
+    expect(r.answer!.text).toContain('travel');
+  });
+});

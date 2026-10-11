@@ -10,6 +10,37 @@ import type { Decision, DecisionTrace } from '@/lib/thinking/v3/types';
 
 // ANSWER and ACT intentionally share the same V3 fit evaluator below; keep both paths aligned.
 
+/**
+ * Resolve whether a feasibility check is about a visit/movement or ordinary
+ * work. ACT and ANSWER must use the same rule so the same intent does not
+ * receive two different capacity budgets.
+ */
+export function capacityModeForUtterance(
+  utterance: string,
+  input: InteractionInput
+): 'visit' | 'task' {
+  const movementIntent =
+    /\b(?:go\s+see|see\s+(?:this\s+|that\s+|the\s+)?job|visit|drop\s+off|pick\s+up|collect|deliver|drive\s+to|travel\s+to|head\s+to|stop\s+at|go\s+to|get\s+to|go\s+over\s+to)\b/i.test(
+      utterance
+    );
+  if (movementIntent) return 'visit';
+
+  // A short "Can I fit Henderson?" can mean a visit when Henderson is the
+  // current job focus. Do not infer travel merely because any job is in focus.
+  const focus = input.context.currentFocus;
+  const asksAboutFit = /\b(?:fit|time|available|free|should\s+i|can\s+i)\b/i.test(utterance);
+  if (
+    focus?.kind === 'job' &&
+    focus.label &&
+    asksAboutFit &&
+    utterance.toLocaleLowerCase().includes(focus.label.toLocaleLowerCase())
+  ) {
+    return 'visit';
+  }
+
+  return 'task';
+}
+
 // Resolve only dates we can deterministically anchor. Unknown relative expressions
 // must not be treated as if they referred to the currently selected capacity window.
 function dateForHint(hint: string | null, todayDate: string): string | null {
@@ -92,7 +123,8 @@ export function answerFeasibility(
     );
   }
 
-  const visitMode = options.capacityMode !== 'task';
+  const capacityMode = options.capacityMode ?? capacityModeForUtterance(utterance, input);
+  const visitMode = capacityMode === 'visit';
   const visit =
     input.context.visitDurationMins ??
     (cycle.request.objectText ? 45 : 30);
@@ -198,12 +230,12 @@ export function answerFeasibility(
       contextAt: nowIso,
     });
     // FitState: strong | possible | poor | blocked | unknown | protect | carry_safe | needs_context | uncertain
+    // "protect" is a carry/commitment instruction, not evidence that the work
+    // cannot fit. The explicit remaining-vs-needed comparison below answers fit.
     v3Fits =
       fitDecision.fit === 'strong' || fitDecision.fit === 'possible'
         ? true
-        : fitDecision.fit === 'blocked' ||
-            fitDecision.fit === 'protect' ||
-            fitDecision.fit === 'poor'
+        : fitDecision.fit === 'blocked' || fitDecision.fit === 'poor'
           ? false
           : null;
   }
@@ -221,6 +253,12 @@ export function answerFeasibility(
   const travelPhrase = onTrip
     ? `~${roundTrip} min leg`
     : `~${roundTrip} min round-trip`;
+  const requiredWorkPhrase = visitMode
+    ? `A visit (~${visit} min) plus travel (${travelPhrase})`
+    : 'This task';
+  const neededWorkPhrase = visitMode
+    ? `a visit plus travel needs ~${needed} minutes`
+    : `this task needs ~${needed} minutes`;
 
   if (remaining == null) {
     fits = null;
@@ -232,7 +270,7 @@ export function answerFeasibility(
     facts.push('remainingMinsToday unavailable');
   } else if (hardBlock && remaining < needed) {
     fits = false;
-    textOut = `Tight. ${hardBlock}, and you only have about ${remaining} minutes of workable time ${dayLabel}. A visit (~${visit} min) plus travel (${travelPhrase}) needs roughly ${needed} minutes.`;
+    textOut = `Tight. ${hardBlock}, and you only have about ${remaining} minutes of workable time ${dayLabel}. ${requiredWorkPhrase} needs roughly ${needed} minutes.`;
   } else if (v3Fits === false || remaining < needed) {
     fits = false;
     const pushNote =
@@ -241,22 +279,26 @@ export function answerFeasibility(
         : onTrip
           ? ' It would push other stops on this day.'
           : ' It would push other planned work.';
-    textOut = `Not comfortably. About ${remaining} minutes remain ${dayLabel}; a visit plus travel needs ~${needed} minutes.${pushNote}`;
+    textOut = `Not comfortably. About ${remaining} minutes remain ${dayLabel}; ${neededWorkPhrase}.${pushNote}`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'over_capacity');
   } else if (remaining >= needed + 15 && (v3Fits === true || v3Fits === null)) {
     fits = true;
     const spare = remaining - needed;
-    textOut = afternoonHint
-      ? `Yes. You can fit a visit this afternoon ${dayLabel}. After travel and ~${visit} minutes on site you should still have about ${spare} minutes when you get back.`
-      : `Yes. Roughly ${remaining} minutes remain ${dayLabel}; the stop needs about ${needed} minutes including travel, leaving ~${spare} minutes.`;
+    textOut = afternoonHint && visitMode
+      ? 'Yes. You can fit a visit this afternoon ' + dayLabel + '. After travel and ~' + visit + ' minutes on site you should still have about ' + spare + ' minutes when you get back.'
+      : visitMode
+        ? 'Yes. Roughly ' + remaining + ' minutes remain ' + dayLabel + '; the stop needs about ' + needed + ' minutes including travel, leaving ~' + spare + ' minutes.'
+        : 'Yes. Roughly ' + remaining + ' minutes remain ' + dayLabel + '; this task needs about ' + needed + ' minutes, leaving ~' + spare + ' minutes.';
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, `spare≈${spare}`);
   } else if (remaining >= needed) {
     fits = true;
-    textOut = `You can, but it is tight. About ${remaining} minutes remain ${dayLabel} and the visit plus travel is ~${needed} minutes — little buffer if anything overruns.`;
+    textOut = visitMode
+      ? 'You can, but it is tight. About ' + remaining + ' minutes remain ' + dayLabel + ' and the visit plus travel is ~' + needed + ' minutes — little buffer if anything overruns.'
+      : 'You can, but it is tight. About ' + remaining + ' minutes remain ' + dayLabel + ' and this task needs ~' + needed + ' minutes — little buffer if anything overruns.';
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'tight_fit');
   } else {
     fits = false;
-    textOut = `Not comfortably. About ${remaining} minutes remain ${dayLabel}; a visit plus travel needs ~${needed} minutes. It would push other planned work.`;
+    textOut = `Not comfortably. About ${remaining} minutes remain ${dayLabel}; ${neededWorkPhrase}. It would push other planned work.`;
     facts.push(`remaining=${remaining}`, `needed≈${needed}`, 'over_capacity');
   }
 
@@ -290,12 +332,9 @@ export function actFitDecision(
   decisionTrace: DecisionTrace | null;
   facts: string[];
 } {
-  const visitIntent =
-    /\b(?:go see|see this job|visit|drop off|pick up|collect|deliver|drive to|travel to|head to|stop at|go to)\b/i.test(
-      input.input.text
-    );
+  const capacityMode = capacityModeForUtterance(input.input.text, input);
   const answer = answerFeasibility('', cycle, input, {
-    capacityMode: visitIntent ? 'visit' : 'task',
+    capacityMode,
   });
   return {
     fitState: answer.fitState ?? null,
