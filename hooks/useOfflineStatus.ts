@@ -29,8 +29,15 @@ export function useOfflineStatus(userId: string | null | undefined) {
     };
   }, [userId]);
 
+  const retrySync = () => {
+    const uid = userId || 'anon';
+    if (!userId) return;
+    void flushSyncQueue(uid).then(() => setSnap(getOfflineSnapshot(uid)));
+  };
+
   return {
     ...snap,
     label: offlineStatusLabel(snap),
+    retrySync,
   };
 }
