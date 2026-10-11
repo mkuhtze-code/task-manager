@@ -20,7 +20,7 @@ export function capacityModeForUtterance(
   input: InteractionInput
 ): 'visit' | 'task' {
   const movementIntent =
-    /\\b(?:go\\s+see|see\\s+(?:this\\s+|that\\s+|the\\s+)?job|visit|drop\\s+off|pick\\s+up|collect|deliver|drive\\s+to|travel\\s+to|head\\s+to|stop\\s+at|go\\s+to|get\\s+to|go\\s+over\\s+to)\\b/i.test(
+    /\b(?:go\s+see|see\s+(?:this\s+|that\s+|the\s+)?job|visit|drop\s+off|pick\s+up|collect|deliver|drive\s+to|travel\s+to|head\s+to|stop\s+at|go\s+to|get\s+to|go\s+over\s+to)\b/i.test(
       utterance
     );
   if (movementIntent) return 'visit';
@@ -28,22 +28,17 @@ export function capacityModeForUtterance(
   // A short "Can I fit Henderson?" can mean a visit when Henderson is the
   // current job focus. Do not infer travel merely because any job is in focus.
   const focus = input.context.currentFocus;
-  const asksAboutFit = /\\b(?:fit|time|available|free|should\\s+i|can\\s+i)\\b/i.test(utterance);
+  const asksAboutFit = /\b(?:fit|time|available|free|should\s+i|can\s+i)\b/i.test(utterance);
   if (
     focus?.kind === 'job' &&
     focus.label &&
     asksAboutFit &&
-    new RegExp('(?:^|[^\\\\p{L}\\\\p{N}])' + escapeRegExp(focus.label) + '(?:$|[^\\\\p{L}\\\\p{N}])', 'iu').test(utterance)
+    utterance.toLocaleLowerCase().includes(focus.label.toLocaleLowerCase())
   ) {
     return 'visit';
   }
 
   return 'task';
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\// ANSWER and ACT intentionally share the same V3 fit evaluator below; keep both paths aligned.
-');
 }
 
 // Resolve only dates we can deterministically anchor. Unknown relative expressions
