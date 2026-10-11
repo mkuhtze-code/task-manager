@@ -790,7 +790,7 @@ export default function Preferences() {
             <p className="settings-help">
               Meetings block capacity in Today while they run. Read-only, synced automatically.
             </p>
-            <button className="btn btn-steel" onClick={connectCalendar} disabled={connecting}>
+            <button className="btn btn-steel ux-button ux-button--primary" onClick={connectCalendar} disabled={connecting}>
               {connecting ? 'Connecting…' : 'Connect Microsoft Calendar'}
             </button>
           </>
@@ -807,8 +807,8 @@ export default function Preferences() {
         </p>
 
         <div className="settings-row">
-          <button className="btn btn-steel" onClick={enableNotifications}>Enable notifications</button>
-          <button className="btn-text" onClick={sendTestNotification}>Send test</button>
+          <button className="btn btn-steel ux-button ux-button--primary" onClick={enableNotifications}>Enable notifications</button>
+          <button className="btn-text ux-button ux-button--quiet" onClick={sendTestNotification}>Send test</button>
         </div>
 
         <div className="settings-row">
