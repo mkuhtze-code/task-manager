@@ -103,7 +103,7 @@
   outline: none;
   border-color: var(--steel);
   background: var(--surface-page);
-  box-shadow: 0 0 0 3px rgba(30, 107, 230, 0.15);
+  box-shadow: var(--focus-ring);
 }
 
 .capture-facet-strip {
