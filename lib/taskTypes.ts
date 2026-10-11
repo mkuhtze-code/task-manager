@@ -5,6 +5,12 @@ export type Task = {
   source: 'planned' | 'came_up' | 'starter';
   estimate_mins: number;
   logged_mins: number;
+  /** Optional persisted fields used by completion and active-timer flows. */
+  actual_mins?: number | null;
+  completed_at?: string | null;
+  near_notified?: boolean | null;
+  over_notified?: boolean | null;
+  last_overdue_ping_at?: string | null;
   started_at: string | null;
   due_today: boolean;
   order_index: number;
