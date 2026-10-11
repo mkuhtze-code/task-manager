@@ -522,16 +522,16 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 
 /* Today is the whole day, so it gets more weight — not a different material. */
 .today-header-card{
-  background:var(--paper-raised)!important;
-  border:1px solid var(--line)!important;
-  border-radius:var(--dk-radius,14px)!important;
-  box-shadow:none!important;
-  backdrop-filter:none!important;
-  -webkit-backdrop-filter:none!important;
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:var(--dk-radius,14px);
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
 }
 .today-header-card.overloaded{
-  background:color-mix(in srgb,var(--paper-raised) 92%,var(--warning) 8%)!important;
-  border-color:color-mix(in srgb,var(--warning) 38%,var(--line))!important;
+  background:color-mix(in srgb,var(--paper-raised) 92%,var(--warning) 8%);
+  border-color:color-mix(in srgb,var(--warning) 38%,var(--line));
 }
 .today-header-summary-toggle{border-radius:10px!important}
 .today-commitment{background:var(--paper)!important;border-color:var(--line)!important}
@@ -737,10 +737,10 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 }
 .desk-today-dock-pill:hover{filter:brightness(.96);transform:translateY(-1px)}
 .today-header-card{
-  position:relative!important;
-  overflow:hidden!important;
-  border-radius:18px!important;
-  box-shadow:0 8px 24px rgba(var(--shadow-rgb),.06)!important;
+  position:relative;
+  overflow:hidden;
+  border-radius:18px;
+  box-shadow:0 8px 24px rgba(var(--shadow-rgb),.06);
 }
 .today-header-card::before{
   content:'';
