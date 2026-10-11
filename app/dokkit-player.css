@@ -2,10 +2,10 @@
 .dokkit-player {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--z-player);
   width: 100%;
   background: var(--steel);
-  color: #fff;
+  color: var(--text-inverse);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
 }
 
@@ -36,7 +36,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--text-inverse);
   flex-shrink: 0;
   animation: dokkit-player-pulse 1.6s ease-in-out infinite;
 }
@@ -85,7 +85,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.22);
-  color: #fff;
+  color: var(--text-inverse);
   padding: 0;
   cursor: pointer;
 }
