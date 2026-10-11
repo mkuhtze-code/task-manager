@@ -1,0 +1,32 @@
+/* UX-2 — Today should read as a calm capacity instrument, not a scorecard.
+   Copy changes live in TodayHeader; these rules keep the mobile hierarchy quiet. */
+
+.mobile-today-cockpit-fit {
+  min-width: 0;
+}
+
+.mobile-today-cockpit-fit strong {
+  color: var(--ink, #0f172a);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.mobile-today-cockpit-fit > span:last-child {
+  color: var(--ink-soft, #64748b);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The fit state remains understandable without relying on the colored dot. */
+.mobile-today-fit-dot {
+  flex: 0 0 auto;
+}
+
+.mobile-today-fit-dot.over {
+  background: var(--danger, #b45309);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-today-capacity-track > span {
+    transition: none !important;
+  }
+}
