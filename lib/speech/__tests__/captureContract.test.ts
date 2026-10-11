@@ -125,7 +125,7 @@ describe('native capture contract', () => {
     expect(prepared.status).toBe('prepared');
     if (prepared.status !== 'prepared') return;
 
-    if (prepared.proposal.status !== 'collection_confirmation_required') return;
+    expect(prepared.proposal.status).toBe('collection_confirmation_required');
     expect(prepared.proposal.result.outcome).not.toBe('CREATE_TASK');
     expect(session.authorize({
       requestId: 'collection-1',
