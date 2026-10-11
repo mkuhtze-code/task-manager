@@ -1040,7 +1040,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
   if (
     explicitCommunicationCommitment &&
     primaryVerb &&
-    /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up|bill\s+out|bill)$/.test(primaryVerb) &&
+    /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up)$/.test(primaryVerb) &&
     out.objectText &&
     !new RegExp('^' + primaryVerb.replace(/\s+/g, '\\s+') + '\\b', 'i').test(out.objectText)
   ) {
@@ -1616,6 +1616,7 @@ export function requestTaskText(req: EngineRequest): string {
       .replace(/\bmessage\b/i, 'Message')
       .replace(/\bcontact\b/i, 'Contact')
       .replace(/\bquote\b/i, 'Quote')
+      .replace(/\bbill\b/i, 'Bill')
       .replace(/\bbill\b/i, 'Bill')
       .replace(/\bdrop\b/i, 'Drop')
       .replace(/\bcheck\b/i, 'Check')
