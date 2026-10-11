@@ -64,6 +64,7 @@ data class Task(
     @SerialName("order_index") val orderIndex: Int = 0,
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("completed_at") val completedAt: String? = null,
+    @SerialName("capture_request_id") val captureRequestId: String? = null,
     @SerialName("near_notified") val nearNotified: Boolean = false,
     @SerialName("over_notified") val overNotified: Boolean = false,
     @SerialName("last_overdue_ping_at") val lastOverduePingAt: String? = null,
