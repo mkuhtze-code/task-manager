@@ -68,6 +68,25 @@ fun TodayScreen(
     var draft by remember { mutableStateOf("") }
     var captureError by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
+    var updatingTaskIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var actionError by remember { mutableStateOf<String?>(null) }
+
+    fun runTaskAction(task: Task, action: suspend () -> Unit) {
+        if (task.id in updatingTaskIds) return
+        updatingTaskIds = updatingTaskIds + task.id
+        actionError = null
+        scope.launch {
+            try {
+                action()
+                tasks = repository.loadOpenTasks()
+            } catch (e: Exception) {
+                actionError = e.message?.takeIf(String::isNotBlank)
+                    ?: "Task update failed. Check your connection and retry."
+            } finally {
+                updatingTaskIds = updatingTaskIds - task.id
+            }
+        }
+    }
 
     fun refresh() {
         scope.launch {
@@ -131,6 +150,10 @@ fun TodayScreen(
             Spacer(Modifier.height(18.dp))
             Text("Today", style = MaterialTheme.typography.titleMedium, color = colors.ink)
             Spacer(Modifier.height(8.dp))
+            actionError?.let { message ->
+                Text(message, color = colors.danger, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(6.dp))
+            }
 
             when {
                 loading -> Box(
@@ -164,10 +187,38 @@ fun TodayScreen(
                                 Text(task.text, color = colors.ink, style = MaterialTheme.typography.bodyLarge)
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    "${task.estimateMins} min estimate · ${if (task.dueToday) "Today" else "Flexible"}",
+                                    "${task.estimateMins} min estimate · ${if (task.dueToday) "Today" else "Flexible"} · ${task.status}",
                                     color = colors.inkSoft,
                                     style = MaterialTheme.typography.bodySmall,
                                 )
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    if (task.status == "active") {
+                                        TextButton(
+                                            onClick = { runTaskAction(task) { repository.stopTask(task.id) } },
+                                            enabled = task.id !in updatingTaskIds,
+                                        ) { Text("Stop") }
+                                    } else {
+                                        TextButton(
+                                            onClick = { runTaskAction(task) { repository.startTask(task.id) } },
+                                            enabled = task.id !in updatingTaskIds,
+                                        ) { Text("Start") }
+                                    }
+                                    TextButton(
+                                        onClick = { runTaskAction(task) { repository.completeTask(task.id) } },
+                                        enabled = task.id !in updatingTaskIds,
+                                    ) {
+                                        if (task.id in updatingTaskIds) {
+                                            CircularProgressIndicator()
+                                        } else {
+                                            Text("Complete")
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
