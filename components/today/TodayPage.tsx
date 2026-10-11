@@ -2051,6 +2051,29 @@ export function TodayPage() {
     }
   }
 
+  /** Apply a task mutation locally first, then let the durable queue sync it. */
+  function queueTaskPatch(id: string, patch: Partial<Task>): boolean {
+    const userId = session?.user?.id;
+    if (!userId) return false;
+    const existing = tasks.find((task) => task.id === id);
+    const next = localPatchTask(userId, id, patch);
+    if (!next && existing) {
+      localUpsertTask(userId, { ...existing, ...patch } as Task);
+    } else if (!next) {
+      return false;
+    }
+    void flushSyncQueue(userId);
+    return true;
+  }
+
+  function queueTaskDelete(id: string): boolean {
+    const userId = session?.user?.id;
+    if (!userId) return false;
+    localRemoveTask(userId, id);
+    void flushSyncQueue(userId);
+    return true;
+  }
+
   async function completeTask(id: string) {
     const task = tasks.find((t) => t.id === id);
     let finalLogged = task ? task.logged_mins : 0;
@@ -2085,20 +2108,20 @@ export function TodayPage() {
           },
         });
     const actualForDb = loop.actualForDb;
-    const { error } = await supabase
-      .from('tasks')
-      .update({
-        status: 'done',
-        started_at: null,
-        logged_mins: finalLogged,
-        actual_mins: actualForDb > 0 ? actualForDb : null,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not complete the task: ' + error.message);
-      return;
+    const completionPatch: Partial<Task> = {
+      status: 'done',
+      started_at: null,
+      logged_mins: finalLogged,
+      actual_mins: actualForDb > 0 ? actualForDb : null,
+      completed_at: new Date().toISOString(),
+    };
+    if (!queueTaskPatch(id, completionPatch)) {
+      const { error } = await supabase.from('tasks').update(completionPatch).eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not complete the task: ' + error.message);
+        return;
+      }
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
     if (task && loop.trainMins != null) {
@@ -2112,7 +2135,6 @@ export function TodayPage() {
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
     notifyTaskActivity({ type: 'completed', taskId: id });
   }
-
 
   async function confirmPostStopDone() {
     if (!postStopPrompt) return;
@@ -2131,11 +2153,13 @@ export function TodayPage() {
 
   async function deleteTask(id: string) {
     const task = tasks.find((t) => t.id === id);
-    const { error } = await supabase.from('tasks').delete().eq('id', id);
-    if (error) {
-      console.error(error);
-      alert('Could not delete the task: ' + error.message);
-      return;
+    if (!queueTaskDelete(id)) {
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
+      if (error) {
+        console.error(error);
+        alert('Could not delete the task: ' + error.message);
+        return;
+      }
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
