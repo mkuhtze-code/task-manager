@@ -34,11 +34,12 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Added a repeatable cascade audit command.
 - Added a hard ceiling against increasing `!important` counts in the six high-impact CSS files.
 - Added brace-balance validation to catch a class of malformed CSS edits.
+- Consolidated the shared navigation border/background values into the canonical base rule; retained distinct dark-theme, mobile, and desktop variants.
 - Wired the audit into the existing production build chain, so the web and Capacitor-test builds execute it.
 
 ## Still to complete
 
-- Reduce the duplicate/overlapping authority inside `surface-system.css`, starting with mobile/desktop navigation and shared object rows.
+- Continue consolidating `surface-system.css` authority, starting with the remaining mobile/desktop navigation variants and shared object rows.
 - Reduce Today/Capture override count by moving declarations into their actual owning selectors, not by lowering specificity blindly.
 - Continue removing literal colors and token fallbacks only when the replacement preserves contrast and theme behavior.
 - Verify mobile and desktop, light and dark themes, keyboard focus, reduced motion, sheets/portals, and safe areas after each visual slice.
