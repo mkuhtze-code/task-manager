@@ -145,6 +145,20 @@ export { decideSpeechActions, decisionWouldCreateTask, semanticOutcome } from '.
 export type { SpeechDecision, ActDecision, ActionKind } from './decision';
 
 export {
+  CAPTURE_CONTRACT_VERSION,
+  createCaptureContractSession,
+} from './captureContract';
+export type {
+  CaptureSource,
+  CaptureContractInput,
+  CaptureProposalStatus,
+  PreparedCapture,
+  PrepareCaptureResult,
+  CaptureAuthorizationResult,
+  CaptureContractSession,
+} from './captureContract';
+
+export {
   processCaptureSpeech,
   confirmCaptureSpeech,
   rejectOrCorrectCaptureSpeech,
