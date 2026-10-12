@@ -36,6 +36,9 @@ export type CanonicalAct = {
   modality: CanonicalModality;
   confidence: Confidence;
   rawSpan: string | null;
+  /** Existing-context targeting is evidence, never execution authority. */
+  targetsExistingContext?: boolean;
+  requiresClarification?: boolean;
 };
 
 export type CanonicalConstraint = {
@@ -124,4 +127,15 @@ export function canonicalRequestCandidate(
   if (confidenceRank[meaning.confidence.action] < confidenceRank[minimumConfidence]) return null;
   if (meaning.safety.mustNotCreateTask || meaning.safety.requiresConfirmation) return null;
   return meaning.engineRequest ?? null;
+}
+
+
+/** Invalid canonical payloads and explicit negative intent can veto mutation. */
+export function canonicalMeaningBlocksMutation(
+  meaning: CanonicalUtteranceMeaning | undefined,
+): boolean {
+  return !!meaning && (
+    !isCanonicalUtteranceMeaning(meaning) ||
+    meaning.safety.mustNotCreateTask
+  );
 }
