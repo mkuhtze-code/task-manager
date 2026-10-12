@@ -298,11 +298,8 @@ export function resolveListTarget(
         return { kind: 'found', taskId: active.taskId, title: active.title };
       }
     }
-    // Soft fallback: most recent list-marked task
-    const listMarked = eligibleTasks;
-    if (listMarked.length === 1) {
-      return { kind: 'found', taskId: listMarked[0].id, title: listMarked[0].text };
-    }
+    // No implicit fallback to an arbitrary list. If the active list expired,
+    // disappeared, or was completed, require explicit list language instead.
     return { kind: 'none' };
   }
 
@@ -523,18 +520,9 @@ export async function applyListIntent(
   if (intent.type === 'complete_collection_items') {
     let res = resolveListTarget(intent.target, ops.listTasks());
     // If named target misses but active list still holds the item refs, use active.
-    if (res.kind === 'none' || (res.kind === 'found' && intent.itemReferences.length > 0)) {
-      const active = loadActiveListState();
-      if (active.taskId && canUseActiveList(active)) {
-        const activeRes: ListResolveResult = {
-          kind: 'found',
-          taskId: active.taskId,
-          title: active.title || 'List',
-        };
-        if (res.kind === 'none') {
-          res = activeRes;
-        }
-      }
+    if (res.kind === 'none') {
+      const activeRes = resolveListTarget({ kind: 'active' }, ops.listTasks());
+      if (activeRes.kind === 'found') res = activeRes;
     }
     if (res.kind === 'ambiguous') {
       return {
@@ -551,19 +539,15 @@ export async function applyListIntent(
     const n = await ops.completeSubtasks(res.taskId, intent.itemReferences);
     // If named list matched but item names didn't, try active list once.
     if (n === 0) {
-      const active = loadActiveListState();
-      if (
-        active.taskId &&
-        canUseActiveList(active) &&
-        active.taskId !== res.taskId
-      ) {
-        const n2 = await ops.completeSubtasks(active.taskId, intent.itemReferences);
+      const activeRes = resolveListTarget({ kind: 'active' }, ops.listTasks());
+      if (activeRes.kind === 'found' && activeRes.taskId !== res.taskId) {
+        const n2 = await ops.completeSubtasks(activeRes.taskId, intent.itemReferences);
         if (n2 > 0) {
           touchActiveList();
           return {
             ok: true,
-            message: `Marked ${n2} done on "${active.title || 'List'}"`,
-            taskId: active.taskId,
+            message: `Marked ${n2} done on "${activeRes.title}"`,
+            taskId: activeRes.taskId,
             openTaskId: null,
           };
         }
