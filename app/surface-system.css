@@ -366,10 +366,10 @@
 .desk-job-card.surface-object{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none}.desk-job-card.surface-object .desk-job-card-head{margin:0!important;min-height:22px}.desk-job-card.surface-object .desk-job-card-client{margin-top:3px;font-size:12px;color:var(--ink-soft)}.desk-job-card.surface-object .desk-job-card-state{margin-top:10px!important}.desk-job-card.surface-object .desk-job-card-next,.desk-job-card.surface-object .desk-job-card-section{margin-top:10px!important;padding-top:10px!important;border-top:1px solid var(--line)!important}.desk-job-card.surface-object .desk-job-card-chip{border:0!important;background:transparent!important;padding:0!important;font-size:12px!important;color:var(--ink-soft)!important}
 
 /* Meetings */
-.meeting-row.surface-object{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none!important}.meeting-row-main{display:block!important;width:100%;min-width:0}.meeting-row-top{display:flex;align-items:baseline;gap:8px;min-width:0}.meeting-row-name{display:block;flex:1}.meeting-source-tag{flex:0 0 auto;padding:0!important;border:0!important;background:transparent!important;color:var(--ink-faint)!important;font-size:10px!important;font-weight:600!important}.meeting-row-time{margin-top:5px!important}.meeting-row-context{display:flex!important;margin-top:4px!important}.meeting-row-aside{display:none!important}.meeting-row-relative.is-urgent{color:var(--steel-dark,var(--steel))!important}.meeting-row.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}
+.meeting-row.surface-object{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none!important}.meeting-row-main{display:block!important;width:100%;min-width:0}.meeting-row-top{display:flex;align-items:baseline;gap:8px;min-width:0}.meeting-row-name{display:block;flex:1}.meeting-source-tag{flex:0 0 auto;padding:0!important;border:0!important;background:transparent!important;color:var(--ink-faint)!important;font-size:10px!important;font-weight:600!important}.meeting-row-time{margin-top:5px!important}.meeting-row-context{display:flex!important;margin-top:4px!important}.meeting-row-aside{display:none!important}.meeting-row-relative.is-urgent{color:var(--steel-dark,var(--steel))!important}
 
 /* Travel */
-.trip-row-maybach.surface-object{position:relative;display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) 48px var(--space-3) var(--space-4)!important}.trip-row-maybach.surface-object .trip-row-link{display:block!important;min-width:0;padding:0!important;color:inherit;text-decoration:none}.trip-row-main{display:block!important;width:100%;min-width:0}.trip-row-time{margin-top:5px!important}.trip-row-context{display:flex!important;margin-top:4px!important}.trip-row-aside{display:none!important}.trip-row-maybach.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}.trip-row-delete{position:absolute!important;top:8px!important;right:8px!important;width:28px!important;height:28px!important;margin:0!important;border-radius:7px!important;opacity:.38}.trip-row-delete:hover,.trip-row-delete:focus-visible{opacity:1}
+.trip-row-maybach.surface-object{position:relative;display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) 48px var(--space-3) var(--space-4)!important}.trip-row-maybach.surface-object .trip-row-link{display:block!important;min-width:0;padding:0!important;color:inherit;text-decoration:none}.trip-row-main{display:block!important;width:100%;min-width:0}.trip-row-time{margin-top:5px!important}.trip-row-context{display:flex!important;margin-top:4px!important}.trip-row-aside{display:none!important}.trip-row-delete{position:absolute!important;top:8px!important;right:8px!important;width:28px!important;height:28px!important;margin:0!important;border-radius:7px!important;opacity:.38}.trip-row-delete:hover,.trip-row-delete:focus-visible{opacity:1}
 
 /* Featured = same object, more salience */
 .meetings-featured,.travel-featured,.meetings-featured-mobile,.travel-featured-mobile{display:block!important;min-height:68px!important;margin:0 0 12px!important;padding:12px 16px!important;border:1px solid var(--line)!important;border-radius:var(--dk-radius)!important;background:var(--paper-raised)!important;box-shadow:none!important}
@@ -614,24 +614,6 @@ html[data-theme='dark']{
 /* The object field gets a little more presence. */
 .meeting-list,.trip-list-maybach,.job-list{
   gap:14px!important;
-}.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{
-  border-radius:16px!important;
-  background:var(--paper-raised)!important;
-  box-shadow:0 1px 0 rgba(var(--shadow-rgb),.025),0 8px 22px rgba(var(--shadow-rgb),.035)!important;
-  transition:transform .18s var(--ease),border-color .18s var(--ease),box-shadow .18s var(--ease)!important;
-}.desk-job-card.surface-object:hover,.meeting-row.surface-object:hover,.trip-row-maybach.surface-object:hover,.job-row:hover{
-  transform:translateY(-3px)!important;
-  border-color:color-mix(in srgb,var(--dk-orange) 36%,var(--line-strong))!important;
-  box-shadow:0 10px 28px rgba(var(--shadow-rgb),.09)!important;
-}
-.meeting-row.pressure-now,.trip-row-maybach.pressure-now{
-  border-color:color-mix(in srgb,var(--dk-orange) 60%,var(--line))!important;
-  box-shadow:inset 4px 0 0 var(--dk-orange),0 8px 24px rgba(var(--shadow-rgb),.06)!important;
-}
-.surface-object-title,.desk-job-card-name,.meeting-row-name,.trip-row-name,.job-row-name{
-  font-size:16px!important;
-  font-weight:700!important;
-  letter-spacing:-.02em!important;
 }
 .surface-object-time,.meeting-row-time,.trip-row-time{
   font-family:var(--font-digital)!important;
@@ -664,9 +646,7 @@ html[data-theme='dark']{
   .surface-pulse{min-height:42px!important;padding:6px 10px!important}
   .surface-pulse-body{min-width:0}
   .surface-header-actions .btn-steel{min-height:40px!important;padding:0 13px!important}
-  .meeting-list,.trip-list-maybach,.job-list{gap:10px!important}.desk-job-card.surface-object,.meeting-row.surface-object,.trip-row-maybach.surface-object,.job-row{
-    border-radius:14px!important;
-  }
+  .meeting-list,.trip-list-maybach,.job-list{gap:10px!important}
 }
 
 /* Today gets the strongest identity because it is the whole system in one view. */
@@ -786,29 +766,6 @@ html[data-theme='dark'] .surface-tab.current{
   position:relative;
   isolation:isolate;
 }
-.meeting-row.surface-object::before,
-.trip-row-maybach.surface-object::before,
-.desk-job-card.surface-object::before,
-.job-row::before{
-  content:'';
-  position:absolute;
-  z-index:-1;
-  left:14px;
-  right:14px;
-  top:-1px;
-  height:3px;
-  border-radius:0 0 3px 3px;
-  background:var(--line-strong);
-  transition:left .18s var(--ease),right .18s var(--ease),background .18s var(--ease);
-}
-.meeting-row.surface-object:hover::before,
-.trip-row-maybach.surface-object:hover::before,
-.desk-job-card.surface-object:hover::before,
-.job-row:hover::before{
-  left:24px;
-  right:24px;
-  background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
-}
 
 /* Jobs: the first work object earns a little more real estate. */
 @media (min-width:1000px){
@@ -835,44 +792,6 @@ html[data-theme='dark'] .surface-tab.current{
     margin-top:22px!important;
     padding-top:14px!important;
   }
-}
-
-/* Meetings: live conversations physically step forward. */
-.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now{
-  min-height:148px!important;
-  padding:20px 20px!important;
-  background:
-    linear-gradient(135deg,
-      color-mix(in srgb,var(--dk-orange) 7%,var(--paper-raised)),
-      var(--paper-raised) 58%)!important;
-}
-.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now .meeting-row-name{
-  font-size:20px!important;
-}
-.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now .meeting-row-time{
-  margin-top:9px!important;
-  font-size:12px!important;
-}
-.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now::before{
-  height:5px;
-  background:var(--dk-orange);
-}
-
-/* Travel: routes get a directional spine rather than looking like records. */
-.trip-row-maybach.surface-object::after{
-  content:'';
-  position:absolute;
-  left:var(--dk-pad-x);
-  bottom:14px;
-  width:52px;
-  height:2px;
-  background:linear-gradient(90deg,var(--dk-blue) 0 55%,var(--dk-orange) 55%);
-  border-radius:2px;
-  opacity:.75;
-}
-.trip-row-maybach.pressure-now::after{
-  width:78px;
-  background:linear-gradient(90deg,var(--dk-orange) 0 62%,var(--dk-blue) 62%);
 }
 .trip-row-maybach.surface-object .trip-row-delete{
   border:1px solid transparent!important;
@@ -966,17 +885,6 @@ html[data-theme='dark'] .surface-tab.current{
   }
   .meeting-section-lede,.trip-section-lede{
     display:none;
-  }
-  .meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now{
-    min-height:128px!important;
-    padding:17px 16px!important;
-  }
-  .meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now .meeting-row-name{
-    font-size:18px!important;
-  }
-  .trip-row-maybach.surface-object::after{
-    left:14px;
-    bottom:10px;
   }
   .desk-today-depth{
     padding:16px!important;
@@ -1511,22 +1419,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     padding:20px 22px 18px 24px!important;
     border-radius:16px!important;
   }
-  .meeting-row.surface-object::before{
-    content:'';
-    position:absolute;
-    left:0;
-    top:18px;
-    bottom:18px;
-    width:3px;
-    border-radius:0 3px 3px 0;
-    background:color-mix(in srgb,var(--dk-blue) 38%,var(--line));
-  }
-  .meeting-row.pressure-now::before,
-  .meeting-row.pressure-soon::before{
-    background:var(--dk-orange);
-    width:5px;
-  }
-  .meeting-row.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}
   .meeting-row-name{font-size:17px!important;font-weight:780!important}
   .meeting-row-time{margin-top:8px!important;font-size:12px!important}
   .meeting-row-context{margin-top:7px!important}
@@ -1539,16 +1431,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     padding:20px 58px 18px 26px!important;
     border-radius:16px!important;
     overflow:hidden;
-  }
-  .trip-row-maybach.surface-object::before{
-    content:'';
-    position:absolute;
-    left:0;
-    top:20px;
-    bottom:20px;
-    width:3px;
-    border-radius:0 3px 3px 0;
-    background:linear-gradient(180deg,var(--dk-blue),var(--dk-orange));
   }
   .trip-row-maybach.surface-object::after{
     content:'';
@@ -1563,7 +1445,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     opacity:.65;
     pointer-events:none;
   }
-  .trip-row-maybach.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}
   .trip-row-name{font-size:17px!important;font-weight:780!important}
   .trip-row-time{margin-top:8px!important}
   .trip-row-context{margin-top:7px!important}
@@ -1882,30 +1763,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     margin-top:8px!important;
   }
 
-  html[data-surface='desktop'] .meeting-row.surface-object::before{
-    content:'';
-    position:absolute;
-    left:0;top:0;bottom:0;width:5px;
-    background:var(--dk-blue);
-  }
-
-  html[data-surface='desktop'] .meeting-row.pressure-now::before,
-  html[data-surface='desktop'] .meeting-row.pressure-soon::before{
-    background:var(--dk-orange);
-  }
-
-  html[data-surface='desktop'] .meeting-row.pressure-now{
-    min-height:164px!important;
-    background:
-      radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-orange) 13%,transparent),transparent 34%),
-      var(--paper-raised)!important;
-  }
-
-  html[data-surface='desktop'] .meeting-row.pressure-now .meeting-row-name{
-    font-size:22px!important;
-    font-weight:850!important;
-  }
-
   html[data-surface='desktop'] .meeting-row.pressure-now::after{
     content:'LIVE';
     position:absolute;
@@ -1923,14 +1780,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     padding-left:58px!important;
   }
 
-  html[data-surface='desktop'] .trip-row-maybach.surface-object::before{
-    content:'';
-    position:absolute;
-    left:27px;top:20px;bottom:20px;
-    width:2px;
-    background:linear-gradient(var(--dk-gradient-start),var(--dk-gradient-end));
-  }
-
   html[data-surface='desktop'] .trip-row-maybach.surface-object::after{
     content:'›';
     position:absolute;
@@ -1945,18 +1794,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     font-size:18px;font-weight:900;
   }
 
-  html[data-surface='desktop'] .trip-row-maybach.pressure-now{
-    min-height:164px!important;
-    background:
-      radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 13%,transparent),transparent 36%),
-      var(--paper-raised)!important;
-  }
-
-  html[data-surface='desktop'] .trip-row-maybach.pressure-now .trip-row-name{
-    font-size:22px!important;
-    font-weight:850!important;
-  }
-
   /* Jobs: asymmetry is intentional. */
   html[data-surface='desktop'] .desk-jobs-grid{
     gap:16px!important;
@@ -1969,17 +1806,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     border-radius:18px!important;
     position:relative!important;
     overflow:hidden!important;
-  }
-
-  html[data-surface='desktop'] .desk-job-card.surface-object::before{
-    content:'';
-    position:absolute;
-    left:0;top:0;bottom:0;width:4px;
-    background:color-mix(in srgb,var(--dk-blue) 72%,transparent);
-  }
-
-  html[data-surface='desktop'] .desk-job-card.surface-object:nth-child(2n)::before{
-    background:var(--dk-orange);
   }
 
   html[data-surface='desktop'] .desk-job-card:first-child{
@@ -2500,11 +2326,6 @@ html[data-theme='dark'] .desk-job-card:first-child{
   html[data-surface='desktop'] .meeting-row.surface-object,
   html[data-surface='desktop'] .trip-row-maybach.surface-object{
     min-height:122px!important;
-  }
-
-  html[data-surface='desktop'] .meeting-row.pressure-now,
-  html[data-surface='desktop'] .trip-row-maybach.pressure-now{
-    min-height:148px!important;
   }
 
   html[data-surface='desktop'] .desk-job-card.surface-object{

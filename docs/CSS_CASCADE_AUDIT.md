@@ -78,3 +78,13 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Preserved responsive header padding, layout, sticky positioning, controls, safe-area behavior, and content hierarchy; this removes decorative colour treatment rather than changing header structure.
 - Reduced `app/surface-system.css` from 788 to 782 `!important` occurrences while preserving balanced braces. No budget was raised.
 - Next: source-migrate the remaining row-specific ornamental styling and conflicting row typography; validate real pages in mobile/desktop and light/dark before merging.
+
+## Universal row accent cleanup — 2026-10
+
+- Removed shared top rails and hover-gradient rails from job, meeting, travel, and desktop job rows at their source selectors.
+- Removed the meeting blue edge stripe, travel blue/orange edge stripe, and alternating blue/orange job-card edge stripes, including desktop-specific reintroductions.
+- Removed the travel row's bottom colour band and obsolete mobile positioning override. Kept the desktop travel navigation cue and travel start/end markers, which communicate route structure rather than decorate the row edge.
+- Removed the legacy raised-card/shadow/lift treatment and orange hover border that conflicted with the shared flat object-row contract.
+- Removed pressure-only orange inset rails, orange/radial row gradients, and oversized pressure title overrides. Priority remains expressed through semantic state/context rather than repainting or resizing the object.
+- Removed duplicate title and digital-clock typography overrides so object titles and metadata can follow the shared token contract.
+- CSS validation on the branch: 743 `!important` occurrences (down from 782; 39 fewer than the start of this pass), balanced braces. Full CI and both Vercel previews are required before merge; visual checks should compare task/job/meeting/travel rows across mobile/desktop and light/dark themes.
