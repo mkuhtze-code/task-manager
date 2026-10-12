@@ -13,11 +13,14 @@ import type {
 } from './types';
 import type { DeferredIntention } from './deferredIntention';
 import type { Decision, DecisionTrace } from '@/lib/thinking/v3/types';
+import type { CanonicalUtteranceMeaning } from './canonicalMeaning';
 
 export type InteractionInputType = 'text' | 'speech_transcript' | 'structured';
 
 export type InteractionInput = {
   userId: string | null;
+  /** Structured upstream meaning; optional and never grants execution authority. */
+  canonicalMeaning?: CanonicalUtteranceMeaning;
   input: {
     type: InteractionInputType;
     text: string;
