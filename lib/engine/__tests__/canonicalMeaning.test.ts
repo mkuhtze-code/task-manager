@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canonicalRequestCandidate,
+  canonicalMeaningBlocksMutation,
   isCanonicalUtteranceMeaning,
   type CanonicalUtteranceMeaning,
 } from '../canonicalMeaning';
@@ -39,6 +40,18 @@ describe('canonical post-recognition meaning contract', () => {
     expect(canonicalRequestCandidate({
       ...base, safety: { mustNotCreateTask: false, requiresConfirmation: true, reasons: ['confirm'] },
     })).toBeNull();
+  });
+
+  it('lets canonical safety veto a downstream mutation without making confirmation a veto', () => {
+    expect(canonicalMeaningBlocksMutation({
+      ...base,
+      safety: { mustNotCreateTask: true, requiresConfirmation: false, reasons: ['negation'] },
+    })).toBe(true);
+    expect(canonicalMeaningBlocksMutation({
+      ...base,
+      safety: { mustNotCreateTask: false, requiresConfirmation: true, reasons: ['explicit Dock confirms capture'] },
+    })).toBe(false);
+    expect(canonicalMeaningBlocksMutation(undefined)).toBe(false);
   });
 
   it('requires the configured action-confidence threshold before reusing a request', () => {
