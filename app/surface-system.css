@@ -2621,3 +2621,193 @@ html[data-theme='dark'] .desk-job-card:first-child{
     padding-bottom:13px!important;
   }
 }
+
+/* -------------------------------------------------------------------------
+   Universal object + page-identity convergence (2026-10)
+   This is the final shared grammar layer. Surfaces may change emphasis and
+   content, but the same object must retain the same geometry and type rhythm.
+   ------------------------------------------------------------------------- */
+
+:root {
+  --object-row-pad-y: 12px;
+  --object-row-pad-x: var(--space-4);
+  --object-title-size: var(--text-base);
+  --object-title-leading: var(--leading-snug);
+  --object-meta-size: var(--text-xs);
+  --object-meta-leading: var(--leading-snug);
+}
+
+/* Same underlying object row across Today, Jobs, Meetings, and Travel.
+   Content-specific controls and expanded details remain owned by each row. */
+.task-card.surface-object,
+.job-row,
+.meeting-row.surface-object,
+.trip-row-maybach.surface-object,
+.desk-job-card.surface-object {
+  box-sizing: border-box;
+  min-width: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink);
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.task-card.surface-object,
+.meeting-row.surface-object,
+.desk-job-card.surface-object {
+  padding-block: var(--object-row-pad-y);
+  padding-inline: var(--object-row-pad-x);
+}
+
+.job-row {
+  padding-block: var(--object-row-pad-y);
+  padding-inline: var(--object-row-pad-x);
+}
+
+.trip-row-maybach.surface-object {
+  padding-block: var(--object-row-pad-y);
+}
+
+.task-card.surface-object:hover,
+.job-row:hover,
+.meeting-row.surface-object:hover,
+.trip-row-maybach.surface-object:hover,
+.desk-job-card.surface-object:hover {
+  background: var(--surface-hover);
+  box-shadow: none;
+}
+
+.task-card.surface-object:focus-within,
+.job-row:focus-visible,
+.meeting-row.surface-object:focus-visible,
+.trip-row-maybach.surface-object:focus-within,
+.desk-job-card.surface-object:focus-visible {
+  outline-color: var(--focus-ring);
+}
+
+/* Object titles share one scale and weight; surface-specific names remain. */
+.task-card.surface-object .task-text,
+.job-row-name,
+.meeting-row-name,
+.trip-row-name,
+.desk-job-card-name,
+.surface-object-title {
+  min-width: 0;
+  font-size: var(--object-title-size);
+  line-height: var(--object-title-leading);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+}
+
+/* Context is always quieter than the object name, regardless of surface. */
+.task-card.surface-object .task-card-job,
+.task-card.surface-object .task-card-time,
+.task-card.surface-object .task-card-elapsed,
+.job-row-meta,
+.job-row-next,
+.meeting-row-sub,
+.meeting-row-context,
+.trip-row-sub,
+.trip-row-context,
+.desk-job-card-client,
+.desk-job-card-state,
+.surface-object-context,
+.surface-object-time {
+  font-size: var(--object-meta-size);
+  line-height: var(--object-meta-leading);
+  font-weight: var(--weight-medium);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* State must not repaint an entire row in brand colour. Use existing state
+   text, a small marker, or a narrow rail where that state is meaningful. */
+.meeting-row.surface-object.pressure-now,
+.trip-row-maybach.surface-object.pressure-now,
+.task-card.surface-object.is-running {
+  background: transparent;
+}
+
+/* One page-header foundation. Today can carry its capacity readout, while
+   other surfaces carry their own context; the shared identity stays calm. */
+.app-header,
+.today-header-card {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.app-header {
+  background: var(--paper);
+  box-shadow: none;
+}
+
+.meetings-mobile-header .app-title,
+.travel-mobile-header .app-title,
+.app-header .app-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+.meetings-mobile-pulse,
+.travel-mobile-pulse,
+.surface-mobile-pulse {
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+  font-weight: var(--weight-medium);
+}
+
+.mobile-today-cockpit {
+  color: var(--ink);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.mobile-today-cockpit-kicker {
+  color: var(--ink-faint);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.mobile-today-cockpit-date {
+  color: var(--ink);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+@media (max-width: 700px) {
+  .task-card.surface-object,
+  .job-row,
+  .meeting-row.surface-object,
+  .trip-row-maybach.surface-object,
+  .desk-job-card.surface-object {
+    padding-block: var(--object-row-pad-y);
+  }
+
+  .app-header,
+  .today-header-card {
+    border-bottom: 1px solid var(--line);
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-card.surface-object,
+  .job-row,
+  .meeting-row.surface-object,
+  .trip-row-maybach.surface-object,
+  .desk-job-card.surface-object {
+    transition: none;
+  }
+}
