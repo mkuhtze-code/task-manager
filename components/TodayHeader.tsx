@@ -305,10 +305,10 @@ export function TodayHeader(props: {
                 </div>
                 <strong className="today-pattern-headline">
                   {patternInsight.deltaMins > Math.max(10, patternInsight.plannedMins * 0.15)
-                    ? `Allow about ${fmtMins(patternInsight.deltaMins)} more`
+                    ? `Plan is short by ${fmtMins(patternInsight.deltaMins)}`
                     : patternInsight.deltaMins < -Math.max(10, patternInsight.plannedMins * 0.15)
-                      ? `This may take about ${fmtMins(Math.abs(patternInsight.deltaMins))} less`
-                      : 'Your plan is close to your usual pace'}
+                      ? `Plan allows ${fmtMins(Math.abs(patternInsight.deltaMins))} extra`
+                      : 'Plan matches your usual pace'}
                 </strong>
                 <p>
                   Across {patternInsight.sampleCount} measured examples of <b>{patternInsight.patternLabel}</b>,
@@ -338,28 +338,16 @@ export function TodayHeader(props: {
               </div>
             ) : null}
 
-            {commitments.length > 0 ? (
-              <div className="today-depth-schedule">
-                <span className="today-depth-label">Commitments today</span>
-                <ul className="today-shape-commitments">
-                  {commitments
-                    .slice()
-                    .sort((a, b) => {
-                      if (a.all_day !== b.all_day) return a.all_day ? -1 : 1;
-                      return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
-                    })
-                    .slice(0, 6)
-                    .map((c) => (
-                      <li key={c.id}>
-                        <span>{c.title}</span>
-                        <span className="mono">{commitmentWindow(c)}</span>
-                      </li>
-                    ))}
+            {depth?.fitsNow.length ? (
+              <div className="today-depth-fits">
+                <span className="today-depth-label">Good fits for the time left</span>
+                <ul>
+                  {depth.fitsNow.slice(0, 3).map((item, index) => (
+                    <li key={`${index}-${item}`}>{item}</li>
+                  ))}
                 </ul>
               </div>
-            ) : (
-              <p className="today-shape-line">No fixed commitments. Your time can move with the work.</p>
-            )}
+            ) : null}
           </section>
         </div>
       ) : null}
