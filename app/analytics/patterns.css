@@ -132,8 +132,8 @@
   margin: 8px 0 20px;
   padding: 14px 16px;
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(30, 107, 230, 0.06), rgba(15, 23, 42, 0.03));
-  border: 1px solid rgba(30, 107, 230, 0.12);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
 }
 
 .pk-engine-head {
