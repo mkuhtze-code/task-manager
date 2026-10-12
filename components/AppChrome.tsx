@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import ActiveTimerBar from '@/components/ActiveTimerBar';
+import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
+import { OfflineStatusBar } from '@/components/OfflineStatusBar';
+import { TodayHeader } from '@/components/TodayHeader';
+import { useTodayAuth } from '@/hooks/useTodayAuth';
+import { useTodayHeaderState } from '@/components/today/TodayHeaderState';
 import DesktopContextStrip from '@/components/DesktopContextStrip';
 import DesktopProductNav from '@/components/DesktopProductNav';
 import DesktopSidebar from '@/components/DesktopSidebar';
@@ -26,6 +31,8 @@ export default function AppChrome({
   children: React.ReactNode;
 }) {
   const { isDesktop } = useSurfaceMode();
+  const { session } = useTodayAuth();
+  const { headerProps } = useTodayHeaderState();
   const pathname = usePathname();
   const router = useRouter();
   const touchStart = useRef<SwipePoint | null>(null);
@@ -99,6 +106,25 @@ export default function AppChrome({
 
           <DesktopContextStrip />
 
+          {session?.user?.id && (
+            <>
+              <TravelAwarenessBanner userId={session.user.id} />
+              <OfflineStatusBar userId={session.user.id} />
+            </>
+          )}
+
+          {headerProps && (
+            <div className="persistent-today-header-shell">
+              <TodayHeader
+                {...headerProps}
+                onRecalcRoute={pathname === '/' ? headerProps.onRecalcRoute : () => router.push('/')}
+                onViewMap={pathname === '/' ? headerProps.onViewMap : () => router.push('/')}
+                onRealityCheck={pathname === '/' ? headerProps.onRealityCheck : () => router.push('/')}
+                onDockIt={pathname === '/' ? headerProps.onDockIt : () => router.push('/')}
+              />
+            </div>
+          )}
+
           <div
             className="desk-main-body"
             id="main-content"
@@ -114,6 +140,25 @@ export default function AppChrome({
   return (
     <>
       <ActiveTimerBar />
+
+      {session?.user?.id && (
+        <>
+          <TravelAwarenessBanner userId={session.user.id} />
+          <OfflineStatusBar userId={session.user.id} />
+        </>
+      )}
+
+      {headerProps && (
+        <div className="persistent-today-header-shell">
+          <TodayHeader
+            {...headerProps}
+            onRecalcRoute={pathname === '/' ? headerProps.onRecalcRoute : () => router.push('/')}
+            onViewMap={pathname === '/' ? headerProps.onViewMap : () => router.push('/')}
+            onRealityCheck={pathname === '/' ? headerProps.onRealityCheck : () => router.push('/')}
+            onDockIt={pathname === '/' ? headerProps.onDockIt : () => router.push('/')}
+          />
+        </div>
+      )}
 
       <div
         id="main-content"
