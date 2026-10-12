@@ -183,6 +183,11 @@ export function TaskCard(props: {
           role="button"
           tabIndex={0}
           onKeyDown={(e) => {
+            // Context links live inside the expandable task body. Let keyboard
+            // activation follow the link rather than also toggling the task.
+            if ((e.target as HTMLElement).closest('a, button, input, textarea, select')) {
+              return;
+            }
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               onToggleExpand();
