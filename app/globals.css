@@ -1216,7 +1216,7 @@ select:-webkit-autofill {
 .task-progress-fill {
   height: 100%;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--steel) 0%, var(--steel-dark) 100%);
+  background: var(--steel);
   transition: width 0.4s var(--ease);
 }
 
