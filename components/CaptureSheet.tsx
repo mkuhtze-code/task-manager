@@ -634,6 +634,28 @@ if (line && addTaskWithOverrides) {
       return;
     }
 
+    if (
+      (dock.kind === 'clarify' || dock.kind === 'fallthrough') &&
+      /no hard day set/i.test(dock.message || '') &&
+      addTaskWithOverrides
+    ) {
+      // A missing day is planning uncertainty, not a reason to reject an
+      // explicit Dock. Save the user's exact wording as a flexible task;
+      // leave the date unset so Dokkit can learn/refine it later.
+      await addTaskWithOverrides({
+        text: line,
+        originalInput: line,
+        locationText: captureLocation.trim() || null,
+        jobId: captureJobId,
+        surfaceDate: captureSurfaceDate || null,
+      });
+      setEngineExplain('Saved as a flexible task. No day was assigned.');
+      setCollectionFeedback('Saved as a flexible task. No day was assigned.');
+      confirmSpeechLearning();
+      clearSpeechStatus();
+      return;
+    }
+
     if (dock.kind === 'clarify') {
       setEngineExplain(dock.message);
       setCollectionFeedback(dock.message);
