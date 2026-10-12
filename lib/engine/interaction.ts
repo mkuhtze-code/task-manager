@@ -38,6 +38,7 @@ import {
   appendEvidenceLocal,
 } from './persist';
 
+import { canonicalMeaningBlocksMutation } from './canonicalMeaning';
 import type {
   InteractionInput,
   InteractionInputType,
@@ -412,6 +413,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
   }
 
   const canAct =
+    !canonicalMeaningBlocksMutation(input.canonicalMeaning) &&
     (action.kind === 'create_task' || action.kind === 'update_task') &&
     (cycle.authority.mayAct || (!!addPat.objectText && !!forcedJobId)) &&
     (!!request.objectText || !!addPat.objectText);
