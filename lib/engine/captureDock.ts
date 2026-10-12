@@ -6,6 +6,7 @@
 import { processCpuInteraction } from '@/lib/cpu';
 import type { CpuCycleResult } from '@/lib/cpu';
 import { loadWorkingMemoryLocal, loadActiveRequestLocal } from './persist';
+import type { CanonicalUtteranceMeaning } from './canonicalMeaning';
 import type {
   EngineRequest,
   LearningEvidence,
@@ -77,6 +78,8 @@ export type CaptureDockInput = {
   remainingMinsToday: number | null;
   openTaskCount: number;
   inputType?: 'text' | 'speech_transcript';
+  /** Pre-interpreted meaning, only supplied when it matches the current line. */
+  canonicalMeaning?: CanonicalUtteranceMeaning;
   /** Optional calendar / travel context for ANSWER feasibility. */
   meetings?: Array<{
     id: string;
@@ -119,6 +122,7 @@ export function runCaptureDock(input: CaptureDockInput): CaptureDockResult {
       type: input.inputType ?? 'text',
       text: input.line,
     },
+    canonicalMeaning: input.canonicalMeaning,
     priorRequest: input.priorRequest,
     workingMemory: loadWorkingMemoryLocal(input.userId),
     context: {
