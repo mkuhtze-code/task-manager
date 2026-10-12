@@ -321,8 +321,6 @@
   }
 }
 
-
-
 /* ==========================================================================
    DOKKIT VISUAL SYSTEM — canonical object grammar
    One instrument. Four lenses. Quiet surface. Strong object.
@@ -469,7 +467,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   background:color-mix(in srgb,var(--paper) 92%,transparent)!important;
 }
 
-
 /* ==========================================================================
    MOBILE ORIENTATION — same object grammar, smaller scale
    ========================================================================== */
@@ -511,7 +508,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 .today-header-summary-toggle{border-radius:10px!important}
 .today-commitment{background:var(--paper)!important;border-color:var(--line)!important}
 
-
 /* ==========================================================================
    DOKKIT MAKEOVER — visual identity pass
    This is intentionally bolder than the foundational grammar above.
@@ -519,24 +515,11 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
    ========================================================================== */
 :root{
   --dk-orange:#f26a21;
-  --dk-orange-soft:#fff0e6;
-  --dk-blue:#2451d4;
-  /* Brand gradients are theme-owned: light keeps its blue finish; dark resolves to orange-on-orange. */
-  --dk-gradient-start:var(--dk-orange);
-  --dk-gradient-end:var(--dk-blue);
-  /* Preserve the existing mixed endpoint on the Today load gradient in light mode. */
-  --dk-load-gradient-end:color-mix(in srgb,var(--dk-orange) 55%,var(--dk-blue));
-  --dk-active-gradient-end:color-mix(in srgb,var(--dk-blue) 80%,var(--dk-orange));
-  --dk-ink:#14232d;
-  --dk-display:clamp(28px,2.5vw,40px);
-}
 
-/* In dark mode, orange is the signature accent. Blue remains available for semantic/data distinctions, not the default end-stop of decorative brand gradients. */
-html[data-theme='dark']{
-  --dk-gradient-start:var(--dk-orange);
-  --dk-gradient-end:#e55316;
-  --dk-load-gradient-end:#e55316;
-  --dk-active-gradient-end:#e55316;
+  --dk-blue:#2451d4;
+
+--dk-ink:#14232d;
+
 }
 
 /* Shared header geometry and typography are defined by the canonical surface grammar above. */
@@ -561,8 +544,7 @@ html[data-theme='dark']{
   html[data-surface='desktop'] .travel-workspace,
   html[data-surface='desktop'] .jobs-workspace{
     padding:30px 40px 72px!important;
-    background:
-      radial-gradient(circle at 92% 0%,color-mix(in srgb,var(--dk-orange) 5%,transparent),transparent 28rem);
+    background:transparent;
   }
 }
 
@@ -595,7 +577,7 @@ html[data-theme='dark']{
   letter-spacing:-.055em!important;
 }
 .desk-today-kicker{
-  color:var(--dk-orange)!important;
+  color:var(--ink-faint)!important;
   font-family:var(--font-label)!important;
   letter-spacing:.14em!important;
 }
@@ -608,9 +590,9 @@ html[data-theme='dark']{
   border-color:color-mix(in srgb,var(--dk-blue) 30%,var(--line))!important;
 }
 .desk-today-dock-pill{
-  background:var(--dk-orange)!important;
-  border-color:var(--dk-orange)!important;
-  color:#fff!important;
+  background:var(--paper)!important;
+  border-color:var(--line)!important;
+  color:var(--ink)!important;
   font-weight:800!important;
 }
 .desk-today-dock-pill:hover{filter:brightness(.96);transform:translateY(-1px)}
@@ -632,14 +614,11 @@ html[data-theme='dark']{
   background:var(--dk-orange)!important;
   border-color:var(--dk-orange)!important;
   font-weight:800!important;
-  box-shadow:0 3px 0 color-mix(in srgb,var(--dk-orange) 72%,#000)!important;
+  box-shadow:none!important;
 }
 html[data-theme='dark'] .desk-today-saas{
-  background:
-    radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 10%,transparent),transparent 28rem),
-    var(--paper-raised)!important;
+  background:var(--paper-raised)!important;
 }
-
 
 /* ==========================================================================
    DOKKIT MAKEOVER II — the silhouette
@@ -697,22 +676,6 @@ html[data-theme='dark'] .desk-today-saas{
   html[data-surface='desktop'] .desk-jobs-grid > *{
     grid-column:span 4;
   }
-  html[data-surface='desktop'] .desk-jobs-grid > :first-child{
-    grid-column:span 6;
-    grid-row:span 2;
-  }
-  html[data-surface='desktop'] .desk-jobs-grid > :first-child .desk-job-card.surface-object{
-    min-height:248px!important;
-    padding:22px 22px!important;
-  }
-  html[data-surface='desktop'] .desk-jobs-grid > :first-child .desk-job-card-name{
-    font-size:22px!important;
-    line-height:1.12!important;
-  }
-  html[data-surface='desktop'] .desk-jobs-grid > :first-child .desk-job-card-state{
-    margin-top:22px!important;
-    padding-top:14px!important;
-  }
 }
 .trip-row-maybach.surface-object .trip-row-delete{
   border:1px solid transparent!important;
@@ -725,10 +688,7 @@ html[data-theme='dark'] .desk-today-saas{
   margin-top:18px!important;
   padding:20px 22px 22px!important;
   border-top:1px solid var(--line)!important;
-  background:
-    linear-gradient(180deg,
-      color-mix(in srgb,var(--paper) 76%,var(--dk-blue) 24%),
-      var(--paper) 18%)!important;
+  background:var(--paper)!important;
 }
 .desk-depth-day{
   padding:14px 0 4px!important;
@@ -750,7 +710,7 @@ html[data-theme='dark'] .desk-today-saas{
 .desk-depth-track-load{
   height:100%!important;
   border-radius:0 99px 99px 0!important;
-  background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-load-gradient-end))!important;
+  background:var(--steel)!important;
 }
 .desk-depth-track-load.is-over{background:var(--danger)!important}
 .desk-depth-track-fixed{
@@ -765,11 +725,11 @@ html[data-theme='dark'] .desk-today-saas{
   width:3px!important;
   height:22px!important;
   border-radius:3px!important;
-  background:var(--dk-orange)!important;
-  box-shadow:0 0 0 4px color-mix(in srgb,var(--dk-orange) 13%,transparent)!important;
+  background:var(--ink)!important;
+  box-shadow:none!important;
 }
 .desk-depth-now-label{
-  color:var(--dk-orange)!important;
+  color:var(--ink-soft)!important;
   font-weight:800!important;
   letter-spacing:.08em!important;
   text-transform:uppercase;
@@ -811,7 +771,6 @@ html[data-theme='dark'] .desk-today-saas{
     padding:16px!important;
   }
 }
-
 
 /* ==========================================================================
    DOKKIT MAKEOVER III — the day becomes a signature
@@ -909,36 +868,12 @@ html[data-theme='dark'] .desk-today-saas{
   .jobs-workspace{
     position:relative;
   }
-  .meetings-workspace::before,
-  .travel-workspace::before,
-  .jobs-workspace::before{
-    content:'';
-    position:absolute;
-    left:40px;
-    right:40px;
-    top:0;
-    height:1px;
-    background:linear-gradient(90deg,var(--dk-gradient-start),transparent 38%,var(--dk-gradient-end) 78%,transparent);
-    opacity:.55;
-    pointer-events:none;
-  }
   .meeting-section:first-child .meeting-section-header,
   .trip-section:first-child .trip-section-header{
     padding-top:4px!important;
   }
   html[data-surface='desktop'] .desk-jobs-grid{
     position:relative;
-  }
-  html[data-surface='desktop'] .desk-jobs-grid::before{
-    content:'WORK';
-    position:absolute;
-    left:0;
-    top:-18px;
-    font-family:var(--font-label);
-    font-size:9px;
-    font-weight:800;
-    letter-spacing:.2em;
-    color:var(--dk-orange);
   }
 }
 
@@ -966,36 +901,11 @@ html[data-theme='dark'] .desk-depth-track{
     overflow:hidden;
     border-width:1px!important;
     border-radius:18px!important;
-    background:
-      radial-gradient(circle at 88% 25%, color-mix(in srgb,var(--dk-blue) 12%,transparent), transparent 32%),
-      linear-gradient(115deg,color-mix(in srgb,var(--dk-orange) 7%,var(--paper-raised)),var(--paper-raised) 52%,color-mix(in srgb,var(--dk-blue) 5%,var(--paper-raised)))!important;
-  }
-  .meetings-featured::before,
-  .travel-featured::before{
-    content:'';
-    position:absolute;
-    left:0;
-    top:0;
-    bottom:0;
-    width:6px;
-    background:linear-gradient(180deg,var(--dk-gradient-start),var(--dk-gradient-end));
-  }
-  .meetings-featured::after,
-  .travel-featured::after{
-    content:'';
-    position:absolute;
-    right:-38px;
-    bottom:-72px;
-    width:210px;
-    height:210px;
-    border:1px solid color-mix(in srgb,var(--dk-blue) 22%,transparent);
-    border-radius:50%;
-    box-shadow:0 0 0 22px color-mix(in srgb,var(--dk-blue) 4%,transparent),0 0 0 44px color-mix(in srgb,var(--dk-orange) 3%,transparent);
-    pointer-events:none;
+    background:var(--paper-raised)!important;
   }
   .meetings-featured-label,
   .travel-featured-label{
-    color:var(--dk-orange)!important;
+    color:var(--ink-faint)!important;
     font-family:var(--font-label);
     font-size:10px!important;
     font-weight:850!important;
@@ -1031,29 +941,6 @@ html[data-theme='dark'] .desk-depth-track{
     font-weight:750;
     z-index:1;
   }
-  .desk-job-card:first-child{
-    position:relative;
-    overflow:hidden;
-    background:
-      radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--dk-blue) 11%,transparent), transparent 34%),
-      linear-gradient(120deg,color-mix(in srgb,var(--dk-orange) 7%,var(--paper-raised)),var(--paper-raised) 48%)!important;
-  }
-  .desk-job-card:first-child::after{
-    content:'';
-    position:absolute;
-    right:18px;
-    top:18px;
-    width:54px;
-    height:3px;
-    border-radius:999px;
-    background:var(--line-strong);
-    box-shadow:0 8px 0 color-mix(in srgb,var(--dk-gradient-end) 35%,transparent),0 16px 0 color-mix(in srgb,var(--dk-orange) 22%,transparent);
-    transform:rotate(-35deg);
-    transform-origin:right center;
-    pointer-events:none;
-  }
-  .desk-job-card:first-child .desk-job-card-name{font-size:21px!important}
-  .desk-job-card:first-child .desk-job-card-state{margin-top:14px}
 }
 @media (max-width:700px){
   .meetings-featured,
@@ -1061,20 +948,11 @@ html[data-theme='dark'] .desk-depth-track{
     border-radius:15px!important;
   }
 }
-html[data-theme='dark'] .meetings-featured,
-html[data-theme='dark'] .travel-featured,
-html[data-theme='dark'] .desk-job-card:first-child{
-  background:
-    radial-gradient(circle at 88% 18%, color-mix(in srgb,var(--dk-blue) 13%,transparent), transparent 34%),
-    linear-gradient(115deg,color-mix(in srgb,var(--dk-orange) 8%,var(--paper-raised)),var(--paper-raised) 56%)!important;
-}
-
-
 /* ==========================================================================
    DOKKIT MAKEOVER V — cockpit composition
    ========================================================================== */
 
-/* The navigation is now a control console: present, compact, unmistakably Dokkit. */
+/* Navigation uses the shared neutral surface and a single solid primary action. */
 @media (min-width:701px){
   .surface-nav.surface-nav-tabs{
     left:50%!important;
@@ -1084,11 +962,11 @@ html[data-theme='dark'] .desk-job-card:first-child{
     min-height:66px!important;
     transform:translateX(-50%)!important;
     padding:8px 10px!important;
-    border:1px solid color-mix(in srgb,var(--line-strong) 72%,var(--dk-orange) 28%)!important;
+    border:1px solid var(--line)!important;
     border-radius:18px!important;
     background:color-mix(in srgb,var(--paper) 96%,transparent)!important;
     backdrop-filter:blur(20px) saturate(1.08)!important;
-    box-shadow:0 14px 36px rgba(var(--shadow-rgb),.16),0 2px 0 color-mix(in srgb,var(--dk-orange) 55%,transparent) inset!important;
+    box-shadow:0 12px 30px rgba(var(--shadow-rgb),.12)!important;
   }
   .surface-tabs{max-width:none!important;gap:5px!important}
   .surface-tab{
@@ -1103,9 +981,9 @@ html[data-theme='dark'] .desk-job-card:first-child{
     height:44px!important;
     border:0!important;
     border-radius:13px!important;
-    background:linear-gradient(135deg,var(--dk-orange),#e55316)!important;
+    background:var(--dk-orange)!important;
     color:#fff!important;
-    box-shadow:0 6px 16px color-mix(in srgb,var(--dk-orange) 28%,transparent)!important;
+    box-shadow:none!important;
   }
 }
 
@@ -1123,33 +1001,6 @@ html[data-theme='dark'] .desk-job-card:first-child{
     border-radius:18px!important;
     padding:20px!important;
     min-height:148px!important;
-  }
-  html[data-surface='desktop'] .desk-jobs-grid .desk-job-card:nth-child(2n){
-    transform:translateY(10px);
-  }
-  html[data-surface='desktop'] .desk-jobs-grid .desk-job-card:nth-child(2n):hover{
-    transform:translateY(7px)!important;
-  }
-  html[data-surface='desktop'] .desk-jobs-grid .desk-job-card:nth-child(3n){
-    border-top-color:color-mix(in srgb,var(--dk-blue) 35%,var(--line))!important;
-  }
-  html[data-surface='desktop'] .desk-jobs-grid .desk-job-card:nth-child(4n){
-    border-top-color:color-mix(in srgb,var(--dk-orange) 38%,var(--line))!important;
-  }
-  html[data-surface='desktop'] .desk-jobs-grid .desk-job-card:first-child{
-    border-top:4px solid var(--dk-orange)!important;
-    padding-top:22px!important;
-  }
-  html[data-surface='desktop'] .desk-jobs-grid .desk-job-card:first-child::before{
-    content:'ACTIVE WORK';
-    position:absolute;
-    left:20px;
-    top:9px;
-    font-family:var(--font-label);
-    font-size:8px;
-    font-weight:850;
-    letter-spacing:.18em;
-    color:var(--dk-orange);
   }
 }
 
@@ -1170,8 +1021,6 @@ html[data-theme='dark'] .desk-job-card:first-child{
 html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   box-shadow:0 14px 36px rgba(0,0,0,.34)!important;
 }
-
-
 
 /* ==========================================================================
    DOKKIT MAKEOVER VI — lens signatures
@@ -1287,7 +1136,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     content:'';
     flex:1 1 auto;
     height:1px;
-    background:linear-gradient(90deg,var(--line-strong),transparent);
+    background:var(--line);
   }
   .meeting-section-title,
   .trip-section-title{
@@ -1296,8 +1145,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     letter-spacing:.18em!important;
   }
 }
-
-
 
 /* ==========================================================================
    DOKKIT MAKEOVER VII — instrument panels
@@ -1430,8 +1277,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   .meetings-workspace,
   .travel-workspace,
   .jobs-workspace{
-    background:
-      linear-gradient(90deg,color-mix(in srgb,var(--dk-orange) 2%,transparent),transparent 18%,transparent 82%,color-mix(in srgb,var(--dk-blue) 2%,transparent));
+    background:transparent;
   }
   .meeting-section,
   .trip-section{
@@ -1443,8 +1289,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   }
 }
 
-
-
 /* ==========================================================================
    MAKEOVER VII — THE DOKKIT SILHOUETTE
    Not decoration. Composition, proportion, instrument-like hierarchy.
@@ -1454,25 +1298,18 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   --dk-orange:#f26a21;
   --dk-blue:#2451d4;
   --dk-deep:#101c25;
-  --dk-grid:color-mix(in srgb,var(--ink) 7%,transparent);
+
 }
 
 /* Give the whole desktop surface a deliberate field instead of a collection
    of floating cards. */
 @media (min-width:701px){
   html[data-surface='desktop'] body{
-    background:
-      linear-gradient(var(--dk-grid) 1px,transparent 1px),
-      linear-gradient(90deg,var(--dk-grid) 1px,transparent 1px),
-      var(--paper)!important;
-    background-size:32px 32px!important;
-    background-position:center center!important;
-  }
+    background:var(--paper)!important;
 
+}
 
-
-
-  html[data-surface='desktop'] .surface-lede{
+html[data-surface='desktop'] .surface-lede{
     margin-top:7px!important;
     max-width:38rem!important;
     font-size:12px!important;
@@ -1488,8 +1325,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     box-shadow:none!important;
   }
 
-
-  html[data-surface='desktop'] .surface-header-controls{
+html[data-surface='desktop'] .surface-header-controls{
     margin-top:18px!important;
     padding-top:13px!important;
     border-top:1px solid var(--line)!important;
@@ -1500,9 +1336,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     background:var(--paper-raised)!important;
   }
 
-
-
-  html[data-surface='desktop'] .meetings-workspace,
+html[data-surface='desktop'] .meetings-workspace,
   html[data-surface='desktop'] .travel-workspace,
   html[data-surface='desktop'] .jobs-workspace{
     padding:30px 32px 80px!important;
@@ -1587,7 +1421,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     font-size:18px;font-weight:900;
   }
 
-  /* Jobs: asymmetry is intentional. */
+  /* Job objects share one geometry; content, not decoration, sets priority. */
   html[data-surface='desktop'] .desk-jobs-grid{
     gap:16px!important;
     align-items:stretch!important;
@@ -1601,48 +1435,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     overflow:hidden!important;
   }
 
-  html[data-surface='desktop'] .desk-job-card:first-child{
-    min-height:286px!important;
-    padding:28px!important;
-    border-radius:22px!important;
-    background:
-      radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 15%,transparent),transparent 36%),
-      linear-gradient(125deg,color-mix(in srgb,var(--dk-orange) 8%,var(--paper-raised)),var(--paper-raised) 58%)!important;
-  }
-
-  html[data-surface='desktop'] .desk-job-card:first-child::before{
-    width:8px;
-    background:linear-gradient(180deg,var(--dk-gradient-start),var(--dk-gradient-end));
-  }
-
-  html[data-surface='desktop'] .desk-job-card:first-child .desk-job-card-name{
-    font-size:27px!important;
-    line-height:1.03!important;
-    font-weight:900!important;
-    max-width:75%!important;
-  }
-
-  html[data-surface='desktop'] .desk-job-card:first-child .desk-job-card-client{
-    font-size:13px!important;
-    margin-top:8px!important;
-  }
-
-  html[data-surface='desktop'] .desk-job-card:first-child .desk-job-card-state{
-    margin-top:24px!important;
-    font-size:13px!important;
-  }
-
-  html[data-surface='desktop'] .desk-job-card:first-child::after{
-    content:'WORK';
-    position:absolute;
-    right:22px;top:20px;
-    writing-mode:vertical-rl;
-    font:850 9px/1 var(--font-label,inherit);
-    letter-spacing:.22em;
-    color:color-mix(in srgb,var(--dk-blue) 55%,transparent);
-  }
-
-  /* Section headings become runway markers. */
+/* Section headings become runway markers. */
   html[data-surface='desktop'] .meeting-section-header,
   html[data-surface='desktop'] .trip-section-header{
     padding:8px 0 12px!important;
@@ -1682,8 +1475,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     backdrop-filter:blur(20px) saturate(1.1)!important;
   }
 
-
-  html[data-surface='desktop'] .surface-tabs{
+html[data-surface='desktop'] .surface-tabs{
     max-width:none!important;
   }
 
@@ -1692,12 +1484,10 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     border-radius:13px!important;
   }
 
-
-
-  html[data-surface='desktop'] .surface-add{
+html[data-surface='desktop'] .surface-add{
     width:52px!important;height:52px!important;border-radius:14px!important;
     background:var(--dk-orange)!important;
-    box-shadow:0 7px 18px color-mix(in srgb,var(--dk-orange) 28%,transparent)!important;
+    box-shadow:none!important;
   }
 }
 
@@ -1716,19 +1506,13 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   }
   .surface-add{
     background:var(--dk-orange)!important;
-    box-shadow:0 5px 15px color-mix(in srgb,var(--dk-orange) 25%,transparent)!important;
+    box-shadow:none!important;
   }
 }
 
 html[data-theme='dark']{
   --dk-deep:#f4f7fb;
 }
-html[data-theme='dark'] .desk-job-card:first-child{
-  background:
-    radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 17%,transparent),transparent 36%),
-    linear-gradient(125deg,color-mix(in srgb,var(--dk-orange) 11%,var(--paper-raised)),var(--paper-raised) 58%)!important;
-}
-
 
 /* ==========================================================================
    TODAY COCKPIT — Make the whole day the hero object.
@@ -1766,7 +1550,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
 
   .desk-today-now-kicker,
   .desk-today-next-kicker{
-    color:var(--dk-orange);
+    color:var(--ink-faint);
     font:900 9px/1 var(--font-label,inherit);
     letter-spacing:.2em;
     text-transform:uppercase;
@@ -1958,7 +1742,6 @@ html[data-theme='dark'] .desk-job-card:first-child{
   }
 }
 
-
 /* ==========================================================================
    CLARITY PASS — high signal, low noise
    Dokkit absorbs complexity; the surface should not narrate it.
@@ -2094,11 +1877,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
     min-height:164px!important;
   }
 
-  html[data-surface='desktop'] .desk-job-card:first-child{
-    min-height:250px!important;
-  }
-
-  .desk-today-now-label,
+.desk-today-now-label,
   .desk-today-next>span:last-child{
     max-width:24ch;
   }
