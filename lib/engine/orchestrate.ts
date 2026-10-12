@@ -18,6 +18,8 @@ import { explainDecision } from './explain';
 import { containsReference, resolveReference } from './references';
 import { applyUtteranceToRequest, extractExplicitSeparateTaskClause, requestTaskText } from './request';
 import { interpretSemanticInput } from './semanticInterpreter';
+import { isCanonicalUtteranceMeaning } from './canonicalMeaning';
+import type { CanonicalUtteranceMeaning } from './canonicalMeaning';
 import {
   emptyWorkingMemory,
   makeMemoryItem,
@@ -36,6 +38,8 @@ export type CycleInput = {
   workingMemory?: WorkingMemorySnapshot;
   /** ISO date YYYY-MM-DD for "today" placement */
   todayDate?: string;
+  /** Upstream speech meaning for this exact utterance, if still current. */
+  canonicalMeaning?: CanonicalUtteranceMeaning;
 };
 
 function evidence(
@@ -376,11 +380,52 @@ export function runEngineCycle(input: CycleInput): EngineCycleResult {
     }
   }
 
+  const canonical = input.canonicalMeaning;
+  const canonicalMatchesCurrentUtterance =
+    !!canonical &&
+    isCanonicalUtteranceMeaning(canonical) &&
+    canonical.rawText.trim() === input.utterance.trim() &&
+    !canonical.safety.mustNotCreateTask;
+
+  // A confidently understood positive action that does not target existing
+  // context begins a new request. Do not let an unrelated prior request's
+  // subject bleed into it. Referential refinements retain the prior request.
+  const canonicalStartsNewRequest =
+    canonicalMatchesCurrentUtterance &&
+    canonical!.confidence.action !== 'low' &&
+    canonical!.acts.some((act) =>
+      act.kind === 'create' &&
+      act.polarity === 'positive' &&
+      act.targetsExistingContext !== true &&
+      !act.requiresClarification &&
+      !!act.actionVerb &&
+      !!act.object
+    );
+
   let request = applyUtteranceToRequest(
-    input.priorRequest ?? null,
+    canonicalStartsNewRequest ? null : (input.priorRequest ?? null),
     semanticUtterance,
     mem
   );
+
+  // Consume canonical role evidence only as a fill-missing fallback. The
+  // established request parser remains authoritative for populated fields.
+  if (canonicalMatchesCurrentUtterance && canonical!.confidence.action !== 'low') {
+    const act = canonical!.acts.find((candidate) =>
+      candidate.kind === 'create' &&
+      candidate.polarity === 'positive' &&
+      !candidate.requiresClarification
+    );
+    if (act) {
+      if (!request.primaryVerb && act.actionVerb) request.primaryVerb = act.actionVerb;
+      if (!request.objectText && act.object) request.objectText = act.object;
+      if (!request.locationText && act.location) request.locationText = act.location;
+      if (!request.dateHint && act.time) request.dateHint = act.time.toLowerCase();
+      if (request.action === 'unknown' && act.actionVerb && act.object) {
+        request.action = 'create_task';
+      }
+    }
+  }
 
   // Preserve the complete user utterance for learning/audit, while parsing
   // only the explicit new-task clause as the task's semantic content.
