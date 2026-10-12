@@ -73,13 +73,6 @@ export default function DesktopJobsHeader({
         ? `${openCount} open`
         : 'No open work';
 
-  const pulseClass =
-    attentionCount > 0
-      ? 'surface-pulse is-attention'
-      : openCount === 0
-        ? 'surface-pulse is-clear'
-        : 'surface-pulse';
-
   const workRead =
     activeTodayCount > 0
       ? 'Work is moving on live jobs today.'
