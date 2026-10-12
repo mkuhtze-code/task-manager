@@ -83,6 +83,8 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 
 - Removed shared top rails and hover-gradient rails from job, meeting, travel, and desktop job rows at their source selectors.
 - Removed the meeting blue edge stripe, travel blue/orange edge stripe, and alternating blue/orange job-card edge stripes, including desktop-specific reintroductions.
-- Removed the travel row's bottom colour band and its obsolete mobile positioning override. Kept the desktop travel navigation cue and the travel start/end markers, which communicate route structure rather than decorate the row edge.
-- This pass removes competing decorative pseudo-elements rather than covering them with a later neutral rule. Shared row surface, border, hover, focus, title, and metadata contracts remain the common layer.
-- CSS validation on the branch: 782 `!important` occurrences (unchanged), balanced braces. Full CI and both Vercel previews are required before merge; visual checks should compare task/job/meeting/travel rows across mobile/desktop and light/dark themes.
+- Removed the travel row's bottom colour band and obsolete mobile positioning override. Kept the desktop travel navigation cue and travel start/end markers, which communicate route structure rather than decorate the row edge.
+- Removed the legacy raised-card/shadow/lift treatment and orange hover border that conflicted with the shared flat object-row contract.
+- Removed pressure-only orange inset rails, orange/radial row gradients, and oversized pressure title overrides. Priority remains expressed through semantic state/context rather than repainting or resizing the object.
+- Removed duplicate title and digital-clock typography overrides so object titles and metadata can follow the shared token contract.
+- CSS validation on the branch: 757 `!important` occurrences (down from 782; 35 fewer than the start of this pass), balanced braces. Full CI and both Vercel previews are required before merge; visual checks should compare task/job/meeting/travel rows across mobile/desktop and light/dark themes.
