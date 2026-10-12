@@ -2650,3 +2650,66 @@ html[data-theme='dark'] .desk-job-card:first-child{
     padding-bottom:13px!important;
   }
 }
+
+
+/* TODAY colour-band removal — keep the surface quiet; retain semantic load states. */
+.desk-today-saas,
+.desk-today-instrument,
+.mobile-today-cockpit {
+  background: var(--paper-raised) !important;
+  border-color: var(--line) !important;
+}
+
+.desk-today-saas::before,
+.today-header-card::before,
+.mobile-today-cockpit::before {
+  display: none !important;
+  content: none !important;
+}
+
+.desk-today-instrument {
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), .04) !important;
+}
+
+.desk-today-capacity,
+.desk-today-next {
+  border-left-color: var(--line) !important;
+}
+
+.desk-today-rail {
+  border-top-color: var(--line) !important;
+  border-bottom-color: var(--line) !important;
+}
+
+.desk-today-rail-track,
+.desk-today-capacity-track,
+.mobile-today-capacity-track {
+  background: color-mix(in srgb, var(--ink) 6%, var(--paper)) !important;
+  box-shadow: none !important;
+}
+
+.desk-today-rail-elapsed {
+  background: var(--ink-faint) !important;
+}
+
+.desk-today-rail-load,
+.desk-today-capacity-track span,
+.mobile-today-capacity-track > span {
+  background: var(--steel) !important;
+}
+
+/* Over-capacity remains semantically distinct; only the decorative bands are removed. */
+.desk-today-rail-load.is-over,
+.desk-today-capacity-track span.is-over,
+.mobile-today-capacity-track > span.is-over {
+  background: var(--danger) !important;
+}
+
+.desk-today-rail-now {
+  box-shadow: none !important;
+}
+
+.mobile-today-cockpit.is-over {
+  background: var(--paper-raised) !important;
+  border-color: var(--line) !important;
+}
