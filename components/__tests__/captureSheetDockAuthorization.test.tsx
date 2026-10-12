@@ -142,4 +142,46 @@ describe('Capture Dock UI authorization boundary', () => {
     );
     expect(mocks.addTask).not.toHaveBeenCalled();
   });
+
+  it('saves the original task when the engine asks for clarification instead of gating Dock', async () => {
+    mocks.runCaptureDock.mockReturnValue({
+      kind: 'clarify',
+      message: 'No hard day set — dock when it suits, or say today/tomorrow.',
+      request: {},
+    });
+
+    renderCaptureSheet();
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1));
+    expect(mocks.addTaskWithOverrides).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'Call the client tomorrow',
+        originalInput: 'Call the client tomorrow',
+        explanation: 'Captured as entered. Dokkit can refine the details later.',
+      }),
+    );
+    expect(mocks.executeCpuDecision).not.toHaveBeenCalled();
+    expect(mocks.addTask).not.toHaveBeenCalled();
+  });
+
+  it('does not repeat an engine suggestion after Dock: the task is saved as entered', async () => {
+    mocks.runCaptureDock.mockReturnValue({
+      kind: 'fallthrough',
+      message: 'No hard day set — dock when it suits, or say today/tomorrow.',
+      request: null,
+    });
+
+    renderCaptureSheet();
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1));
+    expect(mocks.addTaskWithOverrides).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'Call the client tomorrow',
+        originalInput: 'Call the client tomorrow',
+      }),
+    );
+    expect(mocks.executeCpuDecision).not.toHaveBeenCalled();
+  });
 });

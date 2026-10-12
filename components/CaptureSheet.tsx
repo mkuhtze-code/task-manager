@@ -628,15 +628,19 @@ if (line && addTaskWithOverrides) {
       return;
     }
 
-    if (dock.kind === 'clarify') {
-      setEngineExplain(dock.message);
-      setCollectionFeedback(dock.message);
+    if (dock.kind === 'clarify' || dock.kind === 'fallthrough') {
+      // Dock is an explicit request to capture the user's words, not a request
+      // for the interpreter to prove it understands them. Keep engine questions
+      // and suggestions advisory: save the original line and let Dokkit refine
+      // its meaning later instead of trapping the user in a repeat-confirm loop.
+      await addTaskWithOverrides?.({
+        text: line,
+        originalInput: line,
+        explanation: 'Captured as entered. Dokkit can refine the details later.',
+      });
+      confirmSpeechLearning();
+      clearSpeechStatus();
       return;
-    }
-
-    if (dock.kind === 'fallthrough' && dock.message) {
-      setEngineExplain(dock.message);
-      setCollectionFeedback(dock.message);
     }
   } catch (err) {
     console.error('processInteraction dock', err);
