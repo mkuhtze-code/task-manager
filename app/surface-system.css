@@ -537,6 +537,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   --dk-gradient-end:var(--dk-blue);
   /* Preserve the existing mixed endpoint on the Today load gradient in light mode. */
   --dk-load-gradient-end:color-mix(in srgb,var(--dk-orange) 55%,var(--dk-blue));
+  --dk-active-gradient-end:color-mix(in srgb,var(--dk-blue) 80%,var(--dk-orange));
   --dk-ink:#14232d;
   --dk-display:clamp(28px,2.5vw,40px);
 }
@@ -546,6 +547,7 @@ html[data-theme='dark']{
   --dk-gradient-start:var(--dk-orange);
   --dk-gradient-end:#e55316;
   --dk-load-gradient-end:#e55316;
+  --dk-active-gradient-end:#e55316;
 }
 
 /* Surface headers become an arrival moment, not a settings strip. */
@@ -2178,7 +2180,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 
   html[data-surface='desktop'] .surface-tab.current{
     color:#fff!important;
-    background:linear-gradient(135deg,var(--dk-gradient-start),var(--dk-gradient-end))!important;
+    background:linear-gradient(135deg,var(--dk-gradient-start),var(--dk-active-gradient-end))!important;
     box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 5px 15px color-mix(in srgb,var(--dk-orange) 22%,transparent)!important;
   }
 
