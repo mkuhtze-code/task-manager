@@ -974,3 +974,176 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
   .today-day-header .today-banner-read { color: #e0e8ed; font-size: 11.5px; }
   .today-day-header .today-glance { padding: 0 14px 14px; }
 }
+
+
+/* Contrast and direct depth disclosure.
+   The Today banner is dark even when the rest of the app is in light mode,
+   so its expandable controls must not inherit light-surface ink tokens. */
+.today-day-header .today-tools-panel {
+  margin: 14px 24px 20px;
+  padding: 16px 18px 18px;
+  border: 1px solid rgba(218, 231, 238, .2);
+  border-radius: 12px;
+  background: rgba(8, 17, 23, .32);
+  color: #f4f7f9;
+}
+.today-day-header .today-tools-panel,
+.today-day-header .today-tools-panel * {
+  color-scheme: dark;
+}
+.today-day-header .today-tools-item {
+  color: #f5f8fa;
+  font-weight: 650;
+  border-bottom: 1px solid rgba(218, 231, 238, .13);
+}
+.today-day-header .today-tools-item:hover {
+  background: rgba(255, 255, 255, .075);
+}
+.today-day-header .today-tools-quiet {
+  color: #d4e0e7;
+}
+.today-day-header .today-day-shape {
+  gap: 13px;
+  padding: 8px 4px 4px;
+}
+.today-day-header .today-depth-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+.today-day-header .today-depth-heading strong {
+  color: #fffaf4;
+  font-size: 15px;
+  font-weight: 720;
+  letter-spacing: -.015em;
+}
+.today-day-header .today-depth-heading > span {
+  color: #c8d7e0;
+  font-size: 12px;
+}
+.today-day-header .today-shape-dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.today-day-header .today-shape-dl > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(218, 231, 238, .15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .055);
+  color: #e3ebf0;
+  font-size: 12px;
+}
+.today-day-header .today-shape-dl dt {
+  color: #c7d6df;
+}
+.today-day-header .today-shape-dl dd {
+  color: #fffaf4;
+  font-size: 16px;
+  font-weight: 720;
+}
+.today-day-header .today-shape-dl dd.today-shape-warn {
+  color: #ffd1bf !important;
+}
+.today-day-header .today-depth-label {
+  display: block;
+  margin-bottom: 7px;
+  color: #c7d6df;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.today-day-header .today-depth-fits ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.today-day-header .today-depth-fits li {
+  padding: 7px 10px;
+  border: 1px solid rgba(227, 180, 119, .28);
+  border-radius: 7px;
+  background: rgba(227, 180, 119, .09);
+  color: #fff0dc;
+  font-size: 12px;
+  font-weight: 600;
+}
+.today-day-header .today-shape-commitments {
+  gap: 0;
+  border-top: 1px solid rgba(218, 231, 238, .14);
+}
+.today-day-header .today-shape-commitments li {
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(218, 231, 238, .1);
+  color: #d8e3e9;
+}
+.today-day-header .today-shape-commitments li span:first-child {
+  color: #fffaf4;
+  font-weight: 620;
+}
+.today-day-header .today-shape-line {
+  color: #d8e3e9;
+}
+.today-day-header .today-tools-geo {
+  color: #d8e3e9;
+  border-top: 1px solid rgba(218, 231, 238, .14);
+  margin-top: 8px;
+  padding-top: 14px;
+}
+.today-day-header .today-text-action {
+  color: #f5d7ad;
+}
+.today-day-header .today-text-action:hover {
+  color: #fffaf4;
+  background: rgba(255, 255, 255, .08);
+}
+
+/* Light-surface text hierarchy: keep task metadata legible, not pale decoration. */
+.app-shell:has(> .today-day-header) .task-card-job,
+.app-shell:has(> .today-day-header) .task-card-context,
+.app-shell:has(> .today-day-header) .task-card-intended-time,
+.app-shell:has(> .today-day-header) .task-card-time,
+.app-shell:has(> .today-day-header) .task-card-elapsed,
+.app-shell:has(> .today-day-header) .task-fit-line {
+  color: #454d54;
+}
+.app-shell:has(> .today-day-header) .task-card-job {
+  font-weight: 500;
+}
+.app-shell:has(> .today-day-header) .task-card-context a,
+.app-shell:has(> .today-day-header) .task-card-context button {
+  color: #294f68;
+  text-decoration-color: rgba(41, 79, 104, .55);
+}
+.app-shell:has(> .today-day-header) .task-card-time,
+.app-shell:has(> .today-day-header) .task-card-elapsed {
+  font-weight: 650;
+}
+@media (max-width: 700px) {
+  .today-day-header .today-tools-panel {
+    margin: 12px 10px 14px;
+    padding: 12px;
+  }
+  .today-day-header .today-shape-dl {
+    gap: 6px;
+  }
+  .today-day-header .today-shape-dl > div {
+    padding: 9px;
+  }
+}
+@media (max-width: 360px) {
+  .today-day-header .today-shape-dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
