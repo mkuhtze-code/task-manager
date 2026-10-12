@@ -124,3 +124,30 @@
     height: 44px;
   }
 }
+
+
+/* Only the page content enters horizontally; application context stays put. */
+@keyframes surface-page-enter-next {
+  from { opacity: 0.72; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes surface-page-enter-previous {
+  from { opacity: 0.72; transform: translateX(-24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.surface-page-enter-next {
+  animation: surface-page-enter-next 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.surface-page-enter-previous {
+  animation: surface-page-enter-previous 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-page-enter-next,
+  .surface-page-enter-previous {
+    animation: none;
+  }
+}
