@@ -379,7 +379,7 @@
 }
 
 .task-detail-sheet-refined.is-live .task-progress-fill {
-  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  background: var(--accent);
 }
 
 .task-progress-label {
