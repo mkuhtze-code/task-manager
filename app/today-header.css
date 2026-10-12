@@ -272,3 +272,68 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
   /* keep calm — no hazard wash on whole header */
   background: var(--paper, #f6f3ed);
 }
+
+
+/* Mobile Today header recovery.
+   Keep the day interpretation and header actions visible; the compact
+   mobile header must not collapse to date/time alone. */
+@media (max-width: 700px) {
+  .today-day-header.today-day-header-mobile {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 14px 16px 16px;
+    background: var(--paper, #f6f3ed);
+    border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.08));
+    box-shadow: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .today-day-header-mobile .today-day-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .today-day-header-mobile .today-day-identity {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .today-day-header-mobile .today-day-title {
+    display: block;
+    margin: 0;
+    font-size: clamp(1.25rem, 5vw, 1.55rem);
+    line-height: 1.2;
+  }
+
+  .today-day-header-mobile .today-day-read {
+    display: block;
+    margin: 6px 0 0;
+    max-width: 34rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--ink-soft, #5c574f);
+  }
+
+  .today-day-header-mobile .today-day-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 0 0 auto;
+  }
+
+  .today-day-header-mobile .today-tools-btn,
+  .today-day-header-mobile .gear-btn {
+    display: grid;
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .today-day-header-mobile .today-tools-panel {
+    display: flex;
+  }
+}
