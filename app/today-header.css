@@ -1134,7 +1134,26 @@ html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-conte
 }
 
 /* A learned signal, not another generic summary card. */
-.today-day-header .today-pattern-insight {
+.today-day-header .today-pattern-empty {
+  margin: 12px 0 16px;
+  padding: 14px 16px;
+  border: 1px dashed var(--line-strong, #b8b1a4);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-raised, #fff) 78%, #d6b56d 22%);
+}
+.today-pattern-empty strong {
+  display: block;
+  color: var(--text-primary, #28333a);
+  font-size: 0.94rem;
+  font-weight: 650;
+}
+.today-pattern-empty p {
+  margin: 5px 0 0;
+  color: var(--text-secondary, #4c5961);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+.today-pattern-insight {
   position: relative;
   overflow: hidden;
   padding: 15px 16px 13px;

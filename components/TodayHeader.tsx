@@ -308,7 +308,7 @@ export function TodayHeader(props: {
 
           <section className="today-day-shape" aria-label="Day detail">
             <div className="today-depth-heading">
-              <strong>Where your time goes</strong>
+              <strong>What your history says</strong>
               <span>{isWorkDay ? `${fmtClock(workStart)}–${fmtClock(workEnd)} workday` : 'Outside usual work hours'}</span>
             </div>
             {patternInsight ? (
@@ -318,14 +318,16 @@ export function TodayHeader(props: {
                   <span className="today-pattern-sample">{patternInsight.sampleCount} timed examples</span>
                 </div>
                 <strong className="today-pattern-headline">
-                  {patternInsight.deltaMins > 0
+                  {patternInsight.deltaMins > Math.max(10, patternInsight.plannedMins * 0.15)
                     ? `Allow about ${fmtMins(patternInsight.deltaMins)} more`
-                    : `This may take about ${fmtMins(Math.abs(patternInsight.deltaMins))} less`}
+                    : patternInsight.deltaMins < -Math.max(10, patternInsight.plannedMins * 0.15)
+                      ? `This may take about ${fmtMins(Math.abs(patternInsight.deltaMins))} less`
+                      : 'Your plan is close to your usual pace'}
                 </strong>
                 <p>
-                  Your history for <b>{patternInsight.patternLabel}</b> points to about{' '}
-                  <b>{fmtMins(patternInsight.learnedMins)}</b>, while “{patternInsight.taskText}” is planned for{' '}
-                  <b>{fmtMins(patternInsight.plannedMins)}</b>.
+                  Across {patternInsight.sampleCount} measured examples of <b>{patternInsight.patternLabel}</b>,
+                  Dokkit expects about <b>{fmtMins(patternInsight.learnedMins)}</b> for “{patternInsight.taskText}”.
+                  Today’s plan allows <b>{fmtMins(patternInsight.plannedMins)}</b>.
                 </p>
                 <div className="today-pattern-comparison" aria-label="Planned and learned duration comparison">
                   <div>
@@ -343,43 +345,10 @@ export function TodayHeader(props: {
               </aside>
             ) : null}
 
-            <dl className="today-shape-dl">
-              <div>
-                <dt>Task time planned</dt>
-                <dd className="mono">{planned > 0 ? fmtMins(planned) : 'Not timed'}</dd>
-              </div>
-              {fixed > 0 ? (
-                <div>
-                  <dt>Fixed commitments</dt>
-                  <dd className="mono">{fmtMins(fixed)}</dd>
-                </div>
-              ) : null}
-              {travel > 0 ? (
-                <div>
-                  <dt>Travel allowance</dt>
-                  <dd className="mono">~{fmtMins(travel)}</dd>
-                </div>
-              ) : null}
-              <div>
-                <dt>Unallocated time</dt>
-                <dd className="mono">{fmtMins(Math.max(usable - planned, 0))}</dd>
-              </div>
-              {overloaded ? (
-                <div>
-                  <dt>Capacity gap</dt>
-                  <dd className="today-shape-warn">Over by {fmtMins(overBy)}</dd>
-                </div>
-              ) : null}
-            </dl>
-
-            {depth?.fitsNow?.length ? (
-              <div className="today-depth-fits">
-                <span className="today-depth-label">Could fit next</span>
-                <ul>
-                  {depth.fitsNow.slice(0, 3).map((item, index) => (
-                    <li key={`${item}-${index}`}>{item}</li>
-                  ))}
-                </ul>
+            {!patternInsight ? (
+              <div className="today-pattern-empty">
+                <strong>No reliable repeat-work signal yet</strong>
+                <p>As Dokkit records more completed work, this space will surface a specific pattern—not another capacity summary.</p>
               </div>
             ) : null}
 
