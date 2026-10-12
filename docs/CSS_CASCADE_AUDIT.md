@@ -87,4 +87,4 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Removed the legacy raised-card/shadow/lift treatment and orange hover border that conflicted with the shared flat object-row contract.
 - Removed pressure-only orange inset rails, orange/radial row gradients, and oversized pressure title overrides. Priority remains expressed through semantic state/context rather than repainting or resizing the object.
 - Removed duplicate title and digital-clock typography overrides so object titles and metadata can follow the shared token contract.
-- CSS validation on the branch: 757 `!important` occurrences (down from 782; 35 fewer than the start of this pass), balanced braces. Full CI and both Vercel previews are required before merge; visual checks should compare task/job/meeting/travel rows across mobile/desktop and light/dark themes.
+- CSS validation on the branch: 743 `!important` occurrences (down from 782; 39 fewer than the start of this pass), balanced braces. Full CI and both Vercel previews are required before merge; visual checks should compare task/job/meeting/travel rows across mobile/desktop and light/dark themes.
