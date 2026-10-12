@@ -375,11 +375,11 @@
 .task-progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  background: var(--accent);
 }
 
 .task-detail-sheet-refined.is-live .task-progress-fill {
-  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  background: var(--accent);
 }
 
 .task-progress-label {
@@ -502,8 +502,7 @@
 
 /* ---------- Desktop detail pane ---------- */
 .desk-pane-detail {
-  background:
-    linear-gradient(180deg, rgba(248, 250, 252, 0.9) 0%, var(--surface-page) 48px);
+  background: var(--surface-page);
 }
 
 .desk-detail-dashboard {

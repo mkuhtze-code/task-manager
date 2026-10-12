@@ -305,12 +305,7 @@ html[data-surface='desktop']
 
   border-bottom: 1px solid var(--line);
 
-  background:
-    linear-gradient(
-      to bottom,
-      rgba(var(--glass-rgb), 0.94),
-      rgba(var(--glass-rgb), 0.70)
-    );
+  background: var(--paper);
 }
 
 html[data-surface='desktop']

@@ -117,11 +117,7 @@ html[data-surface='desktop'] .desk-sidebar-settings .desk-nav-icon {
   gap: var(--space-4);
   padding: 8px var(--space-6);
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(
-    to bottom,
-    rgba(var(--glass-rgb), 0.65),
-    rgba(var(--glass-rgb), 0.4)
-  );
+  background: var(--paper);
   z-index: 20;
 }
 

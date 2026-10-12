@@ -120,12 +120,21 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Validation on the combined source: CSS braces balanced; “!important” occurrences 678 (mainline baseline 743); CSS-only presentation changes.
 - Automated source validation only. Browser-level visual verification across mobile/desktop and light/dark remains outstanding.
 
+## Universal neutral-surface pass — 2026-10
 
-## Shared header cascade simplification — 2026-10
+- Removed the superseded legacy shared-header makeover layer and decorative pulse dot; retained the canonical header grammar.
+- Removed decorative linear/radial gradient backgrounds from the shared surface stylesheet, including Today depth panels, workspace canvas, featured Meeting/Travel objects, and the featured Job card.
+- Replaced Today load-capacity gradient with a solid steel fill; over-capacity remains a semantic danger state.
+- Removed decorative workspace top rails, featured-card colour stripes/rings, desktop grid-paper texture, first-Job ornamentation, and staggered/oversized first-card treatments.
+- Neutralized the Today dock pill and current-time marker; retained the solid primary add action and meaningful semantic state labels.
+- Replaced orange navigation borders/inset rails with neutral borders and a soft neutral shadow; context-link hover uses an underline as well as ink colour.
+- Removed obsolete mixed-gradient variables and stale selectors/comments.
+- Source validation: `app/surface-system.css` gradient declarations 22 → 0; `!important` count 643 → 613; CSS braces balanced. Browser visual review across mobile/desktop and light/dark remains outstanding.
 
-- Removed the superseded legacy header makeover block that reintroduced oversized desktop titles, orange kicker text, raised pulse chrome, and a decorative pulse dot after the canonical shared header grammar.
-- Removed the pulse dot rules at source; surface status remains communicated by its text and existing semantic attention state.
-- Changed Meetings/Travel section-title markers from orange 3px bars to neutral 1px hairlines.
-- Changed context-link hover from orange-only/no-underline to ink + underline, preserving a visible non-colour hover cue.
-- Removed a duplicate add-button hover transform rule so there is one shared hover movement.
-- Source validation: CSS braces balanced; app/surface-system.css !important count 678 → 643; no pulse pseudo-element remains. Automated source validation only; preview visual checks remain required.
+
+## Cross-surface gradient removal — 2026-10
+
+- Extended the neutral-surface pass beyond the shared stylesheet to Today capacity fills, desktop Today empty-detail canvas, desktop context strip, Jobs/Meetings/Travel desktop headers, Today header, shared desktop header, task progress fills, the Patterns engine panel, and the welcome rail demo.
+- Capacity load uses solid steel; tight and over-capacity states use solid hazard/danger fills. The accuracy gauge gradient and loading skeleton shimmer remain because they communicate data range/loading rather than brand decoration; the brief impact flash on the splash screen also remains as an animation effect.
+- Validation across the audited files: shared surface stylesheet gradient declarations 22 → 0; Today product stylesheet 3 → 0; desktop header files 6 → 0; CSS brace balance verified for the audited files. `!important` count in `app/surface-system.css` 643 → 613.
+- Browser visual inspection across mobile/desktop and light/dark themes remains required before this pass can be called visually complete.
