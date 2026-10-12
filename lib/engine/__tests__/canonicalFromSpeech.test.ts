@@ -1,0 +1,103 @@
+import { describe, expect, it } from 'vitest';
+import type { SpeechInterpretation } from '@/lib/speech/types';
+import { canonicalMeaningFromSpeech } from '../canonicalFromSpeech';
+import { canonicalMeaningBlocksMutation, isCanonicalUtteranceMeaning } from '../canonicalMeaning';
+
+function speech(overrides: Partial<SpeechInterpretation> = {}): SpeechInterpretation {
+  return {
+    id: 'speech-1',
+    originalTranscript: 'Call Jordan tomorrow',
+    normalisedText: 'Call Jordan tomorrow',
+    intent: 'create',
+    statementType: 'request',
+    certainty: 'definite',
+    commitmentStrength: 'strong',
+    urgency: 'none',
+    constraints: [],
+    temporalReferences: [],
+    entities: [],
+    corrections: [],
+    ambiguity: 'none',
+    surfaceSummary: 'Call Jordan tomorrow',
+    confidence: 'high',
+    reasons: [],
+    requiresConfirmation: false,
+    mustNotCreateTask: false,
+    actionConfidence: 'high',
+    interpretationConfidence: 'high',
+    createdAt: '2026-10-13T00:00:00.000Z',
+    semantic: {
+      rawText: 'Call Jordan tomorrow',
+      normalisedText: 'Call Jordan tomorrow',
+      acts: [{
+        id: 'act-1',
+        kind: 'action',
+        rawSpan: 'Call Jordan tomorrow',
+        polarity: 'positive',
+        actionVerb: 'call',
+        objectText: 'Jordan',
+        temporalRaw: 'tomorrow',
+        entityLinks: [],
+        evidence: [],
+        confidence: 'high',
+        blocksTaskCreation: false,
+        targetsExistingContext: false,
+      }],
+      correctionChain: [],
+      mustNotCreateTask: false,
+      requiresConfirmation: false,
+      reasons: [],
+      confidence: 'high',
+    },
+    ...overrides,
+  } as SpeechInterpretation;
+}
+
+describe('canonical speech meaning adapter', () => {
+  it('preserves the current capture line and structured action roles', () => {
+    const meaning = canonicalMeaningFromSpeech(speech(), 'Call Jordan tomorrow');
+    expect(isCanonicalUtteranceMeaning(meaning)).toBe(true);
+    expect(meaning.rawText).toBe('Call Jordan tomorrow');
+    expect(meaning.acts[0]).toMatchObject({
+      kind: 'create',
+      actionVerb: 'call',
+      object: 'Jordan',
+      time: 'tomorrow',
+      polarity: 'positive',
+      targetsExistingContext: false,
+    });
+  });
+
+  it('carries negative intent into a mutation veto', () => {
+    const meaning = canonicalMeaningFromSpeech(speech({
+      mustNotCreateTask: true,
+      semantic: {
+        rawText: 'Do not call Jordan',
+        normalisedText: 'Do not call Jordan',
+        acts: [{
+          id: 'act-negative',
+          kind: 'action',
+          rawSpan: 'Do not call Jordan',
+          polarity: 'negated',
+          actionVerb: 'call',
+          objectText: 'Jordan',
+          evidence: [],
+          confidence: 'high',
+          blocksTaskCreation: true,
+        }],
+        correctionChain: [],
+        mustNotCreateTask: true,
+        requiresConfirmation: false,
+        reasons: ['negation'],
+        confidence: 'high',
+      },
+    }), 'Do not call Jordan');
+    expect(meaning.safety.mustNotCreateTask).toBe(true);
+    expect(canonicalMeaningBlocksMutation(meaning)).toBe(true);
+  });
+
+  it('does not reuse structured meaning when the capture line is changed', () => {
+    const meaning = canonicalMeaningFromSpeech(speech(), 'Call Jordan tomorrow');
+    expect(meaning.rawText.trim()).not.toBe('Call Gerald tomorrow'.trim());
+  });
+});
