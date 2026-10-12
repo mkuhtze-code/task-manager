@@ -124,6 +124,18 @@ describe('taskListBridge', () => {
     expect(resolveReferentialItems(['this']).ambiguous).toBe(true);
   });
 
+  it('never resolves an active list after its task is completed', () => {
+    const completed = { id: 'done-list', text: 'Packing', info: LIST_TASK_MARKER, status: 'done' as const };
+    activateListTask(completed.id, completed.text);
+    expect(resolveListTarget({ kind: 'active' }, [completed])).toEqual({ kind: 'none' });
+  });
+
+  it('does not resolve an ordinary task as a list target', () => {
+    const ordinaryTask = { id: 'task-1', text: 'Reprice Nu-Wall for Shelly Beach', info: '', status: 'pending' as const };
+    expect(resolveListTarget({ kind: 'active' }, [ordinaryTask])).toEqual({ kind: 'none' });
+    expect(resolveListTarget({ kind: 'title', title: 'Reprice Nu-Wall for Shelly Beach' }, [ordinaryTask])).toEqual({ kind: 'none' });
+  });
+
   it('hard TTL expires active list', () => {
     activateListTask('t1', 'Grocery', Date.now() - 25 * 60 * 60 * 1000);
     expect(canUseActiveList(loadActiveListState())).toBe(false);
