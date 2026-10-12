@@ -435,19 +435,9 @@ html[data-theme='dark'] .surface-header{background:var(--paper)!important}html[d
 }
 .surface-tab-icon{display:flex;align-items:center;justify-content:center;width:20px;height:20px}
 .surface-tab-label{font-size:10px!important;line-height:1.1!important;font-weight:650!important;letter-spacing:.01em!important}
-.surface-tab.current{
-  color:var(--ink)!important;
-  background:var(--paper-raised)!important;
-}
-.surface-tab.current::after{
-  content:'';
-  position:absolute;
-  bottom:3px;
-  width:14px;
-  height:2px;
-  border-radius:999px;
-  background:var(--steel)!important;
-}
+.surface-tab.current{color:var(--ink)!important;background:var(--paper-raised)!important;box-shadow:none!important;}
+.surface-tab.current::after{content:'';position:absolute;bottom:3px;width:14px;height:2px;border-radius:999px;background:var(--line-strong)!important;}
+
 .surface-tab.locked{opacity:.52}
 .surface-tab:not(.current):hover{color:var(--ink-soft)!important;background:var(--paper-raised)!important}
 .surface-add{
@@ -472,7 +462,6 @@ html[data-theme='dark'] .surface-header{background:var(--paper)!important}html[d
   .surface-tabs{max-width:520px}
   .surface-tab{min-height:44px!important;flex-direction:row!important;gap:7px!important}
   .surface-tab-label{font-size:11px!important}
-  .surface-tab.current::after{bottom:2px}
   .surface-add{width:40px!important;height:40px!important}
 }
 
@@ -698,11 +687,6 @@ html[data-theme='dark']{
 }
 
 /* Current navigation state uses the same palette; responsive variants stay below. */
-.surface-tab.current{
-  color:var(--dk-orange)!important;
-  background:color-mix(in srgb,var(--dk-orange) 8%,var(--paper-raised))!important;
-}
-.surface-tab.current::after{background:var(--dk-orange)!important;width:22px!important;height:3px!important}
 .surface-add{
   background:var(--dk-orange)!important;
   border-color:var(--dk-orange)!important;
@@ -714,9 +698,6 @@ html[data-theme='dark'] .desk-today-saas{
   background:
     radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 10%,transparent),transparent 28rem),
     var(--paper-raised)!important;
-}
-html[data-theme='dark'] .surface-tab.current{
-  background:color-mix(in srgb,var(--dk-orange) 10%,var(--paper-raised))!important;
 }
 
 
@@ -1125,7 +1106,7 @@ html[data-theme='dark'] .desk-depth-track{
     width:54px;
     height:3px;
     border-radius:999px;
-    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
+    background:var(--line-strong);
     box-shadow:0 8px 0 color-mix(in srgb,var(--dk-gradient-end) 35%,transparent),0 16px 0 color-mix(in srgb,var(--dk-orange) 22%,transparent);
     transform:rotate(-35deg);
     transform-origin:right center;
@@ -1169,33 +1150,11 @@ html[data-theme='dark'] .desk-job-card:first-child{
     backdrop-filter:blur(20px) saturate(1.08)!important;
     box-shadow:0 14px 36px rgba(var(--shadow-rgb),.16),0 2px 0 color-mix(in srgb,var(--dk-orange) 55%,transparent) inset!important;
   }
-  .surface-nav.surface-nav-tabs::before{
-    content:'';
-    position:absolute;
-    left:22px;
-    right:22px;
-    top:0;
-    height:2px;
-    border-radius:0 0 999px 999px;
-    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-start) 34%,var(--dk-gradient-end) 72%,transparent);
-    pointer-events:none;
-  }
   .surface-tabs{max-width:none!important;gap:5px!important}
   .surface-tab{
     min-height:48px!important;
     border-radius:12px!important;
     color:var(--ink-faint)!important;
-  }
-  .surface-tab.current{
-    background:linear-gradient(135deg,color-mix(in srgb,var(--dk-orange) 10%,var(--paper-raised)),var(--paper-raised) 62%,color-mix(in srgb,var(--dk-blue) 7%,var(--paper-raised)))!important;
-    color:var(--ink)!important;
-    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dk-orange) 22%,var(--line))!important;
-  }
-  .surface-tab.current::after{
-    width:28px!important;
-    height:3px!important;
-    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end))!important;
-    box-shadow:0 0 10px color-mix(in srgb,var(--dk-orange) 22%,transparent)!important;
   }
   .surface-tab-icon svg{width:19px;height:19px}
   .surface-tab-label{font-weight:750!important;letter-spacing:.015em!important}
@@ -1212,83 +1171,6 @@ html[data-theme='dark'] .desk-job-card:first-child{
 
 /* Jobs gets a workbench silhouette rather than another list of cards. */
 @media (min-width:1000px){
-  .desk-jobs-workspace-header{
-    position:relative;
-    overflow:hidden;
-    padding-left:34px!important;
-    padding-right:34px!important;
-    background:
-      radial-gradient(circle at 86% 18%,color-mix(in srgb,var(--dk-blue) 9%,transparent),transparent 28%),
-      linear-gradient(105deg,color-mix(in srgb,var(--dk-orange) 6%,var(--paper)) 0%,var(--paper) 46%,color-mix(in srgb,var(--dk-blue) 4%,var(--paper)) 100%)!important;
-  }
-  .desk-jobs-workspace-header::before{
-    content:'';
-    position:absolute;
-    left:0;
-    top:0;
-    bottom:0;
-    width:7px;
-    background:linear-gradient(180deg,var(--dk-gradient-start) 0 42%,var(--dk-gradient-end) 78% 100%);
-  }
-  .desk-jobs-workspace-header::after{
-    content:'WORK / FIELD / MEMORY';
-    position:absolute;
-    right:32px;
-    top:14px;
-    font-family:var(--font-label);
-    font-size:8px;
-    font-weight:850;
-    letter-spacing:.22em;
-    color:color-mix(in srgb,var(--dk-blue) 65%,var(--ink-faint));
-    opacity:.72;
-    pointer-events:none;
-  }
-  .desk-jobs-workspace-header .surface-title{
-    font-size:clamp(26px,2.8vw,42px)!important;
-    font-weight:850!important;
-    letter-spacing:-.045em!important;
-  }
-  .desk-jobs-workspace-header .surface-kicker{
-    color:var(--dk-orange)!important;
-    font-weight:850!important;
-    letter-spacing:.16em!important;
-  }
-  .desk-jobs-workspace-header .surface-pulse{
-    min-height:44px!important;
-    padding:6px 12px!important;
-    border-radius:12px!important;
-    background:color-mix(in srgb,var(--paper-raised) 78%,transparent)!important;
-    border-color:color-mix(in srgb,var(--dk-orange) 24%,var(--line))!important;
-    box-shadow:0 2px 10px rgba(var(--shadow-rgb),.07)!important;
-  }
-  .desk-jobs-workspace-header .surface-header-controls{
-    border-top-color:color-mix(in srgb,var(--dk-orange) 24%,var(--line))!important;
-  }
-  .desk-jobs-workspace-header .surface-filter{
-    border-radius:12px!important;
-    padding:3px!important;
-    background:color-mix(in srgb,var(--paper-raised) 76%,transparent)!important;
-  }
-  .desk-jobs-workspace-header .surface-filter-btn{
-    min-height:34px!important;
-    padding-inline:13px!important;
-  }
-  .desk-jobs-workspace-header .surface-filter-btn.active{
-    background:var(--ink)!important;
-    color:var(--paper)!important;
-    box-shadow:none!important;
-  }
-  .desk-jobs-workspace-header .surface-filter-btn.active .mono{
-    color:color-mix(in srgb,var(--paper) 72%,var(--dk-orange))!important;
-  }
-  .desk-jobs-workspace-header .surface-header-actions .btn-steel{
-    min-height:38px!important;
-    border:0!important;
-    border-radius:11px!important;
-    background:linear-gradient(135deg,var(--dk-orange),#e55316)!important;
-    color:#fff!important;
-    box-shadow:0 5px 14px color-mix(in srgb,var(--dk-orange) 22%,transparent)!important;
-  }
 }
 
 /* Turn the desktop job field into a deliberate staggered workbench. */
@@ -1346,7 +1228,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
 
 /* Dark mode keeps the silhouette; it does not become a neon theme. */
 html[data-theme='dark'] .surface-nav.surface-nav-tabs{
-  box-shadow:0 14px 36px rgba(0,0,0,.34),0 2px 0 color-mix(in srgb,var(--dk-orange) 58%,transparent) inset!important;
+  box-shadow:0 14px 36px rgba(0,0,0,.34)!important;
 }
 
 
@@ -1647,23 +1529,8 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     background-position:center center!important;
   }
 
-  html[data-surface='desktop'] .surface-header{
-    padding:22px 32px 18px!important;
-    border-bottom:0!important;
-  }
 
-  html[data-surface='desktop'] .surface-kicker{
-    color:var(--dk-orange)!important;
-    font-weight:850!important;
-    letter-spacing:.16em!important;
-  }
 
-  html[data-surface='desktop'] .surface-title{
-    font-size:clamp(26px,3vw,42px)!important;
-    line-height:.98!important;
-    font-weight:900!important;
-    letter-spacing:-.045em!important;
-  }
 
   html[data-surface='desktop'] .surface-lede{
     margin-top:7px!important;
@@ -1681,12 +1548,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     box-shadow:0 8px 24px rgba(15,23,42,.06)!important;
   }
 
-  html[data-surface='desktop'] .surface-pulse::before{
-    content:'';
-    width:7px;height:7px;border-radius:50%;
-    background:var(--dk-orange);
-    box-shadow:0 0 0 4px color-mix(in srgb,var(--dk-orange) 12%,transparent);
-  }
 
   html[data-surface='desktop'] .surface-header-controls{
     margin-top:18px!important;
@@ -1699,15 +1560,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     background:var(--paper-raised)!important;
   }
 
-  html[data-surface='desktop'] .surface-filter-btn.active{
-    background:var(--dk-deep)!important;
-    color:#fff!important;
-  }
 
-  html[data-theme='dark'][data-surface='desktop'] .surface-filter-btn.active{
-    background:var(--dk-orange)!important;
-    color:#fff!important;
-  }
 
   html[data-surface='desktop'] .meetings-workspace,
   html[data-surface='desktop'] .travel-workspace,
@@ -1867,10 +1720,10 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   html[data-surface='desktop'] .trip-section-title::before{
     content:'';
     display:inline-block;
-    width:24px;height:3px;
+    width:24px;height:1px;
     margin-right:9px;
     vertical-align:middle;
-    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
+    background:var(--line-strong);
   }
 
   /* The whole is the control console. */
@@ -1882,10 +1735,10 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     width:min(760px,calc(100vw - 48px))!important;
     min-height:70px!important;
     padding:8px!important;
-    border:1px solid color-mix(in srgb,var(--dk-orange) 26%,var(--line))!important;
+    border:1px solid var(--line)!important;
     border-radius:20px!important;
     background:color-mix(in srgb,var(--paper-raised) 92%,transparent)!important;
-    box-shadow:0 18px 45px rgba(15,23,42,.16),0 2px 0 color-mix(in srgb,var(--dk-orange) 70%,transparent)!important;
+    box-shadow:0 14px 36px rgba(var(--shadow-rgb),.12)!important;
     backdrop-filter:blur(20px) saturate(1.1)!important;
   }
 
@@ -1912,15 +1765,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     border-radius:13px!important;
   }
 
-  html[data-surface='desktop'] .surface-tab.current{
-    color:#fff!important;
-    background:linear-gradient(135deg,var(--dk-gradient-start),var(--dk-active-gradient-end))!important;
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 5px 15px color-mix(in srgb,var(--dk-orange) 22%,transparent)!important;
-  }
 
-  html[data-surface='desktop'] .surface-tab.current::after{
-    bottom:4px;width:28px;height:3px;background:#fff!important;
-  }
 
   html[data-surface='desktop'] .surface-add{
     width:52px!important;height:52px!important;border-radius:14px!important;
@@ -1936,19 +1781,11 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     padding:15px 14px 13px!important;
   }
 
-  .surface-kicker{color:var(--dk-orange)!important;letter-spacing:.13em!important}
+  .surface-kicker{color:var(--ink-faint)!important;letter-spacing:.09em!important}
   .surface-title{font-size:21px!important;font-weight:850!important}
   .surface-nav.surface-nav-tabs{
     border-top:0!important;
     box-shadow:0 -10px 30px rgba(15,23,42,.09)!important;
-  }
-  .surface-tab.current{
-    background:color-mix(in srgb,var(--dk-orange) 9%,var(--paper-raised))!important;
-    color:var(--ink)!important;
-  }
-  .surface-tab.current::after{
-    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end))!important;
-    width:22px!important;height:3px!important;
   }
   .surface-add{
     background:var(--dk-orange)!important;
@@ -2059,7 +1896,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
     height:100%;
     min-width:3px;
     border-radius:inherit;
-    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
+    background:var(--line-strong);
   }
 
   .desk-today-capacity-track span.is-over{
@@ -2225,7 +2062,8 @@ html[data-theme='dark'] .desk-job-card:first-child{
 
 .surface-kicker{
   font-size:11px!important;
-  letter-spacing:.11em!important;
+  color:var(--ink-faint)!important;
+  letter-spacing:.09em!important;
 }
 
 .meeting-section-title,
@@ -2301,9 +2139,6 @@ html[data-theme='dark'] .desk-job-card:first-child{
 }
 
 @media (min-width:701px){
-  html[data-surface='desktop'] .surface-header{
-    padding-bottom:16px!important;
-  }
 
   html[data-surface='desktop'] .surface-header-controls{
     margin-top:14px!important;
