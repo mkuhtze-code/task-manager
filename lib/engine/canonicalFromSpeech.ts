@@ -16,8 +16,9 @@ function canonicalKind(kind: string): CanonicalAct['kind'] {
   switch (kind) {
     case 'action':
     case 'commitment':
-    case 'confirmation':
       return 'create';
+    case 'confirmation':
+      return 'observe';
     case 'correction':
     case 'retraction':
       return 'update';
