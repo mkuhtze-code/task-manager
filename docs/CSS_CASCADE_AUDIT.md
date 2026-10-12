@@ -48,6 +48,11 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Migrated the decorative orange/blue accent rails, signature strokes, Today header rails, and depth-load accent to the shared gradient tokens. Explicitly split travel route markers remain two-colour because they encode distinct route states rather than a brand gradient.
 - Kept capacity fit/tight/over gradients and their semantic end-stop tokens unchanged; this pass does not redefine status meaning.
 
+## Implemented in the shared-row neutralization pass
+
+- Removed the light- and dark-theme blue-tinted background fills from the active meeting row. The row now uses the shared neutral inset surface token, so the state is communicated without turning an entire row into a brand-colour band.
+- Preserved the separate soon/open pressure rails, row structure, click targets, focus outline, and reduced-motion behavior. No meeting data, ordering, or interaction logic changed.
+
 ## Still to complete
 
 - Continue consolidating `surface-system.css` authority, starting with the remaining mobile/desktop navigation variants and shared object rows.

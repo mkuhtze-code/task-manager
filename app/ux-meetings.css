@@ -198,7 +198,8 @@ html[data-surface='desktop'] .meeting-list {
 }
 
 .meeting-row.pressure-now {
-  background: rgba(30, 107, 230, 0.05);
+  /* Current-state emphasis stays neutral; blue remains reserved for deliberate actions/focus. */
+  background: var(--surface-inset);
 }
 
 .meeting-row.pressure-soon {
@@ -336,7 +337,7 @@ html[data-theme='dark'] .meeting-row:hover {
 }
 
 html[data-theme='dark'] .meeting-row.pressure-now {
-  background: rgba(30, 107, 230, 0.12);
+  background: var(--surface-inset);
 }
 
 @media (prefers-reduced-motion: reduce) {
