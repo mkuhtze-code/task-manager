@@ -77,6 +77,14 @@ export function TodayHeader(props: {
     taskSubsTotal?: number;
   } | null;
   dayDepth?: DeskDayDepth | null;
+  patternInsight?: {
+    taskText: string;
+    patternLabel: string;
+    sampleCount: number;
+    plannedMins: number;
+    learnedMins: number;
+    deltaMins: number;
+  } | null;
 }) {
   const {
     overloaded,
@@ -103,6 +111,7 @@ export function TodayHeader(props: {
     onDockIt,
     deskContext = null,
     dayDepth = null,
+    patternInsight = null,
   } = props;
 
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -302,6 +311,38 @@ export function TodayHeader(props: {
               <strong>Where your time goes</strong>
               <span>{isWorkDay ? `${fmtClock(workStart)}–${fmtClock(workEnd)} workday` : 'Outside usual work hours'}</span>
             </div>
+            {patternInsight ? (
+              <aside className="today-pattern-insight" aria-label="Learned work pattern">
+                <div className="today-pattern-insight-top">
+                  <span className="today-pattern-eyebrow">A pattern worth noticing</span>
+                  <span className="today-pattern-sample">{patternInsight.sampleCount} timed examples</span>
+                </div>
+                <strong className="today-pattern-headline">
+                  {patternInsight.deltaMins > 0
+                    ? `Allow about ${fmtMins(patternInsight.deltaMins)} more`
+                    : `This may take about ${fmtMins(Math.abs(patternInsight.deltaMins))} less`}
+                </strong>
+                <p>
+                  Your history for <b>{patternInsight.patternLabel}</b> points to about{' '}
+                  <b>{fmtMins(patternInsight.learnedMins)}</b>, while “{patternInsight.taskText}” is planned for{' '}
+                  <b>{fmtMins(patternInsight.plannedMins)}</b>.
+                </p>
+                <div className="today-pattern-comparison" aria-label="Planned and learned duration comparison">
+                  <div>
+                    <span>Planned</span>
+                    <div className="today-pattern-track"><i style={{ width: `${Math.min(100, (patternInsight.plannedMins / Math.max(patternInsight.plannedMins, patternInsight.learnedMins, 1)) * 100)}%` }} /></div>
+                    <b>{fmtMins(patternInsight.plannedMins)}</b>
+                  </div>
+                  <div>
+                    <span>Learned</span>
+                    <div className="today-pattern-track learned"><i style={{ width: `${Math.min(100, (patternInsight.learnedMins / Math.max(patternInsight.plannedMins, patternInsight.learnedMins, 1)) * 100)}%` }} /></div>
+                    <b>{fmtMins(patternInsight.learnedMins)}</b>
+                  </div>
+                </div>
+                <span className="today-pattern-footnote">Based on repeated completed work, not a generic productivity rule.</span>
+              </aside>
+            ) : null}
+
             <dl className="today-shape-dl">
               <div>
                 <dt>Task time planned</dt>
