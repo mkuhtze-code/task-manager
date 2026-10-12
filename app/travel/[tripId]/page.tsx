@@ -1425,11 +1425,11 @@ export default function TripDayView() {
 
   return (
     <div className={`app-shell${isDesktop ? ' desk-trip-detail' : ''}`}>
-      <div className="app-header">
+      <div className="app-header travel-detail-header">
         <div className="app-header-left">
-          <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back"><BackIcon /></button>
-          <div>
-            <h1 className="app-title" style={{ fontSize: 'var(--text-lg)', lineHeight: 1.15 }}>{trip.name}</h1>
+          <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back to travel"><BackIcon /></button>
+          <div className="travel-detail-identity">
+            <h1 className="app-title travel-detail-title">{trip.name}</h1>
           </div>
         </div>
         <div className="app-header-right" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
