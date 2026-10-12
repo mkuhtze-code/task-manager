@@ -553,7 +553,7 @@ html[data-theme='dark']{
 /* Surface headers become an arrival moment, not a settings strip. */
 .surface-header{
   padding:22px 28px 20px!important;
-  border-bottom:1px solid var(--line)!important
+  border-bottom:1px solid var(--line)!important;
   overflow:hidden;
 }
 .surface-header-bar{
@@ -657,7 +657,7 @@ html[data-theme='dark']{
 /* Mobile: keep the makeover visible instead of shrinking it into nothing. */
 @media (max-width:700px){
   .surface-header{
-    padding:18px 16px 16px!important
+    padding:18px 16px 16px!important;
   }
   .surface-header-bar{min-height:64px!important;column-gap:12px!important}
   .surface-title{font-size:28px!important}
@@ -754,7 +754,7 @@ html[data-theme='dark'] .surface-tab.current{
   right:0;
   bottom:-1px;
   width:96px;
-  height:3px
+  height:3px;
   border-radius:3px 0 0 3px;
 }
 
@@ -1388,7 +1388,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
   .desk-jobs-workspace-header .surface-header-actions .btn-steel{
     min-height:38px!important;
     border:0!important;
-    border-radius:11px!important
+    border-radius:11px!important;
     color:#fff!important;
     box-shadow:0 5px 14px color-mix(in srgb,var(--dk-orange) 22%,transparent)!important;
   }
@@ -1778,7 +1778,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   }
 
   html[data-surface='desktop'] .surface-header{
-    padding:22px 32px 18px!important
+    padding:22px 32px 18px!important;
     border-bottom:0!important;
   }
 
@@ -2118,7 +2118,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 @media (max-width:700px){
   .surface-header{
     position:relative!important;
-    padding:15px 14px 13px!important
+    padding:15px 14px 13px!important;
   }
 
   .surface-kicker{color:var(--dk-orange)!important;letter-spacing:.13em!important}
