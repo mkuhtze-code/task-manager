@@ -119,3 +119,13 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Neutralized nav borders/shadows and Meetings/Travel section markers while retaining the solid primary add action.
 - Validation on the combined source: CSS braces balanced; “!important” occurrences 678 (mainline baseline 743); CSS-only presentation changes.
 - Automated source validation only. Browser-level visual verification across mobile/desktop and light/dark remains outstanding.
+
+
+## Shared header cascade simplification — 2026-10
+
+- Removed the superseded legacy header makeover block that reintroduced oversized desktop titles, orange kicker text, raised pulse chrome, and a decorative pulse dot after the canonical shared header grammar.
+- Removed the pulse dot rules at source; surface status remains communicated by its text and existing semantic attention state.
+- Changed Meetings/Travel section-title markers from orange 3px bars to neutral 1px hairlines.
+- Changed context-link hover from orange-only/no-underline to ink + underline, preserving a visible non-colour hover cue.
+- Removed a duplicate add-button hover transform rule so there is one shared hover movement.
+- Source validation: CSS braces balanced; app/surface-system.css !important count 678 → 643; no pulse pseudo-element remains. Automated source validation only; preview visual checks remain required.
