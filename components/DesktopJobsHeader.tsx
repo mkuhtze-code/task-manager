@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 
 export type JobsListFilter = 'open' | 'done' | 'all';
 
@@ -91,17 +92,14 @@ export default function DesktopJobsHeader({
   return (
     <header className="surface-header desk-jobs-workspace-header">
       <div className="surface-header-bar">
-        <div className="surface-header-orient">
-          <div className="surface-identity">
-            <span className="surface-kicker">Work / Field</span>
-            <h1 className="surface-title">Jobs</h1>
-          </div>
-          <div className={pulseClass} aria-label="Jobs pulse">
-          <div className="surface-pulse-body">
-            <span className="surface-pulse-title">{pulseTitle}</span>
-          </div>
-        </div>
-        </div>
+        <SurfaceHeaderIdentity
+        kicker="Work / Field"
+        title="Jobs"
+        signal={pulseTitle}
+        meta={workRead}
+        attention={attentionCount > 0}
+        clear={openCount === 0}
+      />
 
         <div className="surface-header-actions">
           <button type="button" className="btn btn-steel ux-button ux-button--primary" onClick={onCreate}>
