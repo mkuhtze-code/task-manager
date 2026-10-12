@@ -539,66 +539,7 @@ html[data-theme='dark']{
   --dk-active-gradient-end:#e55316;
 }
 
-/* Surface headers become an arrival moment, not a settings strip. */
-.surface-header{
-  padding:22px 28px 20px!important;
-  border-bottom:1px solid var(--line)!important;
-  overflow:hidden;
-}
-.surface-header-bar{
-  max-width:var(--dk-max)!important;
-  grid-template-columns:minmax(240px,auto) minmax(160px,1fr) auto!important;
-  column-gap:28px!important;
-  min-height:72px;
-}
-.surface-header-orient{gap:18px!important}
-.surface-identity{gap:4px!important}
-.surface-kicker{
-  font-family:var(--font-label)!important;
-  font-size:10px!important;
-  letter-spacing:.14em!important;
-  color:var(--dk-orange)!important;
-}
-.surface-title{
-  font-size:var(--dk-display)!important;
-  line-height:1!important;
-  font-weight:800!important;
-  letter-spacing:-.045em!important;
-}
-.surface-lede{font-size:12px!important;color:var(--ink-soft)!important}
-.surface-pulse{
-  min-height:48px!important;
-  padding:7px 14px!important;
-  border:1px solid var(--line-strong)!important;
-  border-radius:12px!important;
-  background:var(--paper-raised)!important;
-  box-shadow:0 2px 8px rgba(var(--shadow-rgb),.05)!important;
-}
-.surface-pulse::before{
-  content:'';
-  width:7px;
-  height:7px;
-  flex:0 0 7px;
-  border-radius:50%;
-  background:var(--dk-orange);
-  box-shadow:0 0 0 4px color-mix(in srgb,var(--dk-orange) 12%,transparent);
-}
-.surface-pulse.is-attention::before{background:var(--hazard)}
-.surface-pulse-title{font-size:13px!important;font-weight:750!important}
-.surface-pulse-meta{font-size:10px!important}
-.surface-header-actions .btn-steel{
-  min-height:44px!important;
-  padding:0 17px!important;
-  border-radius:11px!important;
-  font-weight:750!important;
-  box-shadow:0 2px 0 color-mix(in srgb,var(--steel-dark) 70%,transparent)!important;
-}
-.surface-header-controls{
-  max-width:var(--dk-max)!important;
-  margin-top:18px!important;
-  padding-top:13px!important;
-  border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)!important;
-}
+/* Shared header geometry and typography are defined by the canonical surface grammar above. */
 
 /* The object field gets a little more presence. */
 .meeting-list,.trip-list-maybach,.job-list{
@@ -612,7 +553,7 @@ html[data-theme='dark']{
 .surface-object-state,.meeting-row-state,.trip-row-state,.job-row-next{
   color:var(--ink-soft)!important;
 }
-.context-line-link:hover{color:var(--dk-orange)!important;text-decoration:none!important}
+.context-line-link:hover{color:var(--ink)!important;text-decoration:underline!important;text-underline-offset:2px!important}
 
 /* Desktop workspace becomes a gallery of useful objects. */
 @media (min-width:701px){
@@ -693,7 +634,6 @@ html[data-theme='dark']{
   font-weight:800!important;
   box-shadow:0 3px 0 color-mix(in srgb,var(--dk-orange) 72%,#000)!important;
 }
-.surface-add:hover{transform:translateY(-2px)!important}
 html[data-theme='dark'] .desk-today-saas{
   background:
     radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 10%,transparent),transparent 28rem),
@@ -730,9 +670,9 @@ html[data-theme='dark'] .desk-today-saas{
 .meeting-section-title::before,.trip-section-title::before{
   content:'';
   width:18px;
-  height:3px;
-  border-radius:2px;
-  background:var(--dk-orange);
+  height:1px;
+  border-radius:1px;
+  background:var(--line-strong);
 }
 .meeting-section-lede,.trip-section-lede{
   margin-left:0!important;
