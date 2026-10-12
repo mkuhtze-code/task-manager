@@ -42,6 +42,12 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Centralized the three fixed end-stop colors used by Today capacity gradients as `--steel-highlight`, `--hazard-highlight`, and `--danger-highlight` in `globals.css`. The values are unchanged; this is palette ownership, not a visual redesign. The existing `!important` count remains 104 for Today.
 - Wired the audit into the existing production build chain, so the web and Capacitor-test builds execute it.
 
+## Implemented in the brand-gradient consistency pass
+
+- Added centrally owned `--dk-gradient-start` and `--dk-gradient-end` tokens for decorative brand gradients. Light mode preserves the existing orange-to-blue treatment; dark mode uses orange-to-deeper-orange so blue no longer competes as the default brand-gradient endpoint.
+- Migrated the decorative orange/blue accent rails, signature strokes, Today header rails, and depth-load accent to the shared gradient tokens. Explicitly split travel route markers remain two-colour because they encode distinct route states rather than a brand gradient.
+- Kept capacity fit/tight/over gradients and their semantic end-stop tokens unchanged; this pass does not redefine status meaning.
+
 ## Still to complete
 
 - Continue consolidating `surface-system.css` authority, starting with the remaining mobile/desktop navigation variants and shared object rows.
