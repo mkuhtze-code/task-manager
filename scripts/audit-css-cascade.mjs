@@ -124,9 +124,9 @@ const layoutPath = path.join(root, "app/layout.tsx");
 const globalsSource = fs.readFileSync(globalsPath, "utf8");
 const tokensSource = fs.readFileSync(tokensPath, "utf8");
 const layoutSource = fs.readFileSync(layoutPath, "utf8");
-const globalsHasRootTokens = /(^|\\n)\\s*:root\\s*\\{/m.test(maskCommentsAndStrings(globalsSource));
-const tokensHasLightTokens = /(^|\\n)\\s*:root\\s*\\{/m.test(maskCommentsAndStrings(tokensSource));
-const tokensHasDarkOverrides = /\\[data-theme="dark"\\]\\s*\\{/.test(maskCommentsAndStrings(tokensSource));
+const globalsHasRootTokens = /(^|\n)\s*:root\s*\{/m.test(maskCommentsAndStrings(globalsSource));
+const tokensHasLightTokens = /(^|\n)\s*:root\s*\{/m.test(maskCommentsAndStrings(tokensSource));
+const tokensHasDarkOverrides = /\[data-theme="dark"\]\s*\{/.test(maskCommentsAndStrings(tokensSource));
 const globalsImport = layoutSource.indexOf("import './globals.css';");
 const tokensImport = layoutSource.indexOf("import './ux-design-tokens.css';");
 const ownershipChecks = [
