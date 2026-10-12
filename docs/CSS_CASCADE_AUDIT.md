@@ -138,3 +138,14 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Capacity load uses solid steel; tight and over-capacity states use solid hazard/danger fills. The accuracy gauge gradient and loading skeleton shimmer remain because they communicate data range/loading rather than brand decoration; the brief impact flash on the splash screen also remains as an animation effect.
 - Validation across the audited files: shared surface stylesheet gradient declarations 22 → 0; Today product stylesheet 3 → 0; desktop header files 6 → 0; CSS brace balance verified for the audited files. `!important` count in `app/surface-system.css` 643 → 613.
 - Browser visual inspection across mobile/desktop and light/dark themes remains required before this pass can be called visually complete.
+
+
+## Shared object-row authority — 2026-10
+
+- Removed the later desktop-only card geometry that made Meeting and Travel objects taller, rounded, and clipped despite the shared continuous-row contract.
+- Removed the oversized desktop Job-card minimum heights and padding so desktop Jobs follow the same underlying object density instead of switching back to raised cards.
+- Removed decorative blue chevron treatments from Travel rows; kept the actual route start/end markers and the existing meeting time-column layout.
+- Replaced a high-priority legacy title rule with the canonical shared object-title tokens. Removed the Meeting/Travel title-size overrides so titles now follow the same scale/weight contract across Today, Jobs, Meetings, and Travel.
+- No component markup, task data, ordering, actions, or navigation changed.
+- Source validation: `app/surface-system.css` `!important` occurrences 613 → 586 (27 fewer); CSS brace delta 0; decorative Travel chevron selectors removed. The existing audit ceiling is unchanged.
+- Remaining validation: full regression/typecheck/build and visual review of Today, Jobs, Meetings, and Travel in mobile/desktop and light/dark themes. Confirm long titles, expanded job details, route start/end markers, meeting time columns, focus rings, and safe-area behavior.
