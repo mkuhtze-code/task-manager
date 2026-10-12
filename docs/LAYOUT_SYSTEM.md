@@ -107,3 +107,17 @@ Dokkit's visible design is governed by five rules:
 - If a visual element does not establish hierarchy, communicate state, support action, preserve context, or create calm, remove it.
 
 This contract supersedes incremental surface-specific styling when the two conflict.
+
+## Universal object contract — active convergence work
+
+The task/object row is a shared component language, not a Today-only visual. Across Today, Jobs, Meetings, and Travel, the following stay invariant:
+- One title scale, weight, line-height, and ink colour.
+- One quieter metadata scale and colour; numeric time values use tabular figures.
+- One row spacing rhythm, divider weight, hover/focus feedback, and neutral default surface.
+- State changes use concise text, a small marker, or a narrow rail. They do not recolour the whole row in orange/blue.
+- Expanded details, task controls, job evidence, meeting actions, and trip controls remain contextual capabilities inside that shared frame.
+
+The header contract is also shared: one page identity, one context line, one actions/tools zone, and one neutral surface treatment. Today may show a larger day/capacity readout because it answers a different question, but its type rhythm, ink, separators, controls, and surrounding geometry must still read as the same product. Jobs, Meetings, and Travel identify their own neighbourhood through content and context—not a different header language.
+
+Any older surface-specific selector that contradicts these rules is legacy and should be removed or rewritten in the source layer, not perpetuated with additional competing overrides. The convergence layer is transitional until duplicate declarations are deleted and each surface consumes the shared primitives directly.
+
