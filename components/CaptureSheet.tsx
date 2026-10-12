@@ -238,12 +238,19 @@ return {
 
 function buildCollectionContext() {
 const active = loadActiveListState();
-const eligible = canUseActiveList(active);
+// Ordinary tasks and completed list tasks are not collection targets. In
+// particular, stale active-list state must never redirect a new task into a
+// list that has already been completed.
+const openLists = (listTasks ?? []).filter(
+  (task) => task.status !== 'done' && isListTask(task as never)
+);
+const activeList = openLists.find((task) => task.id === active.taskId);
+const eligible = !!activeList && canUseActiveList(active);
 
 return {
-  activeCollectionId: eligible ? active.taskId : null,
-  activeCollectionTitle: eligible ? active.title : null,
-  collections: (listTasks ?? []).map((t) => ({
+  activeCollectionId: eligible ? activeList?.id ?? null : null,
+  activeCollectionTitle: eligible ? activeList?.text ?? null : null,
+  collections: openLists.map((t) => ({
     id: t.id,
     userId: userId ?? '',
     title: t.text,
@@ -253,14 +260,14 @@ return {
     contextType: null as null,
     contextId: null as null,
     aliases: [] as string[],
-    isActive: active.taskId === t.id,
+    isActive: eligible && activeList?.id === t.id,
     createdAt: '',
     updatedAt: '',
     lastActivityAt: '',
     closedAt: null as null,
   })),
   jobs: (jobs ?? []).map((j) => ({ id: j.id, name: j.name })),
-  msSinceLastActivity: active.lastInteractionAt
+  msSinceLastActivity: eligible && active.lastInteractionAt
     ? Date.now() - Date.parse(active.lastInteractionAt)
     : null,
 };
