@@ -7,6 +7,12 @@ describe('weekday correction routing', () => {
     msSinceLastActivity: 1_000,
   };
 
+  it('does not treat a task with a named for-anchor as an implicit list item', () => {
+    expect(
+      detectCollectionIntent('Reprice NuWall for Shelly Beach', activeListContext)
+    ).toBeNull();
+  });
+
   it('does not divert concise weekday corrections into list mutations', () => {
     for (const phrase of [
       'Actually, make that Friday.',
