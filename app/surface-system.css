@@ -2812,3 +2812,103 @@ html[data-theme='dark'] .desk-job-card:first-child{
   }
 }
 
+
+
+/* Specificity bridge: legacy surface rules above still contain !important.
+   Keep this small bridge until the contradictory legacy blocks are deleted. */
+.task-card.surface-object,
+.job-row,
+.meeting-row.surface-object,
+.trip-row-maybach.surface-object,
+.desk-job-card.surface-object {
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--line) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--ink) !important;
+}
+.task-card.surface-object,
+.job-row,
+.meeting-row.surface-object,
+.desk-job-card.surface-object {
+  padding-block: var(--object-row-pad-y) !important;
+  padding-inline: var(--object-row-pad-x) !important;
+}
+.trip-row-maybach.surface-object {
+  padding-block: var(--object-row-pad-y) !important;
+}
+.task-card.surface-object .task-text,
+.job-row-name,
+.meeting-row-name,
+.trip-row-name,
+.desk-job-card-name,
+.surface-object-title {
+  font-size: var(--object-title-size) !important;
+  line-height: var(--object-title-leading) !important;
+  font-weight: var(--weight-semibold) !important;
+  letter-spacing: var(--tracking-tight) !important;
+  color: var(--ink) !important;
+}
+.task-card.surface-object .task-card-job,
+.task-card.surface-object .task-card-time,
+.task-card.surface-object .task-card-elapsed,
+.job-row-meta,
+.job-row-next,
+.meeting-row-sub,
+.meeting-row-context,
+.trip-row-sub,
+.trip-row-context,
+.desk-job-card-client,
+.desk-job-card-state,
+.surface-object-context,
+.surface-object-time {
+  font-size: var(--object-meta-size) !important;
+  line-height: var(--object-meta-leading) !important;
+  font-weight: var(--weight-medium) !important;
+  color: var(--ink-soft) !important;
+}
+.task-card.surface-object:hover,
+.job-row:hover,
+.meeting-row.surface-object:hover,
+.trip-row-maybach.surface-object:hover,
+.desk-job-card.surface-object:hover {
+  background: var(--surface-hover) !important;
+  box-shadow: none !important;
+}
+.meeting-row.surface-object.pressure-now,
+.trip-row-maybach.surface-object.pressure-now {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.app-header,
+.today-header-card {
+  background: var(--paper) !important;
+  box-shadow: none !important;
+  border-color: var(--line) !important;
+}
+.meetings-mobile-header .app-title,
+.travel-mobile-header .app-title,
+.app-header .app-title {
+  font-size: var(--text-lg) !important;
+  font-weight: var(--weight-bold) !important;
+  line-height: var(--leading-tight) !important;
+  letter-spacing: var(--tracking-tight) !important;
+  color: var(--ink) !important;
+}
+.meetings-mobile-pulse,
+.travel-mobile-pulse,
+.surface-mobile-pulse {
+  font-size: var(--text-xs) !important;
+  line-height: var(--leading-snug) !important;
+  font-weight: var(--weight-medium) !important;
+  color: var(--ink-soft) !important;
+}
+@media (max-width: 700px) {
+  .task-card.surface-object,
+  .job-row,
+  .meeting-row.surface-object,
+  .trip-row-maybach.surface-object,
+  .desk-job-card.surface-object {
+    padding-block: var(--object-row-pad-y) !important;
+  }
+}
