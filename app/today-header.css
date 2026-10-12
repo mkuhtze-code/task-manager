@@ -1,3 +1,19 @@
+/* Compatibility: keep shell layout selectors working.
+   Desktop/mobile chrome keys off .today-header-card — do not remove that class. */
+
+.today-header-card.today-day-header {
+  /* reset instrument-panel chrome that may still target .today-header-card */
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/* Prevent old desk-today-saas instrument rules from forcing height/grid when absent */
+.today-header-card.today-day-header .desk-today-instrument,
+.today-header-card.today-day-header .mobile-today-cockpit {
+  display: none;
+}
+
 /* Today day header — world-class calm
    Pair with redesigned TodayHeader.tsx */
 
@@ -239,4 +255,20 @@ html[data-surface='desktop'] .app-shell:has(> .today-day-header) > .today-day-he
 
 .task-card.expanded .task-fit-line {
   display: block;
+}
+
+
+/* Override legacy .today-header-card chrome from desktop-surface / surface-system */
+html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
+  padding: 20px 28px 16px !important;
+  background: var(--paper, #f6f3ed) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+.today-header-card.today-day-header.overloaded {
+  /* keep calm — no hazard wash on whole header */
+  background: var(--paper, #f6f3ed);
 }
