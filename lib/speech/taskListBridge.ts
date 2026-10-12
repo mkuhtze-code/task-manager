@@ -232,6 +232,8 @@ export type ListTaskCandidate = {
   /** Job this list-task is attached to (Dokkit landscape). */
   jobId?: string | null;
   jobName?: string | null;
+  /** Task lifecycle; done tasks must never receive implicit list mutations. */
+  status?: 'pending' | 'active' | 'done';
 };
 
 export type ListResolveResult =
@@ -275,23 +277,29 @@ export function resolveListTarget(
   tasks: ListTaskCandidate[],
   active: ActiveListState = loadActiveListState()
 ): ListResolveResult {
+  // Only explicitly marked, unfinished list tasks are valid mutation targets.
+  // A completed list or an ordinary task must not capture a new unrelated task.
+  const eligibleTasks = tasks.filter(
+    (task) => task.status !== 'done' && isListTask(task as Task)
+  );
+
   if (target.kind === 'id') {
-    const t = tasks.find((x) => x.id === target.collectionId);
+    const t = eligibleTasks.find((x) => x.id === target.collectionId);
     if (t) return { kind: 'found', taskId: t.id, title: t.text };
     return { kind: 'none' };
   }
 
   if (target.kind === 'active') {
     if (active.taskId && canUseActiveList(active)) {
-      const t = tasks.find((x) => x.id === active.taskId);
+      const t = eligibleTasks.find((x) => x.id === active.taskId);
       if (t) return { kind: 'found', taskId: t.id, title: t.text };
       // Active id may still be valid even if not in the current in-memory array yet
-      if (active.title) {
+      if (active.title && eligibleTasks.some((x) => x.id === active.taskId)) {
         return { kind: 'found', taskId: active.taskId, title: active.title };
       }
     }
     // Soft fallback: most recent list-marked task
-    const listMarked = tasks.filter((t) => (t.info || '').includes(LIST_TASK_MARKER));
+    const listMarked = eligibleTasks;
     if (listMarked.length === 1) {
       return { kind: 'found', taskId: listMarked[0].id, title: listMarked[0].text };
     }
@@ -305,7 +313,7 @@ export function resolveListTarget(
     // Prefer list-marked tasks when scoring. Also score job-name anchors
     // so "fixings for Munstead is sorted" finds a list titled "Order"
     // that is attached to the Munstead job.
-    const scored = tasks
+    const scored = eligibleTasks
       .map((t) => {
         const titleScore = scoreTitleMatch(t.text, spoken);
         const jobScore = t.jobName ? scoreTitleMatch(t.jobName, spoken) : 0;
