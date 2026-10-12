@@ -2328,11 +2328,6 @@ html[data-theme='dark'] .desk-job-card:first-child{
     min-height:122px!important;
   }
 
-  html[data-surface='desktop'] .meeting-row.pressure-now,
-  html[data-surface='desktop'] .trip-row-maybach.pressure-now{
-    min-height:148px!important;
-  }
-
   html[data-surface='desktop'] .desk-job-card.surface-object{
     min-height:164px!important;
   }
