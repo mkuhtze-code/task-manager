@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import ActiveTimerBar from '@/components/ActiveTimerBar';
 import DesktopContextStrip from '@/components/DesktopContextStrip';
@@ -29,6 +29,17 @@ export default function AppChrome({
   const pathname = usePathname();
   const router = useRouter();
   const touchStart = useRef<SwipePoint | null>(null);
+  const pendingDirection = useRef<'next' | 'previous' | null>(null);
+  const [enterDirection, setEnterDirection] = useState<'next' | 'previous' | null>(null);
+
+  useEffect(() => {
+    const direction = pendingDirection.current;
+    pendingDirection.current = null;
+    if (!direction) return;
+    setEnterDirection(direction);
+    const timeout = window.setTimeout(() => setEnterDirection(null), 240);
+    return () => window.clearTimeout(timeout);
+  }, [pathname]);
 
   function currentSurfaceIndex(path: string | null) {
     if (!path) return -1;
@@ -72,6 +83,7 @@ export default function AppChrome({
     const next = current + (dx < 0 ? 1 : -1);
     if (current < 0 || next < 0 || next >= SURFACE_PATHS.length) return;
 
+    pendingDirection.current = dx < 0 ? 'next' : 'previous';
     router.push(SURFACE_PATHS[next]);
   }
 
@@ -106,6 +118,7 @@ export default function AppChrome({
       <div
         id="main-content"
         role="main"
+        className={enterDirection ? `surface-page-enter-${enterDirection}` : undefined}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onTouchCancel={() => {
