@@ -748,15 +748,6 @@ html[data-theme='dark'] .surface-tab.current{
 .surface-header-controls{
   position:relative;
 }
-.surface-header-controls::after{
-  content:'';
-  position:absolute;
-  right:0;
-  bottom:-1px;
-  width:96px;
-  height:3px;
-  border-radius:3px 0 0 3px;
-}
 
 /* Section labels become navigation landmarks. */
 .meeting-section-header,.trip-section-header{
@@ -1132,9 +1123,6 @@ html[data-theme='dark'] .desk-today-rail-fixed{background:var(--ink)}
 html[data-theme='dark'] .desk-depth-track{
   background:color-mix(in srgb,var(--line) 65%,var(--paper))!important;
 }
-html[data-theme='dark'] .surface-header-controls::after{
-  opacity:.9;
-}
 
 /* ==========================================================================
    DOKKIT MAKEOVER IV — give each lens a focal machine part
@@ -1389,6 +1377,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
     min-height:38px!important;
     border:0!important;
     border-radius:11px!important;
+    background:linear-gradient(135deg,var(--dk-orange),#e55316)!important;
     color:#fff!important;
     box-shadow:0 5px 14px color-mix(in srgb,var(--dk-orange) 22%,transparent)!important;
   }
