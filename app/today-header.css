@@ -901,3 +901,76 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
  .today-day-header .today-glance-next { max-width:none; flex-basis:100%; }
  .today-day-header .today-tools-panel { width:calc(100% - 30px); margin-bottom:14px; padding:8px 10px; }
 }
+
+
+/* Editorial emphasis pass — give Today its own confident identity without
+   turning it into a loud colour block or competing with task rows. */
+.today-day-header.today-day-header-mobile,
+.today-day-header.today-day-header-desk {
+  width: min(calc(100% - 32px), 1180px);
+  max-width: 1180px;
+  margin: 14px auto 0;
+  overflow: hidden;
+  border: 1px solid rgba(204, 220, 230, .18);
+  border-top-color: rgba(231, 190, 133, .52);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 88% 0%, rgba(198, 151, 94, .13), transparent 36%),
+    radial-gradient(ellipse at 8% 100%, rgba(100, 139, 163, .12), transparent 42%),
+    linear-gradient(128deg, #172630 0%, #1d2e3a 54%, #263b49 100%);
+  box-shadow:
+    0 12px 30px rgba(17, 28, 37, .13),
+    0 2px 5px rgba(17, 28, 37, .07),
+    inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
+.today-day-header .today-banner-core { padding-top: 27px; }
+
+.today-day-header .today-banner-overline {
+  display: flex; align-items: center; gap: 9px;
+  color: #c4d3dc; font-size: 10px; letter-spacing: .19em;
+}
+.today-day-header .today-banner-overline::before {
+  content: ""; display: inline-block; width: 7px; height: 7px; flex: 0 0 auto;
+  border-radius: 2px; background: #e3b477;
+  box-shadow: 0 0 0 3px rgba(227, 180, 119, .12);
+}
+.today-day-header .today-banner-title {
+  color: #fffaf4; font-weight: 720; letter-spacing: -.06em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .12);
+}
+.today-day-header .today-banner-title span { color: #d5e0e6; font-weight: 550; }
+.today-day-header .today-banner-read { color: #e0e8ed; font-size: 13px; font-weight: 500; }
+.today-day-header .today-banner-clock { border-left-color: rgba(218, 231, 238, .26); }
+.today-day-header .today-banner-clock-label { color: #c2d1da; }
+.today-day-header .today-banner-clock strong {
+  color: #fffaf2; font-weight: 740;
+  text-shadow: 0 2px 16px rgba(255, 255, 255, .08);
+}
+.today-day-header .today-timebar-wrap { border-top-color: rgba(218, 231, 238, .18); }
+.today-day-header .today-timebar-title { color: #c5d3dc; }
+.today-day-header .today-timebar-state { color: #f2e4d2; font-weight: 650; }
+.today-day-header .today-glance-item,
+.today-day-header .today-glance-next {
+  border-color: rgba(222, 234, 241, .16);
+  background: rgba(244, 248, 250, .065);
+}
+.today-day-header .today-glance-next {
+  border-color: rgba(227, 180, 119, .32);
+  background: rgba(227, 180, 119, .09);
+}
+.today-day-header .today-glance-label { color: #b8c9d3; }
+.today-day-header .today-glance-value { color: #fffaf4; font-weight: 700; }
+.today-day-header .today-glance-note { color: #d0dce3; }
+
+@media (max-width: 700px) {
+  .today-day-header.today-day-header-mobile {
+    width: calc(100% - 20px); margin-top: 10px; border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(17, 28, 37, .12), inset 0 1px 0 rgba(255, 255, 255, .08);
+  }
+  .today-day-header .today-banner-core { padding: 19px 14px 14px; }
+  .today-day-header .today-banner-overline { font-size: 9px; letter-spacing: .16em; }
+  .today-day-header .today-banner-title { letter-spacing: -.045em; }
+  .today-day-header .today-banner-read { color: #e0e8ed; font-size: 11.5px; }
+  .today-day-header .today-glance { padding: 0 14px 14px; }
+}
