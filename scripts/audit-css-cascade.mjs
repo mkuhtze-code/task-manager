@@ -114,6 +114,32 @@ for (const [relativePath, budget] of Object.entries(budgets)) {
   }
 }
 
+
+/* Token ownership is architectural, not a style preference. Shared tokens
+   must live in ux-design-tokens.css rather than being reintroduced in the
+   legacy global stylesheet. */
+const globalsPath = path.join(root, "app/globals.css");
+const tokensPath = path.join(root, "app/ux-design-tokens.css");
+const layoutPath = path.join(root, "app/layout.tsx");
+const globalsSource = fs.readFileSync(globalsPath, "utf8");
+const tokensSource = fs.readFileSync(tokensPath, "utf8");
+const layoutSource = fs.readFileSync(layoutPath, "utf8");
+const globalsHasRootTokens = /(^|\n)\s*:root\s*\{/m.test(maskCommentsAndStrings(globalsSource));
+const tokensHasLightTokens = /(^|\n)\s*:root\s*\{/m.test(maskCommentsAndStrings(tokensSource));
+const tokensHasDarkOverrides = /\[data-theme=["']dark["']\]\s*\{/.test(tokensSource);
+const globalsImport = layoutSource.indexOf("import './globals.css';");
+const tokensImport = layoutSource.indexOf("import './ux-design-tokens.css';");
+const ownershipChecks = [
+  ["globals.css does not own root token blocks", !globalsHasRootTokens],
+  ["ux-design-tokens.css owns light tokens", tokensHasLightTokens],
+  ["ux-design-tokens.css owns dark-theme token overrides", tokensHasDarkOverrides],
+  ["layout loads globals before the token layer", globalsImport >= 0 && tokensImport > globalsImport],
+];
+for (const [label, passed] of ownershipChecks) {
+  console.log(`CSS token ownership: ${passed ? "PASS" : "FAIL"} — ${label}`);
+  if (!passed) failed = true;
+}
+
 console.log("Dokkit CSS cascade audit (budgets are ceilings, not targets)");
 console.table(results);
 if (failed) process.exit(1);
