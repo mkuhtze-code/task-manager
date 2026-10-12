@@ -1,27 +1,22 @@
 'use client';
 
+/**
+ * Today header — calm day page, not a SaaS instrument panel.
+ * Identity + one day-read + Tools. Secondary depth lives behind Tools.
+ */
+
 import { useState } from 'react';
 import { fmtClock, fmtMins } from '@/lib/timeFormat';
 import GearMenu from '@/components/GearMenu';
-import { ChevronIcon, FitCheckIcon, FitWarnIcon } from '@/components/icons';
-import ContextLine from '@/components/ContextLine';
 
 export type DeskDayDepth = {
-  /** Clock time left until work end. */
   clockRemainingMins: number;
-  /** Usable work capacity after fixed commitments (may be 0). */
   usableMins: number;
-  /** Fixed pressure still overlapping the remainder (meetings/events). */
   fixedMins: number;
-  /** Open timed task work still on the plate. */
   plannedTaskMins: number;
-  /** Drive time in current route-aware plan (0 if not geo). */
   travelMins: number;
-  /** Up to 3 task titles that define the shape of what fits next. */
   fitsNow: string[];
-  /** Quiet day read — derived, not scored. */
   dayRead: string | null;
-  /** Fixed blocks on the workday rail (0–1 of work window). */
   commitmentMarkers?: Array<{
     startPct: number;
     endPct: number;
@@ -64,7 +59,6 @@ export function TodayHeader(props: {
   realityCheckMessage?: string | null;
   isDesktop?: boolean;
   onDockIt?: () => void;
-  /** Plain-language list order — only when it helps the user. */
   orderHint?: string | null;
   deskContext?: {
     mode: 'day' | 'task';
@@ -83,7 +77,6 @@ export function TodayHeader(props: {
     taskSubsDone?: number;
     taskSubsTotal?: number;
   } | null;
-  /** Authoritative depth numbers from Today capacity math. */
   dayDepth?: DeskDayDepth | null;
 }) {
   const {
@@ -93,13 +86,10 @@ export function TodayHeader(props: {
     isWorkDay,
     minutesLeftToday,
     remainingWorkMins,
-    nowPercent,
-    planWidthPercent,
     workStart,
     workEnd,
     geoAware,
     recalculatingRoute,
-    currentBaseLabel,
     onRecalcRoute,
     routeError,
     hasRoute,
@@ -112,15 +102,45 @@ export function TodayHeader(props: {
     realityCheckMessage,
     isDesktop = false,
     onDockIt,
-    orderHint = null,
     deskContext = null,
     dayDepth = null,
   } = props;
 
-  const [capacityOpen, setCapacityOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [shapeOpen, setShapeOpen] = useState(false);
 
   const overBy = Math.max(remainingWorkMins - minutesLeftToday, 0);
   const remainingCapacity = Math.max(minutesLeftToday - remainingWorkMins, 0);
+  const depth = dayDepth;
+  const usable = depth?.usableMins ?? remainingCapacity;
+  const planned =
+    depth?.plannedTaskMins ??
+    Math.max(
+      remainingWorkMins - (depth?.fixedMins ?? 0) - (depth?.travelMins ?? 0),
+      0
+    );
+  const fixed = depth?.fixedMins ?? 0;
+  const travel = depth?.travelMins ?? (geoAware ? routeDriveMins : 0);
+
+  const dayRead =
+    depth?.dayRead ??
+    (!isWorkDay
+      ? 'Outside your usual work hours.'
+      : overloaded
+        ? 'This no longer fits today.'
+        : remainingWorkMins <= 0
+          ? 'Your day is clear.'
+          : usable > remainingWorkMins + 30
+            ? `About ${fmtMins(usable)} clear.`
+            : usable < remainingWorkMins
+              ? 'The afternoon is tight.'
+              : 'Your day is on track.');
+
+  const nextCommitment = deskContext?.nextCommitment;
+  const dayReadWithCommitment =
+    nextCommitment && !overloaded
+      ? `${dayRead.replace(/\.$/, '')} · ${nextCommitment.when}.`
+      : dayRead;
 
   function commitmentWindow(c: {
     start_at: string;
@@ -139,582 +159,157 @@ export function TodayHeader(props: {
     return `${startLabel} – ${endLabel}`;
   }
 
-  if (isDesktop) {
-    const depth = dayDepth;
-    const usable = depth?.usableMins ?? remainingCapacity;
-    const planned =
-      depth?.plannedTaskMins ??
-      Math.max(
-        remainingWorkMins - (depth?.fixedMins ?? 0) - (depth?.travelMins ?? 0),
-        0
-      );
-    const fixed = depth?.fixedMins ?? 0;
-    const travel = depth?.travelMins ?? (geoAware ? routeDriveMins : 0);
-    const markers = depth?.commitmentMarkers ?? [];
-
-    const dayRead =
-      depth?.dayRead ??
-      (!isWorkDay
-        ? 'Outside your usual working days.'
-        : overloaded
-          ? 'Remaining work no longer fits today.'
-          : remainingWorkMins <= 0
-            ? "You're clear for the rest of today."
-            : usable > remainingWorkMins + 30
-              ? 'You have room for another task.'
-              : usable < remainingWorkMins
-                ? 'Your afternoon is getting tighter.'
-                : 'Your day is on track.');
-
-    return (
-      <div
-        className={[
-          'today-header-card',
-          'desk-today-saas',
-          overloaded ? 'overloaded' : '',
-          capacityOpen ? 'depth-open' : 'depth-closed',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-      >
-        <div className="desk-today-bar">
-          <div className="desk-today-orient">
-            <div className="desk-today-identity">
-              <span className="desk-today-kicker">Day</span>
-              <h1 className="desk-today-title">Today</h1>
-              <span className="desk-today-date">
-                {weekdayLabel} · {dateOnlyLabel}
-              </span>
-            </div>
-          </div>
-
-          <div className="desk-today-bar-right">
-            {onDockIt ? (
-              <button
-                type="button"
-                className="detail-pill detail-pill-primary desk-today-dock-pill"
-                onClick={onDockIt}
-              >
-                + Dock it
-              </button>
-            ) : null}
-            {showRealityCheck && onRealityCheck ? (
-              <button
-                type="button"
-                className="detail-pill desk-today-reality-pill"
-                onClick={onRealityCheck}
-              >
-                Reality check
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className={
-                capacityOpen
-                  ? 'detail-pill desk-today-depth-toggle is-on'
-                  : 'detail-pill desk-today-depth-toggle'
-              }
-              aria-expanded={capacityOpen}
-              onClick={() => setCapacityOpen((v) => !v)}
-            >
-              {capacityOpen ? 'Hide day depth' : 'Day depth'}
-            </button>
-          </div>
-        </div>
-
-        <div className="desk-today-instrument" aria-label="Today instrument">
-          <div className="desk-today-now">
-            <span className="desk-today-now-kicker">Now</span>
-            <strong className="desk-today-now-value">
-              {isWorkDay ? fmtMins(Math.max(minutesLeftToday, 0)) : '—'}
-            </strong>
-            <span className="desk-today-now-label">
-              {isWorkDay ? 'working time left' : 'outside working day'}
-            </span>
-          </div>
-          <div className="desk-today-capacity">
-            <div className="desk-today-capacity-head">
-              <span>Load</span>
-              <strong className={overloaded ? 'is-over-text' : undefined}>
-                {overloaded
-                  ? `Over by ${fmtMins(overBy)}`
-                  : `${fmtMins(Math.max(usable, 0))} usable`}
-              </strong>
-            </div>
-            <div className="desk-today-capacity-track" aria-hidden="true">
-              <span
-                className={overloaded ? 'is-over' : ''}
-                style={{
-                  width:
-                    Math.min(
-                      100,
-                      Math.max(
-                        0,
-                        planned > 0 && usable > 0 ? (planned / usable) * 100 : 0
-                      )
-                    ) + '%',
-                }}
-              />
-            </div>
-            <div className="desk-today-capacity-meta mono">
-              <span>{fmtMins(planned)} planned</span>
-              {fixed > 0 ? <span>{fmtMins(fixed)} fixed</span> : null}
-              {travel > 0 ? <span>~{fmtMins(travel)} travel</span> : null}
-            </div>
-          </div>
-          <div className="desk-today-next">
-            <span className="desk-today-next-kicker">Next</span>
-            <strong>
-              {dayDepth?.fitsNow?.[0] ??
-                deskContext?.nextCommitment?.title ??
-                'Your next move'}
-            </strong>
-            <span>
-              {deskContext?.nextCommitment
-                ? deskContext.nextCommitment.when
-                : overloaded
-                  ? 'Needs reshaping'
-                  : dayRead}
-            </span>
-          </div>
-        </div>
-
-        <div className="desk-today-rail" aria-label="Today's shape">
-          <div className="desk-today-rail-head">
-            <span className="desk-today-rail-label">Today's shape</span>
-            <span className="mono">
-              {fmtClock(workStart)} — {fmtClock(workEnd)}
-            </span>
-          </div>
-          <div
-            className="desk-today-rail-track"
-            role="img"
-            aria-label="Current workday shape"
-          >
-            <div
-              className="desk-today-rail-elapsed"
-              style={{ width: `${nowPercent * 100}%` }}
-            />
-            <div
-              className={['desk-today-rail-load', overloaded ? 'is-over' : ''].join(
-                ' '
-              )}
-              style={{
-                left: `${nowPercent * 100}%`,
-                width: `${planWidthPercent * 100}%`,
-              }}
-            />
-            {markers.map((m, i) => (
-              <div
-                key={`rail-${m.label}-${i}`}
-                className="desk-today-rail-fixed"
-                title={m.label}
-                style={{
-                  left: `${m.startPct * 100}%`,
-                  width: `${Math.max((m.endPct - m.startPct) * 100, 0.8)}%`,
-                }}
-              />
-            ))}
-            <div
-              className="desk-today-rail-now"
-              style={{ left: `${nowPercent * 100}%` }}
-            />
-          </div>
-          <div className="desk-today-rail-foot">
-            <span>{fmtClock(workStart)}</span>
-            <strong>{overloaded ? `Over by ${fmtMins(overBy)}` : dayRead}</strong>
-            <span>{fmtClock(workEnd)}</span>
-          </div>
-        </div>
-
-        {capacityOpen ? (
-          <div className="desk-today-depth" aria-label="Day depth">
-            <p className="desk-depth-read">{dayRead}</p>
-
-            {isWorkDay ? (
-              <div className="desk-depth-day">
-                <div className="desk-depth-day-head">
-                  <span className="mono">{fmtClock(workStart)}</span>
-                  <span className="desk-depth-day-mid">
-                    <span className="desk-depth-now-label">Now</span>
-                    <span className="mono">
-                      {fmtMins(minutesLeftToday)} left ·{' '}
-                      {fmtMins(Math.max(usable, 0))} usable
-                    </span>
-                  </span>
-                  <span className="mono">{fmtClock(workEnd)}</span>
-                </div>
-                <div className="desk-depth-track" role="img" aria-label="Workday progress">
-                  <div
-                    className="desk-depth-track-elapsed"
-                    style={{ width: `${nowPercent * 100}%` }}
-                  />
-                  <div
-                    className={[
-                      'desk-depth-track-load',
-                      overloaded ? 'is-over' : '',
-                    ].join(' ')}
-                    style={{
-                      left: `${nowPercent * 100}%`,
-                      width: `${planWidthPercent * 100}%`,
-                    }}
-                  />
-                  {markers.map((m, i) => (
-                    <div
-                      key={`${m.label}-${i}`}
-                      className="desk-depth-track-fixed"
-                      title={m.label}
-                      style={{
-                        left: `${m.startPct * 100}%`,
-                        width: `${Math.max((m.endPct - m.startPct) * 100, 0.8)}%`,
-                      }}
-                    />
-                  ))}
-                  <div
-                    className="desk-depth-track-now"
-                    style={{ left: `${nowPercent * 100}%` }}
-                  />
-                </div>
-                {markers.length > 0 ? (
-                  <div className="desk-depth-marker-legend">
-                    {markers.slice(0, 4).map((m, i) => (
-                      <span key={`${m.label}-lg-${i}`} className="desk-depth-marker-item">
-                        <span className="desk-depth-marker-swatch" aria-hidden />
-                        {m.label}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <p className="desk-depth-off">
-                Outside your normal working days
-                {remainingWorkMins > 0
-                  ? ` · ${fmtMins(remainingWorkMins)} still on the plate`
-                  : ''}
-              </p>
-            )}
-
-            <div className="desk-depth-band">
-              <section className="desk-depth-col">
-                <h3 className="desk-depth-col-title">Capacity</h3>
-                <dl className="desk-depth-dl">
-                  <div>
-                    <dt>Planned work</dt>
-                    <dd className="mono">
-                      {planned > 0 ? fmtMins(planned) : 'None timed'}
-                    </dd>
-                  </div>
-                  {fixed > 0 ? (
-                    <div>
-                      <dt>Fixed time</dt>
-                      <dd className="mono">{fmtMins(fixed)}</dd>
-                    </div>
-                  ) : null}
-                  {travel > 0 ? (
-                    <div>
-                      <dt>Travel</dt>
-                      <dd className="mono">~{fmtMins(travel)}</dd>
-                    </div>
-                  ) : null}
-                  <div>
-                    <dt>Usable from here</dt>
-                    <dd className="mono">{fmtMins(Math.max(usable, 0))}</dd>
-                  </div>
-                </dl>
-              </section>
-
-              <section className="desk-depth-col">
-                <h3 className="desk-depth-col-title">Reality</h3>
-                <dl className="desk-depth-dl">
-                  <div>
-                    <dt>Fit</dt>
-                    <dd className={overloaded ? 'desk-depth-warn' : undefined}>
-                      {overloaded
-                        ? `Over by ${fmtMins(overBy)}`
-                        : remainingWorkMins > 0
-                          ? 'Work fits the remainder'
-                          : 'Clear'}
-                    </dd>
-                  </div>
-                  {showRealityCheck && onRealityCheck ? (
-                    <div className="desk-depth-action-row">
-                      <button
-                        type="button"
-                        className="btn-text"
-                        onClick={onRealityCheck}
-                      >
-                        Reality check
-                      </button>
-                      {realityCheckMessage ? (
-                        <span className="desk-ctx-quiet">{realityCheckMessage}</span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </dl>
-              </section>
-
-              <section className="desk-depth-col">
-                <h3 className="desk-depth-col-title">Context</h3>
-                <dl className="desk-depth-dl">
-                  {deskContext?.nextCommitment ? (
-                    <div>
-                      <dt>Next</dt>
-                      <dd title={deskContext.nextCommitment.title}>
-                        {deskContext.nextCommitment.when}{' '}
-                        {deskContext.nextCommitment.title}
-                      </dd>
-                    </div>
-                  ) : commitments.length > 0 ? (
-                    <div>
-                      <dt>Fixed items</dt>
-                      <dd className="mono">{commitments.length}</dd>
-                    </div>
-                  ) : (
-                    <div>
-                      <dt>Fixed items</dt>
-                      <dd>None ahead</dd>
-                    </div>
-                  )}
-                  {(deskContext?.jobsWithOpen ?? 0) > 0 ? (
-                    <div>
-                      <dt>Jobs with open work</dt>
-                      <dd className="mono">{deskContext!.jobsWithOpen}</dd>
-                    </div>
-                  ) : null}
-                  {geoAware ? (
-                    <div>
-                      <dt>Travel</dt>
-                      <dd>
-                        {recalculatingRoute
-                          ? 'Updating…'
-                          : travel > 0
-                            ? `~${fmtMins(travel)} estimated`
-                            : hasRoute
-                              ? 'Stops ordered'
-                              : 'No stops yet'}
-                      </dd>
-                      <div className="desk-depth-inline-actions">
-                        {hasRoute ? (
-                          <button
-                            type="button"
-                            className="desk-today-inline-action"
-                            onClick={onViewMap}
-                          >
-                            Map
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          className="desk-today-inline-action"
-                          onClick={onRecalcRoute}
-                          disabled={recalculatingRoute}
-                        >
-                          Refresh
-                        </button>
-                      </div>
-                      {routeError ? (
-                        <span className="desk-today-route-error">{routeError}</span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </dl>
-              </section>
-            </div>
-
-            {depth && depth.fitsNow.length > 0 ? (
-              <div className="desk-depth-fits">
-                <h3 className="desk-depth-col-title">What fits from here</h3>
-                <ol className="desk-depth-fits-flow">
-                  {depth.fitsNow.map((title, i) => (
-                    <li key={`${i}-${title}`}>
-                      <span className="desk-depth-fits-step">
-                        {i === 0 ? 'Now' : i === 1 ? 'Then' : 'If time'}
-                      </span>
-                      <span className="desk-depth-fits-title">{title}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ) : null}
-
-            {commitments.length > 0 ? (
-              <div className="desk-depth-commitments">
-                <h3 className="desk-depth-col-title">Fixed time</h3>
-                <div className="desk-today-commitment-list">
-                  {commitments.slice(0, 6).map((c) => (
-                    <div key={c.id} className="desk-today-commitment-item">
-                      <span className="desk-today-commitment-title">{c.title}</span>
-                      <span className="desk-today-commitment-when">
-                        {commitmentWindow(c)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  /* Mobile — one metric, one status, one bar */
   return (
-    <div
+    <header
       className={[
-        'today-header-card',
-        overloaded ? 'overloaded' : '',
+        'today-day-header',
+        isDesktop ? 'today-day-header-desk' : 'today-day-header-mobile',
+        overloaded ? 'is-over' : '',
       ]
         .filter(Boolean)
         .join(' ')}
     >
-      <div
-        className={[
-          'mobile-today-cockpit',
-          overloaded ? 'is-over' : '',
-          !isWorkDay ? 'is-off' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        aria-label="Today"
-      >
-        <div className="mobile-today-cockpit-top">
-          <div className="mobile-today-cockpit-brand">
-            <span className="mobile-today-cockpit-kicker">Today</span>
-            <span className="mobile-today-cockpit-date">
-              {weekdayLabel} · {dateOnlyLabel}
-            </span>
-          </div>
-          <div className="mobile-today-cockpit-actions">
-            <GearMenu userId={userId} />
-          </div>
+      <div className="today-day-header-row">
+        <div className="today-day-identity">
+          <h1 className="today-day-title">
+            {weekdayLabel} · {dateOnlyLabel}
+          </h1>
+          <p className="today-day-read">{dayReadWithCommitment}</p>
         </div>
 
-        <div className="mobile-today-cockpit-readout">
-          <div className="mobile-today-cockpit-time">
-            <strong className="mono">
-              {isWorkDay ? fmtMins(Math.max(minutesLeftToday, 0)) : '—'}
-            </strong>
-            <span>{isWorkDay ? 'left today' : 'off day'}</span>
-          </div>
-          <div className="mobile-today-cockpit-fit">
-            <span
-              className={overloaded ? 'mobile-today-fit-dot over' : 'mobile-today-fit-dot'}
-              aria-hidden
-            />
-            <strong>
-              {!isWorkDay
-                ? 'Outside workday'
-                : overloaded
-                  ? 'Needs reshaping'
-                  : remainingWorkMins > 0
-                    ? 'Work in the day'
-                    : 'Day is clear'}
-            </strong>
-            <span>
-              {overloaded
-                ? `${fmtMins(overBy)} beyond today's time`
-                : remainingWorkMins > 0
-                  ? `${fmtMins(remainingWorkMins)} planned`
-                  : `${fmtMins(remainingCapacity)} free`}
-            </span>
-          </div>
+        <div className="today-day-actions">
+          {isDesktop && onDockIt ? (
+            <button type="button" className="today-text-action" onClick={onDockIt}>
+              Add
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="today-tools-btn"
+            aria-label="Tools"
+            aria-expanded={toolsOpen}
+            onClick={() => setToolsOpen((v) => !v)}
+          >
+            <span className="today-tools-dots" aria-hidden />
+          </button>
+          {!isDesktop ? <GearMenu userId={userId} /> : null}
         </div>
+      </div>
 
-        {isWorkDay ? (
-          <div className="mobile-today-capacity" aria-label="Day load">
-            <div className="mobile-today-capacity-track" aria-hidden>
-              <span
-                className={overloaded ? 'is-over' : undefined}
-                style={{
-                  width:
-                    Math.min(
-                      100,
-                      Math.max(
-                        0,
-                        remainingWorkMins > 0 && minutesLeftToday > 0
-                          ? (remainingWorkMins / Math.max(minutesLeftToday, 1)) * 100
-                          : 0
-                      )
-                    ) + '%',
-                }}
-              />
-              <i style={{ left: `${Math.min(100, Math.max(0, nowPercent * 100))}%` }} />
-            </div>
-            <div className="mobile-today-capacity-foot">
-              <span className="mono">{fmtClock(workStart)}</span>
-              <span>
-                {overloaded
-                  ? `Over by ${fmtMins(overBy)}`
-                  : remainingWorkMins > 0
-                    ? `${fmtMins(remainingWorkMins)} planned`
-                    : 'Clear'}
-              </span>
-              <span className="mono">{fmtClock(workEnd)}</span>
-            </div>
-          </div>
-        ) : remainingWorkMins > 0 ? (
-          <div className="mobile-today-capacity-foot" style={{ marginTop: 8 }}>
-            <span>{fmtMins(remainingWorkMins)} still on the plate</span>
-          </div>
-        ) : null}
-
-        {commitments.length > 0 ? (
-          <div className="mobile-today-next">
-            <span className="mobile-today-next-kicker">Next</span>
-            <strong>{commitments[0].title}</strong>
-            <span>{commitmentWindow(commitments[0])}</span>
-          </div>
-        ) : null}
-
-        {showRealityCheck && onRealityCheck ? (
-          <div className="today-reality-row">
+      {toolsOpen ? (
+        <div className="today-tools-panel" role="region" aria-label="Today tools">
+          {showRealityCheck && onRealityCheck ? (
             <button
               type="button"
-              className="btn-text"
-              onClick={(e) => {
-                e.stopPropagation();
+              className="today-tools-item"
+              onClick={() => {
                 onRealityCheck();
+                setToolsOpen(false);
               }}
             >
               Reality check
-            </button>
-            {realityCheckMessage ? (
-              <span className="today-reality-msg">{realityCheckMessage}</span>
-            ) : null}
-          </div>
-        ) : null}
-
-        {geoAware && (hasRoute || routeError) ? (
-          <div className="spatial-strip">
-            <p className="spatial-strip-summary">
-              {recalculatingRoute
-                ? 'Updating route…'
-                : routeError
-                  ? routeError
-                  : routeDriveMins > 0
-                    ? `About ${fmtMins(routeDriveMins)} driving`
-                    : 'Stops ordered by place'}
-            </p>
-            <div className="spatial-strip-actions">
-              {hasRoute ? (
-                <button type="button" className="spatial-strip-action" onClick={onViewMap}>
-                  Map
-                </button>
+              {realityCheckMessage ? (
+                <span className="today-tools-quiet">{realityCheckMessage}</span>
               ) : null}
-              <button
-                type="button"
-                className="spatial-strip-action"
-                onClick={onRecalcRoute}
-                disabled={recalculatingRoute}
-              >
-                Refresh
-              </button>
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            className="today-tools-item"
+            aria-expanded={shapeOpen}
+            onClick={() => setShapeOpen((v) => !v)}
+          >
+            {shapeOpen ? 'Hide day shape' : 'Day shape'}
+          </button>
+
+          {shapeOpen ? (
+            <div className="today-day-shape">
+              {isWorkDay ? (
+                <p className="today-shape-line mono">
+                  {fmtClock(workStart)} – {fmtClock(workEnd)}
+                  {isWorkDay
+                    ? ` · ${fmtMins(Math.max(minutesLeftToday, 0))} left`
+                    : ''}
+                </p>
+              ) : (
+                <p className="today-shape-line">Outside normal work hours</p>
+              )}
+              <dl className="today-shape-dl">
+                <div>
+                  <dt>Planned</dt>
+                  <dd className="mono">{planned > 0 ? fmtMins(planned) : 'None timed'}</dd>
+                </div>
+                {fixed > 0 ? (
+                  <div>
+                    <dt>Fixed</dt>
+                    <dd className="mono">{fmtMins(fixed)}</dd>
+                  </div>
+                ) : null}
+                {travel > 0 ? (
+                  <div>
+                    <dt>Travel</dt>
+                    <dd className="mono">~{fmtMins(travel)}</dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt>Usable</dt>
+                  <dd className="mono">{fmtMins(Math.max(usable, 0))}</dd>
+                </div>
+                {overloaded ? (
+                  <div>
+                    <dt>Fit</dt>
+                    <dd className="today-shape-warn">Over by {fmtMins(overBy)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+              {commitments.length > 0 ? (
+                <ul className="today-shape-commitments">
+                  {commitments.slice(0, 5).map((c) => (
+                    <li key={c.id}>
+                      <span>{c.title}</span>
+                      <span className="mono">{commitmentWindow(c)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
-          </div>
-        ) : null}
-      </div>
-    </div>
+          ) : null}
+
+          {geoAware ? (
+            <div className="today-tools-geo">
+              <span>
+                {recalculatingRoute
+                  ? 'Updating route…'
+                  : routeError
+                    ? routeError
+                    : travel > 0
+                      ? `About ${fmtMins(travel)} driving`
+                      : hasRoute
+                        ? 'Stops ordered by place'
+                        : 'No route yet'}
+              </span>
+              <div className="today-tools-geo-actions">
+                {hasRoute ? (
+                  <button type="button" className="today-text-action" onClick={onViewMap}>
+                    Map
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="today-text-action"
+                  onClick={onRecalcRoute}
+                  disabled={recalculatingRoute}
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {isDesktop ? <GearMenu userId={userId} /> : null}
+        </div>
+      ) : null}
+    </header>
   );
 }
