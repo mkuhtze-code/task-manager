@@ -23,6 +23,7 @@ import './ux-instrument.css';
 import './ux-nav.css';
 import './ux-surface-tabs.css';
 import './ux-task-card.css';
+import './ux-task-reveal.css';
 import './ux-task-detail.css';
 import './ux-desk-today.css';
 import './ux-meetings.css';
