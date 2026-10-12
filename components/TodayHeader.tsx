@@ -290,9 +290,8 @@ export function TodayHeader(props: {
         ) : null}
       </div>
 
-      {depthOpen ? (
-        <div className="today-day-depth-panel">
-          <section id="today-day-depth" className="today-day-shape" aria-label="Day depth">
+      <div id="today-day-depth" className="today-day-depth-panel" hidden={!depthOpen}>
+          <section className="today-day-shape" aria-label="Day depth">
             <div className="today-depth-heading">
               <strong>What your history says</strong>
               <span>{isWorkDay ? `${fmtClock(workStart)}–${fmtClock(workEnd)} workday` : 'Outside usual work hours'}</span>
@@ -349,8 +348,7 @@ export function TodayHeader(props: {
               </div>
             ) : null}
           </section>
-        </div>
-      ) : null}
+      </div>
 
       {toolsOpen ? (
         <div className="today-tools-panel" role="region" aria-label="Today tools">
