@@ -3239,6 +3239,7 @@ export function TodayPage() {
             id: t.id,
             text: t.text,
             info: t.info,
+            status: t.status,
             jobId: t.job_id,
             jobName: jobs.find((j) => j.id === t.job_id)?.name ?? null,
           }))}
