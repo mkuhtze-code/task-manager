@@ -219,7 +219,7 @@ export function resolveReferentialItems(
   return { items: out, ambiguous: false };
 }
 
-export function isListTask(task: Task): boolean {
+export function isListTask(task: { info?: string | null }): boolean {
   const info = (task.info || '').trim();
   if (info === LIST_TASK_MARKER || info.startsWith(LIST_TASK_MARKER)) return true;
   return false;
@@ -280,7 +280,7 @@ export function resolveListTarget(
   // Only explicitly marked, unfinished list tasks are valid mutation targets.
   // A completed list or an ordinary task must not capture a new unrelated task.
   const eligibleTasks = tasks.filter(
-    (task) => task.status !== 'done' && isListTask(task as Task)
+    (task) => task.status !== 'done' && isListTask(task)
   );
 
   if (target.kind === 'id') {
@@ -356,7 +356,11 @@ export function resolveListTarget(
     }
 
     // Fall back to active if still eligible
-    if (active.taskId && canUseActiveList(active)) {
+    if (
+      active.taskId &&
+      eligibleTasks.some((task) => task.id === active.taskId) &&
+      canUseActiveList(active)
+    ) {
       if (!spokenNorm || (active.title && matchTitle(active.title, spoken))) {
         return {
           kind: 'found',
