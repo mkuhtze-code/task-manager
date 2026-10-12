@@ -242,7 +242,7 @@ const active = loadActiveListState();
 // particular, stale active-list state must never redirect a new task into a
 // list that has already been completed.
 const openLists = (listTasks ?? []).filter(
-  (task) => task.status !== 'done' && isListTask(task as never)
+  (task) => task.status !== 'done' && isListTask(task)
 );
 const activeList = openLists.find((task) => task.id === active.taskId);
 const eligible = !!activeList && canUseActiveList(active);
