@@ -165,7 +165,7 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 ## Shared contextual header identity — 2026-10
 
 - Extracted the stable identity/status layer used by the desktop Jobs, Meetings, and Travel headers into one `SurfaceHeaderIdentity` component. Page-specific controls, filters, featured next items, and expanded context remain below it.
-- Shared ink/paper/line styling is used across all three surfaces. Meetings and Travel now display their already-computed pulse metadata; Jobs uses its existing work read as supporting status context.
+- Shared ink/paper/line styling is used across all three surfaces. Meetings and Travel now display their already-computed pulse metadata; Jobs uses its existing spotlight, attention, and completion signals without repeating the expanded work-context read.
 - The Today header was not modified. It remains the benchmark and keeps its own day/time/timeline structure.
 - This consolidates common identity markup rather than adding another page-header subsystem; no data queries, actions, or sorting behavior changed.
 - Validation still required: full typecheck/build and responsive/light-dark browser review, especially long status text at 320–390px and whether contextual content crowds the shared identity.
