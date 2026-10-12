@@ -96,7 +96,7 @@ export default function DesktopJobsHeader({
         kicker="Work / Field"
         title="Jobs"
         signal={pulseTitle}
-        meta={workRead}
+        meta={spotlightJobName ? `Focus: ${spotlightJobName}` : attentionCount > 0 ? `${attentionCount} need attention` : `${doneCount} completed`}
         attention={attentionCount > 0}
         clear={openCount === 0}
       />
