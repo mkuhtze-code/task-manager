@@ -113,7 +113,7 @@ export default function AppChrome({
             </>
           )}
 
-          {headerProps && (
+          {session?.user?.id && headerProps && (
             <div className="persistent-today-header-shell">
               <TodayHeader
                 {...headerProps}
@@ -148,7 +148,7 @@ export default function AppChrome({
         </>
       )}
 
-      {headerProps && (
+      {session?.user?.id && headerProps && (
         <div className="persistent-today-header-shell">
           <TodayHeader
             {...headerProps}
