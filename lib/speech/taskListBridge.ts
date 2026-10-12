@@ -19,7 +19,6 @@ import {
   collapseWhitespace,
 } from '@/lib/collections/normalize';
 import { detectCollectionIntent, intentBlocksTaskCreate } from '@/lib/collections/intent';
-import type { Task } from '@/lib/taskTypes';
 
 /** Marker stored in task.info so list-like tasks remain ordinary tasks. */
 export const LIST_TASK_MARKER = '__list__';
@@ -293,10 +292,6 @@ export function resolveListTarget(
     if (active.taskId && canUseActiveList(active)) {
       const t = eligibleTasks.find((x) => x.id === active.taskId);
       if (t) return { kind: 'found', taskId: t.id, title: t.text };
-      // Active id may still be valid even if not in the current in-memory array yet
-      if (active.title && eligibleTasks.some((x) => x.id === active.taskId)) {
-        return { kind: 'found', taskId: active.taskId, title: active.title };
-      }
     }
     // No implicit fallback to an arbitrary list. If the active list expired,
     // disappeared, or was completed, require explicit list language instead.
