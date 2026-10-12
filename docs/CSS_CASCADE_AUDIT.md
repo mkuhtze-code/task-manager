@@ -99,3 +99,14 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - This pass changes surface treatment only; task ordering, capacity calculations, selection, completion, and detail-pane interactions are untouched.
 - Source validation: CSS braces balanced; Today `!important` count 104 (unchanged from 104); no new override declarations added.
 - Visual verification is still required on the Vercel preview for mobile/desktop and light/dark themes, including empty lists, selected rows, overload state, and detail pane.
+
+
+## Quiet navigation surfaces — 2026-10
+
+- Removed the orange/blue gradient rail from the floating navigation and the decorative desktop `DOKKIT` stamp, keeping navigation and tab interactions intact.
+- Replaced orange-tinted nav borders and accent-coloured inset shadows with neutral line and shadow tokens.
+- Removed gradient-filled selected tabs and orange/blue gradient underlines so selection uses the shared neutral raised-paper state and ink marker.
+- Changed Meetings and Travel section-header bars from orange/blue decorative strips to a neutral hairline marker.
+- Kept the solid primary add control as the only strong brand-colour action in the navigation.
+- Validation: balanced CSS braces; `app/surface-system.css` `!important` occurrences 743 → 721.
+- Required before merge: regression/typecheck/build checks, both Vercel previews, and visual inspection across mobile/desktop and light/dark.
