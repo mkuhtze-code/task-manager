@@ -37,10 +37,6 @@
   box-shadow: none;
 }
 
-.today-header-card.overloaded {
-  background: color-mix(in srgb, var(--hazard) 8%, var(--paper));
-}
-
 /* Dominant capacity number */
 .today-header-card .capacity-primary,
 .today-header-card .today-capacity-value,
@@ -110,12 +106,12 @@
 
 @media (max-width: 899px) {
   .app-shell:has(> .today-header-card) > .task-list {
-    margin: 10px 12px 0;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
-    background: var(--paper-raised);
-    overflow: hidden;
-    box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.04);
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+    box-shadow: none;
   }
 }
 
@@ -286,23 +282,25 @@
     grid-column: 3;
     grid-row: 3;
     overflow-y: auto;
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--paper) 70%, var(--paper-raised)) 0%,
-        var(--paper-raised) 48px
-      );
+    background: var(--paper-raised);
     border-left: 1px solid var(--line);
   }
 
-  html[data-surface='desktop'] .task-list > .task-card {
-    border-radius: var(--radius-md);
-    border-bottom: none;
-    margin: 2px 4px;
+  html[data-surface='desktop'] .task-list > .task-card,
+  html[data-surface='desktop'] .task-list > .task-card.surface-object {
+    border-radius: 0;
+    border-bottom: 1px solid var(--line);
+    margin: 0;
   }
 
-  html[data-surface='desktop'] .task-list > .task-card:hover {
-    background: color-mix(in srgb, var(--ink) 3%, transparent);
+  html[data-surface='desktop'] .task-list > .task-card:last-of-type,
+  html[data-surface='desktop'] .task-list > .task-card.surface-object:last-of-type {
+    border-bottom: none;
+  }
+
+  html[data-surface='desktop'] .task-list > .task-card:hover,
+  html[data-surface='desktop'] .task-list > .task-card.surface-object:hover {
+    background: color-mix(in srgb, var(--ink) 2.5%, transparent);
   }
 }
 

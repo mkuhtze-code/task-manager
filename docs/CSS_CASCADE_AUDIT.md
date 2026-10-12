@@ -88,3 +88,14 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Removed pressure-only orange inset rails, orange/radial row gradients, and oversized pressure title overrides. Priority remains expressed through semantic state/context rather than repainting or resizing the object.
 - Removed duplicate title and digital-clock typography overrides so object titles and metadata can follow the shared token contract.
 - CSS validation on the branch: 743 `!important` occurrences (down from 782; 39 fewer than the start of this pass), balanced braces. Full CI and both Vercel previews are required before merge; visual checks should compare task/job/meeting/travel rows across mobile/desktop and light/dark themes.
+
+
+## Today surface convergence — 2026-10
+
+- Removed the mobile-only raised, rounded task-list container so Today uses the same continuous neutral row field on mobile and desktop.
+- Removed desktop-only rounded task cards and row gaps; task rows now retain the shared hairline divider and hover treatment across viewport sizes.
+- Removed the overload-only tinted header repaint. Overload remains communicated through capacity/status information instead of recolouring the whole header surface.
+- Replaced the desktop detail pane's vertical paper gradient with the canonical raised-paper surface token.
+- This pass changes surface treatment only; task ordering, capacity calculations, selection, completion, and detail-pane interactions are untouched.
+- Source validation: CSS braces balanced; Today `!important` count 104 (unchanged from 104); no new override declarations added.
+- Visual verification is still required on the Vercel preview for mobile/desktop and light/dark themes, including empty lists, selected rows, overload state, and detail pane.
