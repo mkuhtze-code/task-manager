@@ -615,10 +615,6 @@ html[data-theme='dark']{
 .meeting-list,.trip-list-maybach,.job-list{
   gap:14px!important;
 }
-.meeting-row.pressure-now,.trip-row-maybach.pressure-now{
-  border-color:color-mix(in srgb,var(--dk-orange) 60%,var(--line))!important;
-  box-shadow:inset 4px 0 0 var(--dk-orange),0 8px 24px rgba(var(--shadow-rgb),.06)!important;
-}
 .surface-object-time,.meeting-row-time,.trip-row-time{
   font-family:var(--font-digital)!important;
   font-size:11px!important;
@@ -797,30 +793,9 @@ html[data-theme='dark'] .surface-tab.current{
     padding-top:14px!important;
   }
 }
-
-/* Meetings: live conversations physically step forward. */
-.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now{
-  min-height:148px!important;
-  padding:20px 20px!important;
-  background:
-    linear-gradient(135deg,
-      color-mix(in srgb,var(--dk-orange) 7%,var(--paper-raised)),
-      var(--paper-raised) 58%)!important;
-}
-.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now .meeting-row-name{
-  font-size:20px!important;
-}
 .meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now .meeting-row-time{
   margin-top:9px!important;
   font-size:12px!important;
-}
-.meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now::before{
-  height:5px;
-  background:var(--dk-orange);
-}
-.trip-row-maybach.pressure-now::after{
-  width:78px;
-  background:linear-gradient(90deg,var(--dk-orange) 0 62%,var(--dk-blue) 62%);
 }
 .trip-row-maybach.surface-object .trip-row-delete{
   border:1px solid transparent!important;
@@ -1811,18 +1786,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     background:var(--dk-orange);
   }
 
-  html[data-surface='desktop'] .meeting-row.pressure-now{
-    min-height:164px!important;
-    background:
-      radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-orange) 13%,transparent),transparent 34%),
-      var(--paper-raised)!important;
-  }
-
-  html[data-surface='desktop'] .meeting-row.pressure-now .meeting-row-name{
-    font-size:22px!important;
-    font-weight:850!important;
-  }
-
   html[data-surface='desktop'] .meeting-row.pressure-now::after{
     content:'LIVE';
     position:absolute;
@@ -1852,18 +1815,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     background:var(--paper-raised);
     color:var(--dk-blue);
     font-size:18px;font-weight:900;
-  }
-
-  html[data-surface='desktop'] .trip-row-maybach.pressure-now{
-    min-height:164px!important;
-    background:
-      radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 13%,transparent),transparent 36%),
-      var(--paper-raised)!important;
-  }
-
-  html[data-surface='desktop'] .trip-row-maybach.pressure-now .trip-row-name{
-    font-size:22px!important;
-    font-weight:850!important;
   }
 
   /* Jobs: asymmetry is intentional. */
