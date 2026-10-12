@@ -1,7 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
 
 
-
 /* Semantic type utilities — use these for hierarchy across cards, pages, subsystems */
 .text-display {
   font-size: var(--text-display-md);
@@ -42,13 +41,6 @@
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
-
-/* ═══════════════════════════════════════════════════════════════════
-   DESIGN SYSTEM V2 — semantic tokens
-   Mapped onto the existing paper/ink identity. Existing component
-   classes continue to work; new work should prefer these tokens.
-   ═══════════════════════════════════════════════════════════════════ */
-
 
 
 /* Surface utilities */
@@ -167,8 +159,6 @@
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-xs);
 }
-
-
 
 
 * {
@@ -1464,7 +1454,6 @@ select:-webkit-autofill {
 .task-card.task-list-item {
   background: transparent;
 }
-
 
 
 .task-card .task-main {
@@ -3727,7 +3716,6 @@ select:-webkit-autofill {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 
 
 /* A couple of spots needed a literal (not token) adjustment, since the
