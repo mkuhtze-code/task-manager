@@ -12,6 +12,7 @@ import type {
   Confidence,
 } from './types';
 import type { DeferredIntention } from './deferredIntention';
+import type { CanonicalUtteranceMeaning } from './canonicalMeaning';
 import type { Decision, DecisionTrace } from '@/lib/thinking/v3/types';
 
 export type InteractionInputType = 'text' | 'speech_transcript' | 'structured';
@@ -66,6 +67,8 @@ export type InteractionInput = {
     } | null;
   };
   priorRequest?: EngineRequest | null;
+  /** Meaning already produced by the speech interpreter for this exact line. */
+  canonicalMeaning?: CanonicalUtteranceMeaning;
   workingMemory?: WorkingMemorySnapshot;
   dryRun?: boolean;
 };
