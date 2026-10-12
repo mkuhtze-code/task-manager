@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Task row on Today — collapsed instrument line, expand for secondary truth.
- * Complete / start / details only; route preference lives in Details.
+ * Task row on Today — collapsed line; expand is the first real view of the task.
+ * Start / Stop and Details are primary actions, not footnotes.
  */
 
 import { useEffect, useState } from 'react';
@@ -12,7 +12,6 @@ import {
   CheckIcon,
   ChevronIcon,
   DragHandleIcon,
-  MapPinIcon,
   PlayIcon,
   StopIcon,
 } from '@/components/icons';
@@ -24,7 +23,6 @@ export function TaskCard(props: {
   remainingForThis: number;
   liveLogged: number;
   overCap: boolean;
-  /** Live day fit label from LiveDayPlan (optional). */
   fitLabel?: string | null;
   fitReason?: string | null;
   anyActive: boolean;
@@ -48,7 +46,6 @@ export function TaskCard(props: {
     onPointerMove: (e: React.PointerEvent) => void;
     onPointerUp: (e: React.PointerEvent) => void;
   };
-  /** Kept for call-site compatibility; route intent is edited in Details only. */
   geoAware?: boolean;
   onRoute?: boolean;
   onSetRouteIntent?: (id: string, requiresVisit: boolean | null) => void;
@@ -112,10 +109,10 @@ export function TaskCard(props: {
     .join(' ');
 
   const doneSubs = subs.filter((s) => s.done).length;
-  const [subsOpen, setSubsOpen] = useState(false);
+  const [subsOpen, setSubsOpen] = useState(true);
 
   useEffect(() => {
-    if (!expanded) setSubsOpen(false);
+    if (!expanded) setSubsOpen(true);
   }, [expanded]);
 
   const progressPct = timed
@@ -125,7 +122,12 @@ export function TaskCard(props: {
       )
     : 0;
 
-  const showCollapsedProgress = timed && (running || progressPct > 0 || t.logged_mins > 0);
+  const showCollapsedProgress =
+    timed && (running || progressPct > 0 || t.logged_mins > 0);
+
+  const loggedDisplay = running
+    ? liveLogged
+    : Math.max(t.logged_mins || 0, 0);
 
   let glanceRight: string | null = null;
   let glanceKind: 'elapsed' | 'time' | 'subs' | null = null;
@@ -152,7 +154,14 @@ export function TaskCard(props: {
     e.stopPropagation();
   }
 
-  const hasMeta = !!(t.due_today || t.location_text || learnedHint || fitLabel);
+  const hasFacts = !!(
+    jobLabel ||
+    t.location_text ||
+    t.due_today ||
+    fitLabel ||
+    learnedHint ||
+    t.intended_time
+  );
 
   return (
     <div className={rowClass}>
@@ -184,7 +193,10 @@ export function TaskCard(props: {
         >
           <div className="task-text">{t.text}</div>
           {t.intended_time ? (
-            <div className="task-card-intended-time" aria-label={`Scheduled for ${fmtClock(t.intended_time)}`}>
+            <div
+              className="task-card-intended-time"
+              aria-label={`Scheduled for ${fmtClock(t.intended_time)}`}
+            >
               <span aria-hidden="true">◷</span>
               <span>{fmtClock(t.intended_time)}</span>
             </div>
@@ -194,16 +206,16 @@ export function TaskCard(props: {
               className="task-card-context"
               items={[
                 ...(jobLabel
-                  ? [{ label: jobLabel, href: t.job_id ? `/jobs/${t.job_id}` : undefined }]
+                  ? [
+                      {
+                        label: jobLabel,
+                        href: t.job_id ? `/jobs/${t.job_id}` : undefined,
+                      },
+                    ]
                   : []),
                 ...(t.location_text ? [{ label: t.location_text }] : []),
               ]}
             />
-          ) : null}
-          {fitLabel ? (
-            <div className="task-fit-line" title={fitReason ?? undefined}>
-              <span className="task-fit-badge">{fitLabel}</span>
-            </div>
           ) : null}
         </div>
 
@@ -266,7 +278,6 @@ export function TaskCard(props: {
         ) : null}
       </div>
 
-      {/* Collapsed progress — always visible for timed work with progress */}
       {showCollapsedProgress && !expanded ? (
         <div className="task-card-progress" aria-hidden>
           <div
@@ -279,36 +290,85 @@ export function TaskCard(props: {
       {expanded ? (
         <div className="task-reveal">
           {timed ? (
-            <div className="task-progress-row" aria-hidden>
-              <div className="task-progress-track">
+            <div className="reveal-time">
+              <div className="reveal-time-track" aria-hidden>
                 <div
-                  className="task-progress-fill"
-                  style={{ width: `${Math.max(progressPct, 0)}%` }}
+                  className="reveal-time-fill"
+                  style={{ width: `${Math.max(progressPct, running ? 4 : 0)}%` }}
                 />
+              </div>
+              <div className="reveal-time-copy">
+                {loggedDisplay > 0 || running ? (
+                  <>
+                    <span>
+                      <strong className="mono">{fmtMins(loggedDisplay)}</strong> logged
+                    </span>
+                    <span className="reveal-sep" aria-hidden>
+                      ·
+                    </span>
+                  </>
+                ) : null}
+                <span>
+                  <strong className="mono">{fmtMins(t.estimate_mins)}</strong> estimate
+                </span>
+                {remainingForThis > 0 ? (
+                  <>
+                    <span className="reveal-sep" aria-hidden>
+                      ·
+                    </span>
+                    <span>~{fmtMins(remainingForThis)} left</span>
+                  </>
+                ) : overCap ? (
+                  <>
+                    <span className="reveal-sep" aria-hidden>
+                      ·
+                    </span>
+                    <span className="reveal-over">over estimate</span>
+                  </>
+                ) : null}
               </div>
             </div>
           ) : null}
 
-          {hasMeta ? (
-            <div className="task-reveal-meta">
-              {t.due_today ? (
-                <span className="task-reveal-line due">Due today</span>
-              ) : null}
-              {fitLabel ? (
-                <span className="task-fit-badge" title={fitReason ?? undefined}>
-                  {fitLabel}
-                </span>
-              ) : null}
-              {learnedHint ? (
-                <span className="task-reveal-line">Usually ~{learnedHint}</span>
+          {hasFacts ? (
+            <dl className="reveal-facts">
+              {jobLabel ? (
+                <div>
+                  <dt>Job</dt>
+                  <dd>{jobLabel}</dd>
+                </div>
               ) : null}
               {t.location_text ? (
-                <span className="task-reveal-line location" title={t.location_text}>
-                  <MapPinIcon size={13} />
-                  <span className="task-reveal-location-text">{t.location_text}</span>
-                </span>
+                <div>
+                  <dt>Place</dt>
+                  <dd>{t.location_text}</dd>
+                </div>
               ) : null}
-            </div>
+              {t.intended_time ? (
+                <div>
+                  <dt>Scheduled</dt>
+                  <dd className="mono">{fmtClock(t.intended_time)}</dd>
+                </div>
+              ) : null}
+              {t.due_today ? (
+                <div>
+                  <dt>Due</dt>
+                  <dd>Today</dd>
+                </div>
+              ) : null}
+              {fitLabel ? (
+                <div>
+                  <dt>In the day</dt>
+                  <dd title={fitReason ?? undefined}>{fitLabel}</dd>
+                </div>
+              ) : null}
+              {learnedHint ? (
+                <div>
+                  <dt>Usually</dt>
+                  <dd>~{learnedHint}</dd>
+                </div>
+              ) : null}
+            </dl>
           ) : null}
 
           <TaskInfo
@@ -318,20 +378,19 @@ export function TaskCard(props: {
           />
 
           {subs.length > 0 ? (
-            <div className="task-reveal-subtasks">
+            <div className="reveal-steps">
               <button
                 type="button"
                 className={
                   subsOpen
-                    ? 'task-reveal-subtasks-head open'
-                    : 'task-reveal-subtasks-head'
+                    ? 'reveal-steps-head open'
+                    : 'reveal-steps-head'
                 }
                 onClick={() => setSubsOpen((o) => !o)}
                 aria-expanded={subsOpen}
-                aria-label="Toggle sub-tasks"
               >
                 <span>
-                  {doneSubs}/{subs.length} steps
+                  {doneSubs} of {subs.length} steps
                 </span>
                 <span className="subs-head-chev mono" aria-hidden>
                   {subsOpen ? '−' : '+'}
@@ -340,7 +399,7 @@ export function TaskCard(props: {
 
               {subsOpen
                 ? subs.map((s) => (
-                    <div key={s.id} className="task-reveal-subtask">
+                    <div key={s.id} className="reveal-step">
                       <button
                         type="button"
                         className={s.done ? 'subtask-check done' : 'subtask-check'}
@@ -362,11 +421,11 @@ export function TaskCard(props: {
             </div>
           ) : null}
 
-          <div className="task-actions">
+          <div className="reveal-actions">
             {timed ? (
               <button
                 type="button"
-                className="task-action-link"
+                className="reveal-btn-primary"
                 disabled={!active && startDisabled}
                 onPointerDown={stopPointer}
                 onPointerUp={stopPointer}
@@ -379,11 +438,33 @@ export function TaskCard(props: {
                 {active ? <StopIcon /> : <PlayIcon />}
                 <span>{active ? 'Stop' : 'Start'}</span>
               </button>
+            ) : (
+              <button
+                type="button"
+                className="reveal-btn-primary"
+                onPointerDown={stopPointer}
+                onPointerUp={stopPointer}
+                onClick={isolate(() => onComplete(t.id))}
+              >
+                <span>Done</span>
+              </button>
+            )}
+
+            {timed ? (
+              <button
+                type="button"
+                className="reveal-btn-secondary"
+                onPointerDown={stopPointer}
+                onPointerUp={stopPointer}
+                onClick={isolate(() => onComplete(t.id))}
+              >
+                Done
+              </button>
             ) : null}
 
             <button
               type="button"
-              className="task-action-link task-action-details"
+              className="reveal-btn-more"
               onPointerDown={stopPointer}
               onPointerUp={stopPointer}
               onClick={isolate(onOpenDetails)}
