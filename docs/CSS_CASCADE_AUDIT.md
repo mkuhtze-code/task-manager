@@ -109,3 +109,13 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Preserved Today header child layout and commitment styles; this is a CSS source-of-truth cleanup, not a behavior or data change.
 - Validation: balanced CSS braces; global stylesheet `!important` count 2 → 2.
 - Visual validation remains required on the preview in light/dark and mobile/desktop.
+
+
+## Conflict-resolved neutral surface chrome — 2026-10
+
+- Rebased the Jobs header and navigation cleanup conceptually onto current mainline rather than merging overlapping stale CSS snapshots.
+- Removed Jobs-only header gradients, stripe/stamp, oversized title and orange kicker, plus desktop-only oversized header/kicker rules and the decorative status pulse dot.
+- Removed gradient navigation rails and gradient selected-tab treatments; restored one shared neutral selected state with a restrained ink marker.
+- Neutralized nav borders/shadows and Meetings/Travel section markers while retaining the solid primary add action.
+- Validation on the combined source: CSS braces balanced; “!important” occurrences 678 (mainline baseline 743); CSS-only presentation changes.
+- Automated source validation only. Browser-level visual verification across mobile/desktop and light/dark remains outstanding.
