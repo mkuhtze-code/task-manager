@@ -2898,28 +2898,33 @@ export function TodayPage() {
     .filter((x): x is { startPct: number; endPct: number; label: string } => x != null)
     .slice(0, 8);
 
-  // Only surface a learned pattern when repeated, reliable history gives it
-  // enough weight to be useful. This ties the insight to work actually planned today.
+  // Lead with a real, repeated work pattern attached to today's plan.
+  // A useful finding can confirm the plan as well as challenge it; do not
+  // make the panel disappear merely because the learned duration is close.
   const patternInsight = ordered
     .map((task) => {
+      if (task.status === 'done') return null;
       if (!task.estimate_mins || task.estimate_mins <= 0) return null;
       const learned = suggestEstimate(task.text, history, clusters, estimateContextFrom(task, now));
       if (
         !learned ||
         learned.source === 'lifecycle' ||
-        learned.sampleCount < 3 ||
-        !hasMeaningfulDivergence(task.estimate_mins, learned.suggestedMins)
+        learned.sampleCount < 2
       ) return null;
+      const deltaMins = learned.suggestedMins - task.estimate_mins;
+      const relativeDelta = Math.abs(deltaMins) / Math.max(task.estimate_mins, learned.suggestedMins, 1);
       return {
         taskText: task.text,
         patternLabel: learned.matchedLabel,
         sampleCount: learned.sampleCount,
         plannedMins: task.estimate_mins,
         learnedMins: learned.suggestedMins,
-        deltaMins: learned.suggestedMins - task.estimate_mins,
+        deltaMins,
+        relativeDelta,
       };
     })
-    .find((item) => item !== null) ?? null;
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((a, b) => (b.relativeDelta * Math.log2(b.sampleCount + 1)) - (a.relativeDelta * Math.log2(a.sampleCount + 1)))[0] ?? null;
 
   const dayDepth = isDesktop
     ? {
