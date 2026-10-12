@@ -8075,9 +8075,11 @@ select:-webkit-autofill {
  .desk-job-card-context {
   margin-top: 8px;
 }
-.meeting-detail-header {
+.meeting-detail-header,
+.job-detail-header,
+.travel-detail-header {
   gap: var(--space-2);
-  align-items: center;
+  align-items: flex-start;
 }
 
 .meeting-detail-header-identity {
@@ -8085,12 +8087,43 @@ select:-webkit-autofill {
   min-width: 0;
 }
 
-.meeting-detail-title {
+.meeting-detail-title,
+.job-detail-header .app-title,
+.travel-detail-title {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: clamp(var(--text-lg), 4.5vw, var(--text-display-md));
+  word-break: normal;
   line-height: 1.15;
   letter-spacing: var(--tracking-tight);
+}
+
+.meeting-detail-title {
+  font-size: clamp(var(--text-lg), 4.5vw, var(--text-display-md));
+}
+
+.job-detail-header .app-header-left {
+  align-items: flex-start;
+  padding-top: 2px;
+}
+
+.job-detail-header .app-header-right,
+.travel-detail-header .app-header-right {
+  align-self: flex-start;
+  padding-top: 3px;
+}
+
+.travel-detail-header .app-header-left {
+  flex: 1 1 auto;
+  align-items: flex-start;
+}
+
+.travel-detail-identity {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.travel-detail-title {
+  font-size: var(--text-lg);
 }
 
 .meeting-detail-context {
