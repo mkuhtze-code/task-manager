@@ -123,6 +123,53 @@ describe('canonical speech meaning adapter', () => {
     expect(cycle.request.rawUtterances).not.toContain('Call Gerald');
   });
 
+  it('keeps prior context for a matching referential refinement', () => {
+    const utterance = 'Move it to tomorrow';
+    const interpretation = speech({
+      originalTranscript: utterance,
+      normalisedText: utterance,
+      semantic: {
+        rawText: utterance,
+        normalisedText: utterance,
+        acts: [{
+          id: 'act-refine',
+          kind: 'action',
+          rawSpan: utterance,
+          polarity: 'positive',
+          actionVerb: 'move',
+          objectText: 'it',
+          temporalRaw: 'tomorrow',
+          evidence: [],
+          confidence: 'high',
+          blocksTaskCreation: false,
+          targetsExistingContext: true,
+        }],
+        correctionChain: [],
+        mustNotCreateTask: false,
+        requiresConfirmation: false,
+        reasons: [],
+        confidence: 'high',
+      },
+    });
+    const meaning = canonicalMeaningFromSpeech(interpretation, utterance);
+    const prior = {
+      ...emptyRequest('create_task'),
+      objectText: 'Gerald',
+      titleText: 'Call Gerald',
+      primaryVerb: 'call',
+      rawUtterances: ['Call Gerald'],
+      confidence: 'high' as const,
+    };
+    const cycle = runEngineCycle({
+      utterance,
+      priorRequest: prior,
+      canonicalMeaning: meaning,
+      workingMemory: emptyWorkingMemory(),
+      todayDate: '2026-10-13',
+    });
+    expect(cycle.request.titleText).toBe('Call Gerald');
+  });
+
   it('ignores stale meaning after the capture line changes', () => {
     const meaning = canonicalMeaningFromSpeech(speech(), 'Call Jordan tomorrow');
     const prior = { ...emptyRequest('create_task'), objectText: 'Gerald', titleText: 'Call Gerald', rawUtterances: ['Call Gerald'], confidence: 'high' as const };
