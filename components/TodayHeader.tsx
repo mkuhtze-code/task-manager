@@ -106,7 +106,6 @@ export function TodayHeader(props: {
   } = props;
 
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [shapeOpen, setShapeOpen] = useState(false);
 
   const overBy = Math.max(remainingWorkMins - minutesLeftToday, 0);
   const remainingCapacity = Math.max(minutesLeftToday - remainingWorkMins, 0);
@@ -298,67 +297,74 @@ export function TodayHeader(props: {
             </button>
           ) : null}
 
-          <button
-            type="button"
-            className="today-tools-item"
-            aria-expanded={shapeOpen}
-            onClick={() => setShapeOpen((v) => !v)}
-          >
-            {shapeOpen ? 'Hide day shape' : 'Day shape'}
-          </button>
+          <section className="today-day-shape" aria-label="Day detail">
+            <div className="today-depth-heading">
+              <strong>Where your time goes</strong>
+              <span>{isWorkDay ? `${fmtClock(workStart)}–${fmtClock(workEnd)} workday` : 'Outside usual work hours'}</span>
+            </div>
+            <dl className="today-shape-dl">
+              <div>
+                <dt>Task time planned</dt>
+                <dd className="mono">{planned > 0 ? fmtMins(planned) : 'Not timed'}</dd>
+              </div>
+              {fixed > 0 ? (
+                <div>
+                  <dt>Fixed commitments</dt>
+                  <dd className="mono">{fmtMins(fixed)}</dd>
+                </div>
+              ) : null}
+              {travel > 0 ? (
+                <div>
+                  <dt>Travel allowance</dt>
+                  <dd className="mono">~{fmtMins(travel)}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>Unallocated time</dt>
+                <dd className="mono">{fmtMins(Math.max(usable - planned, 0))}</dd>
+              </div>
+              {overloaded ? (
+                <div>
+                  <dt>Capacity gap</dt>
+                  <dd className="today-shape-warn">Over by {fmtMins(overBy)}</dd>
+                </div>
+              ) : null}
+            </dl>
 
-          {shapeOpen ? (
-            <div className="today-day-shape">
-              {isWorkDay ? (
-                <p className="today-shape-line mono">
-                  {fmtClock(workStart)} – {fmtClock(workEnd)}
-                  {isWorkDay
-                    ? ` · ${fmtMins(Math.max(minutesLeftToday, 0))} left`
-                    : ''}
-                </p>
-              ) : (
-                <p className="today-shape-line">Outside normal work hours</p>
-              )}
-              <dl className="today-shape-dl">
-                <div>
-                  <dt>Planned</dt>
-                  <dd className="mono">{planned > 0 ? fmtMins(planned) : 'None timed'}</dd>
-                </div>
-                {fixed > 0 ? (
-                  <div>
-                    <dt>Fixed</dt>
-                    <dd className="mono">{fmtMins(fixed)}</dd>
-                  </div>
-                ) : null}
-                {travel > 0 ? (
-                  <div>
-                    <dt>Travel</dt>
-                    <dd className="mono">~{fmtMins(travel)}</dd>
-                  </div>
-                ) : null}
-                <div>
-                  <dt>Usable</dt>
-                  <dd className="mono">{fmtMins(Math.max(usable, 0))}</dd>
-                </div>
-                {overloaded ? (
-                  <div>
-                    <dt>Fit</dt>
-                    <dd className="today-shape-warn">Over by {fmtMins(overBy)}</dd>
-                  </div>
-                ) : null}
-              </dl>
-              {commitments.length > 0 ? (
-                <ul className="today-shape-commitments">
-                  {commitments.slice(0, 5).map((c) => (
-                    <li key={c.id}>
-                      <span>{c.title}</span>
-                      <span className="mono">{commitmentWindow(c)}</span>
-                    </li>
+            {depth?.fitsNow?.length ? (
+              <div className="today-depth-fits">
+                <span className="today-depth-label">Could fit next</span>
+                <ul>
+                  {depth.fitsNow.slice(0, 3).map((item, index) => (
+                    <li key={`${item}-${index}`}>{item}</li>
                   ))}
                 </ul>
-              ) : null}
-            </div>
-          ) : null}
+              </div>
+            ) : null}
+
+            {commitments.length > 0 ? (
+              <div className="today-depth-schedule">
+                <span className="today-depth-label">Commitments today</span>
+                <ul className="today-shape-commitments">
+                  {commitments
+                    .slice()
+                    .sort((a, b) => {
+                      if (a.all_day !== b.all_day) return a.all_day ? -1 : 1;
+                      return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
+                    })
+                    .slice(0, 6)
+                    .map((c) => (
+                      <li key={c.id}>
+                        <span>{c.title}</span>
+                        <span className="mono">{commitmentWindow(c)}</span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="today-shape-line">No fixed commitments. Your time can move with the work.</p>
+            )}
+          </section>
 
           {geoAware ? (
             <div className="today-tools-geo">
