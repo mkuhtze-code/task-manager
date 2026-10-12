@@ -2898,6 +2898,29 @@ export function TodayPage() {
     .filter((x): x is { startPct: number; endPct: number; label: string } => x != null)
     .slice(0, 8);
 
+  // Only surface a learned pattern when repeated, reliable history gives it
+  // enough weight to be useful. This ties the insight to work actually planned today.
+  const patternInsight = ordered
+    .map((task) => {
+      if (!task.estimate_mins || task.estimate_mins <= 0) return null;
+      const learned = suggestEstimate(task.text, history, clusters, estimateContextFrom(task, now));
+      if (
+        !learned ||
+        learned.source === 'lifecycle' ||
+        learned.sampleCount < 3 ||
+        !hasMeaningfulDivergence(task.estimate_mins, learned.suggestedMins)
+      ) return null;
+      return {
+        taskText: task.text,
+        patternLabel: learned.matchedLabel,
+        sampleCount: learned.sampleCount,
+        plannedMins: task.estimate_mins,
+        learnedMins: learned.suggestedMins,
+        deltaMins: learned.suggestedMins - task.estimate_mins,
+      };
+    })
+    .find((item) => item !== null) ?? null;
+
   const dayDepth = isDesktop
     ? {
         clockRemainingMins: minutesLeftToday,
@@ -2957,6 +2980,7 @@ export function TodayPage() {
         })}
         deskContext={deskContext}
         dayDepth={dayDepth}
+        patternInsight={patternInsight}
       />
 
 
