@@ -99,3 +99,13 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - This pass changes surface treatment only; task ordering, capacity calculations, selection, completion, and detail-pane interactions are untouched.
 - Source validation: CSS braces balanced; Today `!important` count 104 (unchanged from 104); no new override declarations added.
 - Visual verification is still required on the Vercel preview for mobile/desktop and light/dark themes, including empty lists, selected rows, overload state, and detail pane.
+
+
+## Remove legacy Today header chrome — 2026-10
+
+- Removed the obsolete `.today-header-card` visual block from `app/globals.css`; the current Today surface owns sticky positioning, spacing, neutral material, border, and shadow behavior in `app/ux-today-product.css`.
+- Removed the old overload-specific background/border repaint and its separate dark-theme warm fill. Overload should be expressed through capacity/status content, not a full-header tint.
+- Removed the dark-theme shadow/border override that could reintroduce chrome after the current Today surface reset it.
+- Preserved Today header child layout and commitment styles; this is a CSS source-of-truth cleanup, not a behavior or data change.
+- Validation: balanced CSS braces; global stylesheet `!important` count 2 → 2.
+- Visual validation remains required on the preview in light/dark and mobile/desktop.
