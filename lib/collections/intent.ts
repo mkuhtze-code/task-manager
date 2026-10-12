@@ -541,7 +541,17 @@ export function detectCollectionIntent(
     !!ctx?.activeCollectionId &&
     (ctx.msSinceLastActivity == null || ctx.msSinceLastActivity < 2 * 60 * 60 * 1000);
 
-  if (hasActive && looksLikeImplicitItem(raw) && !looksLikeStandaloneTask(raw)) {
+  // A free-form task ending in a "for [person/job/place]" anchor is not
+  // an implicit list item. Only explicit list language may override this
+  // structural signal; otherwise an active list must not capture a new task.
+  const hasNamedForAnchor = /\\bfor\\s+[\\p{L}\\p{N}][\\p{L}\\p{N}\\s'’.-]{2,}$/u.test(raw);
+
+  if (
+    hasActive &&
+    looksLikeImplicitItem(raw) &&
+    !looksLikeStandaloneTask(raw) &&
+    !hasNamedForAnchor
+  ) {
     const items = itemsFromText(raw);
     if (items.length > 0) {
       return {
