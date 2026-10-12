@@ -130,3 +130,11 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Replaced orange navigation borders/inset rails with neutral borders and a soft neutral shadow; context-link hover uses an underline as well as ink colour.
 - Removed obsolete mixed-gradient variables and stale selectors/comments.
 - Source validation: `app/surface-system.css` gradient declarations 22 → 0; `!important` count 643 → 613; CSS braces balanced. Browser visual review across mobile/desktop and light/dark remains outstanding.
+
+
+## Cross-surface gradient removal — 2026-10
+
+- Extended the neutral-surface pass beyond the shared stylesheet to Today capacity fills, desktop Today empty-detail canvas, desktop context strip, Jobs/Meetings/Travel desktop headers, Today header, shared desktop header, task progress fills, the Patterns engine panel, and the welcome rail demo.
+- Capacity load uses solid steel; tight and over-capacity states use solid hazard/danger fills. The accuracy gauge gradient and loading skeleton shimmer remain because they communicate data range/loading rather than brand decoration; the brief impact flash on the splash screen also remains as an animation effect.
+- Validation across the audited files: shared surface stylesheet gradient declarations 22 → 0; Today product stylesheet 3 → 0; desktop header files 6 → 0; CSS brace balance verified for the audited files. `!important` count in `app/surface-system.css` 643 → 613.
+- Browser visual inspection across mobile/desktop and light/dark themes remains required before this pass can be called visually complete.
