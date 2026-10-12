@@ -535,6 +535,8 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   /* Brand gradients are theme-owned: light keeps its blue finish; dark resolves to orange-on-orange. */
   --dk-gradient-start:var(--dk-orange);
   --dk-gradient-end:var(--dk-blue);
+  /* Preserve the existing mixed endpoint on the Today load gradient in light mode. */
+  --dk-load-gradient-end:color-mix(in srgb,var(--dk-orange) 55%,var(--dk-blue));
   --dk-ink:#14232d;
   --dk-display:clamp(28px,2.5vw,40px);
 }
@@ -543,6 +545,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 html[data-theme='dark']{
   --dk-gradient-start:var(--dk-orange);
   --dk-gradient-end:#e55316;
+  --dk-load-gradient-end:#e55316;
 }
 
 /* Surface headers become an arrival moment, not a settings strip. */
@@ -957,7 +960,7 @@ html[data-theme='dark'] .surface-tab.current{
 .desk-depth-track-load{
   height:100%!important;
   border-radius:0 99px 99px 0!important;
-  background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end))!important;
+  background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-load-gradient-end))!important;
 }
 .desk-depth-track-load.is-over{background:var(--danger)!important}
 .desk-depth-track-fixed{
@@ -1268,7 +1271,7 @@ html[data-theme='dark'] .surface-header-controls::after{
     height:3px;
     border-radius:999px;
     background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
-    box-shadow:0 8px 0 color-mix(in srgb,var(--dk-blue) 35%,transparent),0 16px 0 color-mix(in srgb,var(--dk-orange) 22%,transparent);
+    box-shadow:0 8px 0 color-mix(in srgb,var(--dk-gradient-end) 35%,transparent),0 16px 0 color-mix(in srgb,var(--dk-orange) 22%,transparent);
     transform:rotate(-35deg);
     transform-origin:right center;
     pointer-events:none;
