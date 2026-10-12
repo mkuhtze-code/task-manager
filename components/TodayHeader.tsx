@@ -172,8 +172,9 @@ export function TodayHeader(props: {
     >
       <div className="today-day-header-row">
         <div className="today-day-identity">
+          <p className="today-header-kicker">TODAY</p>
           <h1 className="today-day-title">
-            {weekdayLabel} · {dateOnlyLabel}
+            {weekdayLabel} <span aria-hidden="true">·</span> {dateOnlyLabel}
           </h1>
           <p className="today-day-read">{dayReadWithCommitment}</p>
         </div>
@@ -195,6 +196,40 @@ export function TodayHeader(props: {
           </button>
           {!isDesktop ? <GearMenu userId={userId} /> : null}
         </div>
+      </div>
+
+      <div className="today-glance" aria-label="Day at a glance">
+        <div className="today-glance-item">
+          <span className="today-glance-label">Time left</span>
+          <strong className="today-glance-value">{fmtMins(Math.max(minutesLeftToday, 0))}</strong>
+        </div>
+        <div className="today-glance-item">
+          <span className="today-glance-label">Planned work</span>
+          <strong className="today-glance-value">{planned > 0 ? fmtMins(planned) : 'Not timed'}</strong>
+        </div>
+        <div className="today-glance-item">
+          <span className="today-glance-label">Commitments</span>
+          <strong className="today-glance-value">{commitments.length}</strong>
+        </div>
+        {travel > 0 ? (
+          <div className="today-glance-item">
+            <span className="today-glance-label">Travel</span>
+            <strong className="today-glance-value">~{fmtMins(travel)}</strong>
+          </div>
+        ) : null}
+        {deskContext ? (
+          <div className="today-glance-item">
+            <span className="today-glance-label">Open tasks</span>
+            <strong className="today-glance-value">{deskContext.openCount}</strong>
+          </div>
+        ) : null}
+        {nextCommitment ? (
+          <div className="today-glance-next">
+            <span className="today-glance-label">Next up</span>
+            <strong className="today-glance-value">{nextCommitment.title}</strong>
+            <span className="today-glance-note">{nextCommitment.when}</span>
+          </div>
+        ) : null}
       </div>
 
       {toolsOpen ? (
