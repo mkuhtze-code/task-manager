@@ -94,9 +94,7 @@ html[data-surface='desktop'] .app-shell:has(> .today-header-card):not(.has-desk-
   content: '';
   grid-column: 3;
   grid-row: 3;
-  background:
-    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--steel) 6%, transparent), transparent 55%),
-    var(--paper-raised);
+  background: var(--paper-raised);
   border-left: 1px solid var(--line);
   pointer-events: none;
 }
