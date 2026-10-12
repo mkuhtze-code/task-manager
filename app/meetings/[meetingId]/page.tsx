@@ -577,23 +577,12 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
 
   return (
     <div className="app-shell">
-      <div className="app-header">
-        <Link href="/meetings" className="gear-btn" aria-label="Back">
+      <div className="app-header meeting-detail-header">
+        <Link href="/meetings" className="gear-btn" aria-label="Back to meetings">
           <BackIcon />
         </Link>
-        <div className="app-title">Meeting</div>
-        <GearMenu />
-      </div>
-
-      <div className="content">
-        {error && (
-          <p className="meeting-capture-error" role="alert">
-            {error}
-          </p>
-        )}
-
-        <div className="detail-section">
-          <div className="detail-section-title">{meeting.text}</div>
+        <div className="meeting-detail-header-identity">
+          <h1 className="app-title meeting-detail-title">{meeting.text || 'Meeting'}</h1>
           <ContextLine
             className="meeting-detail-context"
             items={[
@@ -607,6 +596,15 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
             ]}
           />
         </div>
+        <GearMenu />
+      </div>
+
+      <div className="content">
+        {error && (
+          <p className="meeting-capture-error" role="alert">
+            {error}
+          </p>
+        )}
 
         <MeetingConnections
           meeting={meeting}
