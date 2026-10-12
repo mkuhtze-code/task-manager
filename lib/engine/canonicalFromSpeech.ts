@@ -63,6 +63,8 @@ export function canonicalMeaningFromSpeech(
       modality: act.condition ? 'conditional' : act.certainty === 'tentative' || act.certainty === 'uncertain' ? 'possible' : 'asserted',
       confidence: act.confidence,
       rawSpan: act.rawSpan ?? null,
+      targetsExistingContext: act.targetsExistingContext === true,
+      requiresClarification: act.requiresClarification === true,
     };
   });
 
