@@ -133,10 +133,9 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 
 ## Universal neutral-surface pass — 2026-10
 
-- Removed decorative linear/radial gradient backgrounds from the shared surface stylesheet, including Today depth panels, workspace canvas, featured Meeting/Travel objects, and the featured Job card.
-- Replaced the Today load-capacity gradient with a solid steel fill; over-capacity remains a semantic danger state.
-- Removed decorative workspace top rails, featured-card colour stripes/rings, first-job-card ornamental marks, and the staggered card accents that made the first Job visually unlike other objects.
-- Removed the desktop grid-paper background in favour of the paper canvas.
-- Neutralized the Today dock pill and current-time marker; retained the solid orange primary add action and explicit semantic state labels.
-- Removed the mixed orange/blue gradient variables now that no gradients consume them; navigation chrome uses neutral borders and a soft neutral shadow.
-- Source validation: app/surface-system.css has 0 gradient declarations remaining; CSS braces balanced; !important count 643 → 613. This is source-level validation; browser visual review is still needed across viewport/theme combinations.
+- Removed decorative gradient backgrounds from the shared surface stylesheet, including Today depth panels, workspace canvas, featured Meeting/Travel objects, and the featured Job card.
+- Replaced Today load-capacity gradient with a solid steel fill; over-capacity remains a semantic danger state.
+- Removed decorative workspace top rails, featured-card colour stripes/rings, desktop grid-paper texture, first-Job ornamentation, and staggered/oversized first-card treatments.
+- Neutralized the Today dock pill and current-time marker; retained the solid primary add action and meaningful semantic state labels.
+- Replaced orange navigation borders/inset rails with neutral borders and a soft neutral shadow; context-link hover uses an underline as well as ink colour.
+- Source validation: app/surface-system.css gradient declarations 22 → 0; !important count 643 → 613; CSS braces balanced. Browser visual review remains outstanding.
