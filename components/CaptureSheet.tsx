@@ -52,6 +52,7 @@ type LearningEvidence,
 type WorkingMemorySnapshot,
 } from '@/lib/engine';
 import { runCaptureDock, loadPriorForDock } from '@/lib/engine/captureDock';
+import { canonicalMeaningFromSpeech } from '@/lib/engine/canonicalFromSpeech';
 import { executeCpuDecision } from '@/lib/cpu';
 import { MapPinIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
@@ -551,6 +552,13 @@ if (line && addTaskWithOverrides) {
       remainingMinsToday,
       openTaskCount: listTasks.length,
       inputType: speechStatus?.result ? 'speech_transcript' : 'text',
+      // Only carry structured speech meaning while the field still matches the
+      // interpretation that produced it. Manual edits must be interpreted afresh.
+      canonicalMeaning:
+        speechResult?.pipeline.interpretation &&
+        textForCaptureField(speechResult).trim() === line
+          ? canonicalMeaningFromSpeech(speechResult.pipeline.interpretation)
+          : undefined,
       meetings: dockMeetings,
       travelMins,
       visitDurationMins,
