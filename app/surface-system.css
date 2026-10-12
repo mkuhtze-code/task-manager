@@ -2018,3 +2018,47 @@ html[data-theme='dark']{
     transition: none;
   }
 }
+
+
+/* Shared stable identity layer; contextual content and filters stay below it. */
+.surface-context-heading {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 24px);
+  min-width: 0;
+}
+.surface-context-heading .surface-identity { flex: 0 0 auto; }
+.surface-context-heading .surface-pulse {
+  min-width: 0;
+  max-width: min(34rem, 48vw);
+  background: var(--paper);
+  border-color: var(--line);
+  box-shadow: none;
+}
+.surface-context-heading .surface-pulse.is-attention {
+  border-color: var(--line-strong);
+  background: var(--paper);
+}
+.surface-context-heading .surface-pulse-title {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.surface-context-heading .surface-pulse-meta {
+  color: var(--ink-soft);
+  white-space: normal;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.surface-context-heading .surface-pulse.is-clear { border-color: var(--line); }
+@media (max-width: 700px) {
+  .surface-context-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+  .surface-context-heading .surface-pulse {
+    max-width: 100%;
+    min-height: 34px;
+    padding: 5px 9px;
+  }
+}
