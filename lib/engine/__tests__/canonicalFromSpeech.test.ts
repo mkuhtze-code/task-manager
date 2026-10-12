@@ -123,8 +123,11 @@ describe('canonical speech meaning adapter', () => {
     expect(cycle.request.rawUtterances).not.toContain('Call Gerald');
   });
 
-  it('does not reuse structured meaning when the capture line is changed', () => {
+  it('ignores stale meaning after the capture line changes', () => {
     const meaning = canonicalMeaningFromSpeech(speech(), 'Call Jordan tomorrow');
-    expect(meaning.rawText.trim()).not.toBe('Call Gerald tomorrow'.trim());
+    const prior = { ...emptyRequest('create_task'), objectText: 'Gerald', titleText: 'Call Gerald', rawUtterances: ['Call Gerald'], confidence: 'high' as const };
+    const cycle = runEngineCycle({ utterance: 'Move it to tomorrow', priorRequest: prior, canonicalMeaning: meaning, workingMemory: emptyWorkingMemory(), todayDate: '2026-10-13' });
+    expect(cycle.request.objectText).toBe('Gerald');
+    expect(cycle.request.titleText).toBe('Call Gerald');
   });
 });
