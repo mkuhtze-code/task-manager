@@ -1365,6 +1365,28 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
 }
 .today-day-header .today-day-depth-panel .today-text-action:hover { color: var(--ink); }
 
+.today-day-header .today-depth-fits {
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+.today-day-header .today-depth-fits ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.today-day-header .today-depth-fits li {
+  min-width: 0;
+  padding: 10px 0 0;
+  border-top: 2px solid var(--steel);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
 .today-day-header :is(button, a):focus-visible {
   outline: 2px solid var(--steel-dark);
   outline-offset: 3px;
@@ -1384,9 +1406,9 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
   .today-day-header .today-banner-clock strong { font-size: clamp(25px, 7vw, 31px); }
   .today-day-header .today-banner-clock-caption { max-width: 120px; font-size: 10px; text-align: right; }
   .today-day-header .today-banner-actions { gap: 4px; }
-  .today-day-header .today-depth-toggle { min-height: 36px; padding: 0 9px; font-size: 11px; }
+  .today-day-header .today-depth-toggle { min-height: 44px; padding: 0 9px; font-size: 11px; }
   .today-day-header .today-banner-actions .today-tools-btn,
-  .today-day-header .today-banner-actions .gear-btn { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+  .today-day-header .today-banner-actions .gear-btn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
   .today-day-header .today-banner-add { min-height: 36px; padding: 0 9px; font-size: 11px; }
   .today-day-header .today-timebar-wrap { margin-top: 15px; padding-top: 11px; }
   .today-day-header .today-timebar-state { font-size: 11px; }
@@ -1403,6 +1425,7 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
   .today-day-header .today-pattern-insight { padding-left: 12px; }
   .today-day-header .today-pattern-headline { font-size: 21px; }
   .today-day-header .today-pattern-insight p { font-size: 13px; }
+  .today-day-header .today-depth-fits ul { grid-template-columns: minmax(0, 1fr); gap: 9px; }
   .today-day-header .today-pattern-comparison > div { grid-template-columns: 58px minmax(35px, 1fr) 52px; gap: 8px; }
   .today-day-header .today-tools-panel { width: calc(100% - 32px); margin-bottom: 14px; padding: 10px 12px; }
 }
