@@ -199,36 +199,6 @@ export function TodayHeader(props: {
         .filter(Boolean)
         .join(' ')}
     >
-      <div className="today-day-header-row">
-        <div className="today-day-identity">
-          <p className="today-header-kicker">TODAY</p>
-          <h1 className="today-day-title">
-            {weekdayLabel} <span aria-hidden="true">·</span> {dateOnlyLabel}
-          </h1>
-          <p className="today-day-read">{dayReadWithCommitment}</p>
-        </div>
-
-        <div className="today-day-actions">
-          {isDesktop && onDockIt ? (
-            <button type="button" className="today-text-action" onClick={onDockIt}>
-              Add
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="today-tools-btn"
-            aria-label="Tools"
-            aria-expanded={toolsOpen}
-            onClick={() => setToolsOpen((v) => !v)}
-          >
-            <span className="today-tools-dots" aria-hidden />
-          </button>
-          {!isDesktop ? <GearMenu userId={userId} /> : null}
-        </div>
-      </div>
-
-
-
       <section className="today-banner-core" aria-label="Today's plan">
         <div className="today-banner-hero">
           <div className="today-banner-date">
@@ -249,7 +219,7 @@ export function TodayHeader(props: {
             </div>
           </div>
         </div>
-                <div className="today-timebar-wrap">
+        <div className="today-timebar-wrap">
           <div className="today-timebar-topline">
             <span className="today-timebar-title">DAY TIMELINE</span>
             <span className="today-timebar-state">{overloaded ? `Over capacity by ${fmtMins(overBy)}` : `${fmtMins(Math.max(usable, 0))} usable time`}</span>
