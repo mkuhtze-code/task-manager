@@ -38,6 +38,7 @@ import type { CollectionIntent } from '@/lib/collections';
 import {
 applyListIntent,
 detectListIntent,
+isListTask,
 loadActiveListState,
 canUseActiveList,
 type TaskListOps,
