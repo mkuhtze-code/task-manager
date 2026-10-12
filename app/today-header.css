@@ -1110,25 +1110,128 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
 }
 
 /* Light-surface text hierarchy: keep task metadata legible, not pale decoration. */
-.app-shell:has(> .today-day-header) .task-card-job,
-.app-shell:has(> .today-day-header) .task-card-context,
-.app-shell:has(> .today-day-header) .task-card-intended-time,
-.app-shell:has(> .today-day-header) .task-card-time,
-.app-shell:has(> .today-day-header) .task-card-elapsed,
-.app-shell:has(> .today-day-header) .task-fit-line {
-  color: #454d54;
+/* The header is not the first app-shell child (offline/travel banners can precede it),
+   so scope through :has() without a direct-child assumption. Pin contrast only in light mode. */
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-job,
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card .task-card-context,
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-context,
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-intended-time,
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-time,
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-elapsed,
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-fit-line,
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card .task-text {
+  color: #343b42 !important;
 }
-.app-shell:has(> .today-day-header) .task-card-job {
-  font-weight: 500;
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-job,
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-time,
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-elapsed {
+  font-weight: 600;
 }
-.app-shell:has(> .today-day-header) .task-card-context a,
-.app-shell:has(> .today-day-header) .task-card-context button {
-  color: #294f68;
-  text-decoration-color: rgba(41, 79, 104, .55);
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-context a,
+html:not([data-theme='dark']) .app-shell:has(.today-day-header) .task-card-context button {
+  color: #234c66 !important;
+  text-decoration-color: rgba(35, 76, 102, .65);
 }
-.app-shell:has(> .today-day-header) .task-card-time,
-.app-shell:has(> .today-day-header) .task-card-elapsed {
-  font-weight: 650;
+
+/* A learned signal, not another generic summary card. */
+.today-day-header .today-pattern-insight {
+  position: relative;
+  overflow: hidden;
+  padding: 15px 16px 13px;
+  border: 1px solid rgba(227, 180, 119, .42);
+  border-radius: 11px;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(227, 180, 119, .17), transparent 58%),
+    linear-gradient(120deg, rgba(227, 180, 119, .105), rgba(255, 255, 255, .035));
+}
+.today-day-header .today-pattern-insight::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #e3b477;
+}
+.today-day-header .today-pattern-insight-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-bottom: 9px;
+}
+.today-day-header .today-pattern-eyebrow {
+  color: #f2cf9f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.today-day-header .today-pattern-sample {
+  color: #d7e1e7;
+  font-size: 11px;
+  font-weight: 550;
+}
+.today-day-header .today-pattern-headline {
+  display: block;
+  color: #fffaf2;
+  font-size: clamp(18px, 2.4vw, 22px);
+  font-weight: 760;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+}
+.today-day-header .today-pattern-insight p {
+  margin: 8px 0 12px;
+  max-width: 62ch;
+  color: #e4ebef;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.today-day-header .today-pattern-insight p b {
+  color: #fffaf2;
+  font-weight: 720;
+}
+.today-day-header .today-pattern-comparison {
+  display: grid;
+  gap: 8px;
+}
+.today-day-header .today-pattern-comparison > div {
+  display: grid;
+  grid-template-columns: 58px minmax(50px, 1fr) 52px;
+  align-items: center;
+  gap: 10px;
+  color: #d7e1e7;
+  font-size: 11px;
+}
+.today-day-header .today-pattern-comparison b {
+  color: #fffaf2;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.today-day-header .today-pattern-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, .14);
+}
+.today-day-header .today-pattern-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #b9cbd6;
+}
+.today-day-header .today-pattern-track.learned i {
+  background: #e3b477;
+}
+.today-day-header .today-pattern-footnote {
+  display: block;
+  margin-top: 11px;
+  color: #c8d6de;
+  font-size: 10.5px;
+  line-height: 1.4;
 }
 @media (max-width: 700px) {
   .today-day-header .today-tools-panel {
