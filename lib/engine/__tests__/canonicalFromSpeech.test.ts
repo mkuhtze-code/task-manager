@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { SpeechInterpretation } from '@/lib/speech/types';
 import { canonicalMeaningFromSpeech } from '../canonicalFromSpeech';
 import { canonicalMeaningBlocksMutation, isCanonicalUtteranceMeaning } from '../canonicalMeaning';
+import { runEngineCycle } from '../orchestrate';
+import { emptyRequest } from '../request';
+import { emptyWorkingMemory } from '../workingMemory';
 
 function speech(overrides: Partial<SpeechInterpretation> = {}): SpeechInterpretation {
   return {
@@ -9,7 +12,7 @@ function speech(overrides: Partial<SpeechInterpretation> = {}): SpeechInterpreta
     originalTranscript: 'Call Jordan tomorrow',
     normalisedText: 'Call Jordan tomorrow',
     intent: 'create',
-    statementType: 'request',
+    statementType: 'REQUEST',
     certainty: 'definite',
     commitmentStrength: 'strong',
     urgency: 'none',
@@ -94,6 +97,30 @@ describe('canonical speech meaning adapter', () => {
     }), 'Do not call Jordan');
     expect(meaning.safety.mustNotCreateTask).toBe(true);
     expect(canonicalMeaningBlocksMutation(meaning)).toBe(true);
+  });
+
+
+  it('starts a distinct canonical action without inheriting an unrelated prior task', () => {
+    const utterance = 'Call Jordan tomorrow';
+    const meaning = canonicalMeaningFromSpeech(speech(), utterance);
+    const prior = {
+      ...emptyRequest('create_task'),
+      objectText: 'Gerald',
+      titleText: 'Call Gerald',
+      primaryVerb: 'call',
+      personText: 'Gerald',
+      rawUtterances: ['Call Gerald'],
+      confidence: 'high' as const,
+    };
+    const cycle = runEngineCycle({
+      utterance,
+      priorRequest: prior,
+      canonicalMeaning: meaning,
+      workingMemory: emptyWorkingMemory(),
+      todayDate: '2026-10-13',
+    });
+    expect(cycle.request.objectText).not.toBe('Gerald');
+    expect(cycle.request.rawUtterances).not.toContain('Call Gerald');
   });
 
   it('does not reuse structured meaning when the capture line is changed', () => {
