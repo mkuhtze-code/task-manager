@@ -227,26 +227,7 @@ export function TodayHeader(props: {
         </div>
       </div>
 
-      <section className={`today-capacity ${overloaded ? 'is-over' : ''}`} aria-label="Today's capacity">
-        <div className="today-capacity-heading">
-          <div className="today-capacity-total">
-            <strong>{fmtMins(Math.max(usable, 0))}</strong>
-            <span>usable</span>
-          </div>
-          <div className="today-capacity-summary">
-            <span className="today-capacity-legend"><i className="capacity-dot capacity-dot-planned" /> {fmtMins(planned)} planned</span>
-            {fixed > 0 ? <span className="today-capacity-legend"><i className="capacity-dot capacity-dot-fixed" /> {fmtMins(fixed)} fixed</span> : null}
-            {travel > 0 ? <span className="today-capacity-legend"><i className="capacity-dot capacity-dot-travel" /> {fmtMins(travel)} travel</span> : null}
-          </div>
-          <span className="today-capacity-fit">{overloaded ? `Over by ${fmtMins(overBy)}` : usable >= planned + fixed + travel ? 'Fits today' : 'Tight fit'}</span>
-        </div>
-        <div className="today-capacity-track" role="img" aria-label={`${fmtMins(planned)} planned, ${fmtMins(fixed)} fixed, ${fmtMins(travel)} travel, ${fmtMins(Math.max(usable - planned - fixed - travel, 0))} unallocated`}>
-          <span className="today-capacity-segment capacity-segment-planned" style={{ width: `${plannedPct}%` }} />
-          <span className="today-capacity-segment capacity-segment-fixed" style={{ width: `${fixedPct}%` }} />
-          <span className="today-capacity-segment capacity-segment-travel" style={{ width: `${travelPct}%` }} />
-          <span className="today-capacity-segment capacity-segment-free" style={{ width: `${freePct}%` }} />
-        </div>
-      </section>
+
 
       <section className="today-banner-core" aria-label="Today's plan">
         <div className="today-banner-hero">
@@ -255,13 +236,20 @@ export function TodayHeader(props: {
             <h1 className="today-banner-title">{weekdayLabel}<span>{dateOnlyLabel}</span></h1>
             <p className="today-banner-read">{dayReadWithCommitment}</p>
           </div>
-          <div className="today-banner-clock">
-            <span className="today-banner-clock-label">TIME REMAINING</span>
-            <strong>{fmtMins(Math.max(minutesLeftToday, 0))}</strong>
-            <span className="today-banner-clock-caption">{isWorkDay ? `of your ${fmtClock(workStart)}–${fmtClock(workEnd)} workday` : 'outside your usual workday'}</span>
+          <div className="today-banner-side">
+            <div className="today-banner-clock">
+              <span className="today-banner-clock-label">TIME REMAINING</span>
+              <strong>{fmtMins(Math.max(minutesLeftToday, 0))}</strong>
+              <span className="today-banner-clock-caption">{isWorkDay ? `of your ${fmtClock(workStart)}–${fmtClock(workEnd)} workday` : 'outside your usual workday'}</span>
+            </div>
+            <div className="today-banner-actions">
+              {isDesktop && onDockIt ? <button type="button" className="today-banner-add" onClick={onDockIt}>+ Add</button> : null}
+              <button type="button" className="today-tools-btn" aria-label="Tools" aria-expanded={toolsOpen} onClick={() => setToolsOpen((v) => !v)}><span className="today-tools-dots" aria-hidden /></button>
+              {!isDesktop ? <GearMenu userId={userId} /> : null}
+            </div>
           </div>
         </div>
-        <div className="today-timebar-wrap">
+                <div className="today-timebar-wrap">
           <div className="today-timebar-topline">
             <span className="today-timebar-title">DAY TIMELINE</span>
             <span className="today-timebar-state">{overloaded ? `Over capacity by ${fmtMins(overBy)}` : `${fmtMins(Math.max(usable, 0))} usable time`}</span>
@@ -293,10 +281,6 @@ export function TodayHeader(props: {
       </section>
 
       <div className="today-glance" aria-label="Day at a glance">
-        <div className="today-glance-item">
-          <span className="today-glance-label">Time left</span>
-          <strong className="today-glance-value">{fmtMins(Math.max(minutesLeftToday, 0))}</strong>
-        </div>
         <div className="today-glance-item">
           <span className="today-glance-label">Planned work</span>
           <strong className="today-glance-value">{planned > 0 ? fmtMins(planned) : 'Not timed'}</strong>
