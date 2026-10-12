@@ -211,7 +211,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--w-steel), var(--w-signature));
+  background: var(--w-steel);
 }
 
 .rail-demo-readout {
