@@ -2317,7 +2317,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
   }
 
   .desk-today-capacity-track span.is-over{
-    background:var(--dk-orange);
+    background:var(--danger);
   }
 
   .desk-today-capacity-meta{
@@ -2404,7 +2404,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
   .mobile-today-capacity-foot{font-size:9px;color:var(--ink-faint);font-weight:650}
   .mobile-today-capacity-foot strong{font-size:9px;color:var(--ink);font-weight:800}
   .mobile-today-next{display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:3px;margin-top:2px;padding:11px 0 0;border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent)}
-  .mobile-today-next-kicker{grid-column:1/-1;color:var(--dk-orange);font-family:var(--font-label);font-size:9px;font-weight:850;letter-spacing:.13em}
+  .mobile-today-next-kicker{grid-column:1/-1;color:var(--ink-faint);font-family:var(--font-label);font-size:11px;font-weight:700;letter-spacing:.12em}
   .mobile-today-next strong{font-size:13px;line-height:1.25;font-weight:750;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mobile-today-next>span:last-child{align-self:end;font-family:var(--font-digital);font-size:10px;color:var(--ink-soft);white-space:nowrap}
   .mobile-today-cockpit.is-off .mobile-today-cockpit-time strong{font-size:44px}
