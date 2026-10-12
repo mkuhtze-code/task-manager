@@ -162,6 +162,7 @@ export function TodayHeader(props: {
   return (
     <header
       className={[
+        'today-header-card',
         'today-day-header',
         isDesktop ? 'today-day-header-desk' : 'today-day-header-mobile',
         overloaded ? 'is-over' : '',
