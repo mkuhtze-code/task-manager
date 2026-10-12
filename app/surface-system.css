@@ -553,22 +553,8 @@ html[data-theme='dark']{
 /* Surface headers become an arrival moment, not a settings strip. */
 .surface-header{
   padding:22px 28px 20px!important;
-  border-bottom:1px solid var(--line)!important;
-  background:
-    linear-gradient(90deg,
-      color-mix(in srgb,var(--dk-orange) 7%,var(--paper)) 0,
-      var(--paper) 34%)!important;
+  border-bottom:1px solid var(--line)!important
   overflow:hidden;
-}
-.surface-header::before{
-  content:'';
-  display:block;
-  position:absolute;
-  left:0;
-  top:0;
-  width:6px;
-  height:100%;
-  background:var(--dk-orange);
 }
 .surface-header-bar{
   max-width:var(--dk-max)!important;
@@ -671,13 +657,8 @@ html[data-theme='dark']{
 /* Mobile: keep the makeover visible instead of shrinking it into nothing. */
 @media (max-width:700px){
   .surface-header{
-    padding:18px 16px 16px!important;
-    background:
-      linear-gradient(90deg,
-        color-mix(in srgb,var(--dk-orange) 8%,var(--paper)) 0,
-        var(--paper) 70%)!important;
+    padding:18px 16px 16px!important
   }
-  .surface-header::before{width:4px}
   .surface-header-bar{min-height:64px!important;column-gap:12px!important}
   .surface-title{font-size:28px!important}
   .surface-pulse{min-height:42px!important;padding:6px 10px!important}
@@ -749,14 +730,6 @@ html[data-theme='dark']{
   box-shadow:0 3px 0 color-mix(in srgb,var(--dk-orange) 72%,#000)!important;
 }
 .surface-add:hover{transform:translateY(-2px)!important}
-
-/* Dark mode keeps the same orange/blue DNA without turning neon. */
-html[data-theme='dark'] .surface-header{
-  background:
-    linear-gradient(90deg,
-      color-mix(in srgb,var(--dk-orange) 8%,var(--paper)) 0,
-      var(--paper) 36%)!important;
-}
 html[data-theme='dark'] .desk-today-saas{
   background:
     radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 10%,transparent),transparent 28rem),
@@ -781,8 +754,7 @@ html[data-theme='dark'] .surface-tab.current{
   right:0;
   bottom:-1px;
   width:96px;
-  height:3px;
-  background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
+  height:3px
   border-radius:3px 0 0 3px;
 }
 
@@ -1416,8 +1388,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
   .desk-jobs-workspace-header .surface-header-actions .btn-steel{
     min-height:38px!important;
     border:0!important;
-    border-radius:11px!important;
-    background:linear-gradient(135deg,var(--dk-orange),#e55316)!important;
+    border-radius:11px!important
     color:#fff!important;
     box-shadow:0 5px 14px color-mix(in srgb,var(--dk-orange) 22%,transparent)!important;
   }
@@ -1647,17 +1618,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     overflow:hidden;
     isolation:isolate;
   }
-  .surface-header::after{
-    content:'';
-    position:absolute;
-    left:28px;
-    right:28px;
-    bottom:0;
-    height:2px;
-    background:linear-gradient(90deg,var(--dk-orange) 0 16%,transparent 35%,transparent 62%,var(--dk-blue) 84%,transparent);
-    opacity:.7;
-    pointer-events:none;
-  }
   .surface-header-bar,
   .surface-header-controls,
   .surface-depth{position:relative;z-index:1}
@@ -1818,22 +1778,8 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   }
 
   html[data-surface='desktop'] .surface-header{
-    padding:22px 32px 18px!important;
-    background:
-      radial-gradient(circle at 92% 0%,color-mix(in srgb,var(--dk-blue) 9%,transparent),transparent 30%),
-      linear-gradient(90deg,color-mix(in srgb,var(--dk-orange) 5%,var(--paper)),var(--paper) 42%)!important;
+    padding:22px 32px 18px!important
     border-bottom:0!important;
-  }
-
-  html[data-surface='desktop'] .surface-header::after{
-    content:'';
-    position:absolute;
-    left:32px;
-    right:32px;
-    bottom:0;
-    height:2px;
-    background:linear-gradient(90deg,var(--dk-gradient-start) 0 38%,var(--dk-gradient-end) 72%,transparent);
-    opacity:.9;
   }
 
   html[data-surface='desktop'] .surface-kicker{
@@ -2172,17 +2118,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 @media (max-width:700px){
   .surface-header{
     position:relative!important;
-    padding:15px 14px 13px!important;
-    background:
-      linear-gradient(90deg,color-mix(in srgb,var(--dk-orange) 5%,var(--paper)),var(--paper))!important;
-  }
-
-  .surface-header::after{
-    content:'';
-    display:block;
-    position:absolute;
-    left:14px;right:14px;bottom:0;height:2px;
-    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end),transparent);
+    padding:15px 14px 13px!important
   }
 
   .surface-kicker{color:var(--dk-orange)!important;letter-spacing:.13em!important}
@@ -2207,11 +2143,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 
 html[data-theme='dark']{
   --dk-deep:#f4f7fb;
-}
-html[data-theme='dark'] .surface-header{
-  background:
-    radial-gradient(circle at 92% 0%,color-mix(in srgb,var(--dk-blue) 13%,transparent),transparent 30%),
-    var(--paper)!important;
 }
 html[data-theme='dark'] .desk-job-card:first-child{
   background:
