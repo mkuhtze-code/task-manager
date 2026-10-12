@@ -124,6 +124,12 @@ describe('taskListBridge', () => {
     expect(resolveReferentialItems(['this']).ambiguous).toBe(true);
   });
 
+  it('does not guess the only list when there is no eligible active list', () => {
+    clearActiveList();
+    const onlyList = { id: 'packing', text: 'Packing', info: LIST_TASK_MARKER, status: 'pending' as const };
+    expect(resolveListTarget({ kind: 'active' }, [onlyList])).toEqual({ kind: 'none' });
+  });
+
   it('never resolves an active list after its task is completed', () => {
     const completed = { id: 'done-list', text: 'Packing', info: LIST_TASK_MARKER, status: 'done' as const };
     activateListTask(completed.id, completed.text);
