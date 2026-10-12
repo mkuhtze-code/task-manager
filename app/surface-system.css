@@ -1257,7 +1257,7 @@ html[data-theme='dark'] .surface-header-controls::after{
     width:54px;
     height:3px;
     border-radius:999px;
-    background:var(--steel);
+    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
     box-shadow:0 8px 0 color-mix(in srgb,var(--dk-gradient-end) 35%,transparent),0 16px 0 color-mix(in srgb,var(--dk-orange) 22%,transparent);
     transform:rotate(-35deg);
     transform-origin:right center;
@@ -1326,7 +1326,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
   .surface-tab.current::after{
     width:28px!important;
     height:3px!important;
-    background:var(--steel)!important;
+    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end))!important;
     box-shadow:0 0 10px color-mix(in srgb,var(--dk-orange) 22%,transparent)!important;
   }
   .surface-tab-icon svg{width:19px;height:19px}
@@ -1563,7 +1563,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   }
   .meeting-row.pressure-now::before,
   .meeting-row.pressure-soon::before{
-    background:var(--danger);
+    background:var(--dk-orange);
     width:5px;
   }
   .meeting-row.pressure-now{background:var(--surface-selected)!important;box-shadow:inset 3px 0 0 var(--accent)!important}
