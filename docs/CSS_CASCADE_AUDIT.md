@@ -68,5 +68,6 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Removed full-row brand-colour treatment from active Meeting/Trip rows; meaningful state remains available through their existing content/indicators.
 - Normalised mobile surface title and context-line typography so Today remains the primary day cockpit without becoming a separate visual system.
 - This is a convergence layer over legacy CSS, not the final cleanup. Next pass must delete contradictory duplicate selectors and move shared row/header ownership out of surface-specific overrides.
+- Initial Vercel builds failed because the first compatibility bridge added 31 `!important` declarations, taking `app/surface-system.css` to 823 against the 792 ceiling. Removed that bridge; current branch count is 788. The shared normal-priority declarations remain, but some legacy important rules may still win, so visual convergence is not yet proven.
 - Validation required: run CSS cascade audit, full regression suite, typecheck, production build; visually compare Today task rows with Jobs/Meetings/Travel in light/dark themes and mobile/desktop, including expanded/running/completed states.
 
