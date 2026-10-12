@@ -54,6 +54,7 @@ export type {
 } from './interactionTypes';
 import { answerFeasibility, actFitDecision } from './interactionAnswer';
 import type { TravelReasoningSlice } from './types';
+import { canonicalMeaningBlocksMutation } from './canonicalMeaning';
 
 function travelSliceFromInput(input: InteractionInput): TravelReasoningSlice | null {
   const t = input.context.travel;
@@ -314,6 +315,7 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
 
   const cycleInput: CycleInput = {
     utterance: text,
+    canonicalMeaning: input.canonicalMeaning,
     priorRequest: prior,
     workingMemory: mem,
     todayDate: input.context.todayDate,
@@ -414,7 +416,8 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
   const canAct =
     (action.kind === 'create_task' || action.kind === 'update_task') &&
     (cycle.authority.mayAct || (!!addPat.objectText && !!forcedJobId)) &&
-    (!!request.objectText || !!addPat.objectText);
+    (!!request.objectText || !!addPat.objectText) &&
+    !canonicalMeaningBlocksMutation(input.canonicalMeaning);
 
   if (canAct) {
     const actFit = actFitDecision(cycle, input);
