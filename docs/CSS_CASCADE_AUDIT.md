@@ -149,3 +149,14 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - No component markup, task data, ordering, actions, or navigation changed.
 - Source validation: `app/surface-system.css` `!important` occurrences 613 → 586 (27 fewer); CSS brace delta 0; decorative Travel chevron selectors removed. The existing audit ceiling is unchanged.
 - Remaining validation: full regression/typecheck/build and visual review of Today, Jobs, Meetings, and Travel in mobile/desktop and light/dark themes. Confirm long titles, expanded job details, route start/end markers, meeting time columns, focus rings, and safe-area behavior.
+
+
+## Today contrast and Day Depth reset — 2026-10
+
+- Replaced the stacked dark-blue, orange-accented Today banner treatments at their source with the canonical warm-paper/ink/steel surface. Removed the header's radial/linear gradients, coloured top edge, tinted glance tiles, and decorative pattern-card gradient; time and commitment markers remain functional and use neutral semantic tokens.
+- Corrected low-contrast Today labels and captions by using the shared ink/soft-ink hierarchy. Task metadata remains explicitly dark enough in light mode; theme tokens drive the header's foreground and surface in dark mode.
+- Restored a dedicated, visible **Day depth** control with an explicit expanded state, keyboard focus treatment, and a persistent controlled region. It is no longer buried inside the three-dot Tools menu.
+- Made the reveal about learned evidence and action relevance rather than repeating the day summary: it compares planned duration with Dokkit's learned duration from measured examples and can surface up to three current tasks that fit the remaining window. Removed the repeated commitments recap from the reveal.
+- Kept the insight grounded in existing deterministic pattern and day-fit data; no new model, external AI, task ordering, or scheduling behavior was introduced.
+- Source checks: new canonical Today CSS tail has zero gradient declarations (the only gradient match in that section is explanatory comment text); CSS brace delta 0; shared surface-system.css important budget remains unchanged at 586.
+- Validation still required: full test/typecheck/build, both Vercel previews, and browser review at mobile/desktop widths in light/dark themes. Specifically inspect 320–390px action fit, visible focus, contrast of every header label, pattern/no-pattern states, and long fit suggestions. No browser-level visual verification is claimed by this source pass.
