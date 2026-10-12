@@ -111,6 +111,20 @@ export function isCanonicalUtteranceMeaning(
 }
 
 /**
+ * A canonical safety verdict may veto downstream mutation, but it never
+ * authorizes an action. Confirmation requirements are not a veto here because
+ * the explicit Dock gesture is the user's capture authorization.
+ */
+export function canonicalMeaningBlocksMutation(
+  meaning: CanonicalUtteranceMeaning | undefined,
+): boolean {
+  return !!meaning && (
+    !isCanonicalUtteranceMeaning(meaning) ||
+    meaning.safety.mustNotCreateTask
+  );
+}
+
+/**
  * A deliberately conservative compatibility rule: a downstream adapter may
  * use a supplied request only when the canonical envelope is valid and the
  * action confidence meets the caller's threshold. Safety flags are returned
