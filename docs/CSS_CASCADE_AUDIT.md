@@ -60,3 +60,13 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Continue removing literal colors and token fallbacks only when the replacement preserves contrast and theme behavior.
 - Verify mobile and desktop, light and dark themes, keyboard focus, reduced motion, sheets/portals, and safe areas after each visual slice.
 - Update this document with measured reductions as each slice lands.
+
+## Universal object/header convergence pass
+
+- Added shared object-row tokens for vertical/horizontal rhythm, title scale, and metadata scale.
+- Aligned Today task rows, mobile Jobs rows, desktop Job cards, Meeting rows, and Trip rows to neutral surfaces, shared title/meta hierarchy, consistent hover/focus feedback, and matching spacing.
+- Removed full-row brand-colour treatment from active Meeting/Trip rows; meaningful state remains available through their existing content/indicators.
+- Normalised mobile surface title and context-line typography so Today remains the primary day cockpit without becoming a separate visual system.
+- This is a convergence layer over legacy CSS, not the final cleanup. Next pass must delete contradictory duplicate selectors and move shared row/header ownership out of surface-specific overrides.
+- Validation required: run CSS cascade audit, full regression suite, typecheck, production build; visually compare Today task rows with Jobs/Meetings/Travel in light/dark themes and mobile/desktop, including expanded/running/completed states.
+
