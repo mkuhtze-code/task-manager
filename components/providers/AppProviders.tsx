@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/lib/auth/AuthContext';
+import { TodayHeaderProvider } from '@/components/today/TodayHeaderState';
 
 /**
  * Client-side providers mounted from the root layout.
@@ -19,7 +20,7 @@ export default function AppProviders({
   return (
     <ErrorBoundary>
       <AuthProvider>
-        {children}
+        <TodayHeaderProvider>{children}</TodayHeaderProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
