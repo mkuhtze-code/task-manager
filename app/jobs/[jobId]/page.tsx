@@ -807,7 +807,7 @@ export default function JobDetailPage() {
 
   return (
     <div className={`app-shell${isDesktop && openTask ? ' has-desk-detail' : ''}${isDesktop ? ' desk-job-detail' : ''}`}>
-      <div className="app-header">
+      <div className="app-header job-detail-header">
         <div className="app-header-left" style={{ minWidth: 0, flex: 1 }}>
           <Link href="/jobs" className="back-link" aria-label="Back to jobs">
             <BackIcon />
