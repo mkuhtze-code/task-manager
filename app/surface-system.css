@@ -1540,19 +1540,19 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   }
 
   html[data-surface='desktop'] .surface-pulse{
-    min-height:52px!important;
-    padding:7px 14px!important;
-    border-radius:14px!important;
-    background:color-mix(in srgb,var(--paper-raised) 88%,transparent)!important;
-    border-color:color-mix(in srgb,var(--dk-orange) 24%,var(--line))!important;
-    box-shadow:0 8px 24px rgba(15,23,42,.06)!important;
+    min-height:46px!important;
+    padding:7px 13px!important;
+    border-radius:10px!important;
+    background:transparent!important;
+    border-color:var(--line)!important;
+    box-shadow:none!important;
   }
 
 
   html[data-surface='desktop'] .surface-header-controls{
     margin-top:18px!important;
     padding-top:13px!important;
-    border-top:1px solid color-mix(in srgb,var(--dk-blue) 14%,var(--line))!important;
+    border-top:1px solid var(--line)!important;
   }
 
   html[data-surface='desktop'] .surface-filter{
@@ -1742,19 +1742,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     backdrop-filter:blur(20px) saturate(1.1)!important;
   }
 
-  html[data-surface='desktop'] .surface-nav.surface-nav-tabs::before{
-    content:'DOKKIT';
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    width:62px;
-    flex:0 0 62px;
-    height:52px;
-    border-right:1px solid var(--line);
-    color:var(--ink-faint);
-    font:700 11px/1 var(--font-label,inherit);
-    letter-spacing:.16em;
-  }
 
   html[data-surface='desktop'] .surface-tabs{
     max-width:none!important;
