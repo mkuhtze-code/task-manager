@@ -115,6 +115,7 @@ export function TodayHeader(props: {
   } = props;
 
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [depthOpen, setDepthOpen] = useState(false);
 
   const overBy = Math.max(remainingWorkMins - minutesLeftToday, 0);
   const remainingCapacity = Math.max(minutesLeftToday - remainingWorkMins, 0);
@@ -222,6 +223,7 @@ export function TodayHeader(props: {
             </div>
             <div className="today-banner-actions">
               {isDesktop && onDockIt ? <button type="button" className="today-banner-add" onClick={onDockIt}>+ Add</button> : null}
+              <button type="button" className="today-depth-toggle" aria-expanded={depthOpen} aria-controls="today-day-depth" onClick={() => setDepthOpen((v) => !v)}>{depthOpen ? "Hide day depth" : "Day depth"}</button>
               <button type="button" className="today-tools-btn" aria-label="Tools" aria-expanded={toolsOpen} onClick={() => setToolsOpen((v) => !v)}><span className="today-tools-dots" aria-hidden /></button>
               {!isDesktop ? <GearMenu userId={userId} /> : null}
             </div>
@@ -288,25 +290,9 @@ export function TodayHeader(props: {
         ) : null}
       </div>
 
-      {toolsOpen ? (
-        <div className="today-tools-panel" role="region" aria-label="Today tools">
-          {showRealityCheck && onRealityCheck ? (
-            <button
-              type="button"
-              className="today-tools-item"
-              onClick={() => {
-                onRealityCheck();
-                setToolsOpen(false);
-              }}
-            >
-              Reality check
-              {realityCheckMessage ? (
-                <span className="today-tools-quiet">{realityCheckMessage}</span>
-              ) : null}
-            </button>
-          ) : null}
-
-          <section className="today-day-shape" aria-label="Day detail">
+      {depthOpen ? (
+        <div className="today-day-depth-panel">
+          <section id="today-day-depth" className="today-day-shape" aria-label="Day depth">
             <div className="today-depth-heading">
               <strong>What your history says</strong>
               <span>{isWorkDay ? `${fmtClock(workStart)}–${fmtClock(workEnd)} workday` : 'Outside usual work hours'}</span>
@@ -375,6 +361,28 @@ export function TodayHeader(props: {
               <p className="today-shape-line">No fixed commitments. Your time can move with the work.</p>
             )}
           </section>
+        </div>
+      ) : null}
+
+      {toolsOpen ? (
+        <div className="today-tools-panel" role="region" aria-label="Today tools">
+          {showRealityCheck && onRealityCheck ? (
+            <button
+              type="button"
+              className="today-tools-item"
+              onClick={() => {
+                onRealityCheck();
+                setToolsOpen(false);
+              }}
+            >
+              Reality check
+              {realityCheckMessage ? (
+                <span className="today-tools-quiet">{realityCheckMessage}</span>
+              ) : null}
+            </button>
+          ) : null}
+
+
 
           {geoAware ? (
             <div className="today-tools-geo">
