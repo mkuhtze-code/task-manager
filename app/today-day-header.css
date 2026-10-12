@@ -1,0 +1,242 @@
+/* Today day header — world-class calm
+   Pair with redesigned TodayHeader.tsx */
+
+.today-day-header {
+  width: 100%;
+  padding: 16px 20px 18px;
+  background: var(--paper, #f6f3ed);
+  border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.08));
+}
+
+.today-day-header-desk {
+  padding: 24px 36px 20px;
+}
+
+.today-day-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.today-day-identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.today-day-title {
+  margin: 0;
+  font-family: var(--font-serif, "Source Serif 4", Georgia, serif);
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  font-weight: 550;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--ink, #1a1814);
+}
+
+.today-day-read {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  font-weight: 450;
+  line-height: 1.45;
+  color: var(--ink-soft, #5c574f);
+  max-width: 36rem;
+}
+
+.today-day-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.today-text-action {
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--accent, #2f3d4a);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.today-text-action:hover {
+  color: var(--ink, #1a1814);
+}
+
+.today-text-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.today-tools-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--ink-faint, #9a948a);
+}
+
+.today-tools-btn:hover,
+.today-tools-btn[aria-expanded='true'] {
+  background: rgba(26, 24, 20, 0.04);
+  color: var(--ink-soft, #5c574f);
+}
+
+.today-tools-btn:focus-visible {
+  outline: 2px solid var(--accent, #2f3d4a);
+  outline-offset: 2px;
+}
+
+.today-tools-dots {
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 -6.5px 0 currentColor, 0 6.5px 0 currentColor;
+}
+
+.today-tools-panel {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line, rgba(26, 24, 20, 0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.today-tools-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--ink, #1a1814);
+  padding: 11px 6px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.today-tools-item:hover {
+  background: rgba(26, 24, 20, 0.035);
+}
+
+.today-tools-quiet {
+  font-size: 12px;
+  font-weight: 450;
+  color: var(--ink-faint, #9a948a);
+}
+
+.today-day-shape {
+  padding: 4px 6px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.today-shape-line {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--ink-soft, #5c574f);
+}
+
+.today-shape-dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.today-shape-dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--ink-soft, #5c574f);
+}
+
+.today-shape-dl dt {
+  margin: 0;
+}
+
+.today-shape-dl dd {
+  margin: 0;
+  font-weight: 550;
+  color: var(--ink, #1a1814);
+  font-variant-numeric: tabular-nums;
+}
+
+.today-shape-warn {
+  color: var(--warn, #8a3b2a) !important;
+}
+
+.today-shape-commitments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.today-shape-commitments li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--ink-soft, #5c574f);
+}
+
+.today-shape-commitments li span:first-child {
+  color: var(--ink, #1a1814);
+  font-weight: 520;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-tools-geo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 6px;
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--ink-soft, #5c574f);
+}
+
+.today-tools-geo-actions {
+  display: flex;
+  gap: 4px;
+}
+
+html[data-surface='desktop'] .app-shell:has(> .today-day-header) > .today-day-header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  z-index: 12;
+}
+
+.task-card .task-fit-line {
+  display: none;
+}
+
+.task-card.expanded .task-fit-line {
+  display: block;
+}
