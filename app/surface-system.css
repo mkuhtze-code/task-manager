@@ -786,29 +786,6 @@ html[data-theme='dark'] .surface-tab.current{
   position:relative;
   isolation:isolate;
 }
-.meeting-row.surface-object::before,
-.trip-row-maybach.surface-object::before,
-.desk-job-card.surface-object::before,
-.job-row::before{
-  content:'';
-  position:absolute;
-  z-index:-1;
-  left:14px;
-  right:14px;
-  top:-1px;
-  height:3px;
-  border-radius:0 0 3px 3px;
-  background:var(--line-strong);
-  transition:left .18s var(--ease),right .18s var(--ease),background .18s var(--ease);
-}
-.meeting-row.surface-object:hover::before,
-.trip-row-maybach.surface-object:hover::before,
-.desk-job-card.surface-object:hover::before,
-.job-row:hover::before{
-  left:24px;
-  right:24px;
-  background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
-}
 
 /* Jobs: the first work object earns a little more real estate. */
 @media (min-width:1000px){
@@ -856,19 +833,6 @@ html[data-theme='dark'] .surface-tab.current{
 .meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now::before{
   height:5px;
   background:var(--dk-orange);
-}
-
-/* Travel: routes get a directional spine rather than looking like records. */
-.trip-row-maybach.surface-object::after{
-  content:'';
-  position:absolute;
-  left:var(--dk-pad-x);
-  bottom:14px;
-  width:52px;
-  height:2px;
-  background:linear-gradient(90deg,var(--dk-blue) 0 55%,var(--dk-orange) 55%);
-  border-radius:2px;
-  opacity:.75;
 }
 .trip-row-maybach.pressure-now::after{
   width:78px;
@@ -973,10 +937,6 @@ html[data-theme='dark'] .surface-tab.current{
   }
   .meeting-section:has(.meeting-row.pressure-now) .meeting-row.pressure-now .meeting-row-name{
     font-size:18px!important;
-  }
-  .trip-row-maybach.surface-object::after{
-    left:14px;
-    bottom:10px;
   }
   .desk-today-depth{
     padding:16px!important;
@@ -1511,16 +1471,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     padding:20px 22px 18px 24px!important;
     border-radius:16px!important;
   }
-  .meeting-row.surface-object::before{
-    content:'';
-    position:absolute;
-    left:0;
-    top:18px;
-    bottom:18px;
-    width:3px;
-    border-radius:0 3px 3px 0;
-    background:color-mix(in srgb,var(--dk-blue) 38%,var(--line));
-  }
   .meeting-row.pressure-now::before,
   .meeting-row.pressure-soon::before{
     background:var(--dk-orange);
@@ -1539,16 +1489,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     padding:20px 58px 18px 26px!important;
     border-radius:16px!important;
     overflow:hidden;
-  }
-  .trip-row-maybach.surface-object::before{
-    content:'';
-    position:absolute;
-    left:0;
-    top:20px;
-    bottom:20px;
-    width:3px;
-    border-radius:0 3px 3px 0;
-    background:linear-gradient(180deg,var(--dk-blue),var(--dk-orange));
   }
   .trip-row-maybach.surface-object::after{
     content:'';
@@ -1882,13 +1822,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     margin-top:8px!important;
   }
 
-  html[data-surface='desktop'] .meeting-row.surface-object::before{
-    content:'';
-    position:absolute;
-    left:0;top:0;bottom:0;width:5px;
-    background:var(--dk-blue);
-  }
-
   html[data-surface='desktop'] .meeting-row.pressure-now::before,
   html[data-surface='desktop'] .meeting-row.pressure-soon::before{
     background:var(--dk-orange);
@@ -1921,14 +1854,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   /* Travel is deliberately directional. */
   html[data-surface='desktop'] .trip-row-maybach.surface-object{
     padding-left:58px!important;
-  }
-
-  html[data-surface='desktop'] .trip-row-maybach.surface-object::before{
-    content:'';
-    position:absolute;
-    left:27px;top:20px;bottom:20px;
-    width:2px;
-    background:linear-gradient(var(--dk-gradient-start),var(--dk-gradient-end));
   }
 
   html[data-surface='desktop'] .trip-row-maybach.surface-object::after{
@@ -1969,17 +1894,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     border-radius:18px!important;
     position:relative!important;
     overflow:hidden!important;
-  }
-
-  html[data-surface='desktop'] .desk-job-card.surface-object::before{
-    content:'';
-    position:absolute;
-    left:0;top:0;bottom:0;width:4px;
-    background:color-mix(in srgb,var(--dk-blue) 72%,transparent);
-  }
-
-  html[data-surface='desktop'] .desk-job-card.surface-object:nth-child(2n)::before{
-    background:var(--dk-orange);
   }
 
   html[data-surface='desktop'] .desk-job-card:first-child{
