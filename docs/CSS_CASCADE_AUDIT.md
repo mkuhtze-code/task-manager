@@ -99,3 +99,14 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - This pass changes surface treatment only; task ordering, capacity calculations, selection, completion, and detail-pane interactions are untouched.
 - Source validation: CSS braces balanced; Today `!important` count 104 (unchanged from 104); no new override declarations added.
 - Visual verification is still required on the Vercel preview for mobile/desktop and light/dark themes, including empty lists, selected rows, overload state, and detail pane.
+
+
+## Neutral shared header grammar — 2026-10
+
+- Removed the Jobs-only header gradient, orange/blue vertical stripe, decorative `WORK / FIELD / MEMORY` stamp, exaggerated title, orange kicker, and gradient primary-button treatment. Jobs now inherits the shared header contract instead of becoming a separately themed product.
+- Removed the desktop-only oversized header typography and orange kicker override. Kept desktop-specific spacing for the control row, but changed its divider to the neutral line token.
+- Neutralized the desktop status pulse surface and selected filter styling; removed its decorative orange dot and the dark-theme orange active-filter override.
+- Changed the mobile surface kicker back to the shared ink-faint tone. The page identity remains in its title and content, not a large brand-colour header treatment.
+- This pass changes CSS presentation only; navigation, filters, jobs, meetings, and travel behavior remain untouched.
+- Validation: balanced CSS braces; `app/surface-system.css` `!important` occurrences 743 → 706.
+- Required before merge: CSS cascade audit, regression/typecheck/build checks, both Vercel previews, and visual inspection across mobile/desktop and light/dark.
