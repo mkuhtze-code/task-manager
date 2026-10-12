@@ -71,3 +71,10 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Initial Vercel builds failed because the first compatibility bridge added 31 `!important` declarations, taking `app/surface-system.css` to 823 against the 792 ceiling. Removed that bridge; current branch count is 788. The shared normal-priority declarations remain, but some legacy important rules may still win, so visual convergence is not yet proven.
 - Validation required: run CSS cascade audit, full regression suite, typecheck, production build; visually compare Today task rows with Jobs/Meetings/Travel in light/dark themes and mobile/desktop, including expanded/running/completed states.
 
+## Surface-header source cleanup — 2026-10
+
+- Removed five decorative `.surface-header::before` / `::after` rules and both `.surface-header-controls::after` gradient rails at source, rather than hiding them behind another selector.
+- Removed six orange/blue gradient background declarations from actual `.surface-header` rules, including desktop and dark-theme variants. The canonical semantic `--paper` surface remains in force.
+- Preserved responsive header padding, layout, sticky positioning, controls, safe-area behavior, and content hierarchy; this removes decorative colour treatment rather than changing header structure.
+- Reduced `app/surface-system.css` from 788 to 782 `!important` occurrences while preserving balanced braces. No budget was raised.
+- Next: source-migrate the remaining row-specific ornamental styling and conflicting row typography; validate real pages in mobile/desktop and light/dark before merging.
