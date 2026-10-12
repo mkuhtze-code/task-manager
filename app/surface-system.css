@@ -521,18 +521,17 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   --dk-orange:#f26a21;
   --dk-orange-soft:#fff0e6;
   --dk-blue:#2451d4;
-  /* Brand gradients are theme-owned: light keeps its blue finish; dark resolves to orange-on-orange. */
+  
 
-  /* Preserve the existing mixed endpoint on the Today load gradient in light mode. */
+
+  
+
 
   --dk-ink:#14232d;
   --dk-display:clamp(28px,2.5vw,40px);
 }
 
-/* In dark mode, orange is the signature accent. Blue remains available for semantic/data distinctions, not the default end-stop of decorative brand gradients. */
-html[data-theme='dark']{
 
-}
 
 /* Shared header geometry and typography are defined by the canonical surface grammar above. */
 
@@ -1330,6 +1329,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 @media (min-width:701px){
   html[data-surface='desktop'] body{
     background:var(--paper)!important;
+
 
   }
 
