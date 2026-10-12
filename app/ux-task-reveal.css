@@ -1,0 +1,319 @@
+/* Task expand — heart of the product
+   Import from app/layout.tsx after ux-task-card.css
+   Densifies collapsed rows and redesigns .task-reveal */
+
+/* ── Collapsed row density ───────────────────────────────────── */
+.task-card.surface-object .task-main {
+  gap: 10px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.task-card .task-text {
+  font-size: 14px;
+  font-weight: 520;
+  letter-spacing: -0.014em;
+  line-height: 1.3;
+}
+
+.task-card-job,
+.task-card .task-card-context,
+.task-card-context {
+  margin-top: 1px;
+  font-size: 11.5px;
+  font-weight: 450;
+  color: var(--ink-faint, #918b80);
+}
+
+.task-card-glance {
+  gap: 6px;
+  padding-left: 6px;
+}
+
+.task-card-time,
+.task-card-elapsed {
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.task-card-active-dot {
+  width: 5px;
+  height: 5px;
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--ink, #1a1814) 12%, transparent);
+}
+
+.task-card .check-btn {
+  width: 20px;
+  height: 20px;
+}
+
+/* Hide fit badge on collapsed — colour rail is enough */
+.task-card:not(.expanded) .task-fit-line {
+  display: none;
+}
+
+/* ── Expand shell ────────────────────────────────────────────── */
+.task-card.expanded .task-reveal,
+.task-reveal {
+  margin: 0 0 8px;
+  padding: 8px 12px 12px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: none;
+}
+
+/* Time truth */
+.reveal-time {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reveal-time-track,
+.task-reveal .task-progress-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line, rgba(26, 24, 20, 0.09));
+  overflow: hidden;
+}
+
+.reveal-time-fill,
+.task-reveal .task-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ink, #1a1814);
+  opacity: 0.55;
+  transition: width 0.2s ease;
+}
+
+.reveal-time-copy {
+  font-size: 12px;
+  font-weight: 450;
+  color: var(--ink-soft, #5a554c);
+  line-height: 1.35;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.reveal-time-copy strong {
+  font-weight: 550;
+  color: var(--ink, #1a1814);
+}
+
+.reveal-sep {
+  margin: 0 5px;
+  color: var(--ink-faint, #918b80);
+  font-weight: 400;
+}
+
+.reveal-over {
+  color: var(--hazard, #8a3b2a);
+}
+
+/* Facts */
+.reveal-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--paper-raised, #fcfaf6);
+  border: 1px solid var(--line, rgba(26, 24, 20, 0.09));
+  border-radius: 10px;
+}
+
+.reveal-facts > div {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.reveal-facts dt {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint, #918b80);
+}
+
+.reveal-facts dd {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink, #1a1814);
+  line-height: 1.3;
+}
+
+/* Note / TaskInfo on expand — paper, not form chrome */
+.task-reveal .task-info {
+  font-family: var(--font-serif, "Source Serif 4", Georgia, serif);
+  font-size: 14.5px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ink-soft, #5a554c);
+  letter-spacing: -0.01em;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.task-reveal .task-info-placeholder {
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--ink-faint, #918b80);
+  font-style: italic;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.task-reveal .task-info-input {
+  font-family: var(--font-serif, "Source Serif 4", Georgia, serif);
+  font-size: 14.5px;
+  line-height: 1.5;
+  border: 1px solid var(--line-strong, rgba(26, 24, 20, 0.15));
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--paper, #f7f4ee);
+  width: 100%;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+/* Steps */
+.reveal-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reveal-steps-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #918b80);
+  cursor: pointer;
+}
+
+.reveal-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 5px 0;
+}
+
+.reveal-step .subtask-text {
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--ink, #1a1814);
+  line-height: 1.35;
+}
+
+.reveal-step .subtask-text.done {
+  color: var(--ink-faint, #918b80);
+  text-decoration: line-through;
+  text-decoration-color: var(--ink-ghost, #c2bbb0);
+}
+
+/* Actions — real weight */
+.reveal-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.reveal-btn-primary {
+  flex: 1.35;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 10px;
+  background: var(--ink, #1a1814);
+  color: var(--paper, #f7f4ee);
+  font-size: 13.5px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.reveal-btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.reveal-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.reveal-btn-secondary {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid var(--line-strong, rgba(26, 24, 20, 0.15));
+  border-radius: 10px;
+  background: var(--paper-raised, #fcfaf6);
+  color: var(--ink, #1a1814);
+  font-size: 13.5px;
+  font-weight: 520;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.reveal-btn-secondary:hover {
+  background: color-mix(in srgb, var(--ink, #1a1814) 4%, transparent);
+}
+
+.reveal-btn-more {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-soft, #5a554c);
+  font-size: 13px;
+  font-weight: 520;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--line-strong, rgba(26, 24, 20, 0.15));
+  -webkit-tap-highlight-color: transparent;
+}
+
+.reveal-btn-more:hover {
+  color: var(--ink, #1a1814);
+  text-decoration-color: var(--ink-faint, #918b80);
+}
+
+/* Retire old link-style actions when new markup is present */
+.task-reveal .task-actions {
+  display: none;
+}
+
+/* Desktop list density */
+html[data-surface='desktop'] .task-card.surface-object .task-main {
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+html[data-surface='desktop'] .task-card .task-text {
+  font-size: 13.5px;
+}
