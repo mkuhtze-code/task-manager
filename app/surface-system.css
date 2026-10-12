@@ -532,8 +532,17 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   --dk-orange:#f26a21;
   --dk-orange-soft:#fff0e6;
   --dk-blue:#2451d4;
+  /* Brand gradients are theme-owned: light keeps its blue finish; dark resolves to orange-on-orange. */
+  --dk-gradient-start:var(--dk-orange);
+  --dk-gradient-end:var(--dk-blue);
   --dk-ink:#14232d;
   --dk-display:clamp(28px,2.5vw,40px);
+}
+
+/* In dark mode, orange is the signature accent. Blue remains available for semantic/data distinctions, not the default end-stop of decorative brand gradients. */
+html[data-theme='dark']{
+  --dk-gradient-start:var(--dk-orange);
+  --dk-gradient-end:#e55316;
 }
 
 /* Surface headers become an arrival moment, not a settings strip. */
@@ -692,7 +701,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   top:0;
   bottom:0;
   width:6px;
-  background:linear-gradient(var(--dk-orange),var(--dk-blue));
+  background:linear-gradient(var(--dk-gradient-start),var(--dk-gradient-end));
 }
 .desk-today-title{
   font-size:clamp(30px,3vw,46px)!important;
@@ -729,7 +738,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   content:'';
   position:absolute;
   left:0;top:0;bottom:0;width:4px;
-  background:linear-gradient(var(--dk-orange),var(--dk-blue));
+  background:linear-gradient(var(--dk-gradient-start),var(--dk-gradient-end));
 }
 .today-header-summary-title{font-weight:750!important}
 .today-commitment{
@@ -783,7 +792,7 @@ html[data-theme='dark'] .surface-tab.current{
   bottom:-1px;
   width:96px;
   height:3px;
-  background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+  background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
   border-radius:3px 0 0 3px;
 }
 
@@ -845,7 +854,7 @@ html[data-theme='dark'] .surface-tab.current{
 .job-row:hover::before{
   left:24px;
   right:24px;
-  background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+  background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
 }
 
 /* Jobs: the first work object earns a little more real estate. */
@@ -948,7 +957,7 @@ html[data-theme='dark'] .surface-tab.current{
 .desk-depth-track-load{
   height:100%!important;
   border-radius:0 99px 99px 0!important;
-  background:linear-gradient(90deg,var(--dk-orange),color-mix(in srgb,var(--dk-orange) 55%,var(--dk-blue)))!important;
+  background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end))!important;
 }
 .desk-depth-track-load.is-over{background:var(--danger)!important}
 .desk-depth-track-fixed{
@@ -1075,7 +1084,7 @@ html[data-theme='dark'] .surface-tab.current{
   top:0;
   height:100%;
   border-radius:0 999px 999px 0;
-  background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+  background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
 }
 .desk-today-rail-load.is-over{background:var(--danger)}
 .desk-today-rail-fixed{
@@ -1190,7 +1199,7 @@ html[data-theme='dark'] .surface-header-controls::after{
     top:0;
     bottom:0;
     width:6px;
-    background:linear-gradient(180deg,var(--dk-orange),var(--dk-blue));
+    background:linear-gradient(180deg,var(--dk-gradient-start),var(--dk-gradient-end));
   }
   .meetings-featured::after,
   .travel-featured::after{
@@ -1258,7 +1267,7 @@ html[data-theme='dark'] .surface-header-controls::after{
     width:54px;
     height:3px;
     border-radius:999px;
-    background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
     box-shadow:0 8px 0 color-mix(in srgb,var(--dk-blue) 35%,transparent),0 16px 0 color-mix(in srgb,var(--dk-orange) 22%,transparent);
     transform:rotate(-35deg);
     transform-origin:right center;
@@ -1310,7 +1319,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
     top:0;
     height:2px;
     border-radius:0 0 999px 999px;
-    background:linear-gradient(90deg,var(--dk-orange),var(--dk-orange) 34%,var(--dk-blue) 72%,transparent);
+    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-start) 34%,var(--dk-gradient-end) 72%,transparent);
     pointer-events:none;
   }
   .surface-tabs{max-width:none!important;gap:5px!important}
@@ -1327,7 +1336,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
   .surface-tab.current::after{
     width:28px!important;
     height:3px!important;
-    background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue))!important;
+    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end))!important;
     box-shadow:0 0 10px color-mix(in srgb,var(--dk-orange) 22%,transparent)!important;
   }
   .surface-tab-icon svg{width:19px;height:19px}
@@ -1361,7 +1370,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
     top:0;
     bottom:0;
     width:7px;
-    background:linear-gradient(180deg,var(--dk-orange) 0 42%,var(--dk-blue) 78% 100%);
+    background:linear-gradient(180deg,var(--dk-gradient-start) 0 42%,var(--dk-gradient-end) 78% 100%);
   }
   .desk-jobs-workspace-header::after{
     content:'WORK / FIELD / MEMORY';
@@ -1537,7 +1546,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     background:linear-gradient(90deg,var(--dk-blue),color-mix(in srgb,var(--dk-blue) 72%,var(--dk-orange)))!important;
   }
   .desk-today-rail-load{
-    background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue))!important;
+    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end))!important;
   }
   .desk-today-rail-now{
     width:4px!important;
@@ -2006,7 +2015,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     position:absolute;
     left:27px;top:20px;bottom:20px;
     width:2px;
-    background:linear-gradient(var(--dk-orange),var(--dk-blue));
+    background:linear-gradient(var(--dk-gradient-start),var(--dk-gradient-end));
   }
 
   html[data-surface='desktop'] .trip-row-maybach.surface-object::after{
@@ -2071,7 +2080,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 
   html[data-surface='desktop'] .desk-job-card:first-child::before{
     width:8px;
-    background:linear-gradient(180deg,var(--dk-orange),var(--dk-blue));
+    background:linear-gradient(180deg,var(--dk-gradient-start),var(--dk-gradient-end));
   }
 
   html[data-surface='desktop'] .desk-job-card:first-child .desk-job-card-name{
@@ -2122,7 +2131,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     width:24px;height:3px;
     margin-right:9px;
     vertical-align:middle;
-    background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
   }
 
   /* The whole is the control console. */
@@ -2209,7 +2218,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     color:var(--ink)!important;
   }
   .surface-tab.current::after{
-    background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue))!important;
+    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end))!important;
     width:22px!important;height:3px!important;
   }
   .surface-add{
@@ -2328,7 +2337,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
     height:100%;
     min-width:3px;
     border-radius:inherit;
-    background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue));
+    background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end));
   }
 
   .desk-today-capacity-track span.is-over{
@@ -2391,7 +2400,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
 /* DOKKIT MOBILE COCKPIT — Today is a real instrument at phone scale. */
 @media (max-width:700px){
   .mobile-today-cockpit{position:relative;margin:0 0 12px;padding:16px;overflow:hidden;border:1px solid color-mix(in srgb,var(--dk-blue) 24%,var(--line));border-radius:18px;background:radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-blue) 10%,transparent),transparent 58%),linear-gradient(145deg,color-mix(in srgb,var(--dk-orange) 7%,var(--paper-raised)),var(--paper-raised) 58%,color-mix(in srgb,var(--dk-blue) 5%,var(--paper-raised)));box-shadow:0 10px 28px rgba(var(--shadow-rgb),.075)}
-  .mobile-today-cockpit::before{content:'';position:absolute;left:0;top:0;right:0;height:4px;background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue))}
+  .mobile-today-cockpit::before{content:'';position:absolute;left:0;top:0;right:0;height:4px;background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end))}
   .mobile-today-cockpit.is-over{border-color:color-mix(in srgb,var(--dk-orange) 52%,var(--line));background:radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--dk-orange) 13%,transparent),transparent 58%),var(--paper-raised)}
   .mobile-today-cockpit-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
   .mobile-today-cockpit-brand{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -2413,7 +2422,7 @@ html[data-theme='dark'] .desk-job-card:first-child{
   .mobile-today-capacity-head{font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--ink-faint);text-transform:uppercase}
   .mobile-today-capacity-head .mono{font-size:10px;letter-spacing:0;color:var(--ink-soft);text-transform:none}
   .mobile-today-capacity-track{position:relative;height:10px;margin:9px 0 6px;overflow:visible;border-radius:999px;background:color-mix(in srgb,var(--dk-blue) 9%,var(--paper))}
-  .mobile-today-capacity-track>span{position:absolute;left:0;top:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--dk-orange),var(--dk-blue))}
+  .mobile-today-capacity-track>span{position:absolute;left:0;top:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--dk-gradient-start),var(--dk-gradient-end))}
   .mobile-today-capacity-track>span.is-over{background:var(--dk-orange)}
   .mobile-today-capacity-track>i{position:absolute;top:-3px;width:2px;height:16px;border-radius:2px;background:var(--ink);transform:translateX(-1px);opacity:.8}
   .mobile-today-capacity-foot{font-size:9px;color:var(--ink-faint);font-weight:650}
