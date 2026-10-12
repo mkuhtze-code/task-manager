@@ -121,6 +121,12 @@ export function TodayHeader(props: {
     );
   const fixed = depth?.fixedMins ?? 0;
   const travel = depth?.travelMins ?? (geoAware ? routeDriveMins : 0);
+  const capacityTotal = Math.max(usable, planned + fixed + travel, 1);
+  const plannedPct = Math.min((planned / capacityTotal) * 100, 100);
+  const fixedPct = Math.min((fixed / capacityTotal) * 100, Math.max(100 - plannedPct, 0));
+  const travelPct = Math.min((travel / capacityTotal) * 100, Math.max(100 - plannedPct - fixedPct, 0));
+  const committedPct = Math.min(plannedPct + fixedPct + travelPct, 100);
+  const freePct = Math.max(100 - committedPct, 0);
 
   const dayRead =
     depth?.dayRead ??
@@ -197,6 +203,27 @@ export function TodayHeader(props: {
           {!isDesktop ? <GearMenu userId={userId} /> : null}
         </div>
       </div>
+
+      <section className={`today-capacity ${overloaded ? 'is-over' : ''}`} aria-label="Today's capacity">
+        <div className="today-capacity-heading">
+          <div className="today-capacity-total">
+            <strong>{fmtMins(Math.max(usable, 0))}</strong>
+            <span>usable</span>
+          </div>
+          <div className="today-capacity-summary">
+            <span className="today-capacity-legend"><i className="capacity-dot capacity-dot-planned" /> {fmtMins(planned)} planned</span>
+            {fixed > 0 ? <span className="today-capacity-legend"><i className="capacity-dot capacity-dot-fixed" /> {fmtMins(fixed)} fixed</span> : null}
+            {travel > 0 ? <span className="today-capacity-legend"><i className="capacity-dot capacity-dot-travel" /> {fmtMins(travel)} travel</span> : null}
+          </div>
+          <span className="today-capacity-fit">{overloaded ? `Over by ${fmtMins(overBy)}` : usable >= planned + fixed + travel ? 'Fits today' : 'Tight fit'}</span>
+        </div>
+        <div className="today-capacity-track" role="img" aria-label={`${fmtMins(planned)} planned, ${fmtMins(fixed)} fixed, ${fmtMins(travel)} travel, ${fmtMins(Math.max(usable - planned - fixed - travel, 0))} unallocated`}>
+          <span className="today-capacity-segment capacity-segment-planned" style={{ width: `${plannedPct}%` }} />
+          <span className="today-capacity-segment capacity-segment-fixed" style={{ width: `${fixedPct}%` }} />
+          <span className="today-capacity-segment capacity-segment-travel" style={{ width: `${travelPct}%` }} />
+          <span className="today-capacity-segment capacity-segment-free" style={{ width: `${freePct}%` }} />
+        </div>
+      </section>
 
       <div className="today-glance" aria-label="Day at a glance">
         <div className="today-glance-item">
