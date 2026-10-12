@@ -321,8 +321,6 @@
   }
 }
 
-
-
 /* ==========================================================================
    DOKKIT VISUAL SYSTEM — canonical object grammar
    One instrument. Four lenses. Quiet surface. Strong object.
@@ -469,7 +467,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   background:color-mix(in srgb,var(--paper) 92%,transparent)!important;
 }
 
-
 /* ==========================================================================
    MOBILE ORIENTATION — same object grammar, smaller scale
    ========================================================================== */
@@ -511,7 +508,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 .today-header-summary-toggle{border-radius:10px!important}
 .today-commitment{background:var(--paper)!important;border-color:var(--line)!important}
 
-
 /* ==========================================================================
    DOKKIT MAKEOVER — visual identity pass
    This is intentionally bolder than the foundational grammar above.
@@ -519,19 +515,12 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
    ========================================================================== */
 :root{
   --dk-orange:#f26a21;
-  --dk-orange-soft:#fff0e6;
+
   --dk-blue:#2451d4;
-  
 
+--dk-ink:#14232d;
 
-  
-
-
-  --dk-ink:#14232d;
-  --dk-display:clamp(28px,2.5vw,40px);
 }
-
-
 
 /* Shared header geometry and typography are defined by the canonical surface grammar above. */
 
@@ -630,7 +619,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 html[data-theme='dark'] .desk-today-saas{
   background:var(--paper-raised)!important;
 }
-
 
 /* ==========================================================================
    DOKKIT MAKEOVER II — the silhouette
@@ -783,7 +771,6 @@ html[data-theme='dark'] .desk-today-saas{
     padding:16px!important;
   }
 }
-
 
 /* ==========================================================================
    DOKKIT MAKEOVER III — the day becomes a signature
@@ -961,15 +948,11 @@ html[data-theme='dark'] .desk-depth-track{
     border-radius:15px!important;
   }
 }
-html[data-theme='dark'] .meetings-featured,
-html[data-theme='dark'] .travel-featured,
-
-
 /* ==========================================================================
    DOKKIT MAKEOVER V — cockpit composition
    ========================================================================== */
 
-/* The navigation is now a control console: present, compact, unmistakably Dokkit. */
+/* Navigation uses the shared neutral surface and a single solid primary action. */
 @media (min-width:701px){
   .surface-nav.surface-nav-tabs{
     left:50%!important;
@@ -1038,8 +1021,6 @@ html[data-theme='dark'] .travel-featured,
 html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   box-shadow:0 14px 36px rgba(0,0,0,.34)!important;
 }
-
-
 
 /* ==========================================================================
    DOKKIT MAKEOVER VI — lens signatures
@@ -1164,8 +1145,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     letter-spacing:.18em!important;
   }
 }
-
-
 
 /* ==========================================================================
    DOKKIT MAKEOVER VII — instrument panels
@@ -1310,8 +1289,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   }
 }
 
-
-
 /* ==========================================================================
    MAKEOVER VII — THE DOKKIT SILHOUETTE
    Not decoration. Composition, proportion, instrument-like hierarchy.
@@ -1321,7 +1298,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   --dk-orange:#f26a21;
   --dk-blue:#2451d4;
   --dk-deep:#101c25;
-  --dk-grid:color-mix(in srgb,var(--ink) 7%,transparent);
+
 }
 
 /* Give the whole desktop surface a deliberate field instead of a collection
@@ -1330,13 +1307,9 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
   html[data-surface='desktop'] body{
     background:var(--paper)!important;
 
+}
 
-  }
-
-
-
-
-  html[data-surface='desktop'] .surface-lede{
+html[data-surface='desktop'] .surface-lede{
     margin-top:7px!important;
     max-width:38rem!important;
     font-size:12px!important;
@@ -1352,8 +1325,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     box-shadow:none!important;
   }
 
-
-  html[data-surface='desktop'] .surface-header-controls{
+html[data-surface='desktop'] .surface-header-controls{
     margin-top:18px!important;
     padding-top:13px!important;
     border-top:1px solid var(--line)!important;
@@ -1364,9 +1336,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     background:var(--paper-raised)!important;
   }
 
-
-
-  html[data-surface='desktop'] .meetings-workspace,
+html[data-surface='desktop'] .meetings-workspace,
   html[data-surface='desktop'] .travel-workspace,
   html[data-surface='desktop'] .jobs-workspace{
     padding:30px 32px 80px!important;
@@ -1451,7 +1421,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     font-size:18px;font-weight:900;
   }
 
-  /* Jobs: asymmetry is intentional. */
+  /* Job objects share one geometry; content, not decoration, sets priority. */
   html[data-surface='desktop'] .desk-jobs-grid{
     gap:16px!important;
     align-items:stretch!important;
@@ -1465,13 +1435,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     overflow:hidden!important;
   }
 
-
-
-
-
-
-
-  /* Section headings become runway markers. */
+/* Section headings become runway markers. */
   html[data-surface='desktop'] .meeting-section-header,
   html[data-surface='desktop'] .trip-section-header{
     padding:8px 0 12px!important;
@@ -1511,8 +1475,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     backdrop-filter:blur(20px) saturate(1.1)!important;
   }
 
-
-  html[data-surface='desktop'] .surface-tabs{
+html[data-surface='desktop'] .surface-tabs{
     max-width:none!important;
   }
 
@@ -1521,9 +1484,7 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
     border-radius:13px!important;
   }
 
-
-
-  html[data-surface='desktop'] .surface-add{
+html[data-surface='desktop'] .surface-add{
     width:52px!important;height:52px!important;border-radius:14px!important;
     background:var(--dk-orange)!important;
     box-shadow:none!important;
@@ -1552,7 +1513,6 @@ html[data-theme='dark'] .surface-nav.surface-nav-tabs{
 html[data-theme='dark']{
   --dk-deep:#f4f7fb;
 }
-
 
 /* ==========================================================================
    TODAY COCKPIT — Make the whole day the hero object.
@@ -1782,7 +1742,6 @@ html[data-theme='dark']{
   }
 }
 
-
 /* ==========================================================================
    CLARITY PASS — high signal, low noise
    Dokkit absorbs complexity; the surface should not narrate it.
@@ -1918,8 +1877,7 @@ html[data-theme='dark']{
     min-height:164px!important;
   }
 
-
-  .desk-today-now-label,
+.desk-today-now-label,
   .desk-today-next>span:last-child{
     max-width:24ch;
   }
