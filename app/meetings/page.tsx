@@ -18,6 +18,7 @@ import {
   type NewMeetingPayload,
 } from '@/components/MeetingSheets';
 import GearMenu from '@/components/GearMenu';
+import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon } from '@/components/icons';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
@@ -410,18 +411,14 @@ export default function MeetingsHome() {
               <BackIcon />
             </Link>
             <div className="meetings-mobile-identity surface-mobile-identity">
-              <h1 className="app-title">Meetings</h1>
-              <p className="meetings-mobile-pulse surface-mobile-pulse">
-                Conversations in time
-                <span className="meetings-sep">·</span>
-                {surface.pulseTitle}
-                {surface.pulseMeta ? (
-                  <>
-                    <span className="meetings-sep">·</span>
-                    {surface.pulseMeta}
-                  </>
-                ) : null}
-              </p>
+              <SurfaceHeaderIdentity
+                kicker="People / Time"
+                title="Meetings"
+                signal={surface.pulseTitle}
+                meta={surface.pulseMeta || null}
+                attention={surface.pulseAttention}
+                clear={surface.live.length + surface.today.length + surface.upcoming.length + surface.flexible.length === 0}
+              />
             </div>
           </div>
           <div className="app-header-right">

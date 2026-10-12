@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
+import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 import ContextLine from '@/components/ContextLine';
 import { BackIcon, CloseIcon, TrashIcon } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
@@ -405,18 +406,14 @@ export default function TravelHome() {
               <BackIcon />
             </Link>
             <div className="travel-mobile-identity surface-mobile-identity">
-              <h1 className="app-title">Travel</h1>
-              <p className="travel-mobile-pulse surface-mobile-pulse">
-                Movement through time and place
-                <span className="travel-sep">·</span>
-                {surface.pulseTitle}
-                {surface.pulseMeta ? (
-                  <>
-                    <span className="travel-sep">·</span>
-                    {surface.pulseMeta}
-                  </>
-                ) : null}
-              </p>
+              <SurfaceHeaderIdentity
+                kicker="Place / Motion"
+                title="Travel"
+                signal={surface.pulseTitle}
+                meta={surface.pulseMeta || null}
+                attention={surface.pulseAttention}
+                clear={surface.active.length + surface.upcoming.length === 0}
+              />
             </div>
           </div>
           <div className="app-header-right">

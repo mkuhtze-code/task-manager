@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import GearMenu from '@/components/GearMenu';
+import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 
 export type TravelListFilter = 'active' | 'upcoming' | 'past' | 'all';
 
@@ -49,6 +50,7 @@ function SearchGlyph() {
 
 export default function DesktopTravelHeader({
   pulseTitle,
+  pulseMeta,
   pulseAttention = false,
   depthRead,
   consequenceLine = null,
@@ -86,22 +88,14 @@ export default function DesktopTravelHeader({
   return (
     <header className="surface-header desk-surface-workspace-header travel-maybach-header">
       <div className="surface-header-bar">
-        <div className="surface-header-orient">
-          <div className="surface-identity">
-            <span className="surface-kicker">Place / Motion</span>
-            <h1 className="surface-title">Travel</h1>
-          </div>
-          <div
-            className={
-              pulseAttention ? 'surface-pulse is-attention' : 'surface-pulse'
-            }
-            aria-label="Travel pulse"
-          >
-            <div className="surface-pulse-body">
-              <span className="surface-pulse-title">{pulseTitle}</span>
-            </div>
-          </div>
-        </div>
+        <SurfaceHeaderIdentity
+        kicker="Place / Motion"
+        title="Travel"
+        signal={pulseTitle}
+        meta={pulseMeta || null}
+        attention={pulseAttention}
+        clear={activeCount + upcomingCount === 0}
+      />
 
         <div className="surface-header-actions">
           <button

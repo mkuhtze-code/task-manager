@@ -20,6 +20,7 @@ import {
 } from '@/lib/taskIntelligence';
 
 import GearMenu from '@/components/GearMenu';
+import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 import { NewJobSheet } from '@/components/JobSheets';
 import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon, CheckIcon, MapPinIcon } from '@/components/icons';
@@ -484,12 +485,14 @@ export default function JobsHome() {
             </Link>
 
             <div className="jobs-mobile-identity surface-mobile-identity">
-              <h1 className="app-title">Jobs</h1>
-              <p className="jobs-mobile-pulse surface-mobile-pulse">
-                Work across days
-                <span className="jobs-sep">·</span>
-                {activeTodayCount} on Today
-              </p>
+              <SurfaceHeaderIdentity
+                kicker="Work / Field"
+                title="Jobs"
+                signal={activeTodayCount > 0 ? `${activeTodayCount} active today` : openCount > 0 ? `${openCount} open jobs` : 'No open work'}
+                meta={spotlightJobName ? `Focus: ${spotlightJobName}` : attentionCount > 0 ? `${attentionCount} need attention` : `${doneCount} completed`}
+                attention={attentionCount > 0}
+                clear={openCount === 0}
+              />
             </div>
           </div>
 

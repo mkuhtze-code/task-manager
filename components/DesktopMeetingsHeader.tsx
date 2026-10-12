@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import GearMenu from '@/components/GearMenu';
+import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 
 export type MeetingsListFilter = 'all' | 'upcoming' | 'past';
 
@@ -60,6 +61,7 @@ function fmtDur(mins: number): string {
 
 export default function DesktopMeetingsHeader({
   pulseTitle,
+  pulseMeta,
   pulseAttention = false,
   depthRead,
   consequenceLine = null,
@@ -95,24 +97,14 @@ export default function DesktopMeetingsHeader({
   return (
     <header className="surface-header desk-meetings-workspace-header meetings-maybach-header">
       <div className="surface-header-bar">
-        <div className="surface-header-orient">
-          <div className="surface-identity">
-            <span className="surface-kicker">People / Time</span>
-            <h1 className="surface-title">Meetings</h1>
-          </div>
-          <div
-            className={
-              pulseAttention
-                ? 'surface-pulse is-attention'
-                : 'surface-pulse'
-            }
-            aria-label="Meetings pulse"
-          >
-            <div className="surface-pulse-body">
-              <span className="surface-pulse-title">{pulseTitle}</span>
-            </div>
-          </div>
-        </div>
+        <SurfaceHeaderIdentity
+        kicker="People / Time"
+        title="Meetings"
+        signal={pulseTitle}
+        meta={pulseMeta || null}
+        attention={pulseAttention}
+        clear={todayCount + upcomingCount === 0}
+      />
 
         <div className="surface-header-actions">
           <button
