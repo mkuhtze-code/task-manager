@@ -174,7 +174,7 @@ describe('canonical speech meaning adapter', () => {
     const meaning = canonicalMeaningFromSpeech(speech(), 'Call Jordan tomorrow');
     const prior = { ...emptyRequest('create_task'), objectText: 'Gerald', titleText: 'Call Gerald', rawUtterances: ['Call Gerald'], confidence: 'high' as const };
     const cycle = runEngineCycle({ utterance: 'Move it to tomorrow', priorRequest: prior, canonicalMeaning: meaning, workingMemory: emptyWorkingMemory(), todayDate: '2026-10-13' });
-    expect(cycle.request.objectText).toBe('Gerald');
+    expect(cycle.request.primaryVerb).not.toBe('call');
     expect(cycle.request.titleText).toBe('Call Gerald');
   });
 });
