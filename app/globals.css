@@ -415,26 +415,6 @@ select:-webkit-autofill {
   margin: 4px 6px;
 }
 
-.today-header-card {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--surface-glass);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-5);
-  margin: var(--space-4) 0 var(--space-5);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.55);
-  transition: background 0.3s var(--ease), border-color 0.3s var(--ease);
-}
-
-.today-header-card.overloaded {
-  background: color-mix(in srgb, var(--warning-muted) 92%, transparent);
-  border-color: color-mix(in srgb, var(--warning) 25%, var(--border-default));
-}
-
 .today-header-top-row {
   display: flex;
   align-items: center;
@@ -3717,22 +3697,6 @@ select:-webkit-autofill {
   white-space: nowrap;
 }
 
-
-/* A couple of spots needed a literal (not token) adjustment, since the
-   light-mode value was a fixed white sheen rather than something that
-   already flows through a variable. */
-[data-theme="dark"] .today-header-card {
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  border-color: var(--border-subtle);
-}
-
-/* The overloaded-state background was a literal cream, not a token, so
-   it never picked up a dark variant — text inside (--ink) correctly
-   went light, leaving light-on-cream. Give it a dark equivalent that
-   keeps the same warm/hazard-tinted feel as the light-mode version. */
-[data-theme="dark"] .today-header-card.overloaded {
-  background: rgba(61, 42, 24, 0.92);
-}
 
 /* Google's button stays a fixed white pill in both themes — that's
    their brand mark, not one of ours, so its background is deliberately
