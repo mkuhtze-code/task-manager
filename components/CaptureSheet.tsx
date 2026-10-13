@@ -597,15 +597,15 @@ const currentText = draftTextRef.current;
 const line = currentText.trim();
 const currentThought = line ? parseThought(line) : null;
 const draftChanged = currentText !== taskText;
-const currentResolution =
-  draftChanged && currentThought
-    ? resolveJobAndLocation(currentThought, jobs, entityMemory)
-    : locationResolution;
+const currentResolution = currentThought
+  ? resolveJobAndLocation(currentThought, jobs, entityMemory)
+  : locationResolution;
 const currentConfirmedJobId = draftChanged
   ? currentResolution?.state === 'known'
     ? currentResolution.candidate.jobId
     : null
-  : confirmedJobId;
+  : (confirmedJobId ??
+      (currentResolution?.state === 'known' ? currentResolution.candidate.jobId : null));
 const currentDeclinedResolution = draftChanged ? false : declinedResolution;
 const currentGate = oneShotGate({
   rawText: currentText,
@@ -614,11 +614,12 @@ const currentGate = oneShotGate({
   declinedResolution: currentDeclinedResolution,
   confirmedJobId: currentConfirmedJobId ?? null,
 });
-const effectiveCaptureJobId = draftChanged
-  ? currentResolution?.state === 'known'
+const effectiveCaptureJobId =
+  currentResolution?.state === 'known'
     ? currentResolution.candidate.jobId
-    : null
-  : (confirmedJobId ?? captureJobId);
+    : draftChanged
+      ? null
+      : (confirmedJobId ?? captureJobId);
 const speechResult = speechStatus?.result ?? null;
 
 // The capture field is authoritative at Dock time.
