@@ -1454,3 +1454,83 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
   border-bottom: 1px solid var(--line-strong, rgba(26, 24, 20, 0.18));
   box-shadow: 0 7px 18px rgba(26, 24, 20, 0.09);
 }
+
+
+/* Today overlays: Day Depth, map and Reality Check must escape the header's
+   stacking context and remain above the task workspace. */
+.today-day-depth-panel:not([hidden]) {
+  position: fixed !important;
+  z-index: 2147483000 !important;
+  top: max(76px, env(safe-area-inset-top) + 64px);
+  right: max(14px, env(safe-area-inset-right));
+  width: min(520px, calc(100vw - 28px));
+  max-height: min(78dvh, 720px);
+  overflow: auto;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--border-strong, var(--line-strong, rgba(80, 90, 100, .24)));
+  border-radius: 20px;
+  background: var(--surface-raised, var(--paper-raised, #fff));
+  color: var(--text-primary, var(--ink, #20252b));
+  box-shadow: 0 24px 70px rgba(10, 18, 28, .28), 0 4px 14px rgba(10, 18, 28, .12);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.today-day-depth-panel .today-day-shape { padding: 0; }
+.today-header-collapse-toggle {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 24px;
+  margin: 7px auto 0;
+  padding: 0;
+  border: 1px solid var(--border-default, var(--line, rgba(26,24,20,.12)));
+  border-radius: 999px;
+  background: var(--surface-raised, var(--paper-raised, #fff));
+  color: var(--text-secondary, var(--ink-soft, #5c574f));
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 140ms ease, border-color 140ms ease, transform 180ms ease;
+}
+.today-header-collapse-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.today-header-collapse-toggle:active { transform: scale(.94); }
+.today-header-collapse-toggle:focus-visible {
+  outline: 2px solid var(--steel, #4f7ea8);
+  outline-offset: 2px;
+}
+.today-header-collapsed .today-banner-hero,
+.today-header-collapsed .today-glance { display: none !important; }
+.today-header-collapsed .today-banner-core { padding-bottom: 4px; }
+.today-header-collapsed .today-timebar-wrap { margin-top: 0; }
+.today-header-collapsed .today-header-collapse-toggle { margin-top: 4px; }
+
+.today-map-btn,
+.today-reality-note-btn { position: relative; z-index: 2; }
+.map-view,
+.sheet-backdrop,
+.reality-check-sheet,
+[role="dialog"].reality-check,
+.reality-check-backdrop {
+  z-index: 2147483001 !important;
+}
+@media (max-width: 700px) {
+  .today-day-depth-panel:not([hidden]) {
+    top: max(68px, env(safe-area-inset-top) + 58px);
+    right: 10px;
+    width: calc(100vw - 20px);
+    max-height: min(78dvh, 680px);
+    padding: 15px;
+    border-radius: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .today-header-collapse-toggle { transition: none; }
+}
