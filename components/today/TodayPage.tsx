@@ -13,6 +13,8 @@ import { TodayTaskList } from '@/components/today/TodayTaskList';
 import { TodayStatusCards } from '@/components/today/TodayStatusCards';
 import { deriveActiveCommitments, deriveTodayCapacity } from '@/lib/today/dayCapacity';
 import { deriveTodayRoute } from '@/lib/today/dayRoute';
+import { deriveTodayTaskRowModels } from '@/lib/today/taskRowModels';
+import { deriveTodayDayPresentation } from '@/lib/today/dayPresentation';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import {
@@ -23,7 +25,6 @@ import {
 } from '@/lib/speech/taskListBridge';
 import { RealityCheckSheet } from '@/components/RealityCheckSheet';
 import { TodayHeaderBridge } from '@/components/today/TodayHeaderState';
-import type { TodayTaskRowModel } from '@/components/today/TodayTaskRows';
 import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
 import { OnboardingScreen } from '@/components/AuthScreen';
@@ -52,12 +53,7 @@ import {
   type UserProfile,
 } from '@/lib/userProfile';
 import { isReliableActualMins, resolveActualForLearning } from '@/lib/thinking/durationQuality';
-import {
-  buildClusters,
-  suggestEstimate,
-  hasMeaningfulDivergence,
-  type HistoricalTask,
-} from '@/lib/taskIntelligence';
+import { buildClusters, suggestEstimate, type HistoricalTask } from '@/lib/taskIntelligence';
 import { logCapturePrediction } from '@/lib/thinking/evidence/predictionLog';
 import { closeCompletionLoop, historyRowFromCompletion } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
@@ -78,8 +74,8 @@ import {
 } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
 import {
-  fmtMins,
   fmtClock,
+  fmtMins,
   isScheduledForLater,
   localDateStr,
   parseMins,
@@ -107,7 +103,7 @@ import {
   sequenceOrderIdsForOpenTasks,
 } from '@/lib/dayFit';
 import { buildLiveDayPlan } from '@/lib/thinking/v3/liveDay';
-import { useTodayIntelligence, estimateContextFrom } from '@/lib/today/useTodayIntelligence';
+import { estimateContextFrom, useTodayIntelligence } from '@/lib/today/useTodayIntelligence';
 import { getGpsPosition } from '@/lib/today/geolocation';
 import { isRouteStop, personalVisitEvidenceFromHistory } from '@/lib/today/visitIntent';
 import { TASK_COLUMNS, PASSIVE_TODAY_KEY } from '@/lib/today/constants';
@@ -2676,127 +2672,50 @@ export function TodayPage() {
     : null;
 
   const usableMins = Math.max(taskCapacity, 0);
-  const fixedMins =
-    availability.blockedMinutes + untimedManualMins;
-  const fitsNow = ordered
-    .filter((x) => x.status !== 'done')
-    .slice(0, 3)
-    .map((x) => x.text.trim())
-    .filter(Boolean);
-  const dayRead = !isWorkDay
-    ? 'Outside your usual working days.'
-    : overloaded
-      ? 'Remaining work no longer fits today.'
-      : remainingTaskMins <= 0 && openVisible.length === 0
-        ? "You're clear for the rest of today."
-        : remainingTaskMins <= 0
-          ? 'No timed work left — list items can still be cleared.'
-          : usableMins > remainingWorkMins + 30
-            ? 'You have room for another task.'
-            : remainingWorkMins > usableMins
-              ? 'Your afternoon is getting tighter.'
-              : 'Your day is on track.';
-  const workSpan = Math.max(workEndMinutes - workStartMinutes, 1);
-  const commitmentMarkers = activeCommitments
-    .filter((c) => !c.all_day)
-    .map((c) => {
-      const start = new Date(c.start_at);
-      const end = new Date(c.end_at);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-      const sMins = start.getHours() * 60 + start.getMinutes();
-      const eMins = end.getHours() * 60 + end.getMinutes();
-      const clampedStart = Math.max(sMins, workStartMinutes);
-      const clampedEnd = Math.min(eMins, workEndMinutes);
-      if (clampedEnd <= clampedStart) return null;
-      return {
-        startPct: (clampedStart - workStartMinutes) / workSpan,
-        endPct: (clampedEnd - workStartMinutes) / workSpan,
-        label: c.title || 'Fixed',
-      };
-    })
-    .filter((x): x is { startPct: number; endPct: number; label: string } => x != null)
-    .slice(0, 8);
+  const fixedMins = availability.blockedMinutes + untimedManualMins;
+  const {
+    fitsNow,
+    dayRead,
+    commitmentMarkers,
+    patternInsight,
+    dayDepth,
+  } = deriveTodayDayPresentation({
+    ordered,
+    history,
+    clusters,
+    now,
+    isWorkDay,
+    overloaded,
+    remainingTaskMins,
+    openVisible,
+    usableMins,
+    remainingWorkMins,
+    fixedMins,
+    minutesLeftToday,
+    routeDriveMins,
+    activeCommitments,
+    workStartMinutes,
+    workEndMinutes,
+    isDesktop,
+  });
 
-  // Lead with a real, repeated work pattern attached to today's plan.
-  // A useful finding can confirm the plan as well as challenge it; do not
-  // make the panel disappear merely because the learned duration is close.
-  const patternInsight = ordered
-    .map((task) => {
-      if (task.status === 'done') return null;
-      if (!task.estimate_mins || task.estimate_mins <= 0) return null;
-      const learned = suggestEstimate(task.text, history, clusters, estimateContextFrom(task, now));
-      if (
-        !learned ||
-        learned.source === 'lifecycle' ||
-        learned.sampleCount < 2
-      ) return null;
-      const deltaMins = learned.suggestedMins - task.estimate_mins;
-      const relativeDelta = Math.abs(deltaMins) / Math.max(task.estimate_mins, learned.suggestedMins, 1);
-      return {
-        taskText: task.text,
-        patternLabel: learned.matchedLabel,
-        sampleCount: learned.sampleCount,
-        plannedMins: task.estimate_mins,
-        learnedMins: learned.suggestedMins,
-        deltaMins,
-        relativeDelta,
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null)
-    .sort((a, b) => (b.relativeDelta * Math.log2(b.sampleCount + 1)) - (a.relativeDelta * Math.log2(a.sampleCount + 1)))[0] ?? null;
-
-  const dayDepth = isDesktop
-    ? {
-        clockRemainingMins: minutesLeftToday,
-        usableMins,
-        fixedMins,
-        plannedTaskMins: remainingTaskMins,
-        travelMins: routeDriveMins,
-        fitsNow,
-        dayRead,
-        commitmentMarkers,
-      }
-    : null;
-
-  const taskRowModels: TodayTaskRowModel[] = ordered.map((t, idx) => {
-    const remainingForThis = remainingForTask(t);
-    const effectiveRemaining = effectiveRemainingForTask(t);
-    cumulative += effectiveRemaining;
-    // List items (no estimate) can never be "over capacity" — they have no time on the clock to compete for.
-    const overCap = t.estimate_mins > 0 && cumulative > taskCapacity;
-    const anyActive = visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0);
-    const subs = subtasksByTask[t.id] || [];
-    let liveLogged = t.logged_mins;
-    if (t.status === 'active' && t.started_at) {
-      liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
-    }
-    const suggestion =
-      t.estimate_mins > 0
-        ? suggestEstimate(t.text, history, clusters, estimateContextFrom(t, now))
-        : null;
-    const learnedHint =
-      suggestion && hasMeaningfulDivergence(t.estimate_mins, suggestion.suggestedMins)
-        ? fmtMins(suggestion.suggestedMins)
-        : null;
-    const isLocated = isRouteStop(t, visitOpts);
-    const locatedIdx = isLocated ? locatedIndexById[t.id] : -1;
-
-    return {
-      task: t,
-      index: idx,
-      remainingForThis,
-      liveLogged,
-      overCap,
-      fitLabel: liveDayPlan.byId[t.id]?.fitLabel ?? null,
-      fitReason: liveDayPlan.byId[t.id]?.reason ?? null,
-      anyActive,
-      subs,
-      learnedHint,
-      jobLabel: jobs.find((j) => j.id === t.job_id)?.name ?? null,
-      expanded: isDesktop ? openTaskId === t.id : expandedId === t.id,
-      isLocated,
-      locatedIdx,
-    };
+  const taskRowModels = deriveTodayTaskRowModels({
+    ordered,
+    visibleTasks,
+    subtasksByTask,
+    history,
+    clusters,
+    now,
+    taskCapacity,
+    remainingForTask,
+    effectiveRemainingForTask,
+    liveDayPlan,
+    locatedIndexById,
+    isRouteStop: (task) => isRouteStop(task, visitOpts),
+    jobs,
+    isDesktop,
+    openTaskId,
+    expandedId,
   });
 
   return (
