@@ -3,7 +3,6 @@ import { fmtMins } from '@/lib/timeFormat';
 import {
   hasMeaningfulDivergence,
   suggestEstimate,
-  type HistoricalTask,
 } from '@/lib/taskIntelligence';
 import type { Task, Subtask } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
@@ -13,10 +12,7 @@ type DeriveTodayTaskRowsInput = {
   ordered: Task[];
   visibleTasks: Task[];
   subtasksByTask: Record<string, Subtask[]>;
-  history: HistoricalTask[];
-  clusters: ReturnType<typeof import('@/lib/taskIntelligence').buildClusters>;
   learnedSuggestions: Map<string, ReturnType<typeof suggestEstimate>>;
-  now: Date;
   taskCapacity: number;
   remainingForTask: (task: Task) => number;
   effectiveRemainingForTask: (task: Task) => number;
@@ -38,10 +34,7 @@ export function deriveTodayTaskRowModels({
   ordered,
   visibleTasks,
   subtasksByTask,
-  history,
-  clusters,
   learnedSuggestions,
-  now,
   taskCapacity,
   remainingForTask,
   effectiveRemainingForTask,
