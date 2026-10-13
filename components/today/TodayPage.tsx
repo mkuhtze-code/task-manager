@@ -12,6 +12,7 @@ import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { TodayTaskList } from '@/components/today/TodayTaskList';
 import { TodayStatusCards } from '@/components/today/TodayStatusCards';
 import { deriveActiveCommitments, deriveTodayCapacity } from '@/lib/today/dayCapacity';
+import { deriveTodayRoute } from '@/lib/today/dayRoute';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import {
@@ -2635,56 +2636,26 @@ export function TodayPage() {
   ordered = ordered.filter((t): t is Task => t != null && typeof t.id === 'string');
   const orderedIds = ordered.map((t) => t.id);
 
-  // Route drive time only enters capacity math in geo_aware mode. Each
-  // located task carries its own outgoing leg's drive_mins_to_next (the
-  // last located task carries the return leg back to the start), and the
-  // origin → first leg is held in driveFromBaseMins.
-  const locatedDriveSum = geoAware
-    ? visibleTasks
-        .filter((t) => isRouteStop(t, visitOpts))
-        .reduce((sum, t) => sum + (t.drive_mins_to_next || 0), 0)
-    : 0;
-  const routeDriveMins = geoAware ? driveFromBaseMins + locatedDriveSum : 0;
-
-  // The located destinations in on-screen (geo) order. Leg rows and the
-  // route map both render from this sequence.
-  const locatedInOrder = ordered.filter((t) => isRouteStop(t, visitOpts));
-  const locatedIndexById: Record<string, number> = {};
-  locatedInOrder.forEach((t, i) => (locatedIndexById[t.id] = i));
-
-  // The route's start point: live GPS when we have a fix, else the
-  // current Home/Work base the order was built from.
-  const routeOrigin = gpsCoords ?? currentBase.coords;
-  const originLabel = gpsCoords
-    ? 'current location'
-    : currentBase.label === 'work'
-      ? 'office'
-      : currentBase.label === 'home'
-        ? 'home'
-        : 'start';
-
-  // "View Map" shows the same ordered geo-aware destinations in MapView,
-  // with the start point as the base marker, its origin→first leg as the
-  // base polyline, and each located task as a pin carrying its own leg
-  // polyline — matching how Travel's trip days hand their route to
-  // MapView, so pin taps keep the Google Maps handoff behaviour.
-  const mapBase = routeOrigin && basePolyline
-    ? {
-        location_text: gpsCoords ? 'Current location' : currentBase.label === 'work' ? 'Office' : 'Home',
-        lat: routeOrigin.lat,
-        lng: routeOrigin.lng,
-        route_polyline: basePolyline,
-      }
-    : null;
-  const mapActivities = locatedInOrder.map((t) => ({
-    id: t.id,
-    text: t.text,
-    location_text: t.location_text,
-    lat: t.lat,
-    lng: t.lng,
-    route_polyline: t.route_polyline,
-  }));
-  const hasRoute = geoAware && locatedInOrder.length > 0 && basePolyline != null;
+  const {
+    locatedDriveSum,
+    routeDriveMins,
+    locatedInOrder,
+    locatedIndexById,
+    routeOrigin,
+    originLabel,
+    mapBase,
+    mapActivities,
+    hasRoute,
+  } = deriveTodayRoute({
+    visibleTasks,
+    orderedTasks: ordered,
+    geoAware,
+    driveFromBaseMins,
+    gpsCoords,
+    currentBase,
+    basePolyline,
+    isRouteStop: (task) => isRouteStop(task, visitOpts),
+  });
 
   const remainingTaskMins = ordered.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
   const workWindowMins = Math.max(workEndMinutes - workStartMinutes, 1);
