@@ -38,6 +38,7 @@ import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
 import { localDateStr } from '@/lib/timeFormat';
+import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
 
 type EvidenceCounts = Record<string, JobEvidenceSummary>;
 
@@ -68,6 +69,7 @@ export default function JobsHome() {
     useState<JobsListFilter>('open');
 
   const [search, setSearch] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const recordEvent = useRecordSurfaceEvent();
   const { isDesktop } = useSurfaceMode();
@@ -404,6 +406,16 @@ export default function JobsHome() {
       const tasks = tasksByJob[job.id] || [];
       const done = isJobDone(tasks);
 
+      if (
+        selectedDate &&
+        !tasks.some((task) =>
+          task.surface_date === selectedDate ||
+          (selectedDate === todayStr && task.due_today)
+        )
+      ) {
+        return false;
+      }
+
       if (listFilter === 'open' && done) {
         return false;
       }
@@ -441,6 +453,8 @@ export default function JobsHome() {
     listFilter,
     search,
     evidenceByJob,
+    selectedDate,
+    todayStr,
   ]);
 
   const openCount = sorted.filter(
@@ -519,6 +533,10 @@ export default function JobsHome() {
           onSearchChange={setSearch}
           onCreate={() => setNewJobOpen(true)}
         />
+      )}
+
+      {!loading && sorted.length > 0 && (
+        <SurfaceDateCarousel selectedDate={selectedDate} onChange={setSelectedDate} />
       )}
 
       {error && (
