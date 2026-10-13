@@ -53,7 +53,7 @@ import {
   type UserProfile,
 } from '@/lib/userProfile';
 import { isReliableActualMins, resolveActualForLearning } from '@/lib/thinking/durationQuality';
-import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
+import { buildClusters, suggestEstimate, type HistoricalTask } from '@/lib/taskIntelligence';
 import { logCapturePrediction } from '@/lib/thinking/evidence/predictionLog';
 import { closeCompletionLoop, historyRowFromCompletion } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
@@ -102,7 +102,7 @@ import {
   sequenceOrderIdsForOpenTasks,
 } from '@/lib/dayFit';
 import { buildLiveDayPlan } from '@/lib/thinking/v3/liveDay';
-import { useTodayIntelligence } from '@/lib/today/useTodayIntelligence';
+import { estimateContextFrom, useTodayIntelligence } from '@/lib/today/useTodayIntelligence';
 import { getGpsPosition } from '@/lib/today/geolocation';
 import { isRouteStop, personalVisitEvidenceFromHistory } from '@/lib/today/visitIntent';
 import { TASK_COLUMNS, PASSIVE_TODAY_KEY } from '@/lib/today/constants';
