@@ -1982,6 +1982,23 @@ export function TodayPage() {
     return effectiveRemainingForTaskPure(t, subtasksByTask, history, clusters, runtime, now.getTime());
   }
 
+  // Capture draft commits and other unrelated Today state changes should not
+  // rerun the calendar/capacity projection. Its inputs are stable while the
+  // user types; recompute only when planning inputs or the clock snapshot change.
+  const todayCapacity = useMemo(
+    () =>
+      deriveTodayCapacity({
+        tasks,
+        meetings,
+        calendarEvents,
+        now,
+        workDays,
+        workStart,
+        workEnd,
+      }),
+    [tasks, meetings, calendarEvents, now, workDays, workStart, workEnd]
+  );
+
   const {
     todayStr,
     visibleTasks,
@@ -1997,15 +2014,7 @@ export function TodayPage() {
     availability,
     untimedManualMins,
     taskCapacity,
-  } = deriveTodayCapacity({
-    tasks,
-    meetings,
-    calendarEvents,
-    now,
-    workDays,
-    workStart,
-    workEnd,
-  });
+  } = todayCapacity;
 
   // Reality Check: offer while timed Today work is still open and the day is
   // winding down (last 2h of the work window, or any time after work end / off day).
