@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "audit:css-cascade": "node scripts/audit-css-cascade.mjs",
-    "build": "npm run test:offline && npm run test:stt && npm run test:collection-correction && npm run test:context-remote && npm run test:corpus-schema && npm run test:corpus-runner && npm run test:context-replay && npm run test:context-persistence && npm run test:phaseB && npm run test:phaseN && npm run test:phaseN-contract && npm run test:phaseN-labels && npm run test:phaseN-accuracy && npm run test:phaseN-shadow && npm run test:phaseN-compose && npm run test:canonical-meaning && npm run test:phase5-core && npm run test:phase6 && npm run test:phase7 && npm run test:phase8 && npm run test:phase9 && npm run test:phase10 && npm run test:phase11 && npm run test:phase12 && npm run test:phase12-integration && npm run test:phase13 && npm run test:phase14 && npm run test:phase15 && npm run test:phase16 && npm run test:phase17 && npm run test:phase18 && npm run test:phase20 && npm run test:phaseM && npm run test:capture-phase3 && npm run test:phaseAB && npm run test:phaseAC && npm run test:phaseAE && npm run test:capture-ui && npm run test:native-capture && npm run audit:css-cascade && next build",
+    "build": "npm run test:offline && npm run test:stt && npm run test:collection-correction && npm run test:context-remote && npm run test:corpus-schema && npm run test:corpus-runner && npm run test:context-replay && npm run test:context-persistence && npm run test:phaseB && npm run test:phaseN && npm run test:phaseN-contract && npm run test:phaseN-labels && npm run test:phaseN-accuracy && npm run test:phaseN-shadow && npm run test:phaseN-compose && npm run test:canonical-meaning && npm run test:phase5-core && npm run test:phase6 && npm run test:phase7 && npm run test:phase8 && npm run test:phase9 && npm run test:phase10 && npm run test:phase11 && npm run test:phase12 && npm run test:phase12-integration && npm run test:phase13 && npm run test:phase14 && npm run test:phase15 && npm run test:phase16 && npm run test:phase17 && npm run test:phase18 && npm run test:phase20 && npm run test:phaseM && npm run test:capture-phase3 && npm run test:capture-phase4 && npm run test:phaseAB && npm run test:phaseAC && npm run test:phaseAE && npm run test:capture-ui && npm run test:native-capture && npm run audit:css-cascade && next build",
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -56,7 +56,8 @@
     "test:stt-production": "node scripts/check-stt-production.mjs",
     "test:capture-ui": "NODE_ENV=test vitest run components/__tests__/captureSheetDockAuthorization.test.tsx",
     "test:native-capture": "vitest run lib/speech/__tests__/captureContract.test.ts",
-    "test:capture-phase3": "vitest run lib/engine/__tests__/capturePhase3DockPriorRequest.test.ts"
+    "test:capture-phase3": "vitest run lib/engine/__tests__/capturePhase3DockPriorRequest.test.ts",
+    "test:capture-phase4": "vitest run lib/engine/__tests__/capturePhase4CorrectionContinuity.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
