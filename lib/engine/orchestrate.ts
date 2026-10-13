@@ -262,12 +262,15 @@ function actionFromPlan(
   // utterance. Once the user starts a new explicit request, the old bound
   // task must stop being executable context.
   const boundTaskId = taskIdFromConstraints(req);
-  const isRefinement =
-    req.rawUtterances.length > 1 &&
-    /^(?:actually|sorry|no(?:,\s*|\s+)|i\s+need\s+it|make\s+that|put\s+that|move\s+(?:it|that)|change\s+(?:it|that)|(?:change|set|adjust|update)\s+(?:the\s+)?time|update\s+(?:it|that)|add\s+(?:that|this)|on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|tomorrow|today)\b/i.test(
+  const refinementUtterance =
+    /^(?:actually|sorry|no\\b|i\\s+meant\\b|i\\s+need\\s+it|make\\s+that|put\\s+that|move\\s+(?:it|that)|change\\s+(?:it|that)|(?:change|set|adjust|update)\\s+(?:the\\s+)?time|update\\s+(?:it|that)|add\\s+(?:that|this)|on\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|tomorrow|today)\\b/i.test(
       currentUtterance.trim()
     );
-  if (boundTaskId && isRefinement) {
+  const isRefinement = req.rawUtterances.length > 1 && refinementUtterance;
+  // A bound task plus an explicit correction is sufficient continuity evidence.
+  // Some correction parses retain the original utterance list rather than
+  // appending the correction, so raw-utterance count must not block the binding.
+  if (boundTaskId && refinementUtterance) {
     return {
       kind: 'update_task',
       taskId: boundTaskId,
