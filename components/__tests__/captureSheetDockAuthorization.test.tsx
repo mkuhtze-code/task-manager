@@ -153,7 +153,7 @@ describe('Capture Dock UI authorization boundary', () => {
     }
   });
 
-  it('flushes the latest visible draft before Dock executes', async () => {
+  it('uses the latest local draft without flushing parent state before Dock executes', async () => {
     renderCaptureSheet();
     const input = screen.getByPlaceholderText('What needs doing…');
 
@@ -174,7 +174,7 @@ describe('Capture Dock UI authorization boundary', () => {
         expect.objectContaining({ line: 'Invoice the client for the extra materials' }),
       );
     });
-    expect(mocks.setTaskText).toHaveBeenCalledWith('Invoice the client for the extra materials');
+    expect(mocks.setTaskText).not.toHaveBeenCalled();
   });
 
   it('only invokes the task executor after the user explicitly presses Dock', async () => {
