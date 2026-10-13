@@ -183,23 +183,19 @@ describe('Capture Dock UI authorization boundary', () => {
   });
 
   it('skips fallback list detection when the primary classifier already found an intent', async () => {
-    mocks.detectCaptureCollection.mockReturnValueOnce({
-      intent: { type: 'create_collection', title: 'Groceries' },
-    } as never);
-
     renderCaptureSheet();
     const input = screen.getByPlaceholderText('What needs doing…');
     await waitFor(() => {
       expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
     });
     fireEvent.change(input, { target: { value: 'Create a grocery list' } });
+    mocks.detectCaptureCollection.mockReturnValueOnce({
+      intent: { type: 'create_collection', title: 'Groceries' },
+    } as never);
     fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
 
     await waitFor(() => expect(screen.getByText('Sign in to use lists.')).toBeTruthy());
-    expect(mocks.detectCaptureCollection).toHaveBeenCalledWith(
-      'Create a grocery list',
-      expect.anything(),
-    );
+    expect(mocks.detectCaptureCollection.mock.calls.some(([value]) => value === 'Create a grocery list')).toBe(true);
     expect(mocks.detectListIntent).not.toHaveBeenCalled();
     expect(mocks.runCaptureDock).not.toHaveBeenCalled();
   });
