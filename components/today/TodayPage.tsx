@@ -3,7 +3,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 import {
   computeTravelPresenceImpact,
 } from '@/lib/travelPresence';
@@ -21,7 +20,7 @@ import {
   type ListTaskCandidate,
 } from '@/lib/speech/taskListBridge';
 import { RealityCheckSheet } from '@/components/RealityCheckSheet';
-import { TodayHeader } from '@/components/TodayHeader';
+import { TodayHeaderBridge } from '@/components/today/TodayHeaderState';
 import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
 import { OnboardingScreen } from '@/components/AuthScreen';
@@ -130,7 +129,6 @@ import { notifyTaskActivity } from '@/hooks/useActiveTask';
 import { loadActiveRequestLocal, loadWorkingMemoryLocal, saveActiveRequestLocal, saveWorkingMemoryLocal, pushEngineStateRemote } from '@/lib/engine/persist';
 import { releaseCompletedTaskContext } from '@/lib/engine/taskLifecycle';
 import { showActiveTimerNotification } from '@/lib/activeTimerNotify';
-import { OfflineStatusBar } from '@/components/OfflineStatusBar';
 import {
   cacheOpenTasks,
   loadCachedOpenTasks,
@@ -2948,10 +2946,7 @@ export function TodayPage() {
           : undefined
       }
     >
-      <TravelAwarenessBanner userId={session.user.id} />
-
-      <OfflineStatusBar userId={session?.user?.id ?? null} />
-      <TodayHeader
+      <TodayHeaderBridge
         overloaded={overloaded}
         weekdayLabel={weekdayLabel}
         dateOnlyLabel={dateOnlyLabel}
