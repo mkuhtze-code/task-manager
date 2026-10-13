@@ -9,8 +9,6 @@ import { localDateStr, isScheduledForLater } from '@/lib/timeFormat';
 import { getGpsPosition } from '@/lib/today/geolocation';
 import { isRouteStop, personalVisitEvidenceFromHistory } from '@/lib/today/visitIntent';
 
-type RouteSetter<T> = (value: T | ((previous: T) => T)) => void;
-
 type UseTodayRouteControllerInput = {
   sortMode: SortMode;
   session: unknown | null;
