@@ -151,3 +151,64 @@
     animation: none;
   }
 }
+
+
+/* Mobile overview pages live inside the persistent Today frame.
+   Their former page-level title/status bars are redundant here; keep
+   desktop overview headers and all detail-page controls intact. */
+@media (max-width: 700px) {
+  .jobs-shell > .app-header,
+  .meetings-shell > .meetings-mobile-header,
+  .travel-shell > .travel-mobile-header {
+    display: none;
+  }
+}
+
+/* Make the active surface unmistakable without turning the bottom rail
+   into a second header or letting inactive destinations compete. */
+.surface-nav.surface-nav-tabs .surface-tab {
+  border: 1px solid transparent;
+  transition:
+    color 150ms var(--ease),
+    background 150ms var(--ease),
+    border-color 150ms var(--ease),
+    transform 150ms var(--ease);
+}
+
+.surface-nav.surface-nav-tabs .surface-tab.current {
+  color: var(--text-primary);
+  background: var(--surface-inset);
+  border-color: var(--border-strong);
+  font-weight: 750;
+  box-shadow: inset 0 -2px 0 var(--text-primary);
+}
+
+.surface-nav.surface-nav-tabs .surface-tab.current .surface-tab-icon {
+  color: var(--text-primary);
+  transform: scale(1.08);
+}
+
+.surface-nav.surface-nav-tabs .surface-tab.current .surface-tab-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.surface-nav.surface-nav-tabs .surface-tab.current .surface-tab-icon svg * {
+  stroke-width: 2.25;
+}
+
+.surface-nav.surface-nav-tabs .surface-tab.current .surface-tab-label {
+  font-weight: 750;
+  color: var(--text-primary);
+}
+
+.surface-nav.surface-nav-tabs .surface-tab:not(.current) {
+  color: var(--text-secondary);
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-nav.surface-nav-tabs .surface-tab {
+    transition: none;
+  }
+}
