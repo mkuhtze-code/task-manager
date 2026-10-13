@@ -8,8 +8,10 @@ import { supabase } from '@/lib/supabaseClient';
 
 function GearIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.48-.41h-3.84a.5.5 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.59.22L2.74 8.87a.5.5 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.04.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61l-2.03-1.58ZM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2Z" />
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.7" />
+      <circle cx="12" cy="12" r="1.7" />
+      <circle cx="19" cy="12" r="1.7" />
     </svg>
   );
 }
@@ -87,6 +89,18 @@ export default function GearMenu({
       window.removeEventListener('scroll', onReposition, true);
     };
   }, [menuOpen]);
+
+  // Place the menu in the browser top layer so sticky app chrome cannot cover it.
+  useLayoutEffect(() => {
+    if (!menuOpen || !menuPos) return;
+    const menu = menuRef.current;
+    if (!menu) return;
+    try {
+      if (!menu.matches(':popover-open')) menu.showPopover();
+    } catch {
+      // Older WebViews still use the maximum fixed z-index from the portal.
+    }
+  }, [menuOpen, menuPos]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
