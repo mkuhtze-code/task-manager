@@ -224,7 +224,21 @@ export function TodayHeader(props: {
             <div className="today-banner-actions">
               {isDesktop && onDockIt ? <button type="button" className="today-banner-add" onClick={onDockIt}>+ Add</button> : null}
               <button type="button" className="today-depth-toggle" aria-expanded={depthOpen} aria-controls="today-day-depth" onClick={() => setDepthOpen((v) => !v)}>{depthOpen ? "Hide day depth" : "Day depth"}</button>
-              <button type="button" className="today-tools-btn" aria-label="Tools" aria-expanded={toolsOpen} onClick={() => setToolsOpen((v) => !v)}><span className="today-tools-dots" aria-hidden /></button>
+              {isDesktop ? (
+                <button type="button" className="today-tools-btn" aria-label="Tools" aria-expanded={toolsOpen} onClick={() => setToolsOpen((v) => !v)}><span className="today-tools-dots" aria-hidden /></button>
+              ) : (
+                <>
+                  <button type="button" className="today-map-btn" aria-label="Open map" title="Open map" onClick={() => { onViewMap(); setToolsOpen(false); }}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 6.5 5-2 7 2 5-2v13l-5 2-7-2-5 2z" /><path d="M8.5 4.5v13M15.5 6.5v13" /></svg>
+                  </button>
+                  {showRealityCheck && onRealityCheck ? (
+                    <button type="button" className="today-reality-note-btn" aria-label="Reality check" title="Reality check" onClick={() => onRealityCheck()}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12a1.5 1.5 0 0 1 1.5 1.5v14L16 17l-4 2-4-2-3.5 2V5A1.5 1.5 0 0 1 6 3.5Z" /><path d="M8 8h8M8 11h6" /></svg>
+                      <span>Reality check</span>
+                    </button>
+                  ) : null}
+                </>
+              )}
               {!isDesktop ? <GearMenu userId={userId} /> : null}
             </div>
           </div>
