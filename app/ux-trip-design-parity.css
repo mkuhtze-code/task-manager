@@ -207,3 +207,112 @@
 @media (prefers-reduced-motion: reduce) {
   .job-row, .meeting-row, .trip-row-maybach { transition: none; }
 }
+
+/* Shared date carousel for the three date-aware surface overviews. */
+.surface-date-carousel-wrap {
+  min-width: 0;
+  padding: 10px var(--space-page, 16px) 4px;
+  background: var(--bg, var(--paper));
+}
+.surface-date-carousel {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  padding: 2px 2px 6px;
+}
+.surface-date-carousel::-webkit-scrollbar { display: none; }
+.surface-date-chip {
+  flex: 0 0 auto;
+  min-width: 52px;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 1px solid var(--border-default, var(--line));
+  border-radius: 12px;
+  background: var(--surface-raised, var(--paper-raised));
+  color: var(--text-secondary, var(--ink-soft));
+  box-shadow: 0 1px 2px rgba(14, 20, 28, 0.035);
+  scroll-snap-align: center;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+.surface-date-chip.is-all { min-width: 58px; }
+.surface-date-weekday {
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: 0.035em;
+  color: inherit;
+}
+.surface-date-number {
+  font-size: 16px;
+  font-weight: 760;
+  line-height: 1.1;
+  color: var(--text-primary, var(--ink));
+  font-variant-numeric: tabular-nums;
+}
+.surface-date-month {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-secondary, var(--ink-soft));
+}
+.surface-date-chip.is-today:not(.is-active) {
+  border-color: var(--steel, #4f7ea8);
+  box-shadow: inset 0 0 0 1px rgba(79, 126, 168, 0.12);
+}
+.surface-date-chip.is-today:not(.is-active) .surface-date-weekday {
+  color: var(--steel, #4f7ea8);
+}
+.surface-date-chip.is-active {
+  border-color: var(--text-primary, var(--ink));
+  background: var(--text-primary, var(--ink));
+  color: var(--surface-raised, var(--paper-raised));
+  box-shadow: 0 2px 7px rgba(14, 20, 28, 0.13);
+}
+.surface-date-chip.is-active .surface-date-number,
+.surface-date-chip.is-active .surface-date-month,
+.surface-date-chip.is-active .surface-date-weekday {
+  color: var(--surface-raised, var(--paper-raised));
+}
+.surface-date-chip:active { transform: scale(0.97); }
+.surface-date-chip:focus-visible {
+  outline: 2px solid var(--steel, #4f7ea8);
+  outline-offset: 2px;
+}
+.surface-date-return {
+  display: block;
+  margin: 0 2px 2px auto;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary, var(--ink-soft));
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  text-underline-offset: 3px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+@media (min-width: 960px) {
+  .surface-date-carousel-wrap {
+    max-width: 1180px;
+    width: 100%;
+    margin-inline: auto;
+    padding: 14px 28px 2px;
+  }
+  .surface-date-carousel { gap: 8px; }
+  .surface-date-chip { min-width: 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .surface-date-chip { transition: none; }
+}
