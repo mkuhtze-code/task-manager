@@ -53,8 +53,11 @@ export default function SurfaceDateCarousel({
     const strip = carouselRef.current;
     const chip = strip?.querySelector<HTMLElement>(`[data-date-key="${key}"]`);
     if (!strip || !chip) return;
+    const stripRect = strip.getBoundingClientRect();
+    const chipRect = chip.getBoundingClientRect();
+    const delta = chipRect.left + chipRect.width / 2 - (stripRect.left + strip.clientWidth / 2);
     strip.scrollTo({
-      left: chip.offsetLeft + chip.offsetWidth / 2 - strip.clientWidth / 2,
+      left: strip.scrollLeft + delta,
       behavior: 'smooth',
     });
   }, []);
