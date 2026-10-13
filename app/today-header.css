@@ -1441,7 +1441,9 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
 }
 
 
-/* The Today context is a persistent app-level layer, outside the swipable pane. */
+/* The Today context is a persistent app-level layer, outside the swipable pane.
+   Keep a clear physical boundary above every surface and reserve a higher
+   stacking level for menus opened from this header. */
 .persistent-today-header-shell {
   position: sticky;
   top: 0;
@@ -1449,4 +1451,6 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
   isolation: isolate;
   width: 100%;
   background: var(--paper, #f6f3ed);
+  border-bottom: 1px solid var(--line-strong, rgba(26, 24, 20, 0.18));
+  box-shadow: 0 7px 18px rgba(26, 24, 20, 0.09);
 }
