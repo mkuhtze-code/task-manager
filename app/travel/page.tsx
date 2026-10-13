@@ -18,6 +18,7 @@ import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
+import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
 import DesktopTravelHeader, {
   type TravelListFilter,
 } from '@/components/DesktopTravelHeader';
@@ -76,6 +77,7 @@ export default function TravelHome() {
   const [saving, setSaving] = useState(false);
   const [listFilter, setListFilter] = useState<TravelListFilter>('all');
   const [search, setSearch] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const todayStr = localDateStr(new Date());
 
@@ -274,8 +276,11 @@ export default function TravelHome() {
   );
 
   const filterBucket = useCallback(
-    (list: TripLike[]) => (list as Trip[]).filter(matchesSearch),
-    [matchesSearch]
+    (list: TripLike[]) =>
+      (list as Trip[]).filter(matchesSearch).filter((trip) =>
+        !selectedDate || (trip.start_date <= selectedDate && trip.end_date >= selectedDate)
+      ),
+    [matchesSearch, selectedDate]
   );
 
   const sections = useMemo(() => {
@@ -444,6 +449,10 @@ export default function TravelHome() {
           onSearchChange={setSearch}
           onCreate={openCreate}
         />
+      ) : null}
+
+      {!loading && trips.length > 0 ? (
+        <SurfaceDateCarousel selectedDate={selectedDate} onChange={setSelectedDate} />
       ) : null}
 
       {!isDesktop ? (
