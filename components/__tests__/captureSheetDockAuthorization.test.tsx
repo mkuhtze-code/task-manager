@@ -197,9 +197,9 @@ describe('Capture Dock UI authorization boundary', () => {
 
     await waitFor(() => expect(screen.getByText('Sign in to use lists.')).toBeTruthy());
     expect(mocks.detectCaptureCollection.mock.calls.some(([value]) => value === 'Create a grocery list')).toBe(true);
-    // The live preview reclassifies on the busy-state render; Dock itself must
-    // not run another fallback classification after the primary match.
-    expect(mocks.detectListIntent.mock.calls.length).toBeLessThanOrEqual(fallbackCallsBeforeDock + 1);
+    // Once the primary classifier returns an intent, neither the live preview
+    // nor Dock should evaluate the fallback detector.
+    expect(mocks.detectListIntent.mock.calls.length).toBe(fallbackCallsBeforeDock);
     expect(mocks.runCaptureDock).not.toHaveBeenCalled();
   });
 
