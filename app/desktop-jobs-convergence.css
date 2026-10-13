@@ -874,3 +874,53 @@ html[data-surface='desktop'] .desk-today-workspace-header .today-capacity-detail
   max-width: 720px;
   margin-top: 8px;
 }
+
+
+/* Jobs header tidy pass — align identity and actions on one clear rail,
+   then keep filters/search as a compact second row. */
+html[data-surface='desktop'] .desk-jobs-workspace-header {
+  padding: 16px 28px 12px;
+}
+
+html[data-surface='desktop'] .desk-jobs-workspace-header > .surface-header-bar {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center;
+  column-gap: 24px !important;
+}
+
+html[data-surface='desktop'] .desk-jobs-workspace-header .surface-header-orient {
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px !important;
+}
+
+html[data-surface='desktop'] .desk-jobs-workspace-header .surface-pulse {
+  min-height: 36px;
+  max-width: min(100%, 340px);
+  padding: 5px 10px;
+}
+
+html[data-surface='desktop'] .desk-jobs-workspace-header .surface-pulse-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html[data-surface='desktop'] .desk-jobs-workspace-header .surface-header-actions {
+  gap: 8px !important;
+}
+
+html[data-surface='desktop'] .desk-jobs-workspace-header > .surface-header-controls {
+  margin-top: 11px !important;
+  padding-top: 10px !important;
+}
+
+@media (max-width: 1100px) {
+  html[data-surface='desktop'] .desk-jobs-workspace-header {
+    padding-inline: 20px;
+  }
+
+  html[data-surface='desktop'] .desk-jobs-workspace-header .surface-header-orient {
+    align-items: flex-start;
+  }
+}

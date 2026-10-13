@@ -133,7 +133,7 @@ export default function GearMenu({
               top: menuPos.top,
               right: menuPos.right,
               left: 'auto',
-              zIndex: 400,
+              zIndex: 1300,
             }}
           >
             {pathname !== '/analytics' && pathname !== '/preferences' && (
