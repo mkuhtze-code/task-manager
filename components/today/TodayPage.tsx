@@ -14,6 +14,7 @@ import { TodayStatusCards } from '@/components/today/TodayStatusCards';
 import { deriveActiveCommitments, deriveTodayCapacity } from '@/lib/today/dayCapacity';
 import { deriveTodayRoute } from '@/lib/today/dayRoute';
 import { deriveTodayTaskRowModels } from '@/lib/today/taskRowModels';
+import { deriveTodayDayPresentation } from '@/lib/today/dayPresentation';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import {
@@ -2675,87 +2676,33 @@ export function TodayPage() {
     : null;
 
   const usableMins = Math.max(taskCapacity, 0);
-  const fixedMins =
-    availability.blockedMinutes + untimedManualMins;
-  const fitsNow = ordered
-    .filter((x) => x.status !== 'done')
-    .slice(0, 3)
-    .map((x) => x.text.trim())
-    .filter(Boolean);
-  const dayRead = !isWorkDay
-    ? 'Outside your usual working days.'
-    : overloaded
-      ? 'Remaining work no longer fits today.'
-      : remainingTaskMins <= 0 && openVisible.length === 0
-        ? "You're clear for the rest of today."
-        : remainingTaskMins <= 0
-          ? 'No timed work left — list items can still be cleared.'
-          : usableMins > remainingWorkMins + 30
-            ? 'You have room for another task.'
-            : remainingWorkMins > usableMins
-              ? 'Your afternoon is getting tighter.'
-              : 'Your day is on track.';
-  const workSpan = Math.max(workEndMinutes - workStartMinutes, 1);
-  const commitmentMarkers = activeCommitments
-    .filter((c) => !c.all_day)
-    .map((c) => {
-      const start = new Date(c.start_at);
-      const end = new Date(c.end_at);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-      const sMins = start.getHours() * 60 + start.getMinutes();
-      const eMins = end.getHours() * 60 + end.getMinutes();
-      const clampedStart = Math.max(sMins, workStartMinutes);
-      const clampedEnd = Math.min(eMins, workEndMinutes);
-      if (clampedEnd <= clampedStart) return null;
-      return {
-        startPct: (clampedStart - workStartMinutes) / workSpan,
-        endPct: (clampedEnd - workStartMinutes) / workSpan,
-        label: c.title || 'Fixed',
-      };
-    })
-    .filter((x): x is { startPct: number; endPct: number; label: string } => x != null)
-    .slice(0, 8);
-
-  // Lead with a real, repeated work pattern attached to today's plan.
-  // A useful finding can confirm the plan as well as challenge it; do not
-  // make the panel disappear merely because the learned duration is close.
-  const patternInsight = ordered
-    .map((task) => {
-      if (task.status === 'done') return null;
-      if (!task.estimate_mins || task.estimate_mins <= 0) return null;
-      const learned = suggestEstimate(task.text, history, clusters, estimateContextFrom(task, now));
-      if (
-        !learned ||
-        learned.source === 'lifecycle' ||
-        learned.sampleCount < 2
-      ) return null;
-      const deltaMins = learned.suggestedMins - task.estimate_mins;
-      const relativeDelta = Math.abs(deltaMins) / Math.max(task.estimate_mins, learned.suggestedMins, 1);
-      return {
-        taskText: task.text,
-        patternLabel: learned.matchedLabel,
-        sampleCount: learned.sampleCount,
-        plannedMins: task.estimate_mins,
-        learnedMins: learned.suggestedMins,
-        deltaMins,
-        relativeDelta,
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null)
-    .sort((a, b) => (b.relativeDelta * Math.log2(b.sampleCount + 1)) - (a.relativeDelta * Math.log2(a.sampleCount + 1)))[0] ?? null;
-
-  const dayDepth = isDesktop
-    ? {
-        clockRemainingMins: minutesLeftToday,
-        usableMins,
-        fixedMins,
-        plannedTaskMins: remainingTaskMins,
-        travelMins: routeDriveMins,
-        fitsNow,
-        dayRead,
-        commitmentMarkers,
-      }
-    : null;
+  const fixedMins = availability.blockedMinutes + untimedManualMins;
+  const {
+    fitsNow,
+    dayRead,
+    commitmentMarkers,
+    patternInsight,
+    dayDepth,
+  } = deriveTodayDayPresentation({
+    ordered,
+    history,
+    clusters,
+    now,
+    isWorkDay,
+    overloaded,
+    remainingTaskMins,
+    openVisible,
+    usableMins,
+    remainingWorkMins,
+    fixedMins,
+    minutesLeftToday,
+    routeDriveMins,
+    activeCommitments,
+    taskCapacity,
+    workStartMinutes,
+    workEndMinutes,
+    isDesktop,
+  });
 
   const taskRowModels = deriveTodayTaskRowModels({
     ordered,
