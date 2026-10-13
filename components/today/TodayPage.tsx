@@ -2693,7 +2693,6 @@ export function TodayPage() {
     minutesLeftToday,
     routeDriveMins,
     activeCommitments,
-    taskCapacity,
     workStartMinutes,
     workEndMinutes,
     isDesktop,
