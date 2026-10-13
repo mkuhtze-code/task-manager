@@ -213,17 +213,22 @@
   min-width: 0;
   padding: 10px var(--space-page, 16px) 4px;
   background: var(--bg, var(--paper));
+  overscroll-behavior-x: contain;
 }
 .surface-date-carousel {
   display: flex;
-  align-items: stretch;
-  gap: 7px;
+  align-items: center;
+  gap: 5px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  scroll-snap-type: x proximity;
-  padding: 2px 2px 6px;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 50%;
+  padding: 14px calc(50% - 31px) 18px;
+  perspective: 520px;
+  touch-action: pan-x;
+  isolation: isolate;
 }
 .surface-date-carousel::-webkit-scrollbar { display: none; }
 .surface-date-chip {
@@ -237,58 +242,41 @@
   gap: 2px;
   padding: 7px 9px;
   border: 1px solid var(--border-default, var(--line));
-  border-radius: 12px;
+  border-radius: 13px;
   background: var(--surface-raised, var(--paper-raised));
   color: var(--text-secondary, var(--ink-soft));
-  box-shadow: 0 1px 2px rgba(14, 20, 28, 0.035);
+  box-shadow: 0 4px 10px rgba(14, 20, 28, 0.055), inset 0 1px 0 rgba(255,255,255,.72);
   scroll-snap-align: center;
   cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+  transform-origin: center center;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms cubic-bezier(.2,.75,.25,1);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 .surface-date-chip.is-all { min-width: 58px; }
-.surface-date-weekday {
-  font-size: 10px;
-  font-weight: 750;
-  line-height: 1;
-  letter-spacing: 0.035em;
-  color: inherit;
-}
-.surface-date-number {
-  font-size: 16px;
-  font-weight: 760;
-  line-height: 1.1;
-  color: var(--text-primary, var(--ink));
-  font-variant-numeric: tabular-nums;
-}
-.surface-date-month {
-  font-size: 9px;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--text-secondary, var(--ink-soft));
-}
+.surface-date-weekday { font-size: 10px; font-weight: 750; line-height: 1; letter-spacing: .035em; color: inherit; }
+.surface-date-number { font-size: 16px; font-weight: 760; line-height: 1.1; color: var(--text-primary, var(--ink)); font-variant-numeric: tabular-nums; }
+.surface-date-month { font-size: 9px; font-weight: 600; line-height: 1; color: var(--text-secondary, var(--ink-soft)); }
 .surface-date-chip.is-today:not(.is-active) {
   border-color: var(--steel, #4f7ea8);
-  box-shadow: inset 0 0 0 1px rgba(79, 126, 168, 0.12);
+  box-shadow: 0 4px 12px rgba(79,126,168,.13), inset 0 0 0 1px rgba(79,126,168,.12);
 }
-.surface-date-chip.is-today:not(.is-active) .surface-date-weekday {
-  color: var(--steel, #4f7ea8);
-}
+.surface-date-chip.is-today:not(.is-active) .surface-date-weekday { color: var(--steel, #4f7ea8); }
 .surface-date-chip.is-active {
   border-color: var(--text-primary, var(--ink));
   background: var(--text-primary, var(--ink));
   color: var(--surface-raised, var(--paper-raised));
-  box-shadow: 0 2px 7px rgba(14, 20, 28, 0.13);
+  box-shadow: 0 8px 18px rgba(14,20,28,.2), inset 0 1px 0 rgba(255,255,255,.22);
 }
 .surface-date-chip.is-active .surface-date-number,
 .surface-date-chip.is-active .surface-date-month,
-.surface-date-chip.is-active .surface-date-weekday {
-  color: var(--surface-raised, var(--paper-raised));
+.surface-date-chip.is-active .surface-date-weekday { color: var(--surface-raised, var(--paper-raised)); }
+.surface-date-chip.is-wheel-center {
+  border-color: var(--steel, #4f7ea8);
+  box-shadow: 0 9px 18px rgba(14,20,28,.16), inset 0 1px 0 rgba(255,255,255,.22);
 }
-.surface-date-chip:active { transform: scale(0.97); }
-.surface-date-chip:focus-visible {
-  outline: 2px solid var(--steel, #4f7ea8);
-  outline-offset: 2px;
-}
+.surface-date-chip:active { filter: brightness(.96); }
+.surface-date-chip:focus-visible { outline: 2px solid var(--steel, #4f7ea8); outline-offset: 2px; }
 .surface-date-return {
   display: block;
   margin: 0 2px 2px auto;
@@ -303,6 +291,11 @@
   text-decoration: underline;
   cursor: pointer;
 }
+@media (max-width: 700px) {
+  .surface-date-carousel-wrap { padding-top: 8px; }
+  .surface-date-carousel { gap: 3px; }
+  .surface-date-chip { min-width: 50px; min-height: 58px; }
+}
 @media (min-width: 960px) {
   .surface-date-carousel-wrap {
     max-width: 1180px;
@@ -312,6 +305,73 @@
   }
   .surface-date-carousel { gap: 8px; }
   .surface-date-chip { min-width: 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .surface-date-chip { transition: none; }
+}
+
+
+/* Mobile Today actions: map is a direct destination; Reality check reads as a note. */
+.today-day-header .today-banner-actions .today-map-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(24, 31, 38, .06);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.today-day-header .today-banner-actions .today-map-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.today-day-header .today-banner-actions .today-map-btn:active,
+.today-day-header .today-banner-actions .today-reality-note-btn:active {
+  transform: translateY(1px) scale(.97);
+}
+.today-day-header .today-banner-actions .today-reality-note-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  max-width: 132px;
+  padding: 0 9px;
+  border: 1px solid #d9c99d;
+  border-radius: 8px 8px 10px 8px;
+  background: #fff5cc;
+  color: #55492b;
+  box-shadow: 0 2px 0 rgba(109, 88, 37, .09), inset 0 1px 0 rgba(255,255,255,.8);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 720;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.today-day-header .today-banner-actions .today-reality-note-btn svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media (max-width: 390px) {
+  .today-day-header .today-banner-actions .today-reality-note-btn span { display: none; }
+  .today-day-header .today-banner-actions .today-reality-note-btn { width: 38px; padding: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .surface-date-chip { transition: none; }
