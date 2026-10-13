@@ -133,9 +133,21 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
     input.workingMemory ??
     (input.dryRun ? undefined : loadWorkingMemoryLocal(userId)) ??
     emptyWorkingMemory();
+  // An explicitly supplied null is authoritative: callers such as Capture
+  // Dock use it to declare a fresh capture. Only omitted priorRequest allows
+  // legacy callers to fall back to persisted active-request state.
   const prior =
-    input.priorRequest ??
-    (input.dryRun ? null : loadActiveRequestLocal(userId));
+    input.priorRequest !== undefined
+      ? input.priorRequest
+      : input.dryRun
+        ? null
+        : loadActiveRequestLocal(userId);
+
+  if (!input.dryRun && input.priorRequest === null) {
+    // Do not let a stale persisted request resurrect itself midway through a
+    // fresh Dock cycle. In-progress requests are saved again below if needed.
+    saveActiveRequestLocal(null, userId);
+  }
 
   if (input.context.currentFocus?.id && mem) {
     mem = setFocus(mem, input.context.currentFocus);
@@ -384,13 +396,25 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
     };
   }
 
+  const isQuery = isQueryUtterance(text) || request.action === 'query';
+  const canAct =
+    (action.kind === 'create_task' || action.kind === 'update_task') &&
+    (cycle.authority.mayAct || (!!addPat.objectText && !!forcedJobId)) &&
+    (!!request.objectText || !!addPat.objectText) &&
+    !canonicalMeaningBlocksMutation(input.canonicalMeaning);
+
   if (!input.dryRun) {
     saveWorkingMemoryLocal(cycle.workingMemory, userId);
-    saveActiveRequestLocal(request, userId);
+    // Persist only unfinished requests. A task-creation proposal is not an
+    // active refinement request; the surface clears state after task creation
+    // succeeds. Updates retain their established request for chained fixes.
+    if (!(canAct && action.kind === 'create_task')) {
+      saveActiveRequestLocal(request, userId);
+    }
     appendEvidenceLocal(cycle.evidence, userId);
   }
 
-  if (isQueryUtterance(text) || request.action === 'query') {
+  if (isQuery) {
     const answer = answerFeasibility(text, cycle, input);
     return {
       outcome: 'ANSWER',
@@ -412,12 +436,6 @@ export function processInteractionCore(input: InteractionInput): InteractionResu
       fitState: answer.fitState ?? null,
     };
   }
-
-  const canAct =
-    (action.kind === 'create_task' || action.kind === 'update_task') &&
-    (cycle.authority.mayAct || (!!addPat.objectText && !!forcedJobId)) &&
-    (!!request.objectText || !!addPat.objectText) &&
-    !canonicalMeaningBlocksMutation(input.canonicalMeaning);
 
   if (canAct) {
     const actFit = actFitDecision(cycle, input);
