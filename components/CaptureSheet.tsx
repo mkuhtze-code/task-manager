@@ -8,7 +8,7 @@
 * List phrases map onto tasks + subtasks (taskListBridge), not collections tables.
   */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type {
 EstimateSuggestion,
@@ -165,6 +165,44 @@ dockMeetings = [],
 travelMins = null,
 visitDurationMins = null,
 } = props;
+
+/**
+ * Keep keystrokes local to Capture. Today owns substantial planning and
+ * intelligence work, so publishing every character to its parent causes
+ * unnecessary full-workspace renders. Parent state is synchronised after a
+ * short idle window and flushed synchronously before Dock/Enter.
+ */
+const [draftText, setDraftText] = useState(taskText);
+const draftTextRef = useRef(taskText);
+const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+useEffect(() => {
+  if (taskText === draftTextRef.current) return;
+  draftTextRef.current = taskText;
+  setDraftText(taskText);
+}, [taskText]);
+
+useEffect(() => () => {
+  if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+}, []);
+
+function handleDraftChange(value: string) {
+  draftTextRef.current = value;
+  setDraftText(value);
+  if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+  syncTimerRef.current = setTimeout(() => {
+    syncTimerRef.current = null;
+    setTaskText(draftTextRef.current);
+  }, 180);
+}
+
+function flushDraftText() {
+  if (syncTimerRef.current) {
+    clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = null;
+  }
+  setTaskText(draftTextRef.current);
+}
 
 const [showJobField, setShowJobField] = useState(false);
 const [showTimeField, setShowTimeField] = useState(false);
@@ -477,6 +515,15 @@ void applyListDock(next);
 
 async function tryDock() {
 if (!engineStateReady) return;
+flushDraftText();
+const currentText = draftTextRef.current;
+const currentGate = oneShotGate({
+  rawText: currentText,
+  thought,
+  locationResolution,
+  declinedResolution,
+  confirmedJobId: confirmedJobId ?? null,
+});
 const speechResult = speechStatus?.result ?? null;
 
 // The capture field is authoritative at Dock time.
@@ -486,17 +533,17 @@ const speechResult = speechStatus?.result ?? null;
 // interpretation from the active-list context.
 let collectionIntent: CollectionIntent | null = null;
 
-if (taskText.trim()) {
+if (currentText.trim()) {
   const ctx = buildCollectionContext();
-  const detected = detectCaptureCollection(taskText.trim(), ctx);
-  const fallback = detectListIntent(taskText.trim(), listTasks);
+  const detected = detectCaptureCollection(currentText.trim(), ctx);
+  const fallback = detectListIntent(currentText.trim(), listTasks);
   collectionIntent = detected?.intent ?? fallback;
 }
 
 // Only use a speech-only collection result when there is no current capture
 // text to classify. This prevents stale/over-eager collection classification
 // from blocking an explicit task capture.
-if (!taskText.trim() && speechResult?.collection?.intent) {
+if (!currentText.trim() && speechResult?.collection?.intent) {
   collectionIntent = speechResult.collection.intent;
 }
 
@@ -524,7 +571,7 @@ if (isListIntent && collectionIntent) {
 
 // Personal operating engine — processInteraction via runCaptureDock.
 // Outcomes: ACT / ANSWER / DEFER / CLARIFY / fallthrough → ordinary dock.
-const line = taskText.trim();
+const line = currentText.trim();
 
 if (line && addTaskWithOverrides) {
   try {
@@ -671,7 +718,7 @@ if (line && addTaskWithOverrides) {
   }
 }
 
-if (!gate.ready) return;
+if (!currentGate.ready) return;
 
 confirmSpeechLearning();
 clearSpeechStatus();
@@ -721,9 +768,9 @@ onClick={(e) => e.stopPropagation()}
       <input
         id="capture-task-text"
         type="text"
-        value={taskText}
+        value={draftText}
         onChange={(e) => {
-          setTaskText(e.target.value);
+          handleDraftChange(e.target.value);
 
           if (speechStatus) {
             clearSpeechStatus();
@@ -736,6 +783,7 @@ onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
+            flushDraftText();
             tryDock();
           }
         }}

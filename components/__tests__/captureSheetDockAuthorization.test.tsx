@@ -126,6 +126,24 @@ describe('Capture Dock UI authorization boundary', () => {
     expect(mocks.addTask).not.toHaveBeenCalled();
   });
 
+  it('keeps the visible draft immediate and debounces parent text updates', () => {
+    vi.useFakeTimers();
+    try {
+      renderCaptureSheet();
+      const input = screen.getByPlaceholderText('What needs doing…') as HTMLInputElement;
+
+      fireEvent.change(input, { target: { value: 'Call the client at 2pm' } });
+
+      expect(input.value).toBe('Call the client at 2pm');
+      expect(mocks.setTaskText).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(180);
+      expect(mocks.setTaskText).toHaveBeenCalledWith('Call the client at 2pm');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('only invokes the task executor after the user explicitly presses Dock', async () => {
     renderCaptureSheet();
 
