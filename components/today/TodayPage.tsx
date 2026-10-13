@@ -75,6 +75,7 @@ import {
 import type { Job } from '@/lib/jobTypes';
 import {
   fmtClock,
+  fmtMins,
   isScheduledForLater,
   localDateStr,
   parseMins,
