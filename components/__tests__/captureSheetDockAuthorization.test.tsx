@@ -117,6 +117,59 @@ beforeEach(() => {
     const taskId = await executors.tasks.createTask({ text: 'Call the client tomorrow' });
     return { executed: true, execution: { status: 'executed', taskId } };
   });
+
+  it('locks rapid repeated Dock presses to one in-flight create', async () => {
+    let finishCreate!: (value: { executed: boolean; execution: { status: string; taskId: string } }) => void;
+    mocks.executeCpuDecision.mockImplementationOnce((_cycle, executors) =>
+      new Promise((resolve) => {
+        finishCreate = async () => {
+          const taskId = await executors.tasks.createTask({ text: 'Call the client tomorrow' });
+          resolve({ executed: true, execution: { status: 'executed', taskId: taskId ?? 'task-1' } });
+        };
+      }),
+    );
+
+    renderCaptureSheet();
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    const dock = screen.getByRole('button', { name: 'Dock' });
+    fireEvent.click(dock);
+    fireEvent.click(dock);
+    fireEvent.click(dock);
+
+    expect(screen.getByRole('button', { name: 'Docking…' })).toBeDisabled();
+    expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1);
+    expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => expect(finishCreate).toBeDefined());
+    await finishCreate();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Dock' })).toBeEnabled();
+    });
+    expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears the busy lock after a failed dock so the user can retry', async () => {
+    mocks.executeCpuDecision
+      .mockRejectedValueOnce(new Error('temporary failure'))
+      .mockImplementationOnce(async (_cycle, executors) => {
+        const taskId = await executors.tasks.createTask({ text: 'Call the client tomorrow' });
+        return { executed: true, execution: { status: 'executed', taskId } };
+      });
+
+    renderCaptureSheet();
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Dock' })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+    await waitFor(() => expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(2));
+    expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1);
+  });
+
 });
 
 describe('Capture Dock UI authorization boundary', () => {
