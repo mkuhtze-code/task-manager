@@ -255,7 +255,7 @@ visitDurationMins = null,
 } = props;
 
 // The input owns its keystroke state; this ref is the synchronous source of
-// truth for Dock/Enter while parent state receives debounced updates.
+// truth for Dock/Enter while parent state receives only committed drafts.
 const draftTextRef = useRef(taskText);
 const draftControllerRef = useRef<CaptureDraftController | null>(null);
 
