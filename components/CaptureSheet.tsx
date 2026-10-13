@@ -46,6 +46,9 @@ type ListTaskCandidate,
 import {
 hydrateEngineStateRemote,
 loadActiveRequestLocal,
+loadWorkingMemoryLocal,
+pushEngineStateRemote,
+saveActiveRequestLocal,
 type EngineRequest,
 type LearningEvidence,
 type WorkingMemorySnapshot,
@@ -653,6 +656,21 @@ if (line && addTaskWithOverrides) {
       });
 
       if (execution.execution?.status === 'executed') {
+        if (dock.kind === 'act_create') {
+          // A completed create is a boundary between captures, not an unfinished
+          // request to resume. Keep active-request state only for refinements.
+          setEnginePriorRequest(null);
+          saveActiveRequestLocal(null, userId);
+          if (userId) {
+            void pushEngineStateRemote(
+              supabase as never,
+              userId,
+              loadWorkingMemoryLocal(userId),
+              null,
+              [],
+            );
+          }
+        }
         return;
       }
 
