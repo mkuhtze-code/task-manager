@@ -53,7 +53,7 @@ import {
   type UserProfile,
 } from '@/lib/userProfile';
 import { isReliableActualMins, resolveActualForLearning } from '@/lib/thinking/durationQuality';
-import { buildClusters } from '@/lib/taskIntelligence';
+import { buildClusters, type HistoricalTask } from '@/lib/taskIntelligence';
 import { logCapturePrediction } from '@/lib/thinking/evidence/predictionLog';
 import { closeCompletionLoop, historyRowFromCompletion } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
