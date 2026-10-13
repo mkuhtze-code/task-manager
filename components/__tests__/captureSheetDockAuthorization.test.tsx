@@ -195,7 +195,7 @@ describe('Capture Dock UI authorization boundary', () => {
     fireEvent.change(input, { target: { value: 'Create a grocery list' } });
     fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
 
-    await waitFor(() => expect(screen.getByText('Sign in to use lists.')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('Sign in to use lists.')).toBeTruthy());
     expect(mocks.detectCaptureCollection).toHaveBeenCalledWith(
       'Create a grocery list',
       expect.anything(),
