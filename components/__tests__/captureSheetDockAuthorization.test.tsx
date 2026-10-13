@@ -206,6 +206,30 @@ describe('Capture Dock UI authorization boundary', () => {
     expect(mocks.addTask).not.toHaveBeenCalled();
   });
 
+  it('paints Docking before running synchronous dock interpretation', async () => {
+    mocks.runCaptureDock.mockImplementationOnce(() => {
+      expect(screen.getByRole('button', { name: 'Docking…' })).toBeTruthy();
+      return {
+        kind: 'act_create',
+        message: 'Ready to create task',
+        cpuCycle: { decision: { outcome: 'ACT' } },
+        overrides: {
+          text: 'Call the client tomorrow',
+          originalInput: 'Call the client tomorrow',
+        },
+      };
+    });
+
+    renderCaptureSheet();
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+
+    await waitFor(() => expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1));
+  });
+
   it('locks rapid repeated Dock presses to one in-flight create', async () => {
     let finishCreate!: () => Promise<void>;
     mocks.executeCpuDecision.mockImplementationOnce((_cycle, executors) =>
@@ -227,8 +251,8 @@ describe('Capture Dock UI authorization boundary', () => {
     fireEvent.click(dock);
 
     expect((screen.getByRole('button', { name: 'Docking…' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1);
-    expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1));
 
     await waitFor(() => expect(finishCreate).toBeDefined());
     await finishCreate();
