@@ -431,10 +431,10 @@ function MapView(props: {
   }, [syncHits]);
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className="sheet-backdrop map-popout-backdrop" onClick={onClose}>
       <div
         ref={dialogRef}
-        className="capture-sheet"
+        className="capture-sheet map-popout-card"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
