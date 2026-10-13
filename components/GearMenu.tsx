@@ -142,12 +142,15 @@ export default function GearMenu({
             ref={menuRef}
             className="gear-dropdown gear-dropdown-portal"
             role="menu"
+            popover="manual"
             style={{
               position: 'fixed',
               top: menuPos.top,
               right: menuPos.right,
+              bottom: 'auto',
               left: 'auto',
-              zIndex: 1300,
+              margin: 0,
+              zIndex: 2147483647,
             }}
           >
             {pathname !== '/analytics' && pathname !== '/preferences' && (
