@@ -472,7 +472,7 @@ export default function JobsHome() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell jobs-shell">
       {!isDesktop && (
         <div className="app-header">
           <div className="app-header-left">
