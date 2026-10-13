@@ -263,7 +263,7 @@ function actionFromPlan(
   // task must stop being executable context.
   const boundTaskId = taskIdFromConstraints(req);
   const refinementUtterance =
-    /^(?:actually|sorry|no\\b|i\\s+meant\\b|i\\s+need\\s+it|make\\s+that|put\\s+that|move\\s+(?:it|that)|change\\s+(?:it|that)|(?:change|set|adjust|update)\\s+(?:the\\s+)?time|update\\s+(?:it|that)|add\\s+(?:that|this)|on\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|tomorrow|today)\\b/i.test(
+    /^(?:actually|sorry|no\b|i\s+meant\b|i\s+need\s+it|make\s+that|put\s+that|move\s+(?:it|that)|change\s+(?:it|that)|(?:change|set|adjust|update)\s+(?:the\s+)?time|update\s+(?:it|that)|add\s+(?:that|this)|on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|tomorrow|today)\b/i.test(
       currentUtterance.trim()
     );
   const isRefinement = req.rawUtterances.length > 1 && refinementUtterance;
