@@ -457,7 +457,7 @@ export default function TravelHome() {
 
       {!isDesktop ? (
         <div className="travel-mobile-controls">
-          {featured &&
+          {!selectedDate && featured &&
           featuredRow &&
           (featuredRow.pressure === 'now' || featuredRow.pressure === 'soon') ? (
             <Link
