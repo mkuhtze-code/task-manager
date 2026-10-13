@@ -466,7 +466,7 @@ export default function MeetingsHome() {
 
       {!isDesktop ? (
         <div className="meetings-mobile-controls">
-          {featured && featuredRow && (featuredRow.pressure === 'now' || featuredRow.pressure === 'soon') ? (
+          {!selectedDate && featured && featuredRow && (featuredRow.pressure === 'now' || featuredRow.pressure === 'soon') ? (
             <Link
               href={`/meetings/${featured.id}`}
               className="meetings-featured surface-object surface-object-featured meetings-featured-mobile"
