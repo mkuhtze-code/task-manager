@@ -2565,6 +2565,18 @@ export function TodayPage() {
     workEnd,
   });
 
+  // Reality Check: offer while timed Today work is still open and the day is
+  // winding down (last 2h of the work window, or any time after work end / off day).
+  // Uses visibleTasks only — scheduled-for-later work does not trigger the offer.
+  const REALITY_CHECK_WINDOW_MINS = 120;
+  const hasOpenTimedWork = visibleTasks.some(
+    (t) => t.status !== 'done' && t.estimate_mins > 0
+  );
+  const pastWorkEnd = isWorkDay && nowMinutesOfDay >= workEndMinutes;
+  const showRealityCheck =
+    hasOpenTimedWork &&
+    (!isWorkDay || pastWorkEnd || minutesLeftToday <= REALITY_CHECK_WINDOW_MINS);
+
   const geoAware = sortMode === 'geo_aware';
   const visitOpts = {
     bases: { home: homeCoords, work: workCoords },
