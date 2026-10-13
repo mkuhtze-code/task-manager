@@ -439,14 +439,6 @@ if (captureJobId || showJobField) setMoreOpen(true);
 
 const dialogRef = useDialogA11y(onClose);
 
-const gate = oneShotGate({
-rawText: taskText,
-thought,
-locationResolution,
-declinedResolution,
-confirmedJobId: confirmedJobId ?? null,
-});
-
 const chosenJob =
 captureJobId != null ? jobs.find((j) => j.id === captureJobId) ?? null : null;
 
@@ -506,17 +498,6 @@ liveListIntent.type === 'close_collection' ||
 liveListIntent.type === 'reopen_collection' ||
 liveListIntent.type === 'query_collection' ||
 liveListIntent.type === 'clarification_required');
-
-const collectionDockReady =
-isLiveListIntent ||
-(!!speechStatus?.result &&
-!!speechStatus.result.collection &&
-(captureIsCollectionMutation(speechStatus.result) ||
-speechStatus.result.uiMode === 'collection_clarification'));
-
-// List mutations use their own target resolution — don't block on job confirm.
-const resolutionBlocksDock =
-resolutionNeedsAttention && !isLiveListIntent;
 
 async function applyListDock(intent: CollectionIntent) {
 if (!listOps) {
