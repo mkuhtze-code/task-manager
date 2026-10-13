@@ -587,6 +587,8 @@ if (dockBusyRef.current) return;
 dockBusyRef.current = true;
 setDockBusy(true);
 try {
+// Give React a paint opportunity before synchronous collection and CPU work.
+await new Promise<void>((resolve) => setTimeout(resolve, 0));
 flushDraftText();
 const currentText = draftTextRef.current;
 const currentGate = oneShotGate({
