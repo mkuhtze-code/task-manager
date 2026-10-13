@@ -21,7 +21,7 @@ import {
 } from '@/lib/speech/taskListBridge';
 import { RealityCheckSheet } from '@/components/RealityCheckSheet';
 import { TodayHeaderBridge } from '@/components/today/TodayHeaderState';
-import { TodayTaskRows, type TodayTaskRowModel } from '@/components/today/TodayTaskRows';
+import type { TodayTaskRowModel } from '@/components/today/TodayTaskRows';
 import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
 import { OnboardingScreen } from '@/components/AuthScreen';
