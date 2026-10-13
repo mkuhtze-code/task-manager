@@ -1,4 +1,5 @@
 import type { Meeting, Task } from '@/lib/taskTypes';
+import type { Job } from '@/lib/jobTypes';
 import {
   buildDayCommitments,
   computeAvailability,
@@ -88,4 +89,49 @@ export function deriveTodayCapacity({
     untimedManualMins,
     taskCapacity,
   };
+}
+
+
+type DeriveActiveCommitmentsInput = {
+  calendarEvents: TodayCalendarEvent[];
+  todayMeetings: Meeting[];
+  jobs: Job[];
+  now: Date;
+};
+
+/** Build the shared time-ordered calendar/meeting rows shown on Today. */
+export function deriveActiveCommitments({
+  calendarEvents,
+  todayMeetings,
+  jobs,
+  now,
+}: DeriveActiveCommitmentsInput) {
+  return [
+    ...calendarEvents
+      .filter((event) => new Date(event.end_at).getTime() > now.getTime())
+      .map((event) => ({
+        ...event,
+        kind: 'calendar' as const,
+      })),
+    ...todayMeetings
+      .filter((meeting) => meeting.source !== 'outlook' && Boolean(meeting.start_time))
+      .map((meeting) => {
+        const start = new Date(meeting.start_time!);
+        const end = new Date(start.getTime() + meeting.duration_mins * 60000);
+        return {
+          id: `meeting-${meeting.id}`,
+          title: meeting.text || 'Meeting',
+          start_at: start.toISOString(),
+          end_at: end.toISOString(),
+          all_day: false,
+          href: `/meetings/${meeting.id}`,
+          kind: 'meeting' as const,
+          jobLabel: meeting.job_id
+            ? jobs.find((job) => job.id === meeting.job_id)?.name ?? null
+            : null,
+        };
+      }),
+  ].sort(
+    (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+  );
 }
