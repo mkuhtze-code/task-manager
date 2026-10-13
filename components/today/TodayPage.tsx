@@ -55,12 +55,7 @@ import { isReliableActualMins, resolveActualForLearning } from '@/lib/thinking/d
 import {
   buildClusters,
   suggestEstimate,
-  effectiveEstimate,
   hasMeaningfulDivergence,
-  suggestLocation,
-  suggestsLocation,
-  suggestJob,
-  suggestLocationMemory,
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
 import { logCapturePrediction } from '@/lib/thinking/evidence/predictionLog';
@@ -69,7 +64,6 @@ import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/p
 import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
 import { oneShotGate } from '@/lib/unifiedInput/oneShot';
 import { resolveJobAndLocation, deriveAliasTerm, type JobLocationResolution, type JobLocationCandidate, type EntityAliasMemory, type EntityRelationshipMemory } from '@/lib/unifiedInput/resolve';
-import { decideCaptureContext } from '@/lib/thinking/decisions/captureContext';
 import type { SurfaceEvent, Surface } from '@/lib/thinking/types';
 import { determineBase, nearestNeighborOrder, weaveGeoOrder, type Coords } from '@/lib/todayRoute';
 import { sortTasks } from '@/lib/taskSort';
@@ -110,13 +104,10 @@ import {
 } from '@/lib/realityCapture';
 import {
   planOverflowCarry,
-  buildRuntimeObservations,
-  lookupTaskSignals,
   sequenceOrderIdsForOpenTasks,
 } from '@/lib/dayFit';
 import { buildLiveDayPlan } from '@/lib/thinking/v3/liveDay';
-import { calibrateFromOutcomes } from '@/lib/thinking/calibration';
-import { getBuffer } from '@/lib/thinking/evidence';
+import { useTodayIntelligence, estimateContextFrom } from '@/lib/today/useTodayIntelligence';
 import { getGpsPosition } from '@/lib/today/geolocation';
 import { isRouteStop, personalVisitEvidenceFromHistory } from '@/lib/today/visitIntent';
 import { TASK_COLUMNS, PASSIVE_TODAY_KEY } from '@/lib/today/constants';
@@ -145,22 +136,6 @@ import {
 /** Authenticated Today surface — mounted only after authReady && session. */
 
 /** Phase 5 context for V3 duration conditioning (job / place / hour). */
-function estimateContextFrom(
-  source: {
-    job_id?: string | null;
-    location_text?: string | null;
-    jobId?: string | null;
-    locationText?: string | null;
-  },
-  now: Date
-) {
-  return {
-    jobId: source.job_id ?? source.jobId ?? null,
-    locationText: source.location_text ?? source.locationText ?? null,
-    localHour: now.getHours(),
-  };
-}
-
 function makeLocalTaskId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
@@ -522,111 +497,30 @@ export function TodayPage() {
       setSetupLineDismissed(true);
     }
   }, [setupLineDismissed, history.length, tasks]);
-  // One shared brain slice: duration + behaviour + calibrated soft floor.
-  const runtime = useMemo(() => {
-    // Onboarding seeds the soft floor; calibration only overrides once it
-    // has enough closed prediction loops (see MIN_SAMPLES in calibration).
-    // Must never throw during render — blank Today is worse than a soft prior.
-    try {
-      const cal = calibrateFromOutcomes(getBuffer(), userProfile.softFloorBaseMins);
-      return buildRuntimeObservations(history, {
-        softFloorMins: cal.softFloorMins,
-        blendScale: cal.blendScale,
-        calibrationExplain: cal.explain,
-        anchorSameDayRate: userProfile.anchorSameDayRate,
-        flexibleSameDayRate: userProfile.flexibleSameDayRate,
-      });
-    } catch (err) {
-      console.error('[TodayPage] runtime observations failed', err);
-      return buildRuntimeObservations([], {
-        softFloorMins: userProfile.softFloorBaseMins,
-        blendScale: 1,
-        calibrationExplain: null,
-        anchorSameDayRate: userProfile.anchorSameDayRate,
-        flexibleSameDayRate: userProfile.flexibleSameDayRate,
-      });
-    }
-  }, [history, userProfile.softFloorBaseMins, userProfile.anchorSameDayRate, userProfile.flexibleSameDayRate]);
-  const clusters = runtime.clusters;
+  const {
+    runtime,
+    clusters,
+    learnedEffectiveEstimates,
+    captureSuggestion,
+    captureDurationExplain,
+    captureLocationSuggestion,
+    captureJobSuggestion,
+    captureLocationMemorySuggestion,
+    captureContext,
+    locationFieldVisible,
+  } = useTodayIntelligence({
+    tasks,
+    history,
+    userProfile,
+    now,
+    taskText,
+    captureJobId,
+    gravityDecision,
+    captureLocation,
+    manualLocationToggle,
+  });
 
-  // ── Learned effective estimates, cached per task id ─────────────
-  // The one-second clock re-renders Home constantly; suggestEstimate()'s
-  // cluster scan must not rerun on every tick. This recomputes only when
-  // the underlying tasks, history or clusters change — restoring the
-  // caching from 2e2122f that 4ed8ebf reverted. Estimate values and
-  // confidence semantics are identical to computing them per render.
-  const learnedEffectiveEstimates = useMemo(() => {
-    const estimates = new Map<string, number>();
-
-    for (const t of tasks) {
-      if (t.estimate_mins <= 0) {
-        estimates.set(t.id, t.estimate_mins);
-        continue;
-      }
-
-      const suggestion = suggestEstimate(
-        t.text,
-        history,
-        clusters,
-        estimateContextFrom(t, now)
-      );
-      estimates.set(
-        t.id,
-        effectiveEstimate(t.estimate_mins, suggestion, runtime.blendScale)
-      );
-    }
-
-    return estimates;
-  }, [tasks, history, clusters, runtime.blendScale, now.getHours()]);
-
-  // Same runtime brain as capacity — duration chip and day rail stay consistent.
-  const captureSignals = useMemo(() => {
-    const trimmed = taskText.trim();
-    if (trimmed.length === 0) return null;
-    return lookupTaskSignals(trimmed, runtime);
-  }, [taskText, runtime]);
-
-  const captureSuggestion = captureSignals?.estimate ?? null;
-  const captureDurationExplain = captureSignals?.explainDuration ?? null;
-
-  const captureLocationSuggestion = useMemo(() => {
-    const trimmed = taskText.trim();
-    if (trimmed.length === 0) return null;
-    return suggestLocation(trimmed, history, clusters);
-  }, [taskText, history, clusters]);
-
-  const captureJobSuggestion = useMemo(() => {
-    const trimmed = taskText.trim();
-    if (trimmed.length === 0) return null;
-    return suggestJob(trimmed, history, clusters);
-  }, [taskText, history, clusters]);
-
-  const captureLocationMemorySuggestion = useMemo(() => {
-    const trimmed = taskText.trim();
-    if (trimmed.length === 0) return null;
-    return suggestLocationMemory(trimmed, history, clusters);
-  }, [taskText, history, clusters]);
-
-  // ── Capture context (Scope 3H) ─────────────────────────────────
-  // Composes all capture-time signals into a unified context decision.
-  // The UI consumes this rather than interpreting individual decisions.
-  const captureContext = useMemo(() => {
-    const trimmed = taskText.trim();
-    return decideCaptureContext({
-      surface: 'today',
-      currentJobId: captureJobId,
-      taskText: trimmed,
-      jobDecision: captureJobSuggestion,
-      locationDecision: captureLocationMemorySuggestion,
-      gravityDecision,
-    });
-  }, [taskText, captureJobId, captureJobSuggestion, captureLocationMemorySuggestion, gravityDecision]);
-
-  // Deterministic phrase heuristic (see suggestsLocation), not AI — fires
-  // the optional location field without forcing it on every task.
-  const locationFieldVisible = suggestsLocation(taskText) || captureLocation.length > 0 || manualLocationToggle;
-
-    // Calm morning signals — never auto-open Reality Check.
+  // Calm morning signals — never auto-open Reality Check.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const today = localDateStr(new Date());
