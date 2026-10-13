@@ -8,7 +8,7 @@
 * List phrases map onto tasks + subtasks (taskListBridge), not collections tables.
   */
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type {
 EstimateSuggestion,
@@ -74,6 +74,101 @@ engineRequest?: EngineRequest;
 evidence?: LearningEvidence[];
 workingMemory?: WorkingMemorySnapshot;
 };
+
+type CaptureDraftController = { flush: () => void };
+
+/**
+ * Isolate keystroke renders from CaptureSheet's interpretation, suggestions,
+ * speech and authorization state. The shared ref lets Dock synchronously read
+ * the exact visible text without making the whole sheet controlled per key.
+ */
+const CaptureTextInput = memo(function CaptureTextInput(props: {
+  value: string;
+  setTaskText: React.Dispatch<React.SetStateAction<string>>;
+  draftRef: React.MutableRefObject<string>;
+  controllerRef: React.MutableRefObject<CaptureDraftController | null>;
+  speechStatusActive: boolean;
+  clearSpeechStatus: () => void;
+  collectionFeedbackActive: boolean;
+  clearCollectionFeedback: () => void;
+  error: string;
+  onSubmit: () => void;
+}) {
+  const {
+    value,
+    setTaskText,
+    draftRef,
+    controllerRef,
+    speechStatusActive,
+    clearSpeechStatus,
+    collectionFeedbackActive,
+    clearCollectionFeedback,
+    error,
+    onSubmit,
+  } = props;
+  const [draft, setDraft] = useState(value);
+  const lastPropValueRef = useRef(value);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // A parent rerender with unchanged, still-debouncing state must not erase
+    // newer keystrokes. Only treat an actual prop transition as an external
+    // update (speech insertion, clear-after-success, or a reset).
+    if (value === lastPropValueRef.current) return;
+    lastPropValueRef.current = value;
+    if (value === draftRef.current) return;
+    draftRef.current = value;
+    setDraft(value);
+  }, [value, draftRef]);
+
+  useEffect(() => {
+    const flush = () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      setTaskText(draftRef.current);
+    };
+    controllerRef.current = { flush };
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (controllerRef.current?.flush === flush) controllerRef.current = null;
+    };
+  }, [controllerRef, draftRef, setTaskText]);
+
+  function onDraftChange(next: string) {
+    draftRef.current = next;
+    setDraft(next);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      setTaskText(draftRef.current);
+    }, 180);
+    if (speechStatusActive) clearSpeechStatus();
+    if (collectionFeedbackActive) clearCollectionFeedback();
+  }
+
+  return (
+    <input
+      id="capture-task-text"
+      type="text"
+      value={draft}
+      onChange={(e) => onDraftChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          controllerRef.current?.flush();
+          onSubmit();
+        }
+      }}
+      placeholder="What needs doing…"
+      autoComplete="off"
+      autoFocus
+      aria-invalid={!!error}
+      aria-describedby={error ? 'capture-error' : undefined}
+    />
+  );
+});
 
 export function CaptureSheet(props: {
 taskText: string;
@@ -169,41 +264,13 @@ travelMins = null,
 visitDurationMins = null,
 } = props;
 
-/**
- * Keep keystrokes local to Capture. Today owns substantial planning and
- * intelligence work, so publishing every character to its parent causes
- * unnecessary full-workspace renders. Parent state is synchronised after a
- * short idle window and flushed synchronously before Dock/Enter.
- */
-const [draftText, setDraftText] = useState(taskText);
+// The input owns its keystroke state; this ref is the synchronous source of
+// truth for Dock/Enter while parent state receives debounced updates.
 const draftTextRef = useRef(taskText);
-const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-useEffect(() => {
-  if (taskText === draftTextRef.current) return;
-  draftTextRef.current = taskText;
-  setDraftText(taskText);
-}, [taskText]);
-
-useEffect(() => () => {
-  if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-}, []);
-
-function handleDraftChange(value: string) {
-  draftTextRef.current = value;
-  setDraftText(value);
-  if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-  syncTimerRef.current = setTimeout(() => {
-    syncTimerRef.current = null;
-    setTaskText(draftTextRef.current);
-  }, 180);
-}
+const draftControllerRef = useRef<CaptureDraftController | null>(null);
 
 function flushDraftText() {
-  if (syncTimerRef.current) {
-    clearTimeout(syncTimerRef.current);
-    syncTimerRef.current = null;
-  }
+  draftControllerRef.current?.flush();
   setTaskText(draftTextRef.current);
 }
 
@@ -783,33 +850,17 @@ onClick={(e) => e.stopPropagation()}
     </div>
 
     <div className="capture-text-row">
-      <input
-        id="capture-task-text"
-        type="text"
-        value={draftText}
-        onChange={(e) => {
-          handleDraftChange(e.target.value);
-
-          if (speechStatus) {
-            clearSpeechStatus();
-          }
-
-          if (collectionFeedback) {
-            setCollectionFeedback(null);
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            flushDraftText();
-            tryDock();
-          }
-        }}
-        placeholder="What needs doing…"
-        autoComplete="off"
-        autoFocus
-        aria-invalid={!!error}
-        aria-describedby={error ? 'capture-error' : undefined}
+      <CaptureTextInput
+        value={taskText}
+        setTaskText={setTaskText}
+        draftRef={draftTextRef}
+        controllerRef={draftControllerRef}
+        speechStatusActive={!!speechStatus}
+        clearSpeechStatus={clearSpeechStatus}
+        collectionFeedbackActive={!!collectionFeedback}
+        clearCollectionFeedback={() => setCollectionFeedback(null)}
+        error={error}
+        onSubmit={tryDock}
       />
 
       <MicButton onResult={onSpeechResult} />
