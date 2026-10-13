@@ -1104,6 +1104,7 @@ export function TodayPage() {
 
   async function addTask(engineOverrides?: {
     text?: string;
+    parsedThought?: ThoughtParts;
     locationText?: string | null;
     jobId?: string | null;
     surfaceDate?: string | null;
@@ -1131,7 +1132,7 @@ export function TodayPage() {
         return;
       }
     }
-    const parsed = thought;
+    const parsed = engineOverrides?.parsedThought ?? thought;
     // The action is the parsed intent when the thought carried consumable
     // facets; otherwise it is the raw text, unchanged. Engine overrides win.
     const text =
