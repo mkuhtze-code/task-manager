@@ -598,6 +598,9 @@ if (dockBusyRef.current) return;
 dockBusyRef.current = true;
 setDockBusy(true);
 try {
+// Keep Phase 2's paint opportunity, but do not publish the draft to TodayPage.
+// The input ref remains authoritative while synchronous interpretation runs.
+await new Promise<void>((resolve) => setTimeout(resolve, 0));
 // The input ref is authoritative. Do not flush into TodayPage here: that
 // would trigger its full parse/intelligence cascade before the dock completes.
 const currentText = draftTextRef.current;
