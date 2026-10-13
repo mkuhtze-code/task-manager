@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type SurfaceDateCarouselProps = {
   selectedDate: string | null;
@@ -18,6 +18,12 @@ export default function SurfaceDateCarousel({
   selectedDate,
   onChange,
 }: SurfaceDateCarouselProps) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
+
   const { today, dates } = useMemo(() => {
     const now = new Date();
     const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -35,6 +41,10 @@ export default function SurfaceDateCarousel({
     });
     return { today: todayKey, dates: days };
   }, []);
+
+  if (!ready) {
+    return <div className="surface-date-carousel-wrap" aria-hidden="true" style={{ minHeight: 82 }} />;
+  }
 
   return (
     <div className="surface-date-carousel-wrap">
