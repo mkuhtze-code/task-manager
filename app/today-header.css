@@ -1534,3 +1534,103 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
 @media (prefers-reduced-motion: reduce) {
   .today-header-collapse-toggle { transition: none; }
 }
+
+
+/* Task details must render above Today chrome, not underneath its header. */
+@media (max-width: 700px) {
+  .sheet-backdrop:has(> .capture-sheet.task-detail-sheet) {
+    z-index: 2147483002 !important;
+    display: flex;
+    align-items: flex-end;
+    padding-top: max(8px, env(safe-area-inset-top));
+    box-sizing: border-box;
+  }
+
+  .capture-sheet.task-detail-sheet {
+    position: relative;
+    z-index: 2147483003 !important;
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - max(12px, env(safe-area-inset-top)) - env(safe-area-inset-bottom));
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px 14px calc(12px + env(safe-area-inset-bottom));
+    gap: 8px;
+    border-radius: 18px 18px 0 0;
+    box-sizing: border-box;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .capture-sheet.task-detail-sheet .task-detail-header {
+    gap: 8px;
+    padding-bottom: 9px;
+    margin-bottom: 4px;
+  }
+
+  .capture-sheet.task-detail-sheet .settings-panel-title {
+    font-size: 16px;
+    line-height: 1.25;
+  }
+
+  .capture-sheet.task-detail-sheet .task-detail-name {
+    font-size: 17px;
+    line-height: 1.3;
+    padding: 3px 0;
+  }
+
+  .capture-sheet.task-detail-sheet label,
+  .capture-sheet.task-detail-sheet .field-label,
+  .capture-sheet.task-detail-sheet .task-info-label {
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .capture-sheet.task-detail-sheet input,
+  .capture-sheet.task-detail-sheet select,
+  .capture-sheet.task-detail-sheet textarea {
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  .capture-sheet.task-detail-sheet button:not(.gear-btn) {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .capture-sheet.task-detail-sheet .task-detail-actions {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .capture-sheet.task-detail-sheet .subtask-panel,
+  .capture-sheet.task-detail-sheet .desk-detail-panel {
+    gap: 8px;
+    padding-top: 8px;
+  }
+
+  .capture-sheet.task-detail-sheet .subtask-header,
+  .capture-sheet.task-detail-sheet .desk-detail-panel-head {
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .capture-sheet.task-detail-sheet .subtask-row,
+  .capture-sheet.task-detail-sheet .task-connection-row {
+    padding: 7px 8px;
+    gap: 7px;
+  }
+
+  .capture-sheet.task-detail-sheet .task-context-line,
+  .capture-sheet.task-detail-sheet .task-fit-line {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+}
