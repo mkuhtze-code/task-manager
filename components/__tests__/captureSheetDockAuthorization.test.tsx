@@ -151,6 +151,12 @@ describe('Capture Dock UI authorization boundary', () => {
     renderCaptureSheet();
     const input = screen.getByPlaceholderText('What needs doing…');
 
+    // Hydration can complete asynchronously. Wait for the authenticated
+    // Dock gate before simulating the click, then verify the latest draft wins.
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+
     fireEvent.change(input, { target: { value: 'Invoice the client for the extra materials' } });
     expect(mocks.setTaskText).not.toHaveBeenCalled();
 

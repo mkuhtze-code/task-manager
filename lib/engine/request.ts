@@ -1341,10 +1341,6 @@ export function applyUtteranceToRequest(
     /\b(?:i\s+)?(?:do\s+not|don't|never)\s+(?:need|have|got)\s+to\b/i.test(lowerRaw) ||
     /\bnot\s+(?:need|have|got)\s+to\b/i.test(lowerRaw);
 
-  const hasTaskBind = !!existing?.constraints?.some(
-    (c) => c.axis === 'dependency' && c.value.startsWith('task:')
-  );
-
   const looksLikeNewCapture =
     (partialAction === 'remind' ||
       partialAction === 'pickup' ||
@@ -1353,15 +1349,27 @@ export function applyUtteranceToRequest(
     !partial.isRefinement &&
     !partial.isCorrection;
 
+  // Scheduling-only follow-ups are explicit references to the active task
+  // even when phrased as "change the time to 3pm". They must not replace the
+  // task's action/object with the wording used to change its schedule.
+  const scheduleOnlyFollowUp =
+    !!existing &&
+    !!(partial.dateHint || partial.timeHint) &&
+    /\b(?:change|set|move|reschedule|shift|push|bring)\b/i.test(lowerRaw) &&
+    /\b(?:time|date|schedule|day|hour|minute|due)\b/i.test(lowerRaw);
+
+  // Task identity must come from the utterance's continuation/correction
+  // semantics, not from the action category or stale focus metadata. A new
+  // request can have the same action as the active task, and persisted task
+  // bindings remain available for explicit references without making every
+  // later utterance an implicit update.
   const continueActive =
     !!existing &&
-    !looksLikeNewCapture &&
+    (!looksLikeNewCapture || scheduleOnlyFollowUp) &&
     (partial.isRefinement ||
       partial.isCorrection ||
-      hasTaskBind ||
-      mem.activeRequestId === existing.id ||
+      scheduleOnlyFollowUp ||
       partialAction === 'unknown' ||
-      partialAction === existing.action ||
       partialAction === 'move');
 
   const base =
@@ -1418,7 +1426,7 @@ export function applyUtteranceToRequest(
     base.objectText = replaceLeadingQuantity(base.objectText, quantityCorrection);
   } else if (additionalQuantity && base.objectText) {
     base.objectText = addToLeadingQuantity(base.objectText, additionalQuantity);
-  } else if (partial.objectText) {
+  } else if (partial.objectText && !scheduleOnlyFollowUp) {
     base.objectText = partial.objectText;
   }
 
@@ -1426,7 +1434,7 @@ export function applyUtteranceToRequest(
     base.titleText = partial.objectText;
   }
 
-  if (partial.primaryVerb) {
+  if (partial.primaryVerb && !scheduleOnlyFollowUp) {
     base.primaryVerb = partial.primaryVerb;
   }
 
