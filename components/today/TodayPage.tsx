@@ -11,6 +11,7 @@ import ContextLine from '@/components/ContextLine';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { TodayTaskList } from '@/components/today/TodayTaskList';
 import { TodayStatusCards } from '@/components/today/TodayStatusCards';
+import { deriveActiveCommitments, deriveTodayCapacity } from '@/lib/today/dayCapacity';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import {
@@ -90,7 +91,6 @@ import {
   timeStringToMinutes,
 } from '@/lib/timeFormat';
 import {
-  computeAvailability,
   buildDayCommitments,
   remainingTaskCapacityMins,
 } from '@/lib/calendar/planning';
@@ -2540,25 +2540,30 @@ export function TodayPage() {
     return effectiveRemainingForTaskPure(t, subtasksByTask, history, clusters, runtime, now.getTime());
   }
 
-  const todayStr = localDateStr(now);
-
-  // Reminders (future surface_date) are excluded here, before anything
-  // else touches capacity, sort, or the day rail — they don't exist for
-  // any time-pressure purpose until their date arrives.
-  const visibleTasks = tasks.filter((t) => !isScheduledForLater(t, todayStr));
-  const scheduledTasks = tasks.filter((t) => isScheduledForLater(t, todayStr));
-
-  const todayMeetings = meetings.filter((m) => {
-    if (!m.start_time) return true;
-    return localDateStr(new Date(m.start_time)) === todayStr;
+  const {
+    todayStr,
+    visibleTasks,
+    scheduledTasks,
+    todayMeetings,
+    todayDow,
+    isWorkDay,
+    nowMinutesOfDay,
+    workStartMinutes,
+    workEndMinutes,
+    minutesLeftToday,
+    dayCommitments,
+    availability,
+    untimedManualMins,
+    taskCapacity,
+  } = deriveTodayCapacity({
+    tasks,
+    meetings,
+    calendarEvents,
+    now,
+    workDays,
+    workStart,
+    workEnd,
   });
-  const todayDow = now.getDay();
-  const isWorkDay = workDays.includes(todayDow);
-
-  const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
-  const workStartMinutes = timeStringToMinutes(workStart);
-  const workEndMinutes = timeStringToMinutes(workEnd);
-  const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
 
   // Reality Check: offer while timed Today work is still open and the day is
   // winding down (last 2h of the work window, or any time after work end / off day).
@@ -2571,31 +2576,6 @@ export function TodayPage() {
   const showRealityCheck =
     hasOpenTimedWork &&
     (!isWorkDay || pastWorkEnd || minutesLeftToday <= REALITY_CHECK_WINDOW_MINS);
-
-
-  // External commitments only consume capacity while they overlap the time
-  // remaining in the workday: an ended commitment stops blocking, one that
-  // hasn't started yet does not reduce time already spent, and all-day
-  // events span the whole window. This replaces the old flat subtraction
-  // that counted every meeting's full duration regardless of when it runs.
-  // Timed meetings + calendar events share one commitment list so fit,
-  // capacity, and overflow all see the same pressure.
-  const dayCommitments = buildDayCommitments({
-    calendarEvents,
-    meetings: todayMeetings,
-  });
-  const availability = computeAvailability({
-    now,
-    workStartMins: workStartMinutes,
-    workEndMins: workEndMinutes,
-    isWorkDay,
-    commitments: dayCommitments,
-  });
-  // Only untimed manual meetings remain as a flat subtractor (no interval).
-  const untimedManualMins = todayMeetings
-    .filter((m) => m.source !== 'outlook' && !m.start_time)
-    .reduce((sum, m) => sum + m.duration_mins, 0);
-  const taskCapacity = availability.availableMinutes - untimedManualMins;
 
   const geoAware = sortMode === 'geo_aware';
   const visitOpts = {
@@ -2725,34 +2705,12 @@ export function TodayPage() {
   // Today is the integrator: manual meetings and calendar commitments are
   // represented together so the day shows the same time object the Meetings
   // surface owns, rather than silently treating meetings as capacity only.
-  const activeCommitments = [
-    ...calendarEvents
-      .filter((e) => new Date(e.end_at).getTime() > now.getTime())
-      .map((e) => ({
-        ...e,
-        kind: 'calendar' as const,
-      })),
-    ...todayMeetings
-      .filter((m) => m.source !== 'outlook' && Boolean(m.start_time))
-      .map((m) => {
-        const start = new Date(m.start_time!);
-        const end = new Date(start.getTime() + m.duration_mins * 60000);
-        return {
-          id: `meeting-${m.id}`,
-          title: m.text || 'Meeting',
-          start_at: start.toISOString(),
-          end_at: end.toISOString(),
-          all_day: false,
-          href: `/meetings/${m.id}`,
-          kind: 'meeting' as const,
-          jobLabel: m.job_id
-            ? jobs.find((j) => j.id === m.job_id)?.name ?? null
-            : null,
-        };
-      }),
-  ].sort(
-    (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
-  );
+  const activeCommitments = deriveActiveCommitments({
+    calendarEvents,
+    todayMeetings,
+    jobs,
+    now,
+  });
 
   const overloaded = isWorkDay && minutesLeftToday > 0 && remainingWorkMins > minutesLeftToday;
 
