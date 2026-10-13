@@ -1,16 +1,15 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import {
   computeTravelPresenceImpact,
 } from '@/lib/travelPresence';
 import { localDateStr as travelLocalDateStr } from '@/lib/travelContext';
-import { TaskCard } from '@/components/TaskCard';
 import ContextLine from '@/components/ContextLine';
-import { TravelLeg } from '@/components/TravelLeg';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
+import { TodayTaskList } from '@/components/today/TodayTaskList';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import {
@@ -21,11 +20,11 @@ import {
 } from '@/lib/speech/taskListBridge';
 import { RealityCheckSheet } from '@/components/RealityCheckSheet';
 import { TodayHeaderBridge } from '@/components/today/TodayHeaderState';
+import { TodayTaskRows, type TodayTaskRowModel } from '@/components/today/TodayTaskRows';
 import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
 import { OnboardingScreen } from '@/components/AuthScreen';
-import { PostStopPrompt, type PostStopPromptState } from '@/components/PostStopPrompt';
-import { PlusIcon } from '@/components/icons';
+import type { PostStopPromptState } from '@/components/PostStopPrompt';
 import { useDragReorder } from '@/hooks/useDragReorder';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { registerCaptureOpen } from '@/lib/captureOpen';
@@ -2937,6 +2936,47 @@ export function TodayPage() {
       }
     : null;
 
+  const taskRowModels: TodayTaskRowModel[] = ordered.map((t, idx) => {
+    const remainingForThis = remainingForTask(t);
+    const effectiveRemaining = effectiveRemainingForTask(t);
+    cumulative += effectiveRemaining;
+    // List items (no estimate) can never be "over capacity" — they have no time on the clock to compete for.
+    const overCap = t.estimate_mins > 0 && cumulative > taskCapacity;
+    const anyActive = visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0);
+    const subs = subtasksByTask[t.id] || [];
+    let liveLogged = t.logged_mins;
+    if (t.status === 'active' && t.started_at) {
+      liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
+    }
+    const suggestion =
+      t.estimate_mins > 0
+        ? suggestEstimate(t.text, history, clusters, estimateContextFrom(t, now))
+        : null;
+    const learnedHint =
+      suggestion && hasMeaningfulDivergence(t.estimate_mins, suggestion.suggestedMins)
+        ? fmtMins(suggestion.suggestedMins)
+        : null;
+    const isLocated = isRouteStop(t, visitOpts);
+    const locatedIdx = isLocated ? locatedIndexById[t.id] : -1;
+
+    return {
+      task: t,
+      index: idx,
+      remainingForThis,
+      liveLogged,
+      overCap,
+      fitLabel: liveDayPlan.byId[t.id]?.fitLabel ?? null,
+      fitReason: liveDayPlan.byId[t.id]?.reason ?? null,
+      anyActive,
+      subs,
+      learnedHint,
+      jobLabel: jobs.find((j) => j.id === t.job_id)?.name ?? null,
+      expanded: isDesktop ? openTaskId === t.id : expandedId === t.id,
+      isLocated,
+      locatedIdx,
+    };
+  });
+
   return (
     <div
       className={`app-shell${isDesktop && openTask ? " has-desk-detail" : ""}`}
@@ -2985,148 +3025,49 @@ export function TodayPage() {
 
 
 
-<div className="task-list">
-      {postStopPrompt && (
-        <PostStopPrompt
-          prompt={postStopPrompt}
-          busy={postStopBusy}
-          onDone={confirmPostStopDone}
-          onStillGoing={dismissPostStopPrompt}
-        />
-      )}
-
-        {taskLoadError ? (
-          <div className="empty-state">
-            <div className="empty-state-title">Couldn't load your tasks.</div>
-            <div className="empty-state-sub">{taskLoadError}</div>
-          </div>
-        ) : (
-          ordered.length === 0 && (
-            <div className="empty-state">
-              <div className="empty-state-title">{todayEmptyCopy(userProfile).title}</div>
-              <div className="empty-state-sub">
-                {todayEmptyCopy(userProfile).sub}
-              </div>
-              <div className="empty-state-actions">
-                <button
-                  type="button"
-                  className="btn btn-steel"
-                  onClick={() => setCaptureOpen(true)}
-                >
-                  <PlusIcon size={16} /> Add
-                </button>
-                {showRealityCheck ? (
-                  <button
-                    type="button"
-                    className="btn-text"
-                    onClick={() => setRealityCheckOpen(true)}
-                  >
-                    Reality check
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          )
-        )}
-        {ordered.map((t, idx) => {
-          const remainingForThis = remainingForTask(t);
-          const effectiveRemaining = effectiveRemainingForTask(t);
-          cumulative += effectiveRemaining;
-          // List items (no estimate) can never be "over capacity" — there's
-          // no time on the clock for them to compete for.
-          const overCap = t.estimate_mins > 0 && cumulative > taskCapacity;
-          const anyActive = visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0);
-          const subs = subtasksByTask[t.id] || [];
-          let liveLogged = t.logged_mins;
-          if (t.status === 'active' && t.started_at) {
-            liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
-          }
-
-          const suggestion =
-            t.estimate_mins > 0
-              ? suggestEstimate(t.text, history, clusters, estimateContextFrom(t, now))
-              : null;
-          const learnedHint =
-            suggestion && hasMeaningfulDivergence(t.estimate_mins, suggestion.suggestedMins)
-              ? fmtMins(suggestion.suggestedMins)
-              : null;
-
-          // In geo_aware mode, located tasks render their drive legs as
-          // distinct rows between the destinations they connect — an
-          // origin→first leg before the first located task, a leg between
-          // each located task, and the return leg after the last one.
-          const isLocated = isRouteStop(t, visitOpts);
-          const locatedIdx = isLocated ? locatedIndexById[t.id] : -1;
-
-          return (
-            <Fragment key={t.id}>
-              {geoAware && isLocated && locatedIdx === 0 && driveFromBaseMins > 0 && (
-                <TravelLeg
-                  label={fmtMins(driveFromBaseMins)}
-                  detail={`Drive from ${originLabel}`}
-                />
-              )}
-              <div ref={(el) => { rowElsRef.current[t.id] = el; }} style={dragRowStyle(idx, t.id)}>
-                <TaskCard
-                  task={t}
-                  remainingForThis={remainingForThis}
-                  liveLogged={liveLogged}
-                  overCap={overCap}
-                  fitLabel={liveDayPlan.byId[t.id]?.fitLabel ?? null}
-                  fitReason={liveDayPlan.byId[t.id]?.reason ?? null}
-                  anyActive={anyActive}
-                  subs={subs}
-                  learnedHint={learnedHint}
-                  jobLabel={jobs.find((j) => j.id === t.job_id)?.name ?? null}
-                  expanded={isDesktop ? openTaskId === t.id : expandedId === t.id}
-                  onToggleExpand={() => {
-                    if (isDesktop) {
-                      setExpandedId(null);
-                      setOpenTaskId((cur) => (cur === t.id ? null : t.id));
-                    } else {
-                      setExpandedId((cur) => (cur === t.id ? null : t.id));
-                    }
-                  }}
-                  onOpenDetails={() => { setExpandedId(null); setOpenTaskId(t.id); }}
-                  onComplete={completeTask}
-                  onStart={startTask}
-                  onStop={stopTask}
-                  onToggleSubtaskDone={toggleSubtaskDone}
-                  onSaveInfo={saveTaskInfo}
-                  dragHandleProps={
-                    sortMode === 'manual'
-                      ? {
-                          onPointerDown: (e) => handleDragHandlePointerDown(e, t.id, orderedIds),
-                          onPointerMove: handleDragHandlePointerMove,
-                          onPointerUp: handleDragHandlePointerUp,
-                        }
-                      : undefined
-                  }
-                />
-              </div>
-              {geoAware && isLocated && t.drive_mins_to_next > 0 && (
-                <TravelLeg
-                  label={fmtMins(t.drive_mins_to_next)}
-                  detail={
-                    locatedIdx === locatedInOrder.length - 1
-                      ? `Back to ${returnLabel ?? originLabel}`
-                      : locatedInOrder[locatedIdx + 1]
-                        ? `To ${locatedInOrder[locatedIdx + 1].text}`
-                        : 'To next stop'
-                  }
-                />
-              )}
-            </Fragment>
-          );
-        })}
-        {scheduledTasks.length > 0 && (
-          <div className="scheduled-link-row">
-            <button className="btn-text" onClick={() => setScheduledSheetOpen(true)}>
-              {scheduledTasks.length} scheduled for later
-            </button>
-          </div>
-        )}
-      </div>
+<TodayTaskList
+        taskLoadError={taskLoadError}
+        emptyTitle={todayEmptyCopy(userProfile).title}
+        emptySub={todayEmptyCopy(userProfile).sub}
+        showRealityCheck={showRealityCheck}
+        onAdd={() => setCaptureOpen(true)}
+        onRealityCheck={() => setRealityCheckOpen(true)}
+        postStopPrompt={postStopPrompt}
+        postStopBusy={postStopBusy}
+        onPostStopDone={confirmPostStopDone}
+        onPostStopStillGoing={dismissPostStopPrompt}
+        scheduledCount={scheduledTasks.length}
+        onOpenScheduled={() => setScheduledSheetOpen(true)}
+        rowProps={{
+          rows: taskRowModels,
+          geoAware,
+          driveFromBaseMins,
+          originLabel,
+          returnLabel,
+          locatedInOrder,
+          orderedIds,
+          sortMode,
+          rowElsRef,
+          dragRowStyle,
+          handleDragHandlePointerDown,
+          handleDragHandlePointerMove,
+          handleDragHandlePointerUp,
+          onToggleExpand: (taskId) => {
+            if (isDesktop) {
+              setExpandedId(null);
+              setOpenTaskId((current) => (current === taskId ? null : taskId));
+            } else {
+              setExpandedId((current) => (current === taskId ? null : taskId));
+            }
+          },
+          onOpenDetails: (taskId) => { setExpandedId(null); setOpenTaskId(taskId); },
+          onComplete: completeTask,
+          onStart: startTask,
+          onStop: stopTask,
+          onToggleSubtaskDone: toggleSubtaskDone,
+          onSaveInfo: saveTaskInfo,
+        }}
+      />
 
       {tasks.some((t) => isStarterTask(t)) && (
         <div className="reality-invite-card starter-pack-banner" role="region" aria-label="Example tasks">
