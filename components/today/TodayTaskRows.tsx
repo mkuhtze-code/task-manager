@@ -1,14 +1,18 @@
 'use client';
 
-import type { ComponentProps, MutableRefObject } from 'react';
+import { Fragment, type ComponentProps, type MutableRefObject } from 'react';
 import { TaskCard } from '@/components/TaskCard';
 import { TravelLeg } from '@/components/TravelLeg';
+import { fmtMins } from '@/lib/timeFormat';
 import type { Task } from '@/lib/taskTypes';
 
 type TaskCardActions = Pick<
   ComponentProps<typeof TaskCard>,
-  'onToggleExpand' | 'onOpenDetails' | 'onComplete' | 'onStart' | 'onStop' | 'onToggleSubtaskDone' | 'onSaveInfo'
->;
+  'onComplete' | 'onStart' | 'onStop' | 'onToggleSubtaskDone' | 'onSaveInfo'
+> & {
+  onToggleExpand: (taskId: string) => void;
+  onOpenDetails: (taskId: string) => void;
+};
 
 export type TodayTaskRowModel = {
   task: Task;
@@ -43,13 +47,6 @@ type TodayTaskRowsProps = TaskCardActions & {
   handleDragHandlePointerUp: () => void;
 };
 
-function formatMinutes(minutes: number): string {
-  if (minutes < 60) return `${Math.round(minutes)}m`;
-  const hours = Math.floor(minutes / 60);
-  const remainder = Math.round(minutes % 60);
-  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
-}
-
 export function TodayTaskRows({
   rows,
   geoAware,
@@ -77,10 +74,10 @@ export function TodayTaskRows({
       {rows.map((row) => {
         const { task, index, isLocated, locatedIdx } = row;
         return (
-          <div key={task.id} className="today-task-row">
+          <Fragment key={task.id}>
             {geoAware && isLocated && locatedIdx === 0 && driveFromBaseMins > 0 && (
               <TravelLeg
-                label={formatMinutes(driveFromBaseMins)}
+                label={fmtMins(driveFromBaseMins)}
                 detail={`Drive from ${originLabel}`}
               />
             )}
@@ -120,7 +117,7 @@ export function TodayTaskRows({
             </div>
             {geoAware && isLocated && task.drive_mins_to_next > 0 && (
               <TravelLeg
-                label={formatMinutes(task.drive_mins_to_next)}
+                label={fmtMins(task.drive_mins_to_next)}
                 detail={
                   locatedIdx === locatedInOrder.length - 1
                     ? `Back to ${returnLabel ?? originLabel}`
