@@ -130,7 +130,7 @@ describe('Capture Dock UI authorization boundary', () => {
     vi.useFakeTimers();
     try {
       renderCaptureSheet();
-      const input = screen.getByRole('textbox', { name: '' }) as HTMLInputElement;
+      const input = screen.getByPlaceholderText('What needs doing…') as HTMLInputElement;
 
       fireEvent.change(input, { target: { value: 'Call the client at 2pm' } });
 
