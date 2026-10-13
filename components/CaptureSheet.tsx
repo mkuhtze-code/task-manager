@@ -32,7 +32,6 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { useCaptureSpeech, textForCaptureField } from '@/hooks/useCaptureSpeech';
 import {
-captureIsCollectionMutation,
 detectCaptureCollection,
 type SpeechUnderstandingContext,
 } from '@/lib/speech';
