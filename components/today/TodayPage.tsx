@@ -2637,11 +2637,9 @@ export function TodayPage() {
   const orderedIds = ordered.map((t) => t.id);
 
   const {
-    locatedDriveSum,
     routeDriveMins,
     locatedInOrder,
     locatedIndexById,
-    routeOrigin,
     originLabel,
     mapBase,
     mapActivities,
