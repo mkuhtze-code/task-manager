@@ -571,7 +571,13 @@ if ('target' in pending) {
   } as CollectionIntent;
 }
 
-void applyListDock(next);
+if (dockBusyRef.current) return;
+dockBusyRef.current = true;
+setDockBusy(true);
+void applyListDock(next).finally(() => {
+  dockBusyRef.current = false;
+  setDockBusy(false);
+});
 
 }
 
@@ -631,7 +637,7 @@ if (isListIntent && collectionIntent) {
     return;
   }
 
-  void applyListDock(collectionIntent);
+  await applyListDock(collectionIntent);
   return;
 }
 
