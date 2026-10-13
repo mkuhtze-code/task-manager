@@ -319,8 +319,13 @@ export function TodayHeader(props: {
       <div id="today-day-depth" className="today-day-depth-panel" hidden={!depthOpen}>
           <section className="today-day-shape" aria-label="Day depth">
             <div className="today-depth-heading">
-              <strong>What your history says</strong>
-              <span>{isWorkDay ? `${fmtClock(workStart)}–${fmtClock(workEnd)} workday` : 'Outside usual work hours'}</span>
+              <div className="today-depth-heading-copy">
+                <strong>What your history says</strong>
+                <span>{isWorkDay ? `${fmtClock(workStart)}–${fmtClock(workEnd)} workday` : 'Outside usual work hours'}</span>
+              </div>
+              <button type="button" className="today-overlay-close" aria-label="Close day depth" title="Close" onClick={() => setDepthOpen(false)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg>
+              </button>
             </div>
             {patternInsight ? (
               <aside className="today-pattern-insight" aria-label="Learned work pattern">
