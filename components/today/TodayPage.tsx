@@ -2417,6 +2417,7 @@ export function TodayPage() {
         <CaptureSheet
           taskText={taskText}
           setTaskText={setTaskText}
+          entityMemory={entityMemory}
           taskTime={taskTime}
           setTaskTime={setTaskTime}
           captureSuggestion={captureSuggestion}
