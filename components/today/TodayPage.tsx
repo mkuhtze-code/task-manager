@@ -9,6 +9,7 @@ import {
 import { localDateStr as travelLocalDateStr } from '@/lib/travelContext';
 import ContextLine from '@/components/ContextLine';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
+import { TodayTaskList } from '@/components/today/TodayTaskList';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import {
@@ -23,7 +24,7 @@ import { TodayTaskRows, type TodayTaskRowModel } from '@/components/today/TodayT
 import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
 import { OnboardingScreen } from '@/components/AuthScreen';
-import { PostStopPrompt, type PostStopPromptState } from '@/components/PostStopPrompt';
+import type { PostStopPromptState } from '@/components/PostStopPrompt';
 import { PlusIcon } from '@/components/icons';
 import { useDragReorder } from '@/hooks/useDragReorder';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
@@ -3025,86 +3026,49 @@ export function TodayPage() {
 
 
 
-<div className="task-list">
-      {postStopPrompt && (
-        <PostStopPrompt
-          prompt={postStopPrompt}
-          busy={postStopBusy}
-          onDone={confirmPostStopDone}
-          onStillGoing={dismissPostStopPrompt}
-        />
-      )}
-
-        {taskLoadError ? (
-          <div className="empty-state">
-            <div className="empty-state-title">Couldn't load your tasks.</div>
-            <div className="empty-state-sub">{taskLoadError}</div>
-          </div>
-        ) : (
-          ordered.length === 0 && (
-            <div className="empty-state">
-              <div className="empty-state-title">{todayEmptyCopy(userProfile).title}</div>
-              <div className="empty-state-sub">
-                {todayEmptyCopy(userProfile).sub}
-              </div>
-              <div className="empty-state-actions">
-                <button
-                  type="button"
-                  className="btn btn-steel"
-                  onClick={() => setCaptureOpen(true)}
-                >
-                  <PlusIcon size={16} /> Add
-                </button>
-                {showRealityCheck ? (
-                  <button
-                    type="button"
-                    className="btn-text"
-                    onClick={() => setRealityCheckOpen(true)}
-                  >
-                    Reality check
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          )
-        )}
-        <TodayTaskRows
-          rows={taskRowModels}
-          geoAware={geoAware}
-          driveFromBaseMins={driveFromBaseMins}
-          originLabel={originLabel}
-          returnLabel={returnLabel}
-          locatedInOrder={locatedInOrder}
-          orderedIds={orderedIds}
-          sortMode={sortMode}
-          rowElsRef={rowElsRef}
-          dragRowStyle={dragRowStyle}
-          handleDragHandlePointerDown={handleDragHandlePointerDown}
-          handleDragHandlePointerMove={handleDragHandlePointerMove}
-          handleDragHandlePointerUp={handleDragHandlePointerUp}
-          onToggleExpand={(taskId) => {
+<TodayTaskList
+        taskLoadError={taskLoadError}
+        emptyTitle={todayEmptyCopy(userProfile).title}
+        emptySub={todayEmptyCopy(userProfile).sub}
+        showRealityCheck={showRealityCheck}
+        onAdd={() => setCaptureOpen(true)}
+        onRealityCheck={() => setRealityCheckOpen(true)}
+        postStopPrompt={postStopPrompt}
+        postStopBusy={postStopBusy}
+        onPostStopDone={confirmPostStopDone}
+        onPostStopStillGoing={dismissPostStopPrompt}
+        scheduledCount={scheduledTasks.length}
+        onOpenScheduled={() => setScheduledSheetOpen(true)}
+        rowProps={{
+          rows: taskRowModels,
+          geoAware,
+          driveFromBaseMins,
+          originLabel,
+          returnLabel,
+          locatedInOrder,
+          orderedIds,
+          sortMode,
+          rowElsRef,
+          dragRowStyle,
+          handleDragHandlePointerDown,
+          handleDragHandlePointerMove,
+          handleDragHandlePointerUp,
+          onToggleExpand: (taskId) => {
             if (isDesktop) {
               setExpandedId(null);
               setOpenTaskId((current) => (current === taskId ? null : taskId));
             } else {
               setExpandedId((current) => (current === taskId ? null : taskId));
             }
-          }}
-          onOpenDetails={(taskId) => { setExpandedId(null); setOpenTaskId(taskId); }}
-          onComplete={completeTask}
-          onStart={startTask}
-          onStop={stopTask}
-          onToggleSubtaskDone={toggleSubtaskDone}
-          onSaveInfo={saveTaskInfo}
-        />
-        {scheduledTasks.length > 0 && (
-          <div className="scheduled-link-row">
-            <button className="btn-text" onClick={() => setScheduledSheetOpen(true)}>
-              {scheduledTasks.length} scheduled for later
-            </button>
-          </div>
-        )}
-      </div>
+          },
+          onOpenDetails: (taskId) => { setExpandedId(null); setOpenTaskId(taskId); },
+          onComplete: completeTask,
+          onStart: startTask,
+          onStop: stopTask,
+          onToggleSubtaskDone: toggleSubtaskDone,
+          onSaveInfo: saveTaskInfo,
+        }}
+      />
 
       {tasks.some((t) => isStarterTask(t)) && (
         <div className="reality-invite-card starter-pack-banner" role="region" aria-label="Example tasks">
