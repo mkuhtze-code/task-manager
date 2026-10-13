@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   addTask: vi.fn(),
   setTaskText: vi.fn(),
   onClose: vi.fn(),
+  detectCaptureCollection: vi.fn(() => null),
+  detectListIntent: vi.fn(() => null),
 }));
 
 vi.mock('@/lib/supabaseClient', () => ({ supabase: {} }));
@@ -42,11 +44,11 @@ vi.mock('@/lib/cpu', () => ({
 }));
 vi.mock('@/lib/speech', () => ({
   captureIsCollectionMutation: () => false,
-  detectCaptureCollection: () => null,
+  detectCaptureCollection: mocks.detectCaptureCollection,
 }));
 vi.mock('@/lib/speech/taskListBridge', () => ({
   applyListIntent: vi.fn(),
-  detectListIntent: () => null,
+  detectListIntent: mocks.detectListIntent,
   loadActiveListState: () => ({ taskId: null, title: null, lastInteractionAt: null }),
   canUseActiveList: () => false,
 }));
@@ -105,6 +107,8 @@ function renderCaptureSheet() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.detectCaptureCollection.mockReturnValue(null);
+  mocks.detectListIntent.mockReturnValue(null);
   mocks.runCaptureDock.mockReturnValue({
     kind: 'act_create',
     message: 'Ready to create task',
@@ -176,6 +180,28 @@ describe('Capture Dock UI authorization boundary', () => {
       );
     });
     expect(mocks.setTaskText).not.toHaveBeenCalled();
+  });
+
+  it('skips fallback list detection when the primary classifier already found an intent', async () => {
+    mocks.detectCaptureCollection.mockReturnValueOnce({
+      intent: { type: 'create_collection', title: 'Groceries' },
+    } as never);
+
+    renderCaptureSheet();
+    const input = screen.getByPlaceholderText('What needs doing…');
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.change(input, { target: { value: 'Create a grocery list' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+
+    await waitFor(() => expect(screen.getByText('Sign in to use lists.')).toBeTruthy();
+    expect(mocks.detectCaptureCollection).toHaveBeenCalledWith(
+      'Create a grocery list',
+      expect.anything(),
+    );
+    expect(mocks.detectListIntent).not.toHaveBeenCalled();
+    expect(mocks.runCaptureDock).not.toHaveBeenCalled();
   });
 
   it('shows Docking before synchronous interpretation begins', async () => {
