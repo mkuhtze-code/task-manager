@@ -1341,10 +1341,6 @@ export function applyUtteranceToRequest(
     /\b(?:i\s+)?(?:do\s+not|don't|never)\s+(?:need|have|got)\s+to\b/i.test(lowerRaw) ||
     /\bnot\s+(?:need|have|got)\s+to\b/i.test(lowerRaw);
 
-  const hasTaskBind = !!existing?.constraints?.some(
-    (c) => c.axis === 'dependency' && c.value.startsWith('task:')
-  );
-
   const looksLikeNewCapture =
     (partialAction === 'remind' ||
       partialAction === 'pickup' ||
@@ -1353,15 +1349,17 @@ export function applyUtteranceToRequest(
     !partial.isRefinement &&
     !partial.isCorrection;
 
+  // Task identity must come from the utterance's continuation/correction
+  // semantics, not from the action category or stale focus metadata. A new
+  // request can have the same action as the active task, and persisted task
+  // bindings remain available for explicit references without making every
+  // later utterance an implicit update.
   const continueActive =
     !!existing &&
     !looksLikeNewCapture &&
     (partial.isRefinement ||
       partial.isCorrection ||
-      hasTaskBind ||
-      mem.activeRequestId === existing.id ||
       partialAction === 'unknown' ||
-      partialAction === existing.action ||
       partialAction === 'move');
 
   const base =
