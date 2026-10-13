@@ -21,6 +21,7 @@ import {
 } from '@/lib/speech/taskListBridge';
 import { RealityCheckSheet } from '@/components/RealityCheckSheet';
 import { TodayHeaderBridge } from '@/components/today/TodayHeaderState';
+import { TodayTaskRows, type TodayTaskRowModel } from '@/components/today/TodayTaskRows';
 import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
 import { OnboardingScreen } from '@/components/AuthScreen';
@@ -2937,6 +2938,47 @@ export function TodayPage() {
       }
     : null;
 
+  const taskRowModels: TodayTaskRowModel[] = ordered.map((t, idx) => {
+    const remainingForThis = remainingForTask(t);
+    const effectiveRemaining = effectiveRemainingForTask(t);
+    cumulative += effectiveRemaining;
+    // List items (no estimate) can never be "over capacity" — they have no time on the clock to compete for.
+    const overCap = t.estimate_mins > 0 && cumulative > taskCapacity;
+    const anyActive = visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0);
+    const subs = subtasksByTask[t.id] || [];
+    let liveLogged = t.logged_mins;
+    if (t.status === 'active' && t.started_at) {
+      liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
+    }
+    const suggestion =
+      t.estimate_mins > 0
+        ? suggestEstimate(t.text, history, clusters, estimateContextFrom(t, now))
+        : null;
+    const learnedHint =
+      suggestion && hasMeaningfulDivergence(t.estimate_mins, suggestion.suggestedMins)
+        ? fmtMins(suggestion.suggestedMins)
+        : null;
+    const isLocated = isRouteStop(t, visitOpts);
+    const locatedIdx = isLocated ? locatedIndexById[t.id] : -1;
+
+    return {
+      task: t,
+      index: idx,
+      remainingForThis,
+      liveLogged,
+      overCap,
+      fitLabel: liveDayPlan.byId[t.id]?.fitLabel ?? null,
+      fitReason: liveDayPlan.byId[t.id]?.reason ?? null,
+      anyActive,
+      subs,
+      learnedHint,
+      jobLabel: jobs.find((j) => j.id === t.job_id)?.name ?? null,
+      expanded: isDesktop ? openTaskId === t.id : expandedId === t.id,
+      isLocated,
+      locatedIdx,
+    };
+  });
+
   return (
     <div
       className={`app-shell${isDesktop && openTask ? " has-desk-detail" : ""}`}
@@ -3028,97 +3070,35 @@ export function TodayPage() {
             </div>
           )
         )}
-        {ordered.map((t, idx) => {
-          const remainingForThis = remainingForTask(t);
-          const effectiveRemaining = effectiveRemainingForTask(t);
-          cumulative += effectiveRemaining;
-          // List items (no estimate) can never be "over capacity" — there's
-          // no time on the clock for them to compete for.
-          const overCap = t.estimate_mins > 0 && cumulative > taskCapacity;
-          const anyActive = visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0);
-          const subs = subtasksByTask[t.id] || [];
-          let liveLogged = t.logged_mins;
-          if (t.status === 'active' && t.started_at) {
-            liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
-          }
-
-          const suggestion =
-            t.estimate_mins > 0
-              ? suggestEstimate(t.text, history, clusters, estimateContextFrom(t, now))
-              : null;
-          const learnedHint =
-            suggestion && hasMeaningfulDivergence(t.estimate_mins, suggestion.suggestedMins)
-              ? fmtMins(suggestion.suggestedMins)
-              : null;
-
-          // In geo_aware mode, located tasks render their drive legs as
-          // distinct rows between the destinations they connect — an
-          // origin→first leg before the first located task, a leg between
-          // each located task, and the return leg after the last one.
-          const isLocated = isRouteStop(t, visitOpts);
-          const locatedIdx = isLocated ? locatedIndexById[t.id] : -1;
-
-          return (
-            <Fragment key={t.id}>
-              {geoAware && isLocated && locatedIdx === 0 && driveFromBaseMins > 0 && (
-                <TravelLeg
-                  label={fmtMins(driveFromBaseMins)}
-                  detail={`Drive from ${originLabel}`}
-                />
-              )}
-              <div ref={(el) => { rowElsRef.current[t.id] = el; }} style={dragRowStyle(idx, t.id)}>
-                <TaskCard
-                  task={t}
-                  remainingForThis={remainingForThis}
-                  liveLogged={liveLogged}
-                  overCap={overCap}
-                  fitLabel={liveDayPlan.byId[t.id]?.fitLabel ?? null}
-                  fitReason={liveDayPlan.byId[t.id]?.reason ?? null}
-                  anyActive={anyActive}
-                  subs={subs}
-                  learnedHint={learnedHint}
-                  jobLabel={jobs.find((j) => j.id === t.job_id)?.name ?? null}
-                  expanded={isDesktop ? openTaskId === t.id : expandedId === t.id}
-                  onToggleExpand={() => {
-                    if (isDesktop) {
-                      setExpandedId(null);
-                      setOpenTaskId((cur) => (cur === t.id ? null : t.id));
-                    } else {
-                      setExpandedId((cur) => (cur === t.id ? null : t.id));
-                    }
-                  }}
-                  onOpenDetails={() => { setExpandedId(null); setOpenTaskId(t.id); }}
-                  onComplete={completeTask}
-                  onStart={startTask}
-                  onStop={stopTask}
-                  onToggleSubtaskDone={toggleSubtaskDone}
-                  onSaveInfo={saveTaskInfo}
-                  dragHandleProps={
-                    sortMode === 'manual'
-                      ? {
-                          onPointerDown: (e) => handleDragHandlePointerDown(e, t.id, orderedIds),
-                          onPointerMove: handleDragHandlePointerMove,
-                          onPointerUp: handleDragHandlePointerUp,
-                        }
-                      : undefined
-                  }
-                />
-              </div>
-              {geoAware && isLocated && t.drive_mins_to_next > 0 && (
-                <TravelLeg
-                  label={fmtMins(t.drive_mins_to_next)}
-                  detail={
-                    locatedIdx === locatedInOrder.length - 1
-                      ? `Back to ${returnLabel ?? originLabel}`
-                      : locatedInOrder[locatedIdx + 1]
-                        ? `To ${locatedInOrder[locatedIdx + 1].text}`
-                        : 'To next stop'
-                  }
-                />
-              )}
-            </Fragment>
-          );
-        })}
+        <TodayTaskRows
+          rows={taskRowModels}
+          geoAware={geoAware}
+          driveFromBaseMins={driveFromBaseMins}
+          originLabel={originLabel}
+          returnLabel={returnLabel}
+          locatedInOrder={locatedInOrder}
+          orderedIds={orderedIds}
+          sortMode={sortMode}
+          rowElsRef={rowElsRef}
+          dragRowStyle={dragRowStyle}
+          handleDragHandlePointerDown={handleDragHandlePointerDown}
+          handleDragHandlePointerMove={handleDragHandlePointerMove}
+          handleDragHandlePointerUp={handleDragHandlePointerUp}
+          onToggleExpand={(taskId) => {
+            if (isDesktop) {
+              setExpandedId(null);
+              setOpenTaskId((current) => (current === taskId ? null : taskId));
+            } else {
+              setExpandedId((current) => (current === taskId ? null : taskId));
+            }
+          }}
+          onOpenDetails={(taskId) => { setExpandedId(null); setOpenTaskId(taskId); }}
+          onComplete={completeTask}
+          onStart={startTask}
+          onStop={stopTask}
+          onToggleSubtaskDone={toggleSubtaskDone}
+          onSaveInfo={saveTaskInfo}
+        />
         {scheduledTasks.length > 0 && (
           <div className="scheduled-link-row">
             <button className="btn-text" onClick={() => setScheduledSheetOpen(true)}>
