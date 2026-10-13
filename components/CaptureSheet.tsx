@@ -270,6 +270,8 @@ const [moreOpen, setMoreOpen] = useState(false);
 const [estimateHintVisible, setEstimateHintVisible] = useState(false);
 const [collectionFeedback, setCollectionFeedback] = useState<string | null>(null);
 const [listBusy, setListBusy] = useState(false);
+const [dockBusy, setDockBusy] = useState(false);
+const dockBusyRef = useRef(false);
 const [pendingClarification, setPendingClarification] = useState<{
 spoken: string;
 candidates: Array<{ taskId: string; title: string; reason: string }>;
@@ -575,6 +577,10 @@ void applyListDock(next);
 
 async function tryDock() {
 if (!engineStateReady) return;
+if (dockBusyRef.current) return;
+dockBusyRef.current = true;
+setDockBusy(true);
+try {
 flushDraftText();
 const currentText = draftTextRef.current;
 const currentGate = oneShotGate({
@@ -799,6 +805,10 @@ confirmSpeechLearning();
 clearSpeechStatus();
 addTask();
 
+} finally {
+  dockBusyRef.current = false;
+  setDockBusy(false);
+}
 }
 
 function applySuggestedMins() {
@@ -1055,12 +1065,13 @@ onClick={(e) => e.stopPropagation()}
       disabled={
         !engineStateReady ||
         listBusy ||
+        dockBusy ||
         (resolutionBlocksDock && !collectionDockReady) ||
         (!gate.ready && !collectionDockReady)
       }
       onClick={tryDock}
     >
-      {gate.ready || collectionDockReady ? 'Dock' : 'Add'}
+      {dockBusy ? 'Docking…' : (gate.ready || collectionDockReady ? 'Dock' : 'Add')}
     </button>
 
     {error && (
