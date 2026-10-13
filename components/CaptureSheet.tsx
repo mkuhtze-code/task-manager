@@ -19,7 +19,7 @@ LocationMemorySuggestion,
 import type { CaptureContextDecision } from '@/lib/thinking/types';
 import { fmtMins, minsToInput, fmtClock } from '@/lib/timeFormat';
 import type { Job } from '@/lib/jobTypes';
-import type { ThoughtParts } from '@/lib/unifiedInput/parse';
+import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
 import {
 hasEntityResolution,
 type JobLocationResolution,
@@ -63,6 +63,8 @@ import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
 /** Optional structured dock from the personal operating engine. */
 export type EngineDockOverrides = {
 text: string;
+/** Parsed from the exact local draft at Dock time, not parent debounce state. */
+parsedThought?: ThoughtParts;
 locationText?: string | null;
 jobId?: string | null;
 surfaceDate?: string | null;
@@ -587,7 +589,8 @@ if (dockBusyRef.current) return;
 dockBusyRef.current = true;
 setDockBusy(true);
 try {
-flushDraftText();
+// The input ref is authoritative. Do not flush into TodayPage here: that
+// would trigger its full parse/intelligence cascade before the dock completes.
 const currentText = draftTextRef.current;
 const currentGate = oneShotGate({
   rawText: currentText,
@@ -644,6 +647,11 @@ if (isListIntent && collectionIntent) {
 // Personal operating engine — processInteraction via runCaptureDock.
 // Outcomes: ACT / ANSWER / DEFER / CLARIFY / fallthrough → ordinary dock.
 const line = currentText.trim();
+const currentThought = line ? parseThought(line) : null;
+const parsedTaskText =
+  currentThought?.hadFacets && currentThought.intent && currentThought.intent.length > 0
+    ? currentThought.intent
+    : line;
 
 if (line && addTaskWithOverrides) {
   try {
@@ -691,6 +699,7 @@ if (line && addTaskWithOverrides) {
 
             return (await addTaskWithOverrides({
               text: action.text,
+              parsedThought: currentThought ?? undefined,
               locationText: action.locationText,
               jobId: action.jobId,
               surfaceDate: action.surfaceDate,
@@ -709,6 +718,7 @@ if (line && addTaskWithOverrides) {
 
             await addTaskWithOverrides({
               text: action.text ?? dock.overrides.text,
+              parsedThought: currentThought ?? undefined,
               locationText: action.locationText,
               jobId: action.jobId,
               surfaceDate: action.surfaceDate,
@@ -777,7 +787,8 @@ if (line && addTaskWithOverrides) {
       // explicit Dock. Save the user's exact wording as a flexible task;
       // leave the date unset so Dokkit can learn/refine it later.
       await addTaskWithOverrides({
-        text: line,
+        text: parsedTaskText,
+        parsedThought: currentThought ?? undefined,
         originalInput: line,
         locationText: captureLocation.trim() || null,
         jobId: captureJobId,
@@ -809,7 +820,11 @@ if (!currentGate.ready) return;
 
 confirmSpeechLearning();
 clearSpeechStatus();
-addTask();
+await addTaskWithOverrides({
+  text: parsedTaskText,
+  parsedThought: currentThought ?? undefined,
+  originalInput: line,
+});
 
 } finally {
   dockBusyRef.current = false;
