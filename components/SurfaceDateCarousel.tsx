@@ -80,16 +80,16 @@ export default function SurfaceDateCarousel({
     const strip = carouselRef.current;
     if (!strip) return;
     const stripCenter = strip.getBoundingClientRect().left + strip.clientWidth / 2;
-    let closest: HTMLElement | null = null;
+    let closest: HTMLElement | undefined;
     let closestDistance = Number.POSITIVE_INFINITY;
-    strip.querySelectorAll<HTMLElement>('[data-date-key]').forEach((chip) => {
+    for (const chip of strip.querySelectorAll<HTMLElement>('[data-date-key]')) {
       const rect = chip.getBoundingClientRect();
       const distance = Math.abs(rect.left + rect.width / 2 - stripCenter);
       if (distance < closestDistance) {
         closest = chip;
         closestDistance = distance;
       }
-    });
+    }
     if (!closest) return;
     const nextKey = closest.dataset.dateKey ?? null;
     if (nextKey) setWheelFocusKey(nextKey);
