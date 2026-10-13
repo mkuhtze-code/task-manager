@@ -55,6 +55,8 @@ describe('Capture Phase 5 — sequential regression pack', () => {
     const second = dock('Call', first.request);
 
     expect(second.kind).not.toBe('act_update');
+    expect(second.request).toBeTruthy();
+    if (!second.request) throw new Error('Expected the fresh capture to retain a request');
     expect(second.request.id).not.toBe(first.request.id);
     expect(second.request.personText?.toLowerCase() ?? '').not.toContain('john');
   });
