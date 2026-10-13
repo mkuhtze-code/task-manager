@@ -318,6 +318,25 @@ describe('spoken object and location corrections', () => {
     expect(corrected.objectText).toBe('2 cartridges of clear Sika MS');
   });
 
+  it('does not treat the same action word as proof that a new utterance is the same task', () => {
+    const original = applyUtteranceToRequest(
+      null,
+      'Call John tomorrow',
+      emptyWorkingMemory(),
+    );
+    const shortNewCapture = applyUtteranceToRequest(
+      original,
+      'Call',
+      { ...emptyWorkingMemory(), activeRequestId: original.id },
+    );
+
+    expect(shortNewCapture.id).not.toBe(original.id);
+    expect(shortNewCapture.primaryVerb).toBe('call');
+    expect(shortNewCapture.personText).toBeNull();
+    expect(shortNewCapture.rawUtterances).toEqual(['Call']);
+    expect(requestTaskText(shortNewCapture).toLowerCase()).not.toContain('john');
+  });
+
   it('keeps a plain new capture independent from correction context', () => {
     const first = 'I need to call John tomorrow';
     const initial = applyUtteranceToRequest(
