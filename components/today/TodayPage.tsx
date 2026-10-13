@@ -13,6 +13,7 @@ import { TodayTaskList } from '@/components/today/TodayTaskList';
 import { TodayStatusCards } from '@/components/today/TodayStatusCards';
 import { deriveActiveCommitments, deriveTodayCapacity } from '@/lib/today/dayCapacity';
 import { deriveTodayRoute } from '@/lib/today/dayRoute';
+import { deriveTodayTaskRowModels } from '@/lib/today/taskRowModels';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import {
@@ -23,7 +24,6 @@ import {
 } from '@/lib/speech/taskListBridge';
 import { RealityCheckSheet } from '@/components/RealityCheckSheet';
 import { TodayHeaderBridge } from '@/components/today/TodayHeaderState';
-import type { TodayTaskRowModel } from '@/components/today/TodayTaskRows';
 import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
 import { OnboardingScreen } from '@/components/AuthScreen';
@@ -55,7 +55,6 @@ import { isReliableActualMins, resolveActualForLearning } from '@/lib/thinking/d
 import {
   buildClusters,
   suggestEstimate,
-  hasMeaningfulDivergence,
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
 import { logCapturePrediction } from '@/lib/thinking/evidence/predictionLog';
@@ -2758,45 +2757,23 @@ export function TodayPage() {
       }
     : null;
 
-  const taskRowModels: TodayTaskRowModel[] = ordered.map((t, idx) => {
-    const remainingForThis = remainingForTask(t);
-    const effectiveRemaining = effectiveRemainingForTask(t);
-    cumulative += effectiveRemaining;
-    // List items (no estimate) can never be "over capacity" — they have no time on the clock to compete for.
-    const overCap = t.estimate_mins > 0 && cumulative > taskCapacity;
-    const anyActive = visibleTasks.some((x) => x.status === 'active' && x.estimate_mins > 0);
-    const subs = subtasksByTask[t.id] || [];
-    let liveLogged = t.logged_mins;
-    if (t.status === 'active' && t.started_at) {
-      liveLogged += (Date.now() - new Date(t.started_at).getTime()) / 60000;
-    }
-    const suggestion =
-      t.estimate_mins > 0
-        ? suggestEstimate(t.text, history, clusters, estimateContextFrom(t, now))
-        : null;
-    const learnedHint =
-      suggestion && hasMeaningfulDivergence(t.estimate_mins, suggestion.suggestedMins)
-        ? fmtMins(suggestion.suggestedMins)
-        : null;
-    const isLocated = isRouteStop(t, visitOpts);
-    const locatedIdx = isLocated ? locatedIndexById[t.id] : -1;
-
-    return {
-      task: t,
-      index: idx,
-      remainingForThis,
-      liveLogged,
-      overCap,
-      fitLabel: liveDayPlan.byId[t.id]?.fitLabel ?? null,
-      fitReason: liveDayPlan.byId[t.id]?.reason ?? null,
-      anyActive,
-      subs,
-      learnedHint,
-      jobLabel: jobs.find((j) => j.id === t.job_id)?.name ?? null,
-      expanded: isDesktop ? openTaskId === t.id : expandedId === t.id,
-      isLocated,
-      locatedIdx,
-    };
+  const taskRowModels = deriveTodayTaskRowModels({
+    ordered,
+    visibleTasks,
+    subtasksByTask,
+    history,
+    clusters,
+    now,
+    taskCapacity,
+    remainingForTask,
+    effectiveRemainingForTask,
+    liveDayPlan,
+    locatedIndexById,
+    isRouteStop: (task) => isRouteStop(task, visitOpts),
+    jobs,
+    isDesktop,
+    openTaskId,
+    expandedId,
   });
 
   return (
