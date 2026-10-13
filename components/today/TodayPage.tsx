@@ -105,7 +105,6 @@ import {
 } from '@/lib/dayFit';
 import { buildLiveDayPlan } from '@/lib/thinking/v3/liveDay';
 import { estimateContextFrom, useTodayIntelligence } from '@/lib/today/useTodayIntelligence';
-import { getGpsPosition } from '@/lib/today/geolocation';
 import { isRouteStop, personalVisitEvidenceFromHistory } from '@/lib/today/visitIntent';
 import { TASK_COLUMNS, PASSIVE_TODAY_KEY } from '@/lib/today/constants';
 import {
