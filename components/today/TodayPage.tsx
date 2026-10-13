@@ -25,7 +25,6 @@ import MapView from '@/components/MapView';
 import SurfaceNav from '@/components/SurfaceNav';
 import { OnboardingScreen } from '@/components/AuthScreen';
 import type { PostStopPromptState } from '@/components/PostStopPrompt';
-import { PlusIcon } from '@/components/icons';
 import { useDragReorder } from '@/hooks/useDragReorder';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { registerCaptureOpen } from '@/lib/captureOpen';
