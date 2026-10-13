@@ -78,7 +78,7 @@ evidence?: LearningEvidence[];
 workingMemory?: WorkingMemorySnapshot;
 };
 
-type CaptureDraftController = { flush: () => void };
+type CaptureDraftController = { flush: () => void; clear: () => void };
 
 /**
  * Isolate keystroke renders from CaptureSheet's interpretation, suggestions,
@@ -127,7 +127,11 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
     // Publish only at an interaction boundary. Draft keystrokes stay local so
     // Today’s parsing and intelligence hooks do not run on every typing pause.
     const flush = () => setTaskText(draftRef.current);
-    controllerRef.current = { flush };
+    const clear = () => {
+      draftRef.current = '';
+      setDraft('');
+    };
+    controllerRef.current = { flush, clear };
     return () => {
       if (controllerRef.current?.flush === flush) controllerRef.current = null;
     };
@@ -272,6 +276,12 @@ const draftControllerRef = useRef<CaptureDraftController | null>(null);
 function flushDraftText() {
   draftControllerRef.current?.flush();
   setTaskText(draftTextRef.current);
+}
+
+function clearDraftText() {
+  draftTextRef.current = '';
+  draftControllerRef.current?.clear();
+  setTaskText('');
 }
 
 const [showJobField, setShowJobField] = useState(false);
@@ -534,7 +544,7 @@ try {
     setCollectionFeedback(
       applied.message || (applied.ok ? 'List updated.' : 'Could not update list.')
     );
-    setTaskText('');
+    clearDraftText();
 
     if (applied.openTaskId) {
       onClose();
@@ -797,7 +807,7 @@ if (line && addTaskWithOverrides) {
       clearSpeechStatus();
 
       if (dock.clearLine) {
-        setTaskText('');
+        clearDraftText();
       }
 
       return;
