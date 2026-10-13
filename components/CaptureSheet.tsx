@@ -104,9 +104,15 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
     onSubmit,
   } = props;
   const [draft, setDraft] = useState(value);
+  const lastPropValueRef = useRef(value);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // A parent rerender with unchanged, still-debouncing state must not erase
+    // newer keystrokes. Only treat an actual prop transition as an external
+    // update (speech insertion, clear-after-success, or a reset).
+    if (value === lastPropValueRef.current) return;
+    lastPropValueRef.current = value;
     if (value === draftRef.current) return;
     draftRef.current = value;
     setDraft(value);
