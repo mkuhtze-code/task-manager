@@ -207,7 +207,7 @@ describe('Capture Dock UI authorization boundary', () => {
   });
 
   it('locks rapid repeated Dock presses to one in-flight create', async () => {
-    let finishCreate!: (value: { executed: boolean; execution: { status: string; taskId: string } }) => void;
+    let finishCreate!: () => Promise<void>;
     mocks.executeCpuDecision.mockImplementationOnce((_cycle, executors) =>
       new Promise((resolve) => {
         finishCreate = async () => {
@@ -226,14 +226,14 @@ describe('Capture Dock UI authorization boundary', () => {
     fireEvent.click(dock);
     fireEvent.click(dock);
 
-    expect(screen.getByRole('button', { name: 'Docking…' })).toBeDisabled();
+    expect((screen.getByRole('button', { name: 'Docking…' }) as HTMLButtonElement).disabled).toBe(true);
     expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1);
     expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1);
 
     await waitFor(() => expect(finishCreate).toBeDefined());
     await finishCreate();
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Dock' })).toBeEnabled();
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
     });
     expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1);
   });
@@ -251,7 +251,7 @@ describe('Capture Dock UI authorization boundary', () => {
       expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
     });
     fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Dock' })).toBeEnabled());
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false));
 
     fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
     await waitFor(() => expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(2));
