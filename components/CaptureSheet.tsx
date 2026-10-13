@@ -617,9 +617,7 @@ const currentGate = oneShotGate({
 const effectiveCaptureJobId =
   currentResolution?.state === 'known'
     ? currentResolution.candidate.jobId
-    : draftChanged
-      ? null
-      : (confirmedJobId ?? captureJobId);
+    : (currentConfirmedJobId ?? captureJobId);
 const speechResult = speechStatus?.result ?? null;
 
 // The capture field is authoritative at Dock time.
@@ -740,7 +738,7 @@ if (line && addTaskWithOverrides) {
               jobId: action.jobId,
               surfaceDate: action.surfaceDate,
               estimateMins: action.estimateMins ?? undefined,
-              originalInput: dock.overrides.originalInput,
+              originalInput: dock.overrides.originalInput ?? line,
               explanation: dock.overrides.explanation,
               engineRequest: dock.overrides.engineRequest,
               evidence: dock.overrides.evidence,
@@ -759,7 +757,7 @@ if (line && addTaskWithOverrides) {
               jobId: action.jobId,
               surfaceDate: action.surfaceDate,
               estimateMins: action.estimateMins ?? undefined,
-              originalInput: dock.overrides.originalInput,
+              originalInput: dock.overrides.originalInput ?? line,
               explanation: dock.overrides.explanation,
               updateTaskId: action.taskId,
               engineRequest: dock.overrides.engineRequest,
