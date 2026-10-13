@@ -62,47 +62,50 @@ vi.mock('@/components/icons', () => ({ MapPinIcon: () => null }));
 import { CaptureSheet } from '@/components/CaptureSheet';
 
 function renderCaptureSheet() {
-  return render(
-    <CaptureSheet
-      taskText="Call the client tomorrow"
-      setTaskText={mocks.setTaskText}
-      entityMemory={{ aliases: [], activeEntityIds: new Set<string>() }}
-      taskTime=""
-      setTaskTime={vi.fn()}
-      captureSuggestion={null}
-      captureLocationSuggestion={null}
-      captureLocationMemorySuggestion={null}
-      captureJobSuggestion={null}
-      captureContext={null}
-      locationFieldVisible={false}
-      addTask={mocks.addTask}
-      captureLocation=""
-      setCaptureLocation={vi.fn()}
-      captureLocationCoords={null}
-      setCaptureLocationCoords={vi.fn()}
-      manualLocationToggle={false}
-      setManualLocationToggle={vi.fn()}
-      showReminderField={false}
-      setShowReminderField={vi.fn()}
-      captureSurfaceDate=""
-      setCaptureSurfaceDate={vi.fn()}
-      jobs={[]}
-      captureJobId={null}
-      setCaptureJobId={vi.fn()}
-      thought={null}
-      intendedTime=""
-      locationResolution={null}
-      declinedResolution={false}
-      onConfirmResolution={vi.fn()}
-      onDeclineResolution={vi.fn()}
-      error=""
-      onClose={mocks.onClose}
-      userId="user-1"
-      listOps={null}
-      listTasks={[]}
-      addTaskWithOverrides={mocks.addTaskWithOverrides}
-    />,
-  );
+  const props: Parameters<typeof CaptureSheet>[0] = {
+    taskText: "Call the client tomorrow",
+    setTaskText: mocks.setTaskText,
+    entityMemory: { aliases: [], activeEntityIds: new Set<string>() },
+    taskTime: "",
+    setTaskTime: vi.fn(),
+    captureSuggestion: null,
+    captureLocationSuggestion: null,
+    captureLocationMemorySuggestion: null,
+    captureJobSuggestion: null,
+    captureContext: null,
+    locationFieldVisible: false,
+    addTask: mocks.addTask,
+    captureLocation: "",
+    setCaptureLocation: vi.fn(),
+    captureLocationCoords: null,
+    setCaptureLocationCoords: vi.fn(),
+    manualLocationToggle: false,
+    setManualLocationToggle: vi.fn(),
+    showReminderField: false,
+    setShowReminderField: vi.fn(),
+    captureSurfaceDate: "",
+    setCaptureSurfaceDate: vi.fn(),
+    jobs: [],
+    captureJobId: null,
+    setCaptureJobId: vi.fn(),
+    thought: null,
+    intendedTime: "",
+    locationResolution: null,
+    declinedResolution: false,
+    onConfirmResolution: vi.fn(),
+    onDeclineResolution: vi.fn(),
+    error: "",
+    onClose: mocks.onClose,
+    userId: "user-1",
+    listOps: null,
+    listTasks: [],
+    addTaskWithOverrides: mocks.addTaskWithOverrides,
+  };
+  const view = render(<CaptureSheet {...props} />);
+  return Object.assign(view, {
+    rerenderWithProps: (overrides: Partial<typeof props>) =>
+      view.rerender(<CaptureSheet {...props} {...overrides} />),
+  });
 }
 
 beforeEach(() => {
@@ -180,6 +183,20 @@ describe('Capture Dock UI authorization boundary', () => {
       );
     });
     expect(mocks.setTaskText).not.toHaveBeenCalled();
+  });
+
+  it('does not rerun live list classification for unrelated sheet state changes', async () => {
+    const view = renderCaptureSheet();
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    const primaryCalls = mocks.detectCaptureCollection.mock.calls.length;
+    const fallbackCalls = mocks.detectListIntent.mock.calls.length;
+
+    view.rerenderWithProps({ error: 'Unrelated validation message' });
+
+    expect(mocks.detectCaptureCollection).toHaveBeenCalledTimes(primaryCalls);
+    expect(mocks.detectListIntent).toHaveBeenCalledTimes(fallbackCalls);
   });
 
   it('skips fallback list detection when the primary classifier already found an intent', async () => {
