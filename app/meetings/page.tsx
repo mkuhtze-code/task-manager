@@ -12,6 +12,8 @@ import { supabase } from '@/lib/supabaseClient';
 import type { Meeting } from '@/lib/meetingTypes';
 import type { Job } from '@/lib/jobTypes';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
+import { localDateStr } from '@/lib/timeFormat';
+import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
 import { buildMeetingsSurfaceModel } from '@/lib/meetings/meetingSurface';
 import {
   NewMeetingSheet,
@@ -56,6 +58,7 @@ export default function MeetingsHome() {
   const [listFilter, setListFilter] =
     useState<MeetingsListFilter>('all');
   const [search, setSearch] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const { isDesktop } = useSurfaceMode();
   const { entitlements, loading: entLoading } = useEntitlements(
@@ -212,8 +215,12 @@ export default function MeetingsHome() {
   );
 
   const filterBucket = useCallback(
-    (list: Meeting[]) => list.filter(matchesSearch),
-    [matchesSearch]
+    (list: Meeting[]) =>
+      list.filter(matchesSearch).filter((meeting) =>
+        !selectedDate ||
+        Boolean(meeting.start_time && localDateStr(new Date(meeting.start_time)) === selectedDate)
+      ),
+    [matchesSearch, selectedDate]
   );
 
   const sections = useMemo(() => {
@@ -451,6 +458,10 @@ export default function MeetingsHome() {
           onNewMeeting={() => setNewMeetingOpen(true)}
           filterCounts={filterCounts}
         />
+      ) : null}
+
+      {!loading && meetings.length > 0 ? (
+        <SurfaceDateCarousel selectedDate={selectedDate} onChange={setSelectedDate} />
       ) : null}
 
       {!isDesktop ? (
