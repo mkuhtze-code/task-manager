@@ -8,7 +8,7 @@
 * List phrases map onto tasks + subtasks (taskListBridge), not collections tables.
   */
 
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type {
 EstimateSuggestion,
@@ -484,7 +484,7 @@ showReminderField ||
 showJobField;
 
 /** Live list intent from the capture line (not only speech result). */
-const liveListIntent = (() => {
+const liveListIntent = useMemo(() => {
 const line = taskText.trim();
 if (!line) return null;
 
@@ -494,8 +494,9 @@ const detected = detectCaptureCollection(line, ctx);
 // Keep the fallback lazy: the live preview runs during renders as well as
 // Dock, so eagerly evaluating it here defeats the redundant-work reduction.
 return detected?.intent ?? detectListIntent(line, listTasks);
-
-})();
+// Classification is synchronous; don't repeat it for unrelated sheet state
+// changes. Inputs that affect intent/context remain explicit dependencies.
+}, [taskText, listTasks, jobs, userId, captureJobId]);
 
 const isLiveListIntent =
 !!liveListIntent &&
