@@ -326,6 +326,33 @@ describe('Capture Dock UI authorization boundary', () => {
     expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1);
   });
 
+  it('blocks a second Dock of an unchanged draft after success, but allows a new draft', async () => {
+    renderCaptureSheet();
+    const input = screen.getByPlaceholderText('What needs doing…');
+    const dock = () => screen.getByRole('button', { name: 'Dock' });
+
+    await waitFor(() => expect((dock() as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(dock());
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect((dock() as HTMLButtonElement).disabled).toBe(false));
+
+    fireEvent.click(dock());
+    await waitFor(() => expect(screen.getByText(/already saved/i)).toBeTruthy());
+    expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1);
+    expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1);
+    expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(input, { target: { value: 'Call the supplier about delivery' } });
+    await waitFor(() => expect((dock() as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(dock());
+
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(2));
+    expect(mocks.runCaptureDock).toHaveBeenCalledTimes(2);
+    expect(mocks.addTaskWithOverrides).toHaveBeenLastCalledWith(
+      expect.objectContaining({ originalInput: 'Call the supplier about delivery' }),
+    );
+  });
+
   it('clears the busy lock after a failed dock so the user can retry', async () => {
     mocks.executeCpuDecision
       .mockRejectedValueOnce(new Error('temporary failure'))
