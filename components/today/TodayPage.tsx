@@ -1,15 +1,13 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import {
   computeTravelPresenceImpact,
 } from '@/lib/travelPresence';
 import { localDateStr as travelLocalDateStr } from '@/lib/travelContext';
-import { TaskCard } from '@/components/TaskCard';
 import ContextLine from '@/components/ContextLine';
-import { TravelLeg } from '@/components/TravelLeg';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
