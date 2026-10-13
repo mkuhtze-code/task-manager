@@ -3,20 +3,16 @@ import { fmtMins } from '@/lib/timeFormat';
 import {
   hasMeaningfulDivergence,
   suggestEstimate,
-  type HistoricalTask,
 } from '@/lib/taskIntelligence';
 import type { Task, Subtask } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
 import type { LiveDayPlan } from '@/lib/thinking/v3/liveDay';
-import { estimateContextFrom } from '@/lib/today/useTodayIntelligence';
 
 type DeriveTodayTaskRowsInput = {
   ordered: Task[];
   visibleTasks: Task[];
   subtasksByTask: Record<string, Subtask[]>;
-  history: HistoricalTask[];
-  clusters: ReturnType<typeof import('@/lib/taskIntelligence').buildClusters>;
-  now: Date;
+  learnedSuggestions: Map<string, ReturnType<typeof suggestEstimate>>;
   taskCapacity: number;
   remainingForTask: (task: Task) => number;
   effectiveRemainingForTask: (task: Task) => number;
@@ -38,9 +34,7 @@ export function deriveTodayTaskRowModels({
   ordered,
   visibleTasks,
   subtasksByTask,
-  history,
-  clusters,
-  now,
+  learnedSuggestions,
   taskCapacity,
   remainingForTask,
   effectiveRemainingForTask,
@@ -68,10 +62,9 @@ export function deriveTodayTaskRowModels({
       liveLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
     }
 
-    const suggestion =
-      task.estimate_mins > 0
-        ? suggestEstimate(task.text, history, clusters, estimateContextFrom(task, now))
-        : null;
+    // Reuse the suggestion already computed by the shared intelligence
+    // projection; don't rescan task history during every Today clock render.
+    const suggestion = learnedSuggestions.get(task.id) ?? null;
     const learnedHint =
       suggestion && hasMeaningfulDivergence(task.estimate_mins, suggestion.suggestedMins)
         ? fmtMins(suggestion.suggestedMins)

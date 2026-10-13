@@ -88,8 +88,9 @@ export function useTodayIntelligence({
   const clusters = runtime.clusters;
 
   // Keep the cluster scan off the five-second clock-only render.
-  const learnedEffectiveEstimates = useMemo(() => {
+  const { learnedEffectiveEstimates, learnedSuggestions } = useMemo(() => {
     const estimates = new Map<string, number>();
+    const suggestions = new Map<string, ReturnType<typeof suggestEstimate>>();
     for (const task of tasks) {
       if (task.estimate_mins <= 0) {
         estimates.set(task.id, task.estimate_mins);
@@ -101,12 +102,16 @@ export function useTodayIntelligence({
         clusters,
         estimateContextFrom(task, now)
       );
+      suggestions.set(task.id, suggestion);
       estimates.set(
         task.id,
         effectiveEstimate(task.estimate_mins, suggestion, runtime.blendScale)
       );
     }
-    return estimates;
+    return {
+      learnedEffectiveEstimates: estimates,
+      learnedSuggestions: suggestions,
+    };
   }, [tasks, history, clusters, runtime.blendScale, now.getHours()]);
 
   const captureSignals = useMemo(() => {
@@ -156,6 +161,7 @@ export function useTodayIntelligence({
     runtime,
     clusters,
     learnedEffectiveEstimates,
+    learnedSuggestions,
     captureSuggestion,
     captureDurationExplain,
     captureLocationSuggestion,
