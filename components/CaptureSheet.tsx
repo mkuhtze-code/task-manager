@@ -490,9 +490,10 @@ if (!line) return null;
 
 const ctx = buildCollectionContext();
 const detected = detectCaptureCollection(line, ctx);
-const fallback = detectListIntent(line, listTasks);
 
-return detected?.intent ?? fallback;
+// Keep the fallback lazy: the live preview runs during renders as well as
+// Dock, so eagerly evaluating it here defeats the redundant-work reduction.
+return detected?.intent ?? detectListIntent(line, listTasks);
 
 })();
 
@@ -627,17 +628,19 @@ const speechResult = speechStatus?.result ?? null;
 // interpretation from the active-list context.
 let collectionIntent: CollectionIntent | null = null;
 
-if (currentText.trim()) {
+if (line) {
   const ctx = buildCollectionContext();
-  const detected = detectCaptureCollection(currentText.trim(), ctx);
-  const fallback = detectListIntent(currentText.trim(), listTasks);
-  collectionIntent = detected?.intent ?? fallback;
+  const detected = detectCaptureCollection(line, ctx);
+  // The fallback detector is only needed when the primary classifier has no
+  // intent. Both classifiers are deterministic, but running both on every
+  // list-shaped capture duplicates parsing and candidate work.
+  collectionIntent = detected?.intent ?? detectListIntent(line, listTasks);
 }
 
 // Only use a speech-only collection result when there is no current capture
 // text to classify. This prevents stale/over-eager collection classification
 // from blocking an explicit task capture.
-if (!currentText.trim() && speechResult?.collection?.intent) {
+if (!line && speechResult?.collection?.intent) {
   collectionIntent = speechResult.collection.intent;
 }
 
