@@ -342,7 +342,11 @@ describe('Capture Dock UI authorization boundary', () => {
     expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1);
     expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1);
 
-    fireEvent.change(input, { target: { value: 'Call the supplier about delivery' } });
+    // Re-query after the successful Dock because the capture input may be
+    // replaced when the sheet reconciles the committed draft.
+    const freshInput = screen.getByPlaceholderText('What needs doing…');
+    fireEvent.change(freshInput, { target: { value: 'Call the supplier about delivery' } });
+    await waitFor(() => expect((screen.getByPlaceholderText('What needs doing…') as HTMLInputElement).value).toBe('Call the supplier about delivery'));
     await waitFor(() => expect((dock() as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(dock());
 
