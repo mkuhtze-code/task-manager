@@ -11,6 +11,7 @@ import ContextLine from '@/components/ContextLine';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { TodayTaskList } from '@/components/today/TodayTaskList';
 import { TodayStatusCards } from '@/components/today/TodayStatusCards';
+import { deriveTodayCapacity } from '@/lib/today/dayCapacity';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import {
@@ -2540,62 +2541,30 @@ export function TodayPage() {
     return effectiveRemainingForTaskPure(t, subtasksByTask, history, clusters, runtime, now.getTime());
   }
 
-  const todayStr = localDateStr(now);
-
-  // Reminders (future surface_date) are excluded here, before anything
-  // else touches capacity, sort, or the day rail — they don't exist for
-  // any time-pressure purpose until their date arrives.
-  const visibleTasks = tasks.filter((t) => !isScheduledForLater(t, todayStr));
-  const scheduledTasks = tasks.filter((t) => isScheduledForLater(t, todayStr));
-
-  const todayMeetings = meetings.filter((m) => {
-    if (!m.start_time) return true;
-    return localDateStr(new Date(m.start_time)) === todayStr;
-  });
-  const todayDow = now.getDay();
-  const isWorkDay = workDays.includes(todayDow);
-
-  const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
-  const workStartMinutes = timeStringToMinutes(workStart);
-  const workEndMinutes = timeStringToMinutes(workEnd);
-  const minutesLeftToday = isWorkDay ? Math.max(workEndMinutes - nowMinutesOfDay, 0) : 0;
-
-  // Reality Check: offer while timed Today work is still open and the day is
-  // winding down (last 2h of the work window, or any time after work end / off day).
-  // Uses visibleTasks only — scheduled-for-later work does not trigger the offer.
-  const REALITY_CHECK_WINDOW_MINS = 120;
-  const hasOpenTimedWork = visibleTasks.some(
-    (t) => t.status !== 'done' && t.estimate_mins > 0
-  );
-  const pastWorkEnd = isWorkDay && nowMinutesOfDay >= workEndMinutes;
-  const showRealityCheck =
-    hasOpenTimedWork &&
-    (!isWorkDay || pastWorkEnd || minutesLeftToday <= REALITY_CHECK_WINDOW_MINS);
-
-
-  // External commitments only consume capacity while they overlap the time
-  // remaining in the workday: an ended commitment stops blocking, one that
-  // hasn't started yet does not reduce time already spent, and all-day
-  // events span the whole window. This replaces the old flat subtraction
-  // that counted every meeting's full duration regardless of when it runs.
-  // Timed meetings + calendar events share one commitment list so fit,
-  // capacity, and overflow all see the same pressure.
-  const dayCommitments = buildDayCommitments({
-    calendarEvents,
-    meetings: todayMeetings,
-  });
-  const availability = computeAvailability({
-    now,
-    workStartMins: workStartMinutes,
-    workEndMins: workEndMinutes,
+  const {
+    todayStr,
+    visibleTasks,
+    scheduledTasks,
+    todayMeetings,
+    todayDow,
     isWorkDay,
-    commitments: dayCommitments,
+    nowMinutesOfDay,
+    workStartMinutes,
+    workEndMinutes,
+    minutesLeftToday,
+    dayCommitments,
+    availability,
+    untimedManualMins,
+    taskCapacity,
+  } = deriveTodayCapacity({
+    tasks,
+    meetings,
+    calendarEvents,
+    now,
+    workDays,
+    workStart,
+    workEnd,
   });
-  // Only untimed manual meetings remain as a flat subtractor (no interval).
-  const untimedManualMins = todayMeetings
-    .filter((m) => m.source !== 'outlook' && !m.start_time)
-    .reduce((sum, m) => sum + m.duration_mins, 0);
-  const taskCapacity = availability.availableMinutes - untimedManualMins;
 
   const geoAware = sortMode === 'geo_aware';
   const visitOpts = {
