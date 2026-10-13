@@ -1365,7 +1365,7 @@ export function applyUtteranceToRequest(
   // later utterance an implicit update.
   const continueActive =
     !!existing &&
-    !looksLikeNewCapture &&
+    (!looksLikeNewCapture || scheduleOnlyFollowUp) &&
     (partial.isRefinement ||
       partial.isCorrection ||
       scheduleOnlyFollowUp ||
