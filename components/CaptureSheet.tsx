@@ -490,9 +490,10 @@ if (!line) return null;
 
 const ctx = buildCollectionContext();
 const detected = detectCaptureCollection(line, ctx);
-const fallback = detectListIntent(line, listTasks);
 
-return detected?.intent ?? fallback;
+// Keep the fallback lazy: the live preview runs during renders as well as
+// Dock, so eagerly evaluating it here defeats the redundant-work reduction.
+return detected?.intent ?? detectListIntent(line, listTasks);
 
 })();
 
