@@ -127,7 +127,7 @@ export function TodayTaskRows({
                 }
               />
             )}
-          </div>
+          </Fragment>
         );
       })}
     </>
