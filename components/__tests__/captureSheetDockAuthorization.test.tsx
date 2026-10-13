@@ -64,6 +64,7 @@ function renderCaptureSheet() {
     <CaptureSheet
       taskText="Call the client tomorrow"
       setTaskText={mocks.setTaskText}
+      entityMemory={{ aliases: [], activeEntityIds: new Set<string>() }}
       taskTime=""
       setTaskTime={vi.fn()}
       captureSuggestion={null}
@@ -153,7 +154,7 @@ describe('Capture Dock UI authorization boundary', () => {
     }
   });
 
-  it('flushes the latest visible draft before Dock executes', async () => {
+  it('uses the latest local draft without flushing parent state before Dock executes', async () => {
     renderCaptureSheet();
     const input = screen.getByPlaceholderText('What needs doing…');
 
@@ -174,7 +175,52 @@ describe('Capture Dock UI authorization boundary', () => {
         expect.objectContaining({ line: 'Invoice the client for the extra materials' }),
       );
     });
-    expect(mocks.setTaskText).toHaveBeenCalledWith('Invoice the client for the extra materials');
+    expect(mocks.setTaskText).not.toHaveBeenCalled();
+  });
+
+  it('shows Docking before synchronous interpretation begins', async () => {
+    mocks.runCaptureDock.mockImplementationOnce(() => {
+      expect(screen.getByRole('button', { name: 'Docking…' })).toBeTruthy();
+      return {
+        kind: 'act_create',
+        message: 'Ready to create task',
+        cpuCycle: { decision: { outcome: 'ACT' } },
+        overrides: {
+          text: 'Call the client tomorrow',
+          originalInput: 'Call the client tomorrow',
+        },
+      };
+    });
+
+    renderCaptureSheet();
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+
+    await waitFor(() => expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1));
+  });
+
+  it('passes an explicit parsed payload on ordinary fallthrough', async () => {
+    mocks.runCaptureDock.mockReturnValueOnce({ kind: 'fallthrough', message: null });
+
+    renderCaptureSheet();
+    const input = screen.getByPlaceholderText('What needs doing…');
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.change(input, { target: { value: 'Schedule the client for tomorrow' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1));
+    expect(mocks.addTaskWithOverrides).toHaveBeenCalledWith(
+      expect.objectContaining({
+        originalInput: 'Schedule the client for tomorrow',
+        parsedThought: expect.objectContaining({}),
+      }),
+    );
+    expect(mocks.setTaskText).not.toHaveBeenCalled();
   });
 
   it('only invokes the task executor after the user explicitly presses Dock', async () => {
@@ -227,8 +273,8 @@ describe('Capture Dock UI authorization boundary', () => {
     fireEvent.click(dock);
 
     expect((screen.getByRole('button', { name: 'Docking…' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1);
-    expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1));
 
     await waitFor(() => expect(finishCreate).toBeDefined());
     await finishCreate();

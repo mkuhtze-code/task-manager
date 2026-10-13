@@ -19,9 +19,11 @@ LocationMemorySuggestion,
 import type { CaptureContextDecision } from '@/lib/thinking/types';
 import { fmtMins, minsToInput, fmtClock } from '@/lib/timeFormat';
 import type { Job } from '@/lib/jobTypes';
-import type { ThoughtParts } from '@/lib/unifiedInput/parse';
+import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
 import {
 hasEntityResolution,
+resolveJobAndLocation,
+type EntityRelationshipMemory,
 type JobLocationResolution,
 type JobLocationCandidate,
 } from '@/lib/unifiedInput/resolve';
@@ -30,7 +32,6 @@ import LocationAutocomplete from '@/components/LocationAutocomplete';
 import MicButton from '@/components/MicButton';
 import { useCaptureSpeech, textForCaptureField } from '@/hooks/useCaptureSpeech';
 import {
-captureIsCollectionMutation,
 detectCaptureCollection,
 type SpeechUnderstandingContext,
 } from '@/lib/speech';
@@ -63,6 +64,8 @@ import { shouldShowEstimateHint, markEstimateHintSeen } from '@/lib/uxFlags';
 /** Optional structured dock from the personal operating engine. */
 export type EngineDockOverrides = {
 text: string;
+/** Parsed from the exact local draft at Dock time, not parent debounce state. */
+parsedThought?: ThoughtParts;
 locationText?: string | null;
 jobId?: string | null;
 surfaceDate?: string | null;
@@ -75,7 +78,7 @@ evidence?: LearningEvidence[];
 workingMemory?: WorkingMemorySnapshot;
 };
 
-type CaptureDraftController = { flush: () => void };
+type CaptureDraftController = { flush: () => void; clear: () => void };
 
 /**
  * Isolate keystroke renders from CaptureSheet's interpretation, suggestions,
@@ -124,7 +127,11 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
     // Publish only at an interaction boundary. Draft keystrokes stay local so
     // Today’s parsing and intelligence hooks do not run on every typing pause.
     const flush = () => setTaskText(draftRef.current);
-    controllerRef.current = { flush };
+    const clear = () => {
+      draftRef.current = '';
+      setDraft('');
+    };
+    controllerRef.current = { flush, clear };
     return () => {
       if (controllerRef.current?.flush === flush) controllerRef.current = null;
     };
@@ -143,11 +150,16 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
       type="text"
       value={draft}
       onChange={(e) => onDraftChange(e.target.value)}
-      onBlur={() => controllerRef.current?.flush()}
+      onBlur={(e) => {
+        // Moving focus to Dock is not a draft commit: Dock reads draftRef
+        // directly and must not trigger TodayPage's debounced parse cascade.
+        const nextTarget = e.relatedTarget as HTMLElement | null;
+        if (nextTarget?.closest('.capture-dock-btn')) return;
+        controllerRef.current?.flush();
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          controllerRef.current?.flush();
           onSubmit();
         }
       }}
@@ -163,6 +175,7 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
 export function CaptureSheet(props: {
 taskText: string;
 setTaskText: React.Dispatch<React.SetStateAction<string>>;
+entityMemory?: EntityRelationshipMemory;
 taskTime: string;
 setTaskTime: (v: string) => void;
 captureSuggestion: EstimateSuggestion | null;
@@ -212,6 +225,7 @@ visitDurationMins?: number | null;
 const {
 taskText,
 setTaskText,
+entityMemory = { aliases: [], activeEntityIds: new Set<string>() },
 taskTime,
 setTaskTime,
 captureSuggestion,
@@ -262,6 +276,12 @@ const draftControllerRef = useRef<CaptureDraftController | null>(null);
 function flushDraftText() {
   draftControllerRef.current?.flush();
   setTaskText(draftTextRef.current);
+}
+
+function clearDraftText() {
+  draftTextRef.current = '';
+  draftControllerRef.current?.clear();
+  setTaskText('');
 }
 
 const [showJobField, setShowJobField] = useState(false);
@@ -428,14 +448,6 @@ if (captureJobId || showJobField) setMoreOpen(true);
 
 const dialogRef = useDialogA11y(onClose);
 
-const gate = oneShotGate({
-rawText: taskText,
-thought,
-locationResolution,
-declinedResolution,
-confirmedJobId: confirmedJobId ?? null,
-});
-
 const chosenJob =
 captureJobId != null ? jobs.find((j) => j.id === captureJobId) ?? null : null;
 
@@ -496,17 +508,6 @@ liveListIntent.type === 'reopen_collection' ||
 liveListIntent.type === 'query_collection' ||
 liveListIntent.type === 'clarification_required');
 
-const collectionDockReady =
-isLiveListIntent ||
-(!!speechStatus?.result &&
-!!speechStatus.result.collection &&
-(captureIsCollectionMutation(speechStatus.result) ||
-speechStatus.result.uiMode === 'collection_clarification'));
-
-// List mutations use their own target resolution — don't block on job confirm.
-const resolutionBlocksDock =
-resolutionNeedsAttention && !isLiveListIntent;
-
 async function applyListDock(intent: CollectionIntent) {
 if (!listOps) {
 setCollectionFeedback('List actions need an active session.');
@@ -543,7 +544,7 @@ try {
     setCollectionFeedback(
       applied.message || (applied.ok ? 'List updated.' : 'Could not update list.')
     );
-    setTaskText('');
+    clearDraftText();
 
     if (applied.openTaskId) {
       onClose();
@@ -587,15 +588,36 @@ if (dockBusyRef.current) return;
 dockBusyRef.current = true;
 setDockBusy(true);
 try {
-flushDraftText();
+// Keep Phase 2's paint opportunity, but do not publish the draft to TodayPage.
+// The input ref remains authoritative while synchronous interpretation runs.
+await new Promise<void>((resolve) => setTimeout(resolve, 0));
+// The input ref is authoritative. Do not flush into TodayPage here: that
+// would trigger its full parse/intelligence cascade before the dock completes.
 const currentText = draftTextRef.current;
+const line = currentText.trim();
+const currentThought = line ? parseThought(line) : null;
+const draftChanged = currentText !== taskText;
+const currentResolution = currentThought
+  ? resolveJobAndLocation(currentThought, jobs, entityMemory)
+  : locationResolution;
+const currentConfirmedJobId = draftChanged
+  ? currentResolution?.state === 'known'
+    ? currentResolution.candidate.jobId
+    : null
+  : (confirmedJobId ??
+      (currentResolution?.state === 'known' ? currentResolution.candidate.jobId : null));
+const currentDeclinedResolution = draftChanged ? false : declinedResolution;
 const currentGate = oneShotGate({
   rawText: currentText,
-  thought,
-  locationResolution,
-  declinedResolution,
-  confirmedJobId: confirmedJobId ?? null,
+  thought: currentThought,
+  locationResolution: currentResolution,
+  declinedResolution: currentDeclinedResolution,
+  confirmedJobId: currentConfirmedJobId ?? null,
 });
+const effectiveCaptureJobId =
+  currentResolution?.state === 'known'
+    ? currentResolution.candidate.jobId
+    : (currentConfirmedJobId ?? captureJobId);
 const speechResult = speechStatus?.result ?? null;
 
 // The capture field is authoritative at Dock time.
@@ -643,7 +665,27 @@ if (isListIntent && collectionIntent) {
 
 // Personal operating engine — processInteraction via runCaptureDock.
 // Outcomes: ACT / ANSWER / DEFER / CLARIFY / fallthrough → ordinary dock.
-const line = currentText.trim();
+const unresolvedCurrentResolution =
+  !!currentResolution &&
+  !currentDeclinedResolution &&
+  currentConfirmedJobId == null &&
+  (currentResolution.state === 'proposed' || currentResolution.state === 'choose');
+if (unresolvedCurrentResolution) {
+  // Commit only when fresh parsing shows a confirmation is required. This
+  // lets Today render the existing Yes/Skip UI without parsing every Dock.
+  if (draftChanged) setTaskText(currentText);
+  setCollectionFeedback(
+    currentResolution.state === 'choose'
+      ? 'Pick which place, or skip'
+      : 'Confirm or skip the place first'
+  );
+  return;
+}
+const currentThoughtForDock = currentThought;
+const parsedTaskText =
+  currentThought?.hadFacets && currentThought.intent && currentThought.intent.length > 0
+    ? currentThought.intent
+    : line;
 
 if (line && addTaskWithOverrides) {
   try {
@@ -658,7 +700,7 @@ if (line && addTaskWithOverrides) {
         name: j.name,
         locationText: j.location_text ?? null,
       })),
-      captureJobId,
+      captureJobId: effectiveCaptureJobId,
       captureSurfaceDate,
       remainingMinsToday,
       openTaskCount: listTasks.length,
@@ -691,11 +733,12 @@ if (line && addTaskWithOverrides) {
 
             return (await addTaskWithOverrides({
               text: action.text,
+              parsedThought: currentThought ?? undefined,
               locationText: action.locationText,
               jobId: action.jobId,
               surfaceDate: action.surfaceDate,
               estimateMins: action.estimateMins ?? undefined,
-              originalInput: dock.overrides.originalInput,
+              originalInput: dock.overrides.originalInput ?? line,
               explanation: dock.overrides.explanation,
               engineRequest: dock.overrides.engineRequest,
               evidence: dock.overrides.evidence,
@@ -709,11 +752,12 @@ if (line && addTaskWithOverrides) {
 
             await addTaskWithOverrides({
               text: action.text ?? dock.overrides.text,
+              parsedThought: currentThought ?? undefined,
               locationText: action.locationText,
               jobId: action.jobId,
               surfaceDate: action.surfaceDate,
               estimateMins: action.estimateMins ?? undefined,
-              originalInput: dock.overrides.originalInput,
+              originalInput: dock.overrides.originalInput ?? line,
               explanation: dock.overrides.explanation,
               updateTaskId: action.taskId,
               engineRequest: dock.overrides.engineRequest,
@@ -762,7 +806,7 @@ if (line && addTaskWithOverrides) {
       clearSpeechStatus();
 
       if (dock.clearLine) {
-        setTaskText('');
+        clearDraftText();
       }
 
       return;
@@ -777,7 +821,8 @@ if (line && addTaskWithOverrides) {
       // explicit Dock. Save the user's exact wording as a flexible task;
       // leave the date unset so Dokkit can learn/refine it later.
       await addTaskWithOverrides({
-        text: line,
+        text: parsedTaskText,
+        parsedThought: currentThought ?? undefined,
         originalInput: line,
         locationText: captureLocation.trim() || null,
         jobId: captureJobId,
@@ -802,6 +847,12 @@ if (line && addTaskWithOverrides) {
     }
   } catch (err) {
     console.error('processInteraction dock', err);
+    setCollectionFeedback(
+      err instanceof Error ? err.message : 'Could not complete that action.'
+    );
+    // An engine failure is not permission to fall through and create a second,
+    // ordinary task. Keep the draft available for an explicit retry instead.
+    return;
   }
 }
 
@@ -809,7 +860,18 @@ if (!currentGate.ready) return;
 
 confirmSpeechLearning();
 clearSpeechStatus();
-addTask();
+if (addTaskWithOverrides) {
+  await addTaskWithOverrides({
+    text: parsedTaskText,
+    parsedThought: currentThoughtForDock ?? undefined,
+    originalInput: line,
+    jobId: effectiveCaptureJobId,
+  });
+} else {
+  // Compatibility path for callers that have not adopted structured payloads.
+  flushDraftText();
+  addTask();
+}
 
 } finally {
   dockBusyRef.current = false;
@@ -1071,13 +1133,11 @@ onClick={(e) => e.stopPropagation()}
       disabled={
         !engineStateReady ||
         listBusy ||
-        dockBusy ||
-        (resolutionBlocksDock && !collectionDockReady) ||
-        (!gate.ready && !collectionDockReady)
+        dockBusy
       }
       onClick={tryDock}
     >
-      {dockBusy ? 'Docking…' : (gate.ready || collectionDockReady ? 'Dock' : 'Add')}
+      {dockBusy ? 'Docking…' : 'Dock'}
     </button>
 
     {error && (
