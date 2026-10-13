@@ -10,6 +10,7 @@ import { localDateStr as travelLocalDateStr } from '@/lib/travelContext';
 import ContextLine from '@/components/ContextLine';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { TodayTaskList } from '@/components/today/TodayTaskList';
+import { TodayStatusCards } from '@/components/today/TodayStatusCards';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import {
@@ -3069,88 +3070,39 @@ export function TodayPage() {
         }}
       />
 
-      {tasks.some((t) => isStarterTask(t)) && (
-        <div className="reality-invite-card starter-pack-banner" role="region" aria-label="Example tasks">
-          <p className="reality-invite-kicker">Examples</p>
-          <p className="reality-invite-body">
-            A few sample items so Today isn&apos;t empty. They never train Dokkit&apos;s learning.
-          </p>
-          <div className="reality-invite-actions">
-            <button
-              type="button"
-              className="btn-text"
-              disabled={clearingStarter}
-              onClick={async () => {
-                if (!session?.user?.id) return;
-                setClearingStarter(true);
-                try {
-                  await clearStarterPack(supabase, session.user.id);
-                  setTasks((prev) => prev.filter((x) => !isStarterTask(x)));
-                } finally {
-                  setClearingStarter(false);
-                }
-              }}
-            >
-              {clearingStarter ? 'Removing…' : 'Clear examples'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!setupLineDismissed &&
-        firstSessionLine(userProfile) &&
-        history.length === 0 &&
-        tasks.filter((t) => !isStarterTask(t)).length === 0 && (
-        <div className="reality-invite-card" role="status">
-          <p className="reality-invite-body" style={{ marginBottom: 8 }}>
-            {firstSessionLine(userProfile)}
-          </p>
-          <button
-            type="button"
-            className="btn-text"
-            onClick={() => {
-              markSetupLineSeen();
-              setSetupLineDismissed(true);
-            }}
-          >
-            Got it
-          </button>
-        </div>
-      )}
-
-      {pendingRealityInvite && !realityCheckOpen && (
-        <div className="reality-invite-card" role="region" aria-label="Reality check">
-          <p className="reality-invite-kicker">Yesterday</p>
-          <p className="reality-invite-body">
-            {pendingRealityInvite.taskCount === 1
-              ? 'One thing may still be open from yesterday.'
-              : `${pendingRealityInvite.taskCount} things may still be open from yesterday.`}
-          </p>
-          <div className="reality-invite-actions">
-            <button
-              type="button"
-              className="btn btn-steel"
-              onClick={() => {
-                dismissPendingRealityInvite(pendingRealityInvite.forDate);
-                setPendingRealityInvite(null);
-                setRealityCheckOpen(true);
-              }}
-            >
-              Review
-            </button>
-            <button
-              type="button"
-              className="btn-text"
-              onClick={() => {
-                dismissPendingRealityInvite(pendingRealityInvite.forDate);
-                setPendingRealityInvite(null);
-              }}
-            >
-              Not now
-            </button>
-          </div>
-        </div>
-      )}
+      <TodayStatusCards
+        hasStarterTasks={tasks.some((t) => isStarterTask(t))}
+        clearingStarter={clearingStarter}
+        onClearStarter={async () => {
+          if (!session?.user?.id) return;
+          setClearingStarter(true);
+          try {
+            await clearStarterPack(supabase, session.user.id);
+            setTasks((prev) => prev.filter((x) => !isStarterTask(x)));
+          } finally {
+            setClearingStarter(false);
+          }
+        }}
+        setupLine={!setupLineDismissed && history.length === 0 && tasks.filter((t) => !isStarterTask(t)).length === 0
+          ? firstSessionLine(userProfile)
+          : null}
+        onDismissSetupLine={() => {
+          markSetupLineSeen();
+          setSetupLineDismissed(true);
+        }}
+        pendingRealityInvite={pendingRealityInvite && !realityCheckOpen ? pendingRealityInvite : null}
+        onReviewRealityInvite={() => {
+          if (!pendingRealityInvite) return;
+          dismissPendingRealityInvite(pendingRealityInvite.forDate);
+          setPendingRealityInvite(null);
+          setRealityCheckOpen(true);
+        }}
+        onDismissRealityInvite={() => {
+          if (!pendingRealityInvite) return;
+          dismissPendingRealityInvite(pendingRealityInvite.forDate);
+          setPendingRealityInvite(null);
+        }}
+      />
 
       {realityCheckOpen && (
         <RealityCheckSheet
