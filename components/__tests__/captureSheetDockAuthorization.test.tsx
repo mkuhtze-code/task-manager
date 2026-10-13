@@ -150,6 +150,11 @@ describe('Capture Dock UI authorization boundary', () => {
   it('only invokes the task executor after the user explicitly presses Dock', async () => {
     renderCaptureSheet();
 
+    // Authenticated capture deliberately disables Dock until the remote engine
+    // snapshot has hydrated. Wait for readiness before simulating the user's click.
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
 
     await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1));
