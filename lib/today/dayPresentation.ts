@@ -28,7 +28,6 @@ type DeriveTodayDayPresentationInput = {
   minutesLeftToday: number;
   routeDriveMins: number;
   activeCommitments: TodayCommitmentLike[];
-  taskCapacity: number;
   workStartMinutes: number;
   workEndMinutes: number;
   isDesktop: boolean;
@@ -50,7 +49,6 @@ export function deriveTodayDayPresentation({
   minutesLeftToday,
   routeDriveMins,
   activeCommitments,
-  taskCapacity,
   workStartMinutes,
   workEndMinutes,
   isDesktop,
