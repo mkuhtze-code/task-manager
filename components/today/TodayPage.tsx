@@ -1379,7 +1379,7 @@ export function TodayPage() {
         loadWorkingMemoryLocal,
       } = await import('@/lib/engine');
       const bound = bindRequestToTask(engineOverrides.engineRequest, data.id);
-      const memory = bindTaskToWorkingMemory(
+      const boundMemory = bindTaskToWorkingMemory(
         engineOverrides.workingMemory ?? loadWorkingMemoryLocal(userId),
         {
           taskId: data.id,
@@ -1389,13 +1389,16 @@ export function TodayPage() {
           requestId: bound.id,
         }
       );
-      saveActiveRequestLocal(bound, userId);
+      // The task is now persisted and can be referenced through working memory,
+      // but its completed create request must not remain active for the next line.
+      const memory = { ...boundMemory, activeRequestId: null };
+      saveActiveRequestLocal(null, userId);
       saveWorkingMemoryLocal(memory, userId);
       void pushEngineStateRemote(
         supabase as never,
         userId,
         memory,
-        bound,
+        null,
         engineOverrides.evidence ?? []
       ).then(({ stateSaved, evidenceSaved }) => {
         if (!stateSaved) {

@@ -29,6 +29,9 @@ vi.mock('@/lib/uxFlags', () => ({
 vi.mock('@/lib/engine', () => ({
   hydrateEngineStateRemote: vi.fn(async () => ({ activeRequest: null })),
   loadActiveRequestLocal: vi.fn(() => null),
+  loadWorkingMemoryLocal: vi.fn(() => ({})),
+  saveActiveRequestLocal: vi.fn(),
+  pushEngineStateRemote: vi.fn(async () => ({ stateSaved: true, evidenceSaved: true })),
 }));
 vi.mock('@/lib/engine/captureDock', () => ({
   runCaptureDock: mocks.runCaptureDock,
@@ -91,7 +94,7 @@ function renderCaptureSheet() {
       onDeclineResolution={vi.fn()}
       error=""
       onClose={mocks.onClose}
-      userId={null}
+      userId="user-1"
       listOps={null}
       listTasks={[]}
       addTaskWithOverrides={mocks.addTaskWithOverrides}
@@ -147,11 +150,25 @@ describe('Capture Dock UI authorization boundary', () => {
   it('only invokes the task executor after the user explicitly presses Dock', async () => {
     renderCaptureSheet();
 
+    // Authenticated capture deliberately disables Dock until the remote engine
+    // snapshot has hydrated. Wait for readiness before simulating the user's click.
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
 
     await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1));
     expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1);
     expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1);
+    const engine = await import('@/lib/engine');
+    expect(engine.saveActiveRequestLocal).toHaveBeenCalledWith(null, 'user-1');
+    expect(engine.pushEngineStateRemote).toHaveBeenCalledWith(
+      expect.anything(),
+      'user-1',
+      expect.anything(),
+      null,
+      [],
+    );
     expect(mocks.addTaskWithOverrides).toHaveBeenCalledWith(
       expect.objectContaining({
         text: 'Call the client tomorrow',
