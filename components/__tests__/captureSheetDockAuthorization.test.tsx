@@ -64,6 +64,7 @@ function renderCaptureSheet() {
     <CaptureSheet
       taskText="Call the client tomorrow"
       setTaskText={mocks.setTaskText}
+      entityMemory={{ aliases: [], activeEntityIds: new Set() }}
       taskTime=""
       setTaskTime={vi.fn()}
       captureSuggestion={null}
