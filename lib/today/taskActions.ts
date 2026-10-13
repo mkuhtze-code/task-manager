@@ -346,6 +346,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
   }
 
   async function addSubtask(taskId: string) {
+    if (!session?.user?.id) return;
     const text = (subDraftText[taskId] || '').trim();
     if (text.length === 0) return;
     const mins = parseMins(subDraftTime[taskId] || '') || 0;
