@@ -1349,6 +1349,15 @@ export function applyUtteranceToRequest(
     !partial.isRefinement &&
     !partial.isCorrection;
 
+  // Scheduling-only follow-ups are explicit references to the active task
+  // even when phrased as "change the time to 3pm". They must not replace the
+  // task's action/object with the wording used to change its schedule.
+  const scheduleOnlyFollowUp =
+    !!existing &&
+    !!(partial.dateHint || partial.timeHint) &&
+    /\\b(?:change|set|move|reschedule|shift|push|bring)\\b/i.test(lowerRaw) &&
+    /\\b(?:time|date|schedule|day|hour|minute|due)\\b/i.test(lowerRaw);
+
   // Task identity must come from the utterance's continuation/correction
   // semantics, not from the action category or stale focus metadata. A new
   // request can have the same action as the active task, and persisted task
@@ -1359,6 +1368,7 @@ export function applyUtteranceToRequest(
     !looksLikeNewCapture &&
     (partial.isRefinement ||
       partial.isCorrection ||
+      scheduleOnlyFollowUp ||
       partialAction === 'unknown' ||
       partialAction === 'move');
 
@@ -1416,7 +1426,7 @@ export function applyUtteranceToRequest(
     base.objectText = replaceLeadingQuantity(base.objectText, quantityCorrection);
   } else if (additionalQuantity && base.objectText) {
     base.objectText = addToLeadingQuantity(base.objectText, additionalQuantity);
-  } else if (partial.objectText) {
+  } else if (partial.objectText && !scheduleOnlyFollowUp) {
     base.objectText = partial.objectText;
   }
 
@@ -1424,7 +1434,7 @@ export function applyUtteranceToRequest(
     base.titleText = partial.objectText;
   }
 
-  if (partial.primaryVerb) {
+  if (partial.primaryVerb && !scheduleOnlyFollowUp) {
     base.primaryVerb = partial.primaryVerb;
   }
 
