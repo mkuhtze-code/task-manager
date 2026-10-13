@@ -116,6 +116,7 @@ export function TodayHeader(props: {
 
   const [toolsOpen, setToolsOpen] = useState(false);
   const [depthOpen, setDepthOpen] = useState(false);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
 
   const overBy = Math.max(remainingWorkMins - minutesLeftToday, 0);
   const remainingCapacity = Math.max(minutesLeftToday - remainingWorkMins, 0);
@@ -204,6 +205,7 @@ export function TodayHeader(props: {
         'today-day-header',
         isDesktop ? 'today-day-header-desk' : 'today-day-header-mobile',
         overloaded ? 'is-over' : '',
+        headerCollapsed ? 'today-header-collapsed' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -233,7 +235,7 @@ export function TodayHeader(props: {
                   </button>
                   {showRealityCheck && onRealityCheck ? (
                     <button type="button" className="today-reality-note-btn" aria-label="Reality check" title="Reality check" onClick={() => onRealityCheck()}>
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12a1.5 1.5 0 0 1 1.5 1.5v14L16 17l-4 2-4-2-3.5 2V5A1.5 1.5 0 0 1 6 3.5Z" /><path d="M8 8h8M8 11h6" /></svg>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" /><path d="M14.5 3.8V8H19M9 13l2 2 4-4" /></svg>
                       <span>Reality check</span>
                     </button>
                   ) : null}
@@ -272,6 +274,16 @@ export function TodayHeader(props: {
             <p className="today-timebar-empty">No fixed commitments on your timeline</p>
           )}
         </div>
+        <button
+          type="button"
+          className="today-header-collapse-toggle"
+          aria-expanded={!headerCollapsed}
+          aria-label={headerCollapsed ? 'Expand day header' : 'Collapse day header'}
+          title={headerCollapsed ? 'Expand header' : 'Collapse header'}
+          onClick={() => setHeaderCollapsed((value) => !value)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d={headerCollapsed ? "m6 14 6-6 6 6" : "m6 10 6 6 6-6"} /></svg>
+        </button>
       </section>
 
       <div className="today-glance" aria-label="Day at a glance">
