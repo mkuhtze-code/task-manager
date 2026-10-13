@@ -108,7 +108,6 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
   } = props;
   const [draft, setDraft] = useState(value);
   const lastPropValueRef = useRef(value);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // A parent rerender with unchanged, still-debouncing state must not erase
@@ -122,16 +121,11 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
   }, [value, draftRef]);
 
   useEffect(() => {
-    const flush = () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-      setTaskText(draftRef.current);
-    };
+    // Publish only at an interaction boundary. Draft keystrokes stay local so
+    // Today’s parsing and intelligence hooks do not run on every typing pause.
+    const flush = () => setTaskText(draftRef.current);
     controllerRef.current = { flush };
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
       if (controllerRef.current?.flush === flush) controllerRef.current = null;
     };
   }, [controllerRef, draftRef, setTaskText]);
@@ -139,11 +133,6 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
   function onDraftChange(next: string) {
     draftRef.current = next;
     setDraft(next);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null;
-      setTaskText(draftRef.current);
-    }, 180);
     if (speechStatusActive) clearSpeechStatus();
     if (collectionFeedbackActive) clearCollectionFeedback();
   }
@@ -154,6 +143,7 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
       type="text"
       value={draft}
       onChange={(e) => onDraftChange(e.target.value)}
+      onBlur={() => controllerRef.current?.flush()}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -265,7 +255,7 @@ visitDurationMins = null,
 } = props;
 
 // The input owns its keystroke state; this ref is the synchronous source of
-// truth for Dock/Enter while parent state receives debounced updates.
+// truth for Dock/Enter while parent state receives only committed drafts.
 const draftTextRef = useRef(taskText);
 const draftControllerRef = useRef<CaptureDraftController | null>(null);
 
