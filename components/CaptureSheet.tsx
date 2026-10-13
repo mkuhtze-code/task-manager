@@ -847,6 +847,12 @@ if (line && addTaskWithOverrides) {
     }
   } catch (err) {
     console.error('processInteraction dock', err);
+    setCollectionFeedback(
+      err instanceof Error ? err.message : 'Could not complete that action.'
+    );
+    // An engine failure is not permission to fall through and create a second,
+    // ordinary task. Keep the draft available for an explicit retry instead.
+    return;
   }
 }
 
