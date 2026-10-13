@@ -129,7 +129,7 @@ describe('Capture Dock UI authorization boundary', () => {
     expect(mocks.addTask).not.toHaveBeenCalled();
   });
 
-  it('keeps the visible draft immediate and debounces parent text updates', () => {
+  it('keeps typing local and publishes the draft at a commit boundary', () => {
     vi.useFakeTimers();
     try {
       renderCaptureSheet();
@@ -140,7 +140,10 @@ describe('Capture Dock UI authorization boundary', () => {
       expect(input.value).toBe('Call the client at 2pm');
       expect(mocks.setTaskText).not.toHaveBeenCalled();
 
-      vi.advanceTimersByTime(180);
+      vi.advanceTimersByTime(1000);
+      expect(mocks.setTaskText).not.toHaveBeenCalled();
+
+      fireEvent.blur(input);
       expect(mocks.setTaskText).toHaveBeenCalledWith('Call the client at 2pm');
     } finally {
       vi.useRealTimers();
@@ -151,8 +154,6 @@ describe('Capture Dock UI authorization boundary', () => {
     renderCaptureSheet();
     const input = screen.getByPlaceholderText('What needs doing…');
 
-    // Hydration can complete asynchronously. Wait for the authenticated
-    // Dock gate before simulating the click, then verify the latest draft wins.
     await waitFor(() => {
       expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
     });
@@ -160,7 +161,6 @@ describe('Capture Dock UI authorization boundary', () => {
     fireEvent.change(input, { target: { value: 'Invoice the client for the extra materials' } });
     expect(mocks.setTaskText).not.toHaveBeenCalled();
 
-    // Dock is intentionally disabled until the account-scoped engine snapshot hydrates.
     await waitFor(() => {
       expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
     });
@@ -177,8 +177,6 @@ describe('Capture Dock UI authorization boundary', () => {
   it('only invokes the task executor after the user explicitly presses Dock', async () => {
     renderCaptureSheet();
 
-    // Authenticated capture deliberately disables Dock until the remote engine
-    // snapshot has hydrated. Wait for readiness before simulating the user's click.
     await waitFor(() => {
       expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
     });
