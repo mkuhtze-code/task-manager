@@ -207,6 +207,9 @@ describe('Capture Dock UI authorization boundary', () => {
 
     renderCaptureSheet();
     const input = screen.getByPlaceholderText('What needs doing…');
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
     fireEvent.change(input, { target: { value: 'Schedule the client for tomorrow' } });
     fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
 
