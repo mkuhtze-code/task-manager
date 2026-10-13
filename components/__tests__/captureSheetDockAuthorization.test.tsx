@@ -251,8 +251,8 @@ describe('Capture Dock UI authorization boundary', () => {
     fireEvent.click(dock);
 
     expect((screen.getByRole('button', { name: 'Docking…' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1);
-    expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mocks.runCaptureDock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.executeCpuDecision).toHaveBeenCalledTimes(1));
 
     await waitFor(() => expect(finishCreate).toBeDefined());
     await finishCreate();
