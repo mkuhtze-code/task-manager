@@ -13,6 +13,7 @@ import { TodayTaskList } from '@/components/today/TodayTaskList';
 import { TodayStatusCards } from '@/components/today/TodayStatusCards';
 import { deriveActiveCommitments, deriveTodayCapacity } from '@/lib/today/dayCapacity';
 import { deriveTodayRoute } from '@/lib/today/dayRoute';
+import { useTodayRouteController } from '@/lib/today/useTodayRouteController';
 import { deriveTodayTaskRowModels } from '@/lib/today/taskRowModels';
 import { deriveTodayDayPresentation } from '@/lib/today/dayPresentation';
 import { ScheduledSheet } from '@/components/ScheduledSheet';
@@ -104,7 +105,6 @@ import {
 } from '@/lib/dayFit';
 import { buildLiveDayPlan } from '@/lib/thinking/v3/liveDay';
 import { estimateContextFrom, useTodayIntelligence } from '@/lib/today/useTodayIntelligence';
-import { getGpsPosition } from '@/lib/today/geolocation';
 import { isRouteStop, personalVisitEvidenceFromHistory } from '@/lib/today/visitIntent';
 import { TASK_COLUMNS, PASSIVE_TODAY_KEY } from '@/lib/today/constants';
 import {
@@ -315,15 +315,7 @@ export function TodayPage() {
   const [homeCoords, setHomeCoords] = useState<Coords | null>(null);
   const [workLocation, setWorkLocation] = useState('');
   const [workCoords, setWorkCoords] = useState<Coords | null>(null);
-  const [gpsCoords, setGpsCoords] = useState<Coords | null>(null);
-  const [driveFromBaseMins, setDriveFromBaseMins] = useState(0);
-  const [basePolyline, setBasePolyline] = useState<string | null>(null);
-  // Where the final leg returns to, decided server-side from the predicted
-  // arrival vs the workday end — 'Work', 'Home', or the origin fallback
-  // label. Rendered as "→ Work" / "→ Home" on the final leg row.
-  const [returnLabel, setReturnLabel] = useState<string | null>(null);
-  const [recalculatingRoute, setRecalculatingRoute] = useState(false);
-  const [routeError, setRouteError] = useState<string | null>(null);
+  // Route state and asynchronous recalculation are owned by useTodayRouteController.
   const [mapOpen, setMapOpen] = useState(false);
 
   // Gates the first-run welcome/setup screen. Starts false so returning
@@ -456,12 +448,6 @@ export function TodayPage() {
   // waits for this: GPS acquisition plus a Directions round-trip must not
   // compete with startup reads or delay first paint of the task list.
   const [todayDataReady, setTodayDataReady] = useState(false);
-  // Monotonic token for route recalculations. A new recalc (mode toggle,
-  // task edit while routing) supersedes any in-flight one: only the
-  // latest call may write route state, so a slow stale response can
-  // never overwrite newer results mid-flight.
-  const recalcSeqRef = useRef(0);
-
   // ── Personal Gravity (Scope 3G) ────────────────────────────────
   // Surface events drive the gravity decision — which surface the
   // user naturally gravitates toward. The decision is computed once
@@ -1023,157 +1009,6 @@ export function TodayPage() {
     setTasks((prev) => prev.map((t) => (legById.has(t.id) ? { ...t, ...legById.get(t.id)! } : t)));
   }
 
-  // Recomputes the geographic route: nearest-neighbor order from whichever
-  // base currently applies (client-side, free), then asks the server to
-  // fetch real drive times + route polylines for that exact sequence and
-  // persist them. The route's start point is the live GPS fix when the
-  // user allows it, with the Home/Work base as the fallback. Only
-  // meaningful in geo_aware sort mode — every other mode zeroes the route
-  // numbers out, since their ordering isn't geographically guaranteed to
-  // make sense (the tension flagged when this was designed).
-  async function recalcRoute() {
-    if (sortMode !== 'geo_aware' || !session) {
-      setDriveFromBaseMins(0);
-      setBasePolyline(null);
-      setReturnLabel(null);
-      return;
-    }
-
-    const base = determineBase(now, workStart, workEnd, workDays, homeCoords, workCoords);
-    if (!base.coords || !base.label) {
-      setRouteError('Set a home or work address in Preferences to enable route-aware capacity.');
-      setDriveFromBaseMins(0);
-      setBasePolyline(null);
-      setReturnLabel(null);
-      return;
-    }
-
-    // Must match the exact same set the screen actually displays
-    // (visibleTasks below), or the sequence sent to the server won't line
-    // up with what weaveGeoOrder() renders — a future-dated reminder with
-    // a location would otherwise get folded into the route on the server
-    // side while never appearing in the on-screen order, silently
-    // shifting which "next stop" each drive_mins_to_next value refers to
-    // and making the numbers look wrong for the tasks around it.
-    const todayForRoute = localDateStr(now);
-    // Prefer ref so optimistic requires_visit updates are visible immediately.
-    const tasksNow = tasksRef.current;
-    const visibleForRoute = tasksNow.filter((t) => t.status !== 'done' && !isScheduledForLater(t, todayForRoute));
-    const located = visibleForRoute
-      .filter((t) =>
-        isRouteStop(t, {
-          bases: { home: homeCoords, work: workCoords },
-          profile: {
-            workType: userProfile.workType,
-            travelEmphasis: userProfile.travelEmphasis,
-          },
-          personal: personalVisitEvidenceFromHistory(history, {
-            home: homeCoords,
-            work: workCoords,
-          }),
-        })
-      )
-      .map((t) => ({ id: t.id, lat: t.lat as number, lng: t.lng as number }));
-
-    if (located.length === 0) {
-      setRouteError(null);
-      setDriveFromBaseMins(0);
-      setBasePolyline(null);
-      setReturnLabel(null);
-      return;
-    }
-
-    // Claiming our sequence number up front: any later recalcRoute() call
-    // increments past it, and every state write after an await below is
-    // skipped once superseded. This also guarantees the recalculating
-    // flag is only ever cleared by the newest run — fixing the stuck
-    // spinner the old early-return-after-GPS path could leave behind.
-    const seq = ++recalcSeqRef.current;
-
-    setRecalculatingRoute(true);
-    setRouteError(null);
-
-    try {
-      // Ask the browser for a GPS fix up front so the first/last legs start
-      // from where the user actually is. Falls back to the Home/Work base
-      // (resolved server-side from baseLabel) when unavailable/denied.
-      const gps = await getGpsPosition();
-      if (seq !== recalcSeqRef.current || sortMode !== 'geo_aware' || !session) return; // superseded or mode changed while waiting
-      setGpsCoords(gps);
-
-      // Inputs to the server's return-destination decision: the current
-      // local clock (minutes since midnight) and the estimated duration of
-      // every task still ahead before the return leg. The latter blends the
-      // typed estimate with learned history via effectiveRemainingForTask —
-      // that browser-side data is exactly why the server can't compute it
-      // itself, and why longer-than-expected tasks can shift the predicted
-      // return from Work to Home.
-      const nowLocalMins = now.getHours() * 60 + now.getMinutes();
-      const remainingTaskMins = visibleForRoute.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
-
-      const json = await authedFetch('/api/today/calculate-route', {
-        orderedTaskIds: nearestNeighborOrder(base.coords, located),
-        baseLabel: base.label,
-        nowLocalMins,
-        remainingTaskMins,
-        ...(gps ? { origin: { lat: gps.lat, lng: gps.lng } } : {}),
-      });
-      if (seq !== recalcSeqRef.current) return; // a newer recalculation superseded this one
-
-      if (json.error) {
-        setRouteError(json.error);
-      } else {
-        setDriveFromBaseMins(json.driveFromBaseMins || 0);
-        setBasePolyline(json.basePolyline || null);
-        setReturnLabel(json.returnLabel || null);
-        // The server silently returns which legs it couldn't compute
-        // (bad geocode, Directions API failure, etc.) — surface that
-        // instead of leaving those tasks with a blank/stale drive time
-        // and no explanation for why.
-        if (Array.isArray(json.skipped) && json.skipped.length > 0) {
-          setRouteError(
-            json.skipped.length === 1
-              ? `Couldn't get a drive time for "${json.skipped[0]}".`
-              : `Couldn't get drive times for: ${json.skipped.join(', ')}.`
-          );
-        }
-        applyRouteLegs(json.legs);
-      }
-    } catch {
-      if (seq === recalcSeqRef.current) {
-        setRouteError('Could not reach the server — check your connection and try again.');
-      }
-    } finally {
-      if (seq === recalcSeqRef.current) {
-        setRecalculatingRoute(false);
-      }
-    }
-  }
-
-  // Auto-recalculates whenever geo_aware becomes the active sort mode,
-  // and zeroes route numbers out the moment it stops being active — so
-  // switching away never leaves stale drive-time inflating capacity math
-  // in a mode where the order no longer justifies it.
-  //
-  // The automatic first run waits for todayDataReady: the task list and
-  // its route numbers are secondary to simply seeing your day, so GPS
-  // acquisition and Directions work only begin once the useful UI is on
-  // screen. Manual recalcs from TodayHeader are never gated.
-  useEffect(() => {
-    if (sortMode === 'geo_aware' && session && todayDataReady) {
-      recalcRoute();
-    } else if (!(sortMode === 'geo_aware' && session)) {
-      setDriveFromBaseMins(0);
-      setBasePolyline(null);
-      setGpsCoords(null);
-      setReturnLabel(null);
-      setRouteError(null);
-    }
-    // geo_aware + session but startup data not ready yet: do nothing now;
-    // this effect re-runs when todayDataReady flips true.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortMode, session, todayDataReady]);
-
   // Unified Thought Input V1 confirmation handlers. The user confirms a
   // single proposed candidate ("Do you mean 14 Belgium Road?"), picks one
   // from several, or declines — which leaves the relationship unresolved
@@ -1203,6 +1038,31 @@ export function TodayPage() {
     setConfirmedLocation(null);
     setDeclinedResolution(true);
   }
+
+  const {
+    gpsCoords,
+    driveFromBaseMins,
+    basePolyline,
+    returnLabel,
+    recalculatingRoute,
+    routeError,
+    recalcRoute,
+  } = useTodayRouteController({
+    sortMode,
+    session,
+    todayDataReady,
+    now,
+    workStart,
+    workEnd,
+    workDays,
+    homeCoords,
+    workCoords,
+    userProfile,
+    history,
+    tasksRef,
+    effectiveRemainingForTask,
+    applyRouteLegs,
+  });
 
   // V1.2: writes the user-confirmed relationship (alias → entity) to the
   // entity_aliases table. Idempotent upsert keyed on (user_id, alias,
