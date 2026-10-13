@@ -1878,6 +1878,7 @@ export function TodayPage() {
     supabase,
     session,
     tasks,
+    tasksRef,
     setTasks,
     sortMode,
     recalcRoute,
