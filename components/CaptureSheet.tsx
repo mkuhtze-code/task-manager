@@ -22,6 +22,8 @@ import type { Job } from '@/lib/jobTypes';
 import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
 import {
 hasEntityResolution,
+resolveJobAndLocation,
+type EntityRelationshipMemory,
 type JobLocationResolution,
 type JobLocationCandidate,
 } from '@/lib/unifiedInput/resolve';
@@ -170,6 +172,7 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
 export function CaptureSheet(props: {
 taskText: string;
 setTaskText: React.Dispatch<React.SetStateAction<string>>;
+entityMemory: EntityRelationshipMemory;
 taskTime: string;
 setTaskTime: (v: string) => void;
 captureSuggestion: EstimateSuggestion | null;
@@ -219,6 +222,7 @@ visitDurationMins?: number | null;
 const {
 taskText,
 setTaskText,
+entityMemory,
 taskTime,
 setTaskTime,
 captureSuggestion,
@@ -597,13 +601,31 @@ try {
 // The input ref is authoritative. Do not flush into TodayPage here: that
 // would trigger its full parse/intelligence cascade before the dock completes.
 const currentText = draftTextRef.current;
+const line = currentText.trim();
+const currentThought = line ? parseThought(line) : null;
+const draftChanged = currentText !== taskText;
+const currentResolution =
+  draftChanged && currentThought
+    ? resolveJobAndLocation(currentThought, jobs, entityMemory)
+    : locationResolution;
+const currentConfirmedJobId = draftChanged
+  ? currentResolution?.state === 'known'
+    ? currentResolution.candidate.jobId
+    : null
+  : confirmedJobId;
+const currentDeclinedResolution = draftChanged ? false : declinedResolution;
 const currentGate = oneShotGate({
   rawText: currentText,
-  thought,
-  locationResolution,
-  declinedResolution,
-  confirmedJobId: confirmedJobId ?? null,
+  thought: currentThought,
+  locationResolution: currentResolution,
+  declinedResolution: currentDeclinedResolution,
+  confirmedJobId: currentConfirmedJobId ?? null,
 });
+const effectiveCaptureJobId = draftChanged
+  ? currentResolution?.state === 'known'
+    ? currentResolution.candidate.jobId
+    : null
+  : (confirmedJobId ?? captureJobId);
 const speechResult = speechStatus?.result ?? null;
 
 // The capture field is authoritative at Dock time.
@@ -651,8 +673,23 @@ if (isListIntent && collectionIntent) {
 
 // Personal operating engine — processInteraction via runCaptureDock.
 // Outcomes: ACT / ANSWER / DEFER / CLARIFY / fallthrough → ordinary dock.
-const line = currentText.trim();
-const currentThought = line ? parseThought(line) : null;
+const unresolvedCurrentResolution =
+  !!currentResolution &&
+  !currentDeclinedResolution &&
+  currentConfirmedJobId == null &&
+  (currentResolution.state === 'proposed' || currentResolution.state === 'choose');
+if (unresolvedCurrentResolution) {
+  // Commit only when fresh parsing shows a confirmation is required. This
+  // lets Today render the existing Yes/Skip UI without parsing every Dock.
+  if (draftChanged) setTaskText(currentText);
+  setCollectionFeedback(
+    currentResolution.state === 'choose'
+      ? 'Pick which place, or skip'
+      : 'Confirm or skip the place first'
+  );
+  return;
+}
+const currentThoughtForDock = currentThought;
 const parsedTaskText =
   currentThought?.hadFacets && currentThought.intent && currentThought.intent.length > 0
     ? currentThought.intent
@@ -671,7 +708,7 @@ if (line && addTaskWithOverrides) {
         name: j.name,
         locationText: j.location_text ?? null,
       })),
-      captureJobId,
+      captureJobId: effectiveCaptureJobId,
       captureSurfaceDate,
       remainingMinsToday,
       openTaskCount: listTasks.length,
@@ -825,11 +862,18 @@ if (!currentGate.ready) return;
 
 confirmSpeechLearning();
 clearSpeechStatus();
-await addTaskWithOverrides({
-  text: parsedTaskText,
-  parsedThought: currentThought ?? undefined,
-  originalInput: line,
-});
+if (addTaskWithOverrides) {
+  await addTaskWithOverrides({
+    text: parsedTaskText,
+    parsedThought: currentThoughtForDock ?? undefined,
+    originalInput: line,
+    jobId: effectiveCaptureJobId,
+  });
+} else {
+  // Compatibility path for callers that have not adopted structured payloads.
+  flushDraftText();
+  addTask();
+}
 
 } finally {
   dockBusyRef.current = false;
@@ -1091,13 +1135,11 @@ onClick={(e) => e.stopPropagation()}
       disabled={
         !engineStateReady ||
         listBusy ||
-        dockBusy ||
-        (resolutionBlocksDock && !collectionDockReady) ||
-        (!gate.ready && !collectionDockReady)
+        dockBusy
       }
       onClick={tryDock}
     >
-      {dockBusy ? 'Docking…' : (gate.ready || collectionDockReady ? 'Dock' : 'Add')}
+      {dockBusy ? 'Docking…' : 'Dock'}
     </button>
 
     {error && (
