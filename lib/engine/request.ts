@@ -211,7 +211,7 @@ function extractCompoundSemantic(text: string, primaryVerb: string | null): {
 
   const escapedVerb = primaryVerb.replace(/\s+/g, '\\s+');
   const afterVerb = text.match(
-    new RegExp('^.*?\b' + escapedVerb + '\\s+(.+)$', 'i')
+    new RegExp('^.*?\\b' + escapedVerb + '\\s+(.+)$', 'i')
   )?.[1]?.trim();
 
   if (!afterVerb) {
@@ -1042,7 +1042,7 @@ export function interpretRequestUtterance(raw: string): Partial<EngineRequest> &
     primaryVerb &&
     /^(?:call|ring|phone|email|text|message|contact|ask|tell|confirm|chase|follow\s*up)$/.test(primaryVerb) &&
     out.objectText &&
-    !new RegExp('^' + primaryVerb.replace(/\s+/g, '\\s+') + '\b', 'i').test(out.objectText)
+    !new RegExp('^' + primaryVerb.replace(/\s+/g, '\\s+') + '\\b', 'i').test(out.objectText)
   ) {
     out.objectText = primaryVerb + ' ' + out.objectText;
   }
@@ -1669,7 +1669,7 @@ export function requestTaskText(req: EngineRequest): string {
 
     const alreadyInObject =
       new RegExp(
-        '(?:\b(?:at|to|from|for|about)\\s+)' + escaped + '\\s*$',
+        '(?:\\b(?:at|to|from|for|about)\\s+)' + escaped + '\\s*$',
         'i'
       ).test(object) ||
       object.toLowerCase() === location.toLowerCase();
