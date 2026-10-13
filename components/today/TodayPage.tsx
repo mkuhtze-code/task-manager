@@ -91,7 +91,6 @@ import {
   timeStringToMinutes,
 } from '@/lib/timeFormat';
 import {
-  computeAvailability,
   buildDayCommitments,
   remainingTaskCapacityMins,
 } from '@/lib/calendar/planning';
