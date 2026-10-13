@@ -175,7 +175,7 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
 export function CaptureSheet(props: {
 taskText: string;
 setTaskText: React.Dispatch<React.SetStateAction<string>>;
-entityMemory: EntityRelationshipMemory;
+entityMemory?: EntityRelationshipMemory;
 taskTime: string;
 setTaskTime: (v: string) => void;
 captureSuggestion: EstimateSuggestion | null;
@@ -225,7 +225,7 @@ visitDurationMins?: number | null;
 const {
 taskText,
 setTaskText,
-entityMemory,
+entityMemory = { aliases: [], activeEntityIds: new Set<string>() },
 taskTime,
 setTaskTime,
 captureSuggestion,
