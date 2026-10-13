@@ -154,6 +154,10 @@ describe('Capture Dock UI authorization boundary', () => {
     fireEvent.change(input, { target: { value: 'Invoice the client for the extra materials' } });
     expect(mocks.setTaskText).not.toHaveBeenCalled();
 
+    // Dock is intentionally disabled until the account-scoped engine snapshot hydrates.
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
 
     await waitFor(() => {
