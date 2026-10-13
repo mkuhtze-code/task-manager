@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Task, SortMode, Subtask } from '@/lib/taskTypes';
 import type { HistoricalTask } from '@/lib/taskIntelligence';
@@ -6,7 +6,6 @@ import { buildClusters, isStarterTask } from '@/lib/taskIntelligence';
 import { closeCompletionLoop, historyRowFromCompletion } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { loadActiveRequestLocal, loadWorkingMemoryLocal, saveActiveRequestLocal, saveWorkingMemoryLocal, pushEngineStateRemote } from '@/lib/engine/persist';
 import { releaseCompletedTaskContext } from '@/lib/engine/taskLifecycle';
-import { localPatchTask, localRemoveTask, localUpsertTask, flushSyncQueue } from '@/lib/offline';
 import { notifyTaskActivity } from '@/hooks/useActiveTask';
 import { showActiveTimerNotification } from '@/lib/activeTimerNotify';
 import { parseMins } from '@/lib/timeFormat';
@@ -16,6 +15,7 @@ type TodayTaskActionsDependencies = {
   supabase: typeof import('@/lib/supabaseClient').supabase;
   session: Session | null;
   tasks: Task[];
+  tasksRef: MutableRefObject<Task[]>;
   setTasks: Dispatch<SetStateAction<Task[]>>;
   sortMode: SortMode;
   recalcRoute: () => Promise<void>;
@@ -38,7 +38,7 @@ type TodayTaskActionsDependencies = {
 /** Existing Today task lifecycle and metadata actions, moved without changing their rules. */
 export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
   const {
-    supabase, session, tasks, setTasks, sortMode, recalcRoute,
+    supabase, session, tasks, tasksRef, setTasks, sortMode, recalcRoute,
     queueTaskPatch, queueTaskDelete, history, setHistory, clusters,
     subtasksByTask, postStopPrompt, setPostStopPrompt, setPostStopBusy,
     subDraftText, setSubDraftText, subDraftTime, setSubDraftTime,
