@@ -145,11 +145,16 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
       type="text"
       value={draft}
       onChange={(e) => onDraftChange(e.target.value)}
-      onBlur={() => controllerRef.current?.flush()}
+      onBlur={(e) => {
+        // Moving focus to Dock is not a draft commit: Dock reads draftRef
+        // directly and must not trigger TodayPage's debounced parse cascade.
+        const nextTarget = e.relatedTarget as HTMLElement | null;
+        if (nextTarget?.closest('.capture-dock-btn')) return;
+        controllerRef.current?.flush();
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          controllerRef.current?.flush();
           onSubmit();
         }
       }}
