@@ -54,9 +54,9 @@ import {
   type UserProfile,
 } from '@/lib/userProfile';
 import { isReliableActualMins, resolveActualForLearning } from '@/lib/thinking/durationQuality';
-import { buildClusters, suggestEstimate, type HistoricalTask } from '@/lib/taskIntelligence';
+import { suggestEstimate, type HistoricalTask } from '@/lib/taskIntelligence';
 import { logCapturePrediction } from '@/lib/thinking/evidence/predictionLog';
-import { closeCompletionLoop, historyRowFromCompletion } from '@/lib/thinking/evidence/closeCompletionLoop';
+import { closeCompletionLoop } from '@/lib/thinking/evidence/closeCompletionLoop';
 import { decidePersonalGravity, LOOKBACK_DAYS } from '@/lib/thinking/decisions/personalGravity';
 import { parseThought, type ThoughtParts } from '@/lib/unifiedInput/parse';
 import { oneShotGate } from '@/lib/unifiedInput/oneShot';
@@ -114,10 +114,7 @@ import {
 } from '@/lib/today/taskRemaining';
 import { useNow } from '@/hooks/useNow';
 import { useTodayAuth } from '@/hooks/useTodayAuth';
-import { notifyTaskActivity } from '@/hooks/useActiveTask';
-import { loadActiveRequestLocal, loadWorkingMemoryLocal, saveActiveRequestLocal, saveWorkingMemoryLocal, pushEngineStateRemote } from '@/lib/engine/persist';
-import { releaseCompletedTaskContext } from '@/lib/engine/taskLifecycle';
-import { showActiveTimerNotification } from '@/lib/activeTimerNotify';
+import { loadWorkingMemoryLocal, saveActiveRequestLocal, saveWorkingMemoryLocal, pushEngineStateRemote } from '@/lib/engine/persist';
 import {
   cacheOpenTasks,
   loadCachedOpenTasks,
