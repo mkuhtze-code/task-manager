@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Task } from '@/lib/taskTypes';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
@@ -102,6 +102,34 @@ describe('TaskDetailSheet validation recovery', () => {
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByPlaceholderText('Task name')).toHaveProperty('value', 'Updated task name');
     expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it('keeps the latest draft open if it changes while a save is in flight', async () => {
+    const { props } = renderTaskDetail();
+    let resolveFirst!: (saved: boolean) => void;
+    props.onSave
+      .mockImplementationOnce(() => new Promise<boolean>((resolve) => {
+        resolveFirst = resolve;
+      }))
+      .mockResolvedValueOnce(true);
+
+    const input = screen.getByPlaceholderText('Task name') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'First edit' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(props.onSave).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(input, { target: { value: 'Latest edit' } });
+    resolveFirst(true);
+
+    expect(await screen.findByText('Your edits changed while a save was in progress. Save again to keep the latest changes.')).toBeTruthy();
+    expect(input.value).toBe('Latest edit');
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(props.onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(props.onSave).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(props.onClose).toHaveBeenCalledTimes(1));
+    expect(props.onSave.mock.calls[1][1]).toBe('Latest edit');
   });
 
   it('does not complete or close a task when its valid edit fails to persist', async () => {
