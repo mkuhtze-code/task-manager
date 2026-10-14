@@ -291,8 +291,7 @@ export function TodayHeader(props: {
           </button>
         </div>
 
-        {timelineOpen ? (
-          <section id="experience-day-timeline" className="experience-day-detail" aria-label="Day timeline">
+        <section id="experience-day-timeline" className="experience-day-detail" aria-label="Day timeline" hidden={!timelineOpen}>
             <div className="experience-timeline-axis"><span>{fmtClock(workStart)}</span><span>Now</span><span>{fmtClock(workEnd)}</span></div>
             <div className="experience-timeline-track" role="img" aria-label={`Workday from ${fmtClock(workStart)} to ${fmtClock(workEnd)}; current time ${Math.round(clockPct)} percent through`}>
               <span className="experience-timeline-elapsed" style={{ width: `${clockPct}%` }} />
@@ -309,11 +308,9 @@ export function TodayHeader(props: {
                 ))}
               </ul>
             ) : <p className="experience-day-detail-empty">No fixed commitments on your timeline.</p>}
-          </section>
-        ) : null}
+        </section>
 
-        {depthOpen ? (
-          <section id="experience-day-depth" className="experience-day-detail" aria-label="Patterns and fit">
+        <section id="experience-day-depth" className="experience-day-detail" aria-label="Patterns and fit" hidden={!depthOpen}>
             {patternInsight ? (
               <div className="experience-pattern-read">
                 <p className="experience-day-eyebrow">Learned from completed work</p>
@@ -333,11 +330,9 @@ export function TodayHeader(props: {
                 <ul>{depth.fitsNow.slice(0, 3).map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
               </div>
             ) : null}
-          </section>
-        ) : null}
+        </section>
 
-        {toolsOpen ? (
-          <section className="experience-day-detail experience-day-tools" aria-label="Today tools">
+        <section className="experience-day-detail experience-day-tools" aria-label="Today tools" hidden={!toolsOpen}>
             {showRealityCheck && onRealityCheck ? (
               <button type="button" onClick={() => { onRealityCheck(); setToolsOpen(false); }}>
                 Reality check{realityCheckMessage ? <span>{realityCheckMessage}</span> : null}
@@ -352,8 +347,7 @@ export function TodayHeader(props: {
                 </div>
               </div>
             ) : null}
-          </section>
-        ) : null}
+        </section>
       </header>
     );
   }
