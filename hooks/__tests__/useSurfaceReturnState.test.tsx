@@ -7,6 +7,7 @@ const KEY = 'dokkit.surface-return.test.v1';
 
 beforeEach(() => {
   window.sessionStorage.clear();
+  Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
   vi.restoreAllMocks();
 });
 
@@ -42,7 +43,7 @@ describe('useSurfaceReturnState', () => {
     });
   });
 
-  it('saves the latest state and viewport when leaving a surface', () => {
+  it('saves the latest state and viewport when leaving a surface', async () => {
     Object.defineProperty(window, 'scrollY', {
       configurable: true,
       value: 185,
@@ -58,11 +59,11 @@ describe('useSurfaceReturnState', () => {
     });
     act(() => unmount());
 
-    expect(JSON.parse(window.sessionStorage.getItem(KEY) || 'null')).toEqual({
+    await waitFor(() => expect(JSON.parse(window.sessionStorage.getItem(KEY) || 'null')).toEqual({
       version: 1,
       state: { filter: 'done', search: 'client', selectedDate: '2026-10-15' },
       scrollY: 185,
-    });
+    }));
   });
 
   it('ignores malformed or incompatible snapshots', async () => {
