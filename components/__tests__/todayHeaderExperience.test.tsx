@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TodayHeader } from '@/components/TodayHeader';
 
 vi.mock('@/components/GearMenu', () => ({ default: () => <button type="button">Settings</button> }));
+
+afterEach(() => cleanup());
 
 function renderMobileTodayHeader() {
   const props = {
@@ -68,7 +70,8 @@ describe('replacement mobile Today instrument', () => {
   it('retains the compact day-header collapse control', () => {
     renderMobileTodayHeader();
 
-    const capacity = screen.getByText('Work time remaining').closest('.experience-capacity') as HTMLElement;
+    const { container } = renderMobileTodayHeader();
+    const capacity = container.querySelector('.experience-capacity') as HTMLElement;
     expect(capacity.hidden).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Collapse day details' }));
     expect(capacity.hidden).toBe(true);
@@ -78,15 +81,15 @@ describe('replacement mobile Today instrument', () => {
   });
 
   it('reveals fixed commitments only when the timeline is requested', () => {
-    renderMobileTodayHeader();
-
-    const timeline = screen.getByRole('region', { name: 'Day timeline', hidden: true }) as HTMLElement;
+    const { container } = renderMobileTodayHeader();
+    const scoped = within(container);
+    const timeline = container.querySelector('#experience-day-timeline') as HTMLElement;
     expect(timeline.hidden).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: /Timeline Show/i }));
+    fireEvent.click(scoped.getByRole('button', { name: /Timeline Show/i }));
 
-    expect(screen.getByRole('region', { name: 'Day timeline' })).toBeTruthy();
-    expect(screen.getAllByText('Project review').length).toBeGreaterThan(0);
-    expect(screen.getByText('10a')).toBeTruthy();
+    expect(scoped.getByRole('region', { name: 'Day timeline' })).toBeTruthy();
+    expect(scoped.getByText('Project review')).toBeTruthy();
+    expect(scoped.getByText('10a')).toBeTruthy();
   });
 
   it('exposes learned fit on demand and keeps the map action available', () => {
