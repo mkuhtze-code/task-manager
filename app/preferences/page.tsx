@@ -256,7 +256,16 @@ export default function Preferences() {
           payload.syncError || 'Calendar selection was saved, but syncing changes failed. Try again shortly.';
         setCalendarListMsg(message);
         setCalendarConnection((prev) =>
-          prev ? { ...prev, sync_status: 'error', sync_error: message } : prev
+          prev
+            ? {
+                ...prev,
+                sync_status: 'error',
+                sync_error:
+                  typeof payload.syncErrorDetail === 'string'
+                    ? payload.syncErrorDetail
+                    : prev.sync_error,
+              }
+            : prev
         );
       } else {
         setCalendarListMsg('Calendar selection saved and synced.');
