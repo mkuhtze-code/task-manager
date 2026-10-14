@@ -49,12 +49,12 @@
   border-radius: 20px;
   border: 1px solid var(--line);
   box-shadow:
-    0 -12px 40px rgba(15, 23, 42, 0.12),
-    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+    0 -12px 40px rgba(var(--shadow-rgb), 0.14),
+    0 0 0 1px color-mix(in srgb, #fff 40%, transparent) inset;
   padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
   max-height: min(84dvh, 760px);
   overflow-y: auto;
-  background: var(--surface-page);
+  background: var(--paper-raised);
 }
 
 @media (max-width: 360px) {
