@@ -55,18 +55,10 @@ export default function MeetingPhotoCarousel(props: {
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     frameRef.current?.focus();
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'ArrowLeft')
-        setOpen((v) => (v === null ? v : (v - 1 + photos.length) % photos.length));
-      else if (e.key === 'ArrowRight')
-        setOpen((v) => (v === null ? v : (v + 1) % photos.length));
-    }
-    window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = previous;
-      window.removeEventListener('keydown', onKey);
     };
-  }, [open, photos.length]);
+  }, [open]);
 
   if (photos.length === 0) return null;
 
@@ -148,6 +140,18 @@ export default function MeetingPhotoCarousel(props: {
           ref={frameRef}
           tabIndex={-1}
           onClick={() => setOpen(null)}
+          onKeyDown={(event) => {
+            // Photo navigation belongs to the focused lightbox, not every overlay on the page.
+            if (event.key === 'ArrowLeft') {
+              event.preventDefault();
+              setOpen((value) =>
+                value === null ? value : (value - 1 + photos.length) % photos.length
+              );
+            } else if (event.key === 'ArrowRight') {
+              event.preventDefault();
+              setOpen((value) => (value === null ? value : (value + 1) % photos.length));
+            }
+          }}
         >
           <button type="button" className="meeting-lightbox-close" aria-label="Close photo" onClick={() => setOpen(null)}>
             <CloseIcon />
