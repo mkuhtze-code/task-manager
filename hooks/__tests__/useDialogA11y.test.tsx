@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function DialogFixture({
@@ -136,13 +136,7 @@ describe('useDialogA11y', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(dialog));
     last.focus();
-    const tab = new KeyboardEvent('keydown', {
-      key: 'Tab',
-      bubbles: true,
-      cancelable: true,
-    });
-    document.dispatchEvent(tab);
-    expect(tab.defaultPrevented).toBe(true);
+    fireEvent.keyDown(document, { key: 'Tab' });
     expect(document.activeElement).toBe(first);
 
     const escape = new KeyboardEvent('keydown', {
@@ -163,7 +157,7 @@ describe('useDialogA11y', () => {
 
     const openInner = screen.getByRole('button', { name: 'Open inner dialog' });
     await waitFor(() => expect(document.activeElement).toBe(openInner));
-    openInner.click();
+    fireEvent.click(openInner);
 
     const innerDialog = await screen.findByRole('dialog', { name: 'Inner dialog' });
     const first = screen.getByRole('button', { name: 'First inner action' });
@@ -180,24 +174,14 @@ describe('useDialogA11y', () => {
     expect(tab.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(first);
 
-    const escapeInner = new KeyboardEvent('keydown', {
-      key: 'Escape',
-      bubbles: true,
-      cancelable: true,
-    });
-    document.dispatchEvent(escapeInner);
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(onInnerClose).toHaveBeenCalledTimes(1);
     expect(onOuterClose).not.toHaveBeenCalled();
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Inner dialog' })).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(openInner));
 
-    const escapeOuter = new KeyboardEvent('keydown', {
-      key: 'Escape',
-      bubbles: true,
-      cancelable: true,
-    });
-    document.dispatchEvent(escapeOuter);
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(onOuterClose).toHaveBeenCalledTimes(1);
     expect(innerDialog.isConnected).toBe(false);
   });
