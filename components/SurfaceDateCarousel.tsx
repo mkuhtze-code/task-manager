@@ -20,6 +20,7 @@ export default function SurfaceDateCarousel({
 }: SurfaceDateCarouselProps) {
   const [ready, setReady] = useState(false);
   const [wheelFocusKey, setWheelFocusKey] = useState<string | null>(null);
+  const [dateWindowAnchor, setDateWindowAnchor] = useState<string | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const settleTimer = useRef<number | null>(null);
   const userGesture = useRef(false);
@@ -30,8 +31,19 @@ export default function SurfaceDateCarousel({
 
   const { today, dates } = useMemo(() => {
     const now = new Date();
-    const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayKey = localDateKey(base);
+    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayKey = localDateKey(todayDate);
+    // Keep the nearby window anchored to today unless the user explicitly
+    // jumps to a distant date. Scrolling among dates must not keep shifting
+    // the window underneath the user's finger.
+    const anchor = dateWindowAnchor
+      ? (() => {
+          const [year, month, day] = dateWindowAnchor.split('-').map(Number);
+          return new Date(year, month - 1, day);
+        })()
+      : todayDate;
+    const base = dateWindowAnchor ? anchor : todayDate;
+
     const days = Array.from({ length: 14 }, (_, index) => {
       const date = new Date(base);
       date.setDate(base.getDate() + index - 3);
@@ -44,7 +56,7 @@ export default function SurfaceDateCarousel({
       };
     });
     return { today: todayKey, dates: days };
-  }, []);
+  }, [dateWindowAnchor]);
 
   const focusKey = wheelFocusKey ?? selectedDate ?? today;
   const focusIndex = dates.findIndex((date) => date.key === focusKey);
@@ -108,10 +120,27 @@ export default function SurfaceDateCarousel({
 
   const chooseDate = useCallback((key: string | null) => {
     userGesture.current = false;
+    if (key === null || key === today) setDateWindowAnchor(null);
     onChange(key);
     setWheelFocusKey(key ?? today);
     vibrate();
   }, [onChange, today, vibrate]);
+
+  const jumpToDate = useCallback((key: string) => {
+    const [year, month, day] = key.split('-').map(Number);
+    const selected = new Date(year, month - 1, day);
+    const now = new Date();
+    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const nearbyStart = new Date(todayDate);
+    nearbyStart.setDate(nearbyStart.getDate() - 3);
+    const nearbyEnd = new Date(todayDate);
+    nearbyEnd.setDate(nearbyEnd.getDate() + 10);
+    const outsideNearbyWindow =
+      selected.getTime() < nearbyStart.getTime() ||
+      selected.getTime() > nearbyEnd.getTime();
+    setDateWindowAnchor(outsideNearbyWindow ? key : null);
+    chooseDate(key);
+  }, [chooseDate]);
 
   if (!ready) {
     return <div className="surface-date-carousel-wrap" aria-hidden="true" style={{ minHeight: 82 }} />;
@@ -119,6 +148,24 @@ export default function SurfaceDateCarousel({
 
   return (
     <div className="surface-date-carousel-wrap" data-no-surface-swipe data-horizontal-scroll>
+      <div className="surface-date-tools">
+        <label className="surface-date-jump">
+          <span>Jump to date</span>
+          <input
+            type="date"
+            aria-label="Jump to date"
+            value={selectedDate ?? today}
+            onChange={(event) => {
+              if (event.currentTarget.value) jumpToDate(event.currentTarget.value);
+            }}
+          />
+        </label>
+        {selectedDate && selectedDate !== today ? (
+          <button type="button" className="surface-date-return" onClick={() => chooseDate(today)}>
+            Back to today
+          </button>
+        ) : null}
+      </div>
       <div
         ref={carouselRef}
         className="surface-date-carousel"
@@ -175,11 +222,6 @@ export default function SurfaceDateCarousel({
           );
         })}
       </div>
-      {selectedDate && selectedDate !== today ? (
-        <button type="button" className="surface-date-return" onClick={() => chooseDate(today)}>
-          Back to today
-        </button>
-      ) : null}
     </div>
   );
 }

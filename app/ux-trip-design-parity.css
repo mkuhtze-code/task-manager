@@ -278,18 +278,18 @@
 .surface-date-chip:active { filter: brightness(.96); }
 .surface-date-chip:focus-visible { outline: 2px solid var(--steel, #4f7ea8); outline-offset: 2px; }
 .surface-date-return {
-  display: block;
-  margin: 0 2px 2px auto;
-  padding: 3px 0;
-  border: 0;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-default, var(--line));
+  border-radius: 10px;
   background: transparent;
-  color: var(--text-secondary, var(--ink-soft));
+  color: var(--text-primary, var(--ink));
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
-  text-underline-offset: 3px;
-  text-decoration: underline;
   cursor: pointer;
+  touch-action: manipulation;
 }
 @media (max-width: 700px) {
   .surface-date-carousel-wrap { padding-top: 8px; }
@@ -375,4 +375,50 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .surface-date-chip { transition: none; }
+}
+
+
+/* Distant-date navigation complements the nearby-date carousel. */
+.surface-date-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.surface-date-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-secondary, var(--ink-soft));
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.surface-date-jump input {
+  width: 145px;
+  min-height: 40px;
+  padding: 7px 9px;
+  border: 1px solid var(--border-default, var(--line));
+  border-radius: 10px;
+  background: var(--surface-raised, var(--paper-raised));
+  color: var(--text-primary, var(--ink));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.surface-date-jump input:focus-visible,
+.surface-date-return:focus-visible {
+  outline: 2px solid var(--steel, #4f7ea8);
+  outline-offset: 2px;
+}
+
+@media (max-width: 390px) {
+  .surface-date-jump { gap: 6px; font-size: 11px; }
+  .surface-date-jump input { width: 132px; }
 }
