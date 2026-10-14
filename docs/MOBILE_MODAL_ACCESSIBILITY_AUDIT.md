@@ -28,9 +28,11 @@ The shared hook is now applied to previously uncovered modal dialogs:
 
 Other core sheets already using the shared hook include capture, task details, Reality Check, meeting/job forms, scheduled tasks, nearby places, day shape, trip overview, map, library, accommodation, and meeting export review.
 
-## Intentionally not treated as modal
+## Non-modal and layered overlay behavior
 
-- `PillReveal` is a non-modal disclosure/popover. It must not trap focus. It still needs separate keyboard/focus-return review.
+- `PillReveal` remains a non-modal disclosure/popover and does not trap focus. Its panel now has an accessible name; Escape closes it and restores focus to its trigger. Escape is stopped at the focused disclosure so an enclosing modal does not also close.
+- The shared dialog hook now tracks active modal layers. Only the topmost modal consumes Escape or constrains Tab/Shift+Tab. Closing a nested modal restores focus into its still-open parent instead of stealing focus behind it.
+- The meeting photo lightbox handles left/right navigation only when keyboard events originate inside the focused lightbox, rather than installing a window-wide arrow-key handler that could act behind another overlay.
 - `DesktopProductNav` plan popover is desktop navigation and remains outside this mobile-web slice.
 - The export-generation overlay uses `role="status"`, not modal semantics; its busy announcement and focus behavior need a separate check.
 
