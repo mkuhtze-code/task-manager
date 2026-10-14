@@ -33,6 +33,8 @@ import MicButton from '@/components/MicButton';
 import { useCaptureSpeech, textForCaptureField } from '@/hooks/useCaptureSpeech';
 import {
 detectCaptureCollection,
+processCaptureSpeech,
+type CaptureProposal,
 type SpeechUnderstandingContext,
 } from '@/lib/speech';
 import type { CollectionIntent } from '@/lib/collections';
@@ -77,6 +79,66 @@ engineRequest?: EngineRequest;
 evidence?: LearningEvidence[];
 workingMemory?: WorkingMemorySnapshot;
 };
+
+type ReviewedCaptureProposal = CaptureProposal & {
+  selected: boolean;
+  status: 'pending' | 'created' | 'failed' | 'excluded';
+  error?: string;
+};
+type PendingCaptureBatch = {
+  ownerUserId: string | null;
+  rawText: string;
+  proposals: ReviewedCaptureProposal[];
+  completed?: boolean;
+};
+
+function captureBatchStorageKey(userId: string | null, rawText: string): string {
+  // The key is content-derived without exposing the capture text in storage keys.
+  let hash = 2166136261;
+  const value = `${userId ?? 'anon'}\\u0000${rawText}`;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `dokkit.capture-batch.v1.${(hash >>> 0).toString(36)}`;
+}
+
+function loadPendingCaptureBatch(
+  userId: string | null,
+  rawText: string
+): PendingCaptureBatch | null {
+  if (typeof window === 'undefined' || !rawText.trim()) return null;
+  try {
+    const stored = window.sessionStorage.getItem(captureBatchStorageKey(userId, rawText));
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as PendingCaptureBatch;
+    return parsed.ownerUserId === userId && parsed.rawText === rawText && Array.isArray(parsed.proposals) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePendingCaptureBatch(userId: string | null, batch: PendingCaptureBatch): void {
+  if (typeof window === 'undefined' || batch.ownerUserId !== userId) return;
+  try {
+    window.sessionStorage.setItem(
+      captureBatchStorageKey(userId, batch.rawText),
+      JSON.stringify(batch)
+    );
+  } catch {
+    // Session storage may be unavailable; the in-memory review still protects
+    // against duplicate submission for as long as this sheet remains mounted.
+  }
+}
+
+function removePendingCaptureBatch(userId: string | null, rawText: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(captureBatchStorageKey(userId, rawText));
+  } catch {
+    // Storage cleanup is best-effort and never blocks capture.
+  }
+}
 
 type CaptureDraftController = { flush: () => void; clear: () => void };
 
@@ -292,6 +354,20 @@ const [showTimeField, setShowTimeField] = useState(false);
 const [moreOpen, setMoreOpen] = useState(false);
 const [estimateHintVisible, setEstimateHintVisible] = useState(false);
 const [collectionFeedback, setCollectionFeedback] = useState<string | null>(null);
+const [pendingCaptureBatch, setPendingCaptureBatch] = useState<PendingCaptureBatch | null>(
+  () => loadPendingCaptureBatch(userId, taskText)
+);
+useEffect(() => {
+  if (pendingCaptureBatch) savePendingCaptureBatch(userId, pendingCaptureBatch);
+}, [pendingCaptureBatch, userId]);
+const captureBatchOwnerRef = useRef(userId);
+useEffect(() => {
+  if (captureBatchOwnerRef.current === userId) return;
+  captureBatchOwnerRef.current = userId;
+  setPendingCaptureBatch(
+    loadPendingCaptureBatch(userId, draftTextRef.current.trim() || taskText)
+  );
+}, [userId]);
 const [listBusy, setListBusy] = useState(false);
 const [dockBusy, setDockBusy] = useState(false);
 const dockBusyRef = useRef(false);
@@ -591,11 +667,150 @@ void applyListDock(next).finally(() => {
 
 }
 
+async function executeReviewedCaptureBatch() {
+  const batch = pendingCaptureBatch;
+  if (!batch || !addTaskWithOverrides) return;
+  const eligible = batch.proposals.filter(
+    (proposal) =>
+      proposal.selected &&
+      (proposal.status === 'pending' || proposal.status === 'failed')
+  );
+  if (eligible.length === 0) {
+    setCollectionFeedback('Select at least one action that is ready to create.');
+    return;
+  }
+
+  let createdCount = 0;
+  let failedCount = 0;
+  for (const proposal of eligible) {
+    // Batch creation is deliberately limited to independently createable acts.
+    // Existing-object updates, questions and blocked interpretations stay out of
+    // the mutation path; they must never be converted into new tasks by fallback.
+    if (
+      proposal.blocked ||
+      !['positive_action', 'commitment_signal'].includes(proposal.reason)
+    ) {
+      setPendingCaptureBatch((current) => current ? ({
+        ...current,
+        proposals: current.proposals.map((item) =>
+          item.actId === proposal.actId
+            ? { ...item, status: 'excluded', selected: false, error: undefined }
+            : item
+        ),
+      }) : current);
+      continue;
+    }
+
+    setPendingCaptureBatch((current) => current ? ({
+      ...current,
+      proposals: current.proposals.map((item) =>
+        item.actId === proposal.actId ? { ...item, error: undefined } : item
+      ),
+    }) : current);
+
+    try {
+      // Resolve the date for this act, not from the entire day-dump sentence.
+      // Include its temporal phrase for the existing deterministic thought parser.
+      const itemText = [proposal.summary, proposal.temporalRaw]
+        .filter((part): part is string => !!part?.trim())
+        .join(' ')
+        .trim();
+      const parsed = parseThought(itemText, captureSurfaceDate || undefined);
+      const jobLink = proposal.entityLinks?.find((link) => link.kind === 'job');
+      const placeLink = proposal.entityLinks?.find((link) => link.kind === 'place');
+      const linkedJobId = jobLink && jobs.some((job) => job.id === jobLink.entityId)
+        ? jobLink.entityId
+        : captureJobId;
+      const taskId = await addTaskWithOverrides({
+        text: parsed.intent || proposal.summary,
+        parsedThought: parsed,
+        locationText: placeLink?.label ?? null,
+        jobId: linkedJobId,
+        surfaceDate: proposal.temporalResolvedDate ?? parsed.date ?? captureSurfaceDate ?? null,
+        originalInput: batch.rawText,
+      });
+      if (!taskId) throw new Error('Save was not confirmed. This action remains available to retry.');
+
+      createdCount += 1;
+      setPendingCaptureBatch((current) => current ? ({
+        ...current,
+        proposals: current.proposals.map((item) =>
+          item.actId === proposal.actId
+            ? { ...item, status: 'created', selected: false, error: undefined }
+            : item
+        ),
+      }) : current);
+    } catch (error) {
+      failedCount += 1;
+      const message = error instanceof Error ? error.message : 'Could not save this action.';
+      setPendingCaptureBatch((current) => current ? ({
+        ...current,
+        proposals: current.proposals.map((item) =>
+          item.actId === proposal.actId
+            ? { ...item, status: 'failed', error: message }
+            : item
+        ),
+      }) : current);
+    }
+  }
+
+  const excludedCount = batch.proposals.filter((item) => item.status === 'excluded').length;
+  setCollectionFeedback(
+    failedCount > 0
+      ? `Created ${createdCount}; ${failedCount} need retry. The original capture is preserved.`
+      : excludedCount > 0
+        ? `Created ${createdCount}; ${excludedCount} action${excludedCount === 1 ? '' : 's'} need individual review and were not created.`
+        : `Created ${createdCount} ${createdCount === 1 ? 'task' : 'tasks'}.`
+  );
+  confirmSpeechLearning();
+  clearSpeechStatus();
+
+  // Keep the original dump and per-item outcomes visible whenever anything
+  // remains unresolved. A later retry only sees pending/failed selected items;
+  // already-created items are never submitted again in this mounted review.
+  setPendingCaptureBatch((current) => {
+    if (!current) return null;
+    const unresolved = current.proposals.some(
+      (item) => item.status === 'pending' || item.status === 'failed'
+    );
+    if (unresolved) return current;
+    completedDraftRef.current = current.rawText;
+    return { ...current, completed: true };
+  });
+}
+
 async function tryDock() {
 if (!engineStateReady) return;
 if (dockBusyRef.current) return;
 const draftToDock = draftTextRef.current.trim();
 if (!draftToDock) return;
+if (!pendingCaptureBatch) {
+  const storedBatch = loadPendingCaptureBatch(userId, draftToDock);
+  if (storedBatch) {
+    setPendingCaptureBatch(storedBatch);
+    setCollectionFeedback(
+      storedBatch.completed
+        ? 'This capture was already processed. Edit the text to start another capture.'
+        : 'Restored your previous action review. Completed items will not be submitted again.'
+    );
+    return;
+  }
+}
+if (pendingCaptureBatch && pendingCaptureBatch.rawText === draftToDock) {
+  if (pendingCaptureBatch.completed) {
+    setCollectionFeedback('This capture was already processed. Edit the text to start another capture.');
+    return;
+  }
+  dockBusyRef.current = true;
+  setDockBusy(true);
+  try {
+    await executeReviewedCaptureBatch();
+  } finally {
+    dockBusyRef.current = false;
+    setDockBusy(false);
+  }
+  return;
+}
 if (completedDraftRef.current === draftToDock) {
   setCollectionFeedback('This capture was already saved. Edit the text to create another task.');
   return;
@@ -677,6 +892,57 @@ if (isListIntent && collectionIntent) {
   }
 
   await applyListDock(collectionIntent);
+  return;
+}
+
+// Multi-act capture is reviewed before any task mutation. Speech and typed
+// entry use the same deterministic interpretation contract; collections keep
+// their dedicated path above.
+const batchInterpretation = speechResult && speechResult.rawText.trim() === line
+  ? speechResult
+  : processCaptureSpeech({
+      text: line,
+      todayIso: captureSurfaceDate || undefined,
+      understandingContext: buildSpeechContext(),
+      userId: userId ?? 'anon',
+      collectionContext: buildCollectionContext(),
+    });
+const createableBatchItems = batchInterpretation.proposals.filter(
+  (proposal) =>
+    !proposal.blocked &&
+    ['positive_action', 'commitment_signal'].includes(proposal.reason)
+);
+if (
+  !pendingCaptureBatch &&
+  batchInterpretation.outcome === 'CREATE_MULTIPLE_TASKS' &&
+  createableBatchItems.length <= 1
+) {
+  setCollectionFeedback(
+    'This capture mixes actions that need different handling. Nothing was created; split or clarify the actions before trying again.'
+  );
+  return;
+}
+
+if (
+  !pendingCaptureBatch &&
+  batchInterpretation.outcome === 'CREATE_MULTIPLE_TASKS' &&
+  createableBatchItems.length > 1
+) {
+  setPendingCaptureBatch({
+    ownerUserId: userId,
+    rawText: line,
+    proposals: batchInterpretation.proposals.map((proposal) => {
+      const canCreate =
+        !proposal.blocked &&
+        ['positive_action', 'commitment_signal'].includes(proposal.reason);
+      return {
+        ...proposal,
+        selected: canCreate,
+        status: canCreate ? 'pending' as const : 'excluded' as const,
+      };
+    }),
+  });
+  setCollectionFeedback('Review each action and its date before creating tasks.');
   return;
 }
 
@@ -967,6 +1233,9 @@ onClick={(e) => e.stopPropagation()}
         onSubmit={tryDock}
         onDraftChange={() => {
           completedDraftRef.current = null;
+          // Preserve any unfinished batch in session storage for the original
+          // dump, but detach it from the newly edited draft.
+          setPendingCaptureBatch(null);
         }}
       />
 
@@ -997,6 +1266,57 @@ onClick={(e) => e.stopPropagation()}
           aria-label="Dismiss"
         >
           Dismiss
+        </button>
+      </div>
+    ) : null}
+
+    {pendingCaptureBatch ? (
+      <div className="capture-batch-review" role="group" aria-label="Review actions to create">
+        <p className="settings-help">
+          {pendingCaptureBatch.completed
+            ? 'This capture has been processed. Edit the text to start a new capture.'
+            : 'Review the actions below. Each date is resolved independently; completed actions will not be submitted again during this review.'}
+        </p>
+        <ul className="capture-batch-review-list">
+          {pendingCaptureBatch.proposals.map((proposal) => (
+            <li key={proposal.actId} className="capture-batch-review-item">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={proposal.selected}
+                  disabled={proposal.status === 'created' || proposal.status === 'excluded'}
+                  onChange={(event) => setPendingCaptureBatch((current) => current ? ({
+                    ...current,
+                    proposals: current.proposals.map((item) =>
+                      item.actId === proposal.actId
+                        ? { ...item, selected: event.target.checked }
+                        : item
+                    ),
+                  }) : current)}
+                />
+                <span>
+                  <strong>{proposal.summary || proposal.objectText || 'Unclear action'}</strong>
+                  {proposal.temporalRaw ? <span> · {proposal.temporalRaw}</span> : null}
+                  {proposal.temporalResolvedDate ? <span> · {proposal.temporalResolvedDate}</span> : null}
+                  {proposal.status === 'created' ? <span> · Created</span> : null}
+                  {proposal.status === 'excluded' ? <span> · Needs individual review</span> : null}
+                  {proposal.status === 'failed' ? <span role="alert"> · {proposal.error || 'Failed; select to retry'}</span> : null}
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          className="btn-text"
+          disabled={pendingCaptureBatch.completed || pendingCaptureBatch.proposals.some((item) => item.status === 'created' || item.status === 'failed')}
+          onClick={() => {
+            removePendingCaptureBatch(userId, pendingCaptureBatch.rawText);
+            setPendingCaptureBatch(null);
+            setCollectionFeedback(null);
+          }}
+        >
+          Cancel review
         </button>
       </div>
     ) : null}
@@ -1172,11 +1492,12 @@ onClick={(e) => e.stopPropagation()}
       disabled={
         !engineStateReady ||
         listBusy ||
-        dockBusy
+        dockBusy ||
+        !!pendingCaptureBatch?.completed
       }
       onClick={tryDock}
     >
-      {dockBusy ? 'Docking…' : 'Dock'}
+      {dockBusy ? (pendingCaptureBatch ? 'Saving…' : 'Docking…') : pendingCaptureBatch?.completed ? 'Processed' : pendingCaptureBatch ? `Create selected (${pendingCaptureBatch.proposals.filter((item) => item.selected && (item.status === 'pending' || item.status === 'failed')).length})` : 'Dock'}
     </button>
 
     {error && (

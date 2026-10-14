@@ -45,6 +45,7 @@ export type CaptureProposal = {
   actionVerb?: string;
   objectText?: string;
   temporalRaw?: string;
+  temporalResolvedDate?: string | null;
   temporalRelation?: string;
   entityLinks?: { entityId: string; label: string; kind: string }[];
   conditionRaw?: string;
@@ -145,6 +146,7 @@ function proposalsFrom(
         actionVerb: act?.actionVerb,
         objectText: act?.objectText,
         temporalRaw: act?.temporalRaw,
+        temporalResolvedDate: act?.temporalResolvedDate ?? null,
         temporalRelation: act?.temporalRelation,
         entityLinks: act?.entityLinks?.map((l) => ({
           entityId: l.entityId,
