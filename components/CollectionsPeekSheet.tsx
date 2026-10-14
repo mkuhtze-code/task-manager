@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import {
   loadCollectionStore,
   applyAndPersistCollectionIntent,
@@ -21,6 +22,7 @@ export function CollectionsPeekSheet(props: {
   onClose: () => void;
 }) {
   const { userId, open, onClose } = props;
+  const dialogRef = useDialogA11y(onClose);
   const uid = (userId && userId.trim()) || 'anon';
   const [store, setStore] = useState<CollectionStore | null>(null);
 
@@ -74,6 +76,7 @@ export function CollectionsPeekSheet(props: {
   return (
     <div className="sheet-overlay" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="sheet-panel"
         role="dialog"
         aria-modal="true"
