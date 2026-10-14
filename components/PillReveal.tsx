@@ -26,6 +26,7 @@ export default function PillReveal(props: {
   } = props;
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -35,7 +36,11 @@ export default function PillReveal(props: {
       }
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     }
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onKey);
@@ -59,6 +64,7 @@ export default function PillReveal(props: {
       ref={wrapRef}
     >
       <button
+        ref={triggerRef}
         type="button"
         className={open ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
         aria-expanded={open}
