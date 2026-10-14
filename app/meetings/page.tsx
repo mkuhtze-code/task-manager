@@ -421,7 +421,7 @@ export default function MeetingsHome() {
               <SurfaceHeaderIdentity
                 kicker="People / Time"
                 title="Meetings"
-                signal={surface.pulseTitle}
+                signal={surface.live.length > 0 ? `${surface.live.length} live` : surface.today.length > 0 ? `${surface.today.length} today` : surface.upcoming.length + surface.flexible.length > 0 ? `${surface.upcoming.length + surface.flexible.length} ahead` : 'Clear'}
                 meta={surface.pulseMeta || null}
                 attention={surface.pulseAttention}
                 clear={surface.live.length + surface.today.length + surface.upcoming.length + surface.flexible.length === 0}
@@ -436,7 +436,7 @@ export default function MeetingsHome() {
 
       {isDesktop ? (
         <DesktopMeetingsHeader
-          pulseTitle={surface.pulseTitle}
+          pulseTitle={surface.live.length > 0 ? `${surface.live.length} live` : surface.today.length > 0 ? `${surface.today.length} today` : surface.upcoming.length + surface.flexible.length > 0 ? `${surface.upcoming.length + surface.flexible.length} ahead` : 'Clear'}
           pulseMeta={surface.pulseMeta}
           pulseAttention={surface.pulseAttention}
           depthRead={surface.depthRead}
