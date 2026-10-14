@@ -80,7 +80,10 @@
   transition: border-color 150ms var(--ease);
 }
 
-/* Date selection uses the same quiet selected-state language wherever present. */
+/* Date carousel uses the component's actual selected-state contract:
+   aria-selected and .is-active on its tab chips. Keep legacy variants supported. */
+.surface-date-carousel [aria-selected='true'],
+.surface-date-carousel .surface-date-chip.is-active,
 .surface-date-carousel [aria-current='date'],
 .surface-date-carousel [aria-pressed='true'],
 .surface-date-carousel .selected,
