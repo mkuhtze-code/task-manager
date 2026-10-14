@@ -32,12 +32,10 @@ Other core sheets already using the shared hook include capture, task details, R
 
 - **Non-modal `PillReveal` popover:** merged PR #276 added an accessible name and trigger relationship, moves focus into the panel, and restores focus to the trigger on Escape without trapping focus. Its behavior has dedicated regression coverage.
 - **Meeting export failure:** merged PR #281 changed the interactive failure overlay to a named `alertdialog` with modal semantics and shared focus management.
-- **Trip stop editor and Add-a-trip-stop sheet:** merged PR #289 adds explicit dialog semantics and shared focus management, including focus restoration on dismissal.
-- **Layered overlays:** this change makes only the topmost modal handle Escape and Tab/Shift+Tab, restores a child modal's focus to its opener inside the still-open parent, and keeps non-modal desktop task detail outside the modal stack.
-- **Popover inside a modal:** Escape closes the non-modal `PillReveal` first and stops propagation, so one keypress cannot also dismiss its enclosing modal. It remains non-trapping.
-- **Photo lightbox:** left/right navigation is scoped to the focused lightbox rather than a global key listener, so arrow keys do not change photos while focus is elsewhere.
+- **Trip stop editor and Add-a-trip-stop sheet:** this change adds explicit dialog semantics and shared focus management, including focus restoration on dismissal.
 - `DesktopProductNav` plan popover is desktop navigation and remains outside this mobile-web slice.
-- The export-generation overlay remains a transient status announcement inside a non-dismissible busy dialog. Its screen-reader announcement and focus behavior still need manual acceptance.
+- **Meeting export generation:** the blocking progress state is a focus-managed `dialog` with `aria-modal="true"` and `aria-busy="true"`; “Generating export…” remains a nested `role="status"` announcement. Escape does not dismiss the in-progress operation. Real screen-reader announcements and focus behavior still need manual acceptance.
+- **Meeting export phase transitions:** missing-media, generating, ready, and failure states now each own a distinct focus lifecycle, preventing one modal phase from inheriting another phase's focus-restoration target.
 
 ## Remaining manual acceptance
 
