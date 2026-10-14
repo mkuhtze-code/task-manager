@@ -14,7 +14,7 @@ PR #274 changed the hook to use a stable callback ref and re-run focus managemen
 - focus restoration when a dialog is removed;
 - opt-out of focus trapping for non-modal desktop task-detail panes.
 
-Regression tests cover wraparound, Escape, focus restoration, initial focus, conditionally mounted dialogs, non-modal behavior, and Escape dismissal/focus return for the non-modal `PillReveal` popover.
+The follow-up nested-modal fix registers active modal layers so only the topmost modal consumes Escape and constrains Tab navigation. When a child modal closes, focus can return to its opener inside the still-open parent; cleanup never steals focus behind another active modal.
 
 ## Modal surfaces covered in PR #274
 
@@ -30,9 +30,10 @@ Other core sheets already using the shared hook include capture, task details, R
 
 ## Follow-up interaction fixes
 
-- **Non-modal `PillReveal` popover:** merged PR #276 added an accessible name and trigger relationship, moves focus into the panel, and restores focus to the trigger on Escape without trapping focus. Its behavior has dedicated regression coverage.
+- **Non-modal `PillReveal` popover:** merged PR #276 added an accessible name and trigger relationship, moves focus into the panel, and restores focus to the trigger on Escape without trapping focus. Escape is now handled locally and stopped before it reaches an enclosing modal.
 - **Meeting export failure:** merged PR #281 changed the interactive failure overlay to a named `alertdialog` with modal semantics and shared focus management.
-- **Trip stop editor and Add-a-trip-stop sheet:** this change adds explicit dialog semantics and shared focus management, including focus restoration on dismissal.
+- **Trip stop editor and Add-a-trip-stop sheet:** merged PR #289 adds explicit dialog semantics and shared focus management, including focus restoration on dismissal.
+- **Meeting photo lightbox:** left/right navigation is handled by the focused lightbox rather than a global key listener that could react while another overlay owns focus.
 - `DesktopProductNav` plan popover is desktop navigation and remains outside this mobile-web slice.
 - The export-generation overlay remains a transient `role="status"` announcement rather than a dismissible modal. Its announcement and focus behavior still need manual acceptance.
 
@@ -40,5 +41,6 @@ Other core sheets already using the shared hook include capture, task details, R
 
 - Verify on a real mobile browser with keyboard and screen reader: open/close representative modals, navigate controls, confirm focus stays inside modal dialogs and returns to the invoking control, and confirm the virtual keyboard does not obscure the active field.
 - Verify reduced-motion, contrast, touch target size, 200% zoom/reflow, and screen-reader names/announcements across the full web experience.
+- Exercise nested modal close paths and confirm focus never escapes to a background layer while another modal remains open.
 - Confirm non-modal popovers remain keyboard reachable without focus trapping and return focus appropriately when dismissed.
 - Full WCAG 2.2 AA acceptance remains outstanding until these checks are completed.
