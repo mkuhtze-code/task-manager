@@ -2153,5 +2153,5 @@ html[data-theme='dark']{
    not compete with the section title and object list in the default view. */
 .meeting-section-lede,
 .trip-section-lede {
-  display: none !important;
+  display: none;
 }
