@@ -33,6 +33,8 @@ import MicButton from '@/components/MicButton';
 import { useCaptureSpeech, textForCaptureField } from '@/hooks/useCaptureSpeech';
 import {
 detectCaptureCollection,
+processCaptureSpeech,
+type CaptureProposal,
 type SpeechUnderstandingContext,
 } from '@/lib/speech';
 import type { CollectionIntent } from '@/lib/collections';
@@ -292,6 +294,15 @@ const [showTimeField, setShowTimeField] = useState(false);
 const [moreOpen, setMoreOpen] = useState(false);
 const [estimateHintVisible, setEstimateHintVisible] = useState(false);
 const [collectionFeedback, setCollectionFeedback] = useState<string | null>(null);
+type ReviewedCaptureProposal = CaptureProposal & {
+  selected: boolean;
+  status: 'pending' | 'created' | 'failed' | 'excluded';
+  error?: string;
+};
+const [pendingCaptureBatch, setPendingCaptureBatch] = useState<{
+  rawText: string;
+  proposals: ReviewedCaptureProposal[];
+} | null>(null);
 const [listBusy, setListBusy] = useState(false);
 const [dockBusy, setDockBusy] = useState(false);
 const dockBusyRef = useRef(false);
@@ -591,11 +602,131 @@ void applyListDock(next).finally(() => {
 
 }
 
+async function executeReviewedCaptureBatch() {
+  const batch = pendingCaptureBatch;
+  if (!batch || !addTaskWithOverrides) return;
+  const eligible = batch.proposals.filter(
+    (proposal) =>
+      proposal.selected &&
+      (proposal.status === 'pending' || proposal.status === 'failed')
+  );
+  if (eligible.length === 0) {
+    setCollectionFeedback('Select at least one action that is ready to create.');
+    return;
+  }
+
+  let createdCount = 0;
+  let failedCount = 0;
+  for (const proposal of eligible) {
+    // Batch creation is deliberately limited to independently createable acts.
+    // Existing-object updates, questions and blocked interpretations stay out of
+    // the mutation path; they must never be converted into new tasks by fallback.
+    if (
+      proposal.blocked ||
+      !['positive_action', 'commitment_signal'].includes(proposal.reason)
+    ) {
+      setPendingCaptureBatch((current) => current ? ({
+        ...current,
+        proposals: current.proposals.map((item) =>
+          item.actId === proposal.actId
+            ? { ...item, status: 'excluded', selected: false, error: undefined }
+            : item
+        ),
+      }) : current);
+      continue;
+    }
+
+    setPendingCaptureBatch((current) => current ? ({
+      ...current,
+      proposals: current.proposals.map((item) =>
+        item.actId === proposal.actId ? { ...item, error: undefined } : item
+      ),
+    }) : current);
+
+    try {
+      // Resolve the date for this act, not from the entire day-dump sentence.
+      // Include its temporal phrase for the existing deterministic thought parser.
+      const itemText = [proposal.summary, proposal.temporalRaw]
+        .filter((part): part is string => !!part?.trim())
+        .join(' ')
+        .trim();
+      const parsed = parseThought(itemText, captureSurfaceDate || undefined);
+      const jobLink = proposal.entityLinks?.find((link) => link.kind === 'job');
+      const placeLink = proposal.entityLinks?.find((link) => link.kind === 'place');
+      const linkedJobId = jobLink && jobs.some((job) => job.id === jobLink.entityId)
+        ? jobLink.entityId
+        : captureJobId;
+      const taskId = await addTaskWithOverrides({
+        text: parsed.intent || proposal.summary,
+        parsedThought: parsed,
+        locationText: placeLink?.label ?? null,
+        jobId: linkedJobId,
+        surfaceDate: proposal.temporalResolvedDate ?? parsed.date ?? captureSurfaceDate ?? null,
+        originalInput: batch.rawText,
+      });
+      if (!taskId) throw new Error('Save was not confirmed. This action remains available to retry.');
+
+      createdCount += 1;
+      setPendingCaptureBatch((current) => current ? ({
+        ...current,
+        proposals: current.proposals.map((item) =>
+          item.actId === proposal.actId
+            ? { ...item, status: 'created', selected: false, error: undefined }
+            : item
+        ),
+      }) : current);
+    } catch (error) {
+      failedCount += 1;
+      const message = error instanceof Error ? error.message : 'Could not save this action.';
+      setPendingCaptureBatch((current) => current ? ({
+        ...current,
+        proposals: current.proposals.map((item) =>
+          item.actId === proposal.actId
+            ? { ...item, status: 'failed', error: message }
+            : item
+        ),
+      }) : current);
+    }
+  }
+
+  setCollectionFeedback(
+    failedCount > 0
+      ? `Created ${createdCount}; ${failedCount} need retry. The original capture is preserved.`
+      : `Created ${createdCount} ${createdCount === 1 ? 'task' : 'tasks'}.`
+  );
+  confirmSpeechLearning();
+  clearSpeechStatus();
+
+  // Keep the original dump and per-item outcomes visible whenever anything
+  // remains unresolved. A later retry only sees pending/failed selected items;
+  // already-created items are never submitted again in this mounted review.
+  setPendingCaptureBatch((current) => {
+    if (!current) return null;
+    const unresolved = current.proposals.some(
+      (item) => item.status === 'pending' || item.status === 'failed'
+    );
+    if (unresolved) return current;
+    completedDraftRef.current = current.rawText;
+    return null;
+  });
+}
+
 async function tryDock() {
 if (!engineStateReady) return;
 if (dockBusyRef.current) return;
 const draftToDock = draftTextRef.current.trim();
 if (!draftToDock) return;
+if (pendingCaptureBatch && pendingCaptureBatch.rawText === draftToDock) {
+  dockBusyRef.current = true;
+  setDockBusy(true);
+  try {
+    await executeReviewedCaptureBatch();
+  } finally {
+    dockBusyRef.current = false;
+    setDockBusy(false);
+  }
+  return;
+}
 if (completedDraftRef.current === draftToDock) {
   setCollectionFeedback('This capture was already saved. Edit the text to create another task.');
   return;
@@ -677,6 +808,45 @@ if (isListIntent && collectionIntent) {
   }
 
   await applyListDock(collectionIntent);
+  return;
+}
+
+// Multi-act capture is reviewed before any task mutation. Speech and typed
+// entry use the same deterministic interpretation contract; collections keep
+// their dedicated path above.
+const batchInterpretation = speechResult && speechResult.rawText.trim() === line
+  ? speechResult
+  : processCaptureSpeech({
+      text: line,
+      todayIso: captureSurfaceDate || undefined,
+      understandingContext: buildSpeechContext(),
+      userId: userId ?? 'anon',
+      collectionContext: buildCollectionContext(),
+    });
+const createableBatchItems = batchInterpretation.proposals.filter(
+  (proposal) =>
+    !proposal.blocked &&
+    ['positive_action', 'commitment_signal'].includes(proposal.reason)
+);
+if (
+  !pendingCaptureBatch &&
+  batchInterpretation.outcome === 'CREATE_MULTIPLE_TASKS' &&
+  createableBatchItems.length > 1
+) {
+  setPendingCaptureBatch({
+    rawText: line,
+    proposals: batchInterpretation.proposals.map((proposal) => {
+      const canCreate =
+        !proposal.blocked &&
+        ['positive_action', 'commitment_signal'].includes(proposal.reason);
+      return {
+        ...proposal,
+        selected: canCreate,
+        status: canCreate ? 'pending' as const : 'excluded' as const,
+      };
+    }),
+  });
+  setCollectionFeedback('Review each action and its date before creating tasks.');
   return;
 }
 
@@ -1001,6 +1171,53 @@ onClick={(e) => e.stopPropagation()}
       </div>
     ) : null}
 
+    {pendingCaptureBatch ? (
+      <div className="capture-batch-review" role="group" aria-label="Review actions to create">
+        <p className="settings-help">
+          Review the actions below. Each date is resolved independently; completed actions will not be submitted again during this review.
+        </p>
+        <ul className="capture-batch-review-list">
+          {pendingCaptureBatch.proposals.map((proposal) => (
+            <li key={proposal.actId} className="capture-batch-review-item">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={proposal.selected}
+                  disabled={proposal.status === 'created' || proposal.status === 'excluded'}
+                  onChange={(event) => setPendingCaptureBatch((current) => current ? ({
+                    ...current,
+                    proposals: current.proposals.map((item) =>
+                      item.actId === proposal.actId
+                        ? { ...item, selected: event.target.checked }
+                        : item
+                    ),
+                  }) : current)}
+                />
+                <span>
+                  <strong>{proposal.summary || proposal.objectText || 'Unclear action'}</strong>
+                  {proposal.temporalRaw ? <span> · {proposal.temporalRaw}</span> : null}
+                  {proposal.temporalResolvedDate ? <span> · {proposal.temporalResolvedDate}</span> : null}
+                  {proposal.status === 'created' ? <span> · Created</span> : null}
+                  {proposal.status === 'excluded' ? <span> · Needs individual review</span> : null}
+                  {proposal.status === 'failed' ? <span role="alert"> · {proposal.error || 'Failed; select to retry'}</span> : null}
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          className="btn-text"
+          onClick={() => {
+            setPendingCaptureBatch(null);
+            setCollectionFeedback(null);
+          }}
+        >
+          Cancel review
+        </button>
+      </div>
+    ) : null}
+
     {collectionFeedback ? (
       <div
         className="capture-speech-status capture-speech-status-propose"
@@ -1176,7 +1393,7 @@ onClick={(e) => e.stopPropagation()}
       }
       onClick={tryDock}
     >
-      {dockBusy ? 'Docking…' : 'Dock'}
+      {dockBusy ? 'Saving…' : pendingCaptureBatch ? `Create selected (${pendingCaptureBatch.proposals.filter((item) => item.selected && (item.status === 'pending' || item.status === 'failed')).length})` : 'Dock'}
     </button>
 
     {error && (
