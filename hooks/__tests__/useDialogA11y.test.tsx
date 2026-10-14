@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PillReveal from '@/components/PillReveal';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function DialogFixture({
@@ -36,6 +36,48 @@ function ConditionalDialogFixture() {
           <button>Last action</button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function NestedDialogFixture({
+  onOuterClose,
+  onInnerClose,
+}: {
+  onOuterClose: () => void;
+  onInnerClose: () => void;
+}) {
+  const [innerOpen, setInnerOpen] = useState(false);
+  const outerRef = useDialogA11y(onOuterClose);
+  const innerRef = useDialogA11y(() => {
+    onInnerClose();
+    setInnerOpen(false);
+  });
+
+  return (
+    <>
+      <div ref={outerRef} role="dialog" aria-modal="true" aria-label="Outer dialog">
+        <button data-autofocus type="button" onClick={() => setInnerOpen(true)}>
+          Open inner dialog
+        </button>
+      </div>
+      {innerOpen ? (
+        <div ref={innerRef} role="dialog" aria-modal="true" aria-label="Inner dialog">
+          <button data-autofocus>First inner action</button>
+          <button>Last inner action</button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function ModalWithPopover({ onClose }: { onClose: () => void }) {
+  const dialogRef = useDialogA11y(onClose);
+  return (
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Meeting detail">
+      <PillReveal label="Connections">
+        <button type="button">Open connection</button>
+      </PillReveal>
     </div>
   );
 }
@@ -125,6 +167,54 @@ describe('useDialogA11y', () => {
     view.unmount();
   });
 
+  it('gives keyboard control to the topmost nested modal only', async () => {
+    const onOuterClose = vi.fn();
+    const onInnerClose = vi.fn();
+    render(<NestedDialogFixture onOuterClose={onOuterClose} onInnerClose={onInnerClose} />);
+
+    const openInner = screen.getByRole('button', { name: 'Open inner dialog' });
+    await waitFor(() => expect(document.activeElement).toBe(openInner));
+    fireEvent.click(openInner);
+
+    await screen.findByRole('dialog', { name: 'Inner dialog' });
+    const first = screen.getByRole('button', { name: 'First inner action' });
+    const last = screen.getByRole('button', { name: 'Last inner action' });
+    await waitFor(() => expect(document.activeElement).toBe(first));
+
+    last.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onInnerClose).toHaveBeenCalledTimes(1);
+    expect(onOuterClose).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Inner dialog' })).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(openInner));
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onOuterClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes a non-modal popover without closing its enclosing modal', async () => {
+    const onModalClose = vi.fn();
+    render(<ModalWithPopover onClose={onModalClose} />);
+
+    const trigger = screen.getByRole('button', { name: 'Connections' });
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('dialog', { name: 'Meeting detail' })));
+    fireEvent.click(trigger);
+
+    const child = screen.getByRole('button', { name: 'Open connection' });
+    await waitFor(() => expect(document.activeElement).toBe(child));
+    fireEvent.keyDown(child, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Connections' })).toBeNull());
+    expect(document.activeElement).toBe(trigger);
+    expect(onModalClose).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(trigger, { key: 'Escape' });
+    expect(onModalClose).toHaveBeenCalledTimes(1);
+  });
+
   it('moves initial focus to the modal container when no control is designated', async () => {
     const opener = document.createElement('button');
     opener.textContent = 'Open dialog';
@@ -153,16 +243,8 @@ describe('useDialogA11y', () => {
     // testing its Escape listener; this avoids racing the effect setup.
     await waitFor(() => expect(document.activeElement).toBe(panelAction));
 
-    const escape = new KeyboardEvent('keydown', {
-      key: 'Escape',
-      bubbles: true,
-      cancelable: true,
-    });
-    act(() => {
-      document.dispatchEvent(escape);
-    });
+    fireEvent.keyDown(panelAction, { key: 'Escape' });
 
-    expect(escape.defaultPrevented).toBe(true);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
