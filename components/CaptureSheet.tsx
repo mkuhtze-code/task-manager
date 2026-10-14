@@ -689,10 +689,13 @@ async function executeReviewedCaptureBatch() {
     }
   }
 
+  const excludedCount = batch.proposals.filter((item) => item.status === 'excluded').length;
   setCollectionFeedback(
     failedCount > 0
       ? `Created ${createdCount}; ${failedCount} need retry. The original capture is preserved.`
-      : `Created ${createdCount} ${createdCount === 1 ? 'task' : 'tasks'}.`
+      : excludedCount > 0
+        ? `Created ${createdCount}; ${excludedCount} action${excludedCount === 1 ? '' : 's'} need individual review and were not created.`
+        : `Created ${createdCount} ${createdCount === 1 ? 'task' : 'tasks'}.`
   );
   confirmSpeechLearning();
   clearSpeechStatus();
@@ -828,6 +831,17 @@ const createableBatchItems = batchInterpretation.proposals.filter(
     !proposal.blocked &&
     ['positive_action', 'commitment_signal'].includes(proposal.reason)
 );
+if (
+  !pendingCaptureBatch &&
+  batchInterpretation.outcome === 'CREATE_MULTIPLE_TASKS' &&
+  createableBatchItems.length <= 1
+) {
+  setCollectionFeedback(
+    'This capture mixes actions that need different handling. Nothing was created; split or clarify the actions before trying again.'
+  );
+  return;
+}
+
 if (
   !pendingCaptureBatch &&
   batchInterpretation.outcome === 'CREATE_MULTIPLE_TASKS' &&
