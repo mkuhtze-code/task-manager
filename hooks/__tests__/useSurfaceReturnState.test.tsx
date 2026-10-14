@@ -17,7 +17,13 @@ describe('useSurfaceReturnState', () => {
       KEY,
       JSON.stringify({
         version: 1,
-        state: { filter: 'past', search: 'invoice', selectedDate: '2026-10-12' },
+        state: {
+          filter: 'past',
+          search: 'invoice',
+          selectedDate: '2026-10-12',
+          openTaskId: 'task-42',
+          expandedId: 'task-42',
+        },
         scrollY: 320,
       }),
     );
@@ -26,7 +32,18 @@ describe('useSurfaceReturnState', () => {
 
     const { rerender } = renderHook(
       ({ ready }) =>
-        useSurfaceReturnState(KEY, { filter: 'all', search: '', selectedDate: null }, restore, ready),
+        useSurfaceReturnState(
+          KEY,
+          {
+            filter: 'all',
+            search: '',
+            selectedDate: null,
+            openTaskId: null,
+            expandedId: null,
+          },
+          restore,
+          ready,
+        ),
       { initialProps: { ready: false } },
     );
 
@@ -38,6 +55,8 @@ describe('useSurfaceReturnState', () => {
         filter: 'past',
         search: 'invoice',
         selectedDate: '2026-10-12',
+        openTaskId: 'task-42',
+        expandedId: 'task-42',
       });
       expect(scrollTo).toHaveBeenCalledWith(0, 320);
     });
@@ -51,17 +70,39 @@ describe('useSurfaceReturnState', () => {
     const restore = vi.fn();
     const { rerender, unmount } = renderHook(
       ({ state }) => useSurfaceReturnState(KEY, state, restore, true),
-      { initialProps: { state: { filter: 'open', search: '', selectedDate: null } } },
+      {
+        initialProps: {
+          state: {
+            filter: 'open',
+            search: '',
+            selectedDate: null,
+            openTaskId: null,
+            expandedId: null,
+          },
+        },
+      },
     );
 
     rerender({
-      state: { filter: 'done', search: 'client', selectedDate: '2026-10-15' },
+      state: {
+        filter: 'done',
+        search: 'client',
+        selectedDate: '2026-10-15',
+        openTaskId: 'task-42',
+        expandedId: 'task-42',
+      },
     });
     act(() => unmount());
 
     await waitFor(() => expect(JSON.parse(window.sessionStorage.getItem(KEY) || 'null')).toEqual({
       version: 1,
-      state: { filter: 'done', search: 'client', selectedDate: '2026-10-15' },
+      state: {
+        filter: 'done',
+        search: 'client',
+        selectedDate: '2026-10-15',
+        openTaskId: 'task-42',
+        expandedId: 'task-42',
+      },
       scrollY: 185,
     }));
   });
