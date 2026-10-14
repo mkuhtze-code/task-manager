@@ -119,6 +119,24 @@ export default function SurfaceDateCarousel({
 
   return (
     <div className="surface-date-carousel-wrap" data-no-surface-swipe data-horizontal-scroll>
+      <div className="surface-date-tools">
+        <label className="surface-date-jump">
+          <span>Jump to date</span>
+          <input
+            type="date"
+            aria-label="Jump to date"
+            value={selectedDate ?? today}
+            onChange={(event) => {
+              if (event.currentTarget.value) chooseDate(event.currentTarget.value);
+            }}
+          />
+        </label>
+        {selectedDate && selectedDate !== today ? (
+          <button type="button" className="surface-date-return" onClick={() => chooseDate(today)}>
+            Back to today
+          </button>
+        ) : null}
+      </div>
       <div
         ref={carouselRef}
         className="surface-date-carousel"
@@ -175,11 +193,6 @@ export default function SurfaceDateCarousel({
           );
         })}
       </div>
-      {selectedDate && selectedDate !== today ? (
-        <button type="button" className="surface-date-return" onClick={() => chooseDate(today)}>
-          Back to today
-        </button>
-      ) : null}
     </div>
   );
 }
