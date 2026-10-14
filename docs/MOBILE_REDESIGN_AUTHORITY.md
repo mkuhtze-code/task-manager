@@ -9,7 +9,15 @@
 
 Dokkit is one connected personal thinking and work environment, not a collection of mini-apps and not a chatbot. The redesign repackages the existing capability set into a calmer, more legible experience. It does not add product features.
 
-Mobile is the primary design target and source of truth. Desktop work is a later, separate design effort. Shared domain logic and components may be reused where that improves consistency, but desktop layout conventions must not dictate mobile interaction.
+## Delivery order: web first, native Android second, desktop last
+
+The owner has confirmed that the responsive web app is the only client currently used in practice. The separate native Android project is an old experiment that has not been adopted and is not considered release-ready.
+
+1. **Web app first — reference implementation.** Redesign and verify the production web app at `/app`. Use its deployable preview builds as the repeatable test surface. Complete the working slice, validate existing behavior and accessibility, and accept the web experience before porting the design.
+2. **Native Android second — parity implementation.** Audit and bring the existing Kotlin/Compose project up to the accepted web experience. Reuse shared domain contracts where possible; use native interaction patterns where appropriate. Do not treat the current native project as the design authority or build it in parallel with the first web slice.
+3. **Desktop third — deliberate adaptation.** Adapt the accepted product model for wider screens after web/mobile acceptance and Android parity. Desktop is not a layout source of truth for mobile.
+
+The phrase “mobile-first” describes the web experience's small-screen constraints and interaction priorities; it does not mean the native Android client must be built first. Shared domain logic may be reused where it improves consistency, but the order above is binding.
 
 The only possible scope exception is completing the already-existing calendar integration end to end. That is completion of an existing capability, not permission to build a new calendar product.
 
