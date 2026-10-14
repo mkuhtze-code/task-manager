@@ -14,6 +14,7 @@ import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 import ContextLine from '@/components/ContextLine';
 import { BackIcon, CloseIcon, TrashIcon } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
@@ -68,6 +69,13 @@ export default function TravelHome() {
   useProRedirect(!entLoading && Boolean(session), canTravel, 'travel');
 
   const [createOpen, setCreateOpen] = useState(false);
+  const createTripDialogRef = useDialogA11y(
+    () => {
+      setCreateOpen(false);
+      setError('');
+    },
+    { enabled: createOpen },
+  );
   const [tripIntent, setTripIntent] = useState<'personal' | 'work'>(
     'work'
   );
@@ -550,6 +558,7 @@ export default function TravelHome() {
       {createOpen && (
         <div className="sheet-backdrop" onClick={closeCreate}>
           <div
+            ref={createTripDialogRef}
             className="capture-sheet"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
