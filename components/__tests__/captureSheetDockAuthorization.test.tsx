@@ -110,6 +110,7 @@ function renderCaptureSheet() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.addTaskWithOverrides.mockResolvedValue('task-1');
   mocks.detectCaptureCollection.mockReturnValue(null);
   mocks.detectListIntent.mockReturnValue(null);
   mocks.runCaptureDock.mockReturnValue({
@@ -355,6 +356,29 @@ describe('Capture Dock UI authorization boundary', () => {
     expect(mocks.addTaskWithOverrides).toHaveBeenLastCalledWith(
       expect.objectContaining({ originalInput: 'Call the supplier about delivery' }),
     );
+  });
+
+  it('keeps the draft retryable when persistence cannot confirm a task ID', async () => {
+    mocks.addTaskWithOverrides
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce('task-2');
+
+    renderCaptureSheet();
+    const input = screen.getByPlaceholderText('What needs doing…') as HTMLInputElement;
+    const dock = () => screen.getByRole('button', { name: 'Dock' });
+
+    await waitFor(() => expect((dock() as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(dock());
+
+    await waitFor(() => expect(screen.getByText(/Could not confirm the save/i)).toBeTruthy());
+    expect(input.value).toBe('Call the client tomorrow');
+    expect((dock() as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(dock());
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect((dock() as HTMLButtonElement).disabled).toBe(false));
+    expect(input.value).toBe('Call the client tomorrow');
+    expect(screen.queryByText(/already saved/i)).toBeNull();
   });
 
   it('clears the busy lock after a failed dock so the user can retry', async () => {
