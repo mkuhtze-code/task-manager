@@ -8,12 +8,14 @@ function DialogFixture({
   onClose,
   trapFocus = true,
   autoFocus = true,
+  active = true,
 }: {
   onClose: () => void;
   trapFocus?: boolean;
   autoFocus?: boolean;
+  active?: boolean;
 }) {
-  const dialogRef = useDialogA11y(onClose, { trapFocus });
+  const dialogRef = useDialogA11y(onClose, { trapFocus, active });
   return (
     <div ref={dialogRef} role="dialog" aria-modal={trapFocus ? 'true' : undefined}>
       <button data-autofocus={autoFocus ? '' : undefined}>First action</button>
@@ -135,6 +137,63 @@ describe('useDialogA11y', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(dialog));
     expect(dialog.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('activates focus management when an always-mounted dialog becomes visible', async () => {
+    const opener = document.createElement('button');
+    opener.textContent = 'Open dialog';
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const onClose = vi.fn();
+    const view = render(<DialogFixture onClose={onClose} active={false} />);
+    const dialog = screen.getByRole('dialog');
+
+    expect(document.activeElement).toBe(opener);
+
+    view.rerender(<DialogFixture onClose={onClose} active />);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'First action' })));
+
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(escape);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(dialog.getAttribute('tabindex')).toBeNull();
+  });
+
+  it('sends Escape only to the topmost nested modal', async () => {
+    const outerClose = vi.fn();
+    const innerClose = vi.fn();
+    function NestedDialogs() {
+      const outerRef = useDialogA11y(outerClose);
+      const innerRef = useDialogA11y(innerClose);
+      return (
+        <>
+          <div ref={outerRef} role="dialog" aria-modal="true" aria-label="Outer dialog">
+            <button data-autofocus>Outer action</button>
+          </div>
+          <div ref={innerRef} role="dialog" aria-modal="true" aria-label="Inner dialog">
+            <button data-autofocus>Inner action</button>
+          </div>
+        </>
+      );
+    }
+
+    render(<NestedDialogs />);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Inner action' })));
+
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(escape);
+
+    expect(innerClose).toHaveBeenCalledTimes(1);
+    expect(outerClose).not.toHaveBeenCalled();
   });
 
   it('does not trap focus in a non-modal detail pane', () => {
