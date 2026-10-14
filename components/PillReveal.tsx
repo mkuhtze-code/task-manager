@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 /**
- * Quiet control: a pill that opens an overlay panel (dropdown style).
- * Used for Connections, Job files, Meetings — calm surface, detail on demand.
+ * Quiet control: a non-modal popover panel (dropdown style).
+ * It is named for assistive technology and returns focus on Escape, but never
+ * traps focus because users must be able to move naturally to the surrounding page.
  */
 export default function PillReveal(props: {
   label: string;
@@ -26,16 +27,35 @@ export default function PillReveal(props: {
   } = props;
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerId = useId();
+  const panelId = useId();
 
   useEffect(() => {
     if (!open) return;
+
+    const panel = wrapRef.current?.querySelector<HTMLElement>('[role="dialog"]');
+    const focusTarget = panel?.querySelector<HTMLElement>(
+      'a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), [contenteditable="true"]:not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
+    ) ?? panel;
+
+    if (focusTarget) {
+      requestAnimationFrame(() => {
+        if (panel && document.body.contains(panel)) focusTarget.focus();
+      });
+    }
+
     function onDoc(e: MouseEvent) {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     }
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onKey);
@@ -59,10 +79,13 @@ export default function PillReveal(props: {
       ref={wrapRef}
     >
       <button
+        ref={triggerRef}
+        id={triggerId}
         type="button"
         className={open ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
       >
         {label}
@@ -71,7 +94,13 @@ export default function PillReveal(props: {
         ) : null}
       </button>
       {open && (
-        <div className={panelClasses} role="dialog">
+        <div
+          id={panelId}
+          className={panelClasses}
+          role="dialog"
+          aria-labelledby={triggerId}
+          tabIndex={-1}
+        >
           {children}
         </div>
       )}
