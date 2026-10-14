@@ -240,6 +240,10 @@ function ActivityDetailSheet(props: {
   const [fixedTime, setFixedTime] = useState(a.fixed_time || '');
   const [moveOpen, setMoveOpen] = useState(false);
   const [error, setError] = useState('');
+  const dialogRef = useDialogA11y<HTMLDivElement>(() => {
+    commit();
+    onClose();
+  });
 
   const linkedJob = jobId ? jobs.find((j) => j.id === jobId) : null;
 
@@ -313,7 +317,14 @@ function ActivityDetailSheet(props: {
         onClose();
       }}
     >
-      <div className="capture-sheet task-detail-sheet stop-detail-sheet" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className="capture-sheet task-detail-sheet stop-detail-sheet"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Edit stop: ${a.text}`}
+      >
         <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
           <button
             className="gear-btn"
