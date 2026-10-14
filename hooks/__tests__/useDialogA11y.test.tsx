@@ -2,6 +2,7 @@
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 
 function DialogFixture({
   onClose,
@@ -19,6 +20,21 @@ function DialogFixture({
       <button>Middle action</button>
       <button>Last action</button>
     </div>
+  );
+}
+
+function ConditionalDialogFixture() {
+  const [open, setOpen] = useState(false);
+  const dialogRef = useDialogA11y<HTMLDivElement>(() => setOpen(false), { enabled: open });
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>Open dialog</button>
+      {open && (
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Conditional dialog">
+          <button>Dialog action</button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -86,6 +102,25 @@ describe('useDialogA11y', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(dialog));
     expect(dialog.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('activates focus management when a dialog opens after its parent mounted', async () => {
+    render(<ConditionalDialogFixture />);
+    const opener = screen.getByRole('button', { name: 'Open dialog' });
+    opener.focus();
+    opener.click();
+
+    const dialog = screen.getByRole('dialog', { name: 'Conditional dialog' });
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
+
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(escape);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(opener));
   });
 
   it('does not trap focus in a non-modal detail pane', () => {
