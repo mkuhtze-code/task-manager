@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Subtask, Task, TaskContext } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
 import { fmtClock, fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
@@ -50,7 +50,7 @@ export function TaskDetailSheet(props: {
     lat: number | null,
     lng: number | null,
     requiresVisit?: boolean | null
-  ) => void;
+  ) => void | boolean | Promise<void | boolean>;
   onComplete: (id: string) => void;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
@@ -213,7 +213,9 @@ export function TaskDetailSheet(props: {
     setLocalSubs(subs);
   }, [subs]);
 
-  function commit(visitOverride?: boolean | null): boolean {
+  const commitInFlightRef = useRef<{ key: string; promise: Promise<boolean> } | null>(null);
+
+  async function commit(visitOverride?: boolean | null): Promise<boolean> {
     const trimmed = text.trim();
 
     if (trimmed.length === 0) {
@@ -230,28 +232,66 @@ export function TaskDetailSheet(props: {
       return false;
     }
 
-    setError('');
-
     const visit =
       visitOverride !== undefined ? visitOverride : requiresVisit;
-
-    onSave(
+    const nextSurfaceDate = surfaceDate.length > 0 ? surfaceDate : null;
+    const nextLocationText = locationText.trim().length > 0 ? locationText.trim() : null;
+    const nextLat = locationCoords?.lat ?? null;
+    const nextLng = locationCoords?.lng ?? null;
+    const key = JSON.stringify([
       task.id,
       trimmed,
       mins,
-      surfaceDate.length > 0 ? surfaceDate : null,
-      locationText.trim().length > 0
-        ? locationText.trim()
-        : null,
-      locationCoords?.lat ?? null,
-      locationCoords?.lng ?? null,
-      visit
-    );
-    return true;
+      nextSurfaceDate,
+      nextLocationText,
+      nextLat,
+      nextLng,
+      visit,
+    ]);
+
+    const pending = commitInFlightRef.current;
+    if (pending) {
+      if (pending.key === key) return pending.promise;
+      setError('Your edits changed while a save was in progress. Save again to keep the latest changes.');
+      return false;
+    }
+
+    setError('');
+    const promise = (async () => {
+      try {
+        const result = await onSave(
+          task.id,
+          trimmed,
+          mins,
+          nextSurfaceDate,
+          nextLocationText,
+          nextLat,
+          nextLng,
+          visit
+        );
+        if (result === false) {
+          setError('Could not save your changes. Your edits are still here; try again.');
+          return false;
+        }
+        return true;
+      } catch {
+        setError('Could not save your changes. Your edits are still here; try again.');
+        return false;
+      }
+    })();
+    commitInFlightRef.current = { key, promise };
+
+    try {
+      return await promise;
+    } finally {
+      if (commitInFlightRef.current?.promise === promise) {
+        commitInFlightRef.current = null;
+      }
+    }
   }
 
-  function handleClose() {
-    if (!commit()) return;
+  async function handleClose() {
+    if (!(await commit())) return;
     onClose();
   }
 
@@ -1228,8 +1268,8 @@ export function TaskDetailSheet(props: {
             <button
               type="button"
               className="detail-pill detail-pill-done"
-              onClick={() => {
-                if (!commit()) return;
+              onClick={async () => {
+                if (!(await commit())) return;
                 onComplete(task.id);
                 onClose();
               }}
@@ -1500,8 +1540,8 @@ export function TaskDetailSheet(props: {
           <button
             type="button"
             className="detail-pill detail-pill-done"
-            onClick={() => {
-              if (!commit()) return;
+            onClick={async () => {
+              if (!(await commit())) return;
               onComplete(task.id);
               onClose();
             }}
