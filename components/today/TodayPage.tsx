@@ -1115,9 +1115,9 @@ export function TodayPage() {
     engineRequest?: import('@/lib/engine').EngineRequest;
     evidence?: import('@/lib/engine').LearningEvidence[];
     workingMemory?: import('@/lib/engine').WorkingMemorySnapshot;
-  }) {
+  }): Promise<string | null> {
     const originalInput = (engineOverrides?.originalInput ?? taskText).trim();
-    if (originalInput.length === 0) return;
+    if (originalInput.length === 0) return null;
     // Engine-structured docks already resolved place/job; skip job-confirm gate.
     if (!engineOverrides) {
       const gate = oneShotGate({
@@ -1129,7 +1129,7 @@ export function TodayPage() {
       });
       if (!gate.ready) {
         setError(gate.blockReason || 'Confirm or skip the place first');
-        return;
+        return null;
       }
     }
     const parsed = engineOverrides?.parsedThought ?? thought;
@@ -1149,7 +1149,7 @@ export function TodayPage() {
           : parseMins(taskTime);
     if (mins === null) {
       setError('Could not read that time, try 15m or 1.5h');
-      return;
+      return null;
     }
     setError('');
     const userId = session.user.id;
@@ -1234,7 +1234,7 @@ export function TodayPage() {
           message: updErr.message,
         });
         alert(updErr.message);
-        return;
+        return null;
       }
       if (!updated) {
         console.error('[capture] task update matched no visible row', {
@@ -1242,7 +1242,7 @@ export function TodayPage() {
           userId,
         });
         alert("I couldn't confirm that task update. The task may have changed or the saved reference may be out of date. Your existing task has not been replaced.");
-        return;
+        return null;
       }
       setTasks((prev) =>
         prev.map((t) => (t.id === engineOverrides.updateTaskId ? { ...t, ...updated } : t))
@@ -1296,7 +1296,7 @@ export function TodayPage() {
       setConfirmedLocation(null);
       setDeclinedResolution(false);
       setCaptureOpen(false);
-      return;
+      return engineOverrides.updateTaskId;
     }
 
     const newTaskId = makeLocalTaskId();
@@ -1361,7 +1361,7 @@ export function TodayPage() {
         } else {
           console.error(error);
           alert(error.message);
-          return;
+          return null;
         }
       } else {
         data = created as Task;
@@ -1523,6 +1523,7 @@ export function TodayPage() {
       suggestedMins: suggestion?.suggestedMins ?? null,
       confidence: suggestion?.confidence ?? 'low',
     }).catch(() => {}); // fire-and-forget; evidence logging is best-effort
+    return data.id;
   }
 
   async function applyRealityUpdates(updates: RealityUpdate[]) {
