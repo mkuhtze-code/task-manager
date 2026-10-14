@@ -313,8 +313,7 @@
   justify-content: center !important;
 }
 
-.sheet-panel:not(.capture-sheet),
-.task-detail-sheet {
+.sheet-panel:not(.capture-sheet) {
   position: relative !important;
   z-index: 1 !important;
   width: 100% !important;
@@ -347,6 +346,27 @@
   }
 
   .sheet-panel.capture-sheet {
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Task details use the same contained mobile surface as capture. */
+.sheet-overlay:has(> .task-detail-sheet) {
+  padding: 0 12px 12px;
+}
+
+.task-detail-sheet {
+  max-height: min(84dvh, 760px);
+  border-radius: 20px;
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 360px) {
+  .sheet-overlay:has(> .task-detail-sheet) {
+    padding: 0 8px 8px;
+  }
+
+  .task-detail-sheet {
     padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
   }
 }
