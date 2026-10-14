@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckIcon, MapPinIcon } from '@/components/icons';
+import { CheckIcon } from '@/components/icons';
 import ContextLine from '@/components/ContextLine';
 import type { Job } from '@/lib/jobTypes';
 import type { Task } from '@/lib/taskTypes';
