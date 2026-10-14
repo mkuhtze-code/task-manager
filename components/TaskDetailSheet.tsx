@@ -254,7 +254,7 @@ export function TaskDetailSheet(props: {
     onClose();
   }
 
-  const dialogRef = useDialogA11y(handleClose);
+  const dialogRef = useDialogA11y(handleClose, { trapFocus: presentation === 'sheet' });
 
   const startDisabled =
     anyActive && task.status !== 'active';
