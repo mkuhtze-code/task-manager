@@ -1823,3 +1823,130 @@ html[data-surface='desktop'] .app-shell > .today-header-card.today-day-header {
 @media (prefers-reduced-motion: reduce) {
   .today-day-header .today-capacity-segment { transition: none; }
 }
+
+
+/* Web-first redesign prototype — compact capacity first, timeline on demand.
+   Keep these cues neutral and textual; color is never the only state signal. */
+.today-day-header .today-capacity-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  margin-top: 10px;
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--line, rgba(26, 24, 20, 0.08));
+}
+
+.today-day-header .today-capacity-summary-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.today-day-header .today-capacity-summary-item span {
+  color: var(--ink-soft, #5c574f);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.today-day-header .today-capacity-summary-item strong {
+  color: var(--ink, #1a1814);
+  font-size: 14px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.today-day-header .today-capacity-summary-read {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--ink-soft, #5c574f);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.today-day-header .today-capacity-summary-read.is-over {
+  color: var(--text-warning, #8a3b2a);
+}
+
+.today-day-header .today-timebar-topline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.today-day-header .today-timeline-toggle {
+  min-height: 36px;
+  margin-left: auto;
+  padding: 6px 10px;
+  border: 1px solid var(--line, rgba(26, 24, 20, 0.12));
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-soft, #5c574f);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.today-day-header .today-timeline-toggle:hover,
+.today-day-header .today-timeline-toggle[aria-expanded='true'] {
+  background: var(--surface-hover, rgba(80, 90, 100, 0.06));
+  color: var(--ink, #1a1814);
+}
+
+.today-day-header .today-timeline-toggle:focus-visible {
+  outline: 2px solid var(--accent, #2f3d4a);
+  outline-offset: 2px;
+}
+
+.today-day-header .today-timebar-details[hidden] {
+  display: none;
+}
+
+.today-day-header .today-timebar-details:not([hidden]) {
+  padding-top: 10px;
+}
+
+@media (max-width: 700px) {
+  .today-day-header.today-day-header-mobile {
+    padding-bottom: 10px;
+  }
+
+  .today-day-header .today-capacity-summary {
+    gap: 7px 12px;
+    margin-top: 8px;
+    padding-top: 9px;
+  }
+
+  .today-day-header .today-capacity-summary-item span,
+  .today-day-header .today-capacity-summary-read {
+    font-size: 11px;
+  }
+
+  .today-day-header .today-capacity-summary-item strong {
+    font-size: 13px;
+  }
+
+  .today-day-header .today-timebar-topline {
+    gap: 6px 8px;
+  }
+
+  .today-day-header .today-timebar-state {
+    flex: 1 1 auto;
+  }
+
+  .today-day-header .today-timeline-toggle {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-day-header .today-timeline-toggle {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
