@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,6 +19,22 @@ function DialogFixture({
       <button data-autofocus={autoFocus ? '' : undefined}>First action</button>
       <button>Middle action</button>
       <button>Last action</button>
+    </div>
+  );
+}
+
+function ConditionalDialogFixture() {
+  const [open, setOpen] = useState(false);
+  const dialogRef = useDialogA11y(() => setOpen(false));
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen(true)}>Open conditional dialog</button>
+      {open ? (
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Conditional dialog">
+          <button>First action</button>
+          <button>Last action</button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -73,6 +90,38 @@ describe('useDialogA11y', () => {
 
     view.unmount();
     await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+
+  it('activates focus management when the modal mounts after its owner', async () => {
+    const view = render(<ConditionalDialogFixture />);
+    const opener = screen.getByRole('button', { name: 'Open conditional dialog' });
+    opener.focus();
+    opener.click();
+
+    const dialog = await screen.findByRole('dialog', { name: 'Conditional dialog' });
+    const first = screen.getByRole('button', { name: 'First action' });
+    const last = screen.getByRole('button', { name: 'Last action' });
+
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
+    last.focus();
+    const tab = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(first);
+
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(escape);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+    view.unmount();
   });
 
   it('moves initial focus to the modal container when no control is designated', async () => {
