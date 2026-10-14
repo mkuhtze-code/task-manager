@@ -345,7 +345,7 @@ export default function TravelHome() {
     const pressure = row?.pressure ?? 'later';
     const stops = row?.stopCount;
     const dateRange = fmtDateRange(tr.start_date, tr.end_date);
-    const stateLabel = pressure === 'now' ? 'active' : pressure === 'soon' ? 'upcoming soon' : pressure === 'past' ? 'past' : 'upcoming';
+    const stateLabel = pressure === 'now' ? 'active' : pressure === 'soon' ? 'upcoming soon' : pressure === 'done' ? 'past' : 'upcoming';
     const stopGlance = stops != null && stops > 0 ? ' · ' + stops + ' stop' + (stops === 1 ? '' : 's') : '';
 
     return (
