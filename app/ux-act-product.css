@@ -24,7 +24,6 @@
 }
 
 .sheet-panel.capture-sheet,
-.task-detail-sheet,
 .sheet-panel {
   position: relative;
   z-index: 1;
@@ -37,6 +36,23 @@
     0 0 0 1px rgba(255, 255, 255, 0.4) inset;
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
   max-height: min(92dvh, 920px);
+  overflow-y: auto;
+  background: var(--surface-page);
+}
+
+/* Focused task detail floats above the surface on mobile. */
+.task-detail-sheet {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 560px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  box-shadow:
+    0 -12px 40px rgba(15, 23, 42, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+  max-height: min(84dvh, 760px);
   overflow-y: auto;
   background: var(--surface-page);
 }
