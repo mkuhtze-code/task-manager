@@ -22,15 +22,15 @@
 }
 
 .task-card.fit-ok::before {
-  background: #22c55e;
+  background: var(--fit-ok);
 }
 
 .task-card.fit-later::before {
-  background: #94a3b8;
+  background: var(--fit-tight);
 }
 
 .task-card.fit-uncertain::before {
-  background: #cbd5e1;
+  background: var(--fit-uncertain);
 }
 
 .task-card.fit-blocked::before,
@@ -273,7 +273,7 @@
 }
 
 .task-card.fit-ok .task-fit-badge {
-  color: #15803d;
+  color: var(--fit-ok);
 }
 
 .task-card.fit-later .task-fit-badge {
@@ -337,3 +337,15 @@ html[data-surface='desktop'] .live-day-strip {
 .map-overlay {
   z-index: 80 !important;
 }
+
+
+/* Phase A: status remains legible without relying on hue alone. */
+.task-card.fit-ok::before { width: 3px; }
+.task-card.fit-later::before { width: 2px; }
+.task-card.fit-uncertain::before { width: 1px; border-left: 1px dashed var(--fit-cue); background: transparent; }
+.task-card.fit-blocked::before,
+.task-card.task-overtime::before { width: 4px; }
+.task-card.fit-protect::before { width: 3px; border-radius: 0 0 4px 0; }
+.task-card-progress { background: var(--progress-track); }
+.task-card-progress-fill { background: var(--progress-fill); }
+.task-card.task-overtime .task-card-progress-fill { background: var(--fit-over); }
