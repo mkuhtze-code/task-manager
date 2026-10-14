@@ -26,11 +26,16 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
     // Capture the element that had focus when the dialog opened.
     const previousFocus = document.activeElement as HTMLElement | null;
 
-    // Only focus an explicitly designated initial-focus element.
-    // This avoids unexpectedly stealing focus from inputs.
-    const focusTarget = dialog.querySelector<HTMLElement>('[data-autofocus]');
+    // Prefer an explicitly designated control. If none is designated, move
+    // focus to the modal container without choosing an input on the user's behalf.
+    const focusTarget =
+      dialog.querySelector<HTMLElement>('[data-autofocus]') ??
+      (trapFocusRef.current ? dialog : null);
 
     if (focusTarget) {
+      if (focusTarget === dialog && !dialog.hasAttribute('tabindex')) {
+        dialog.setAttribute('tabindex', '-1');
+      }
       requestAnimationFrame(() => {
         const activeDialog = dialogRef.current;
         if (
