@@ -2,12 +2,12 @@
 
 **Scope:** Source-level audit of modal/dialog semantics and keyboard focus on the responsive web app. This does not substitute for keyboard, screen-reader, zoom/reflow, or physical-device acceptance.
 
-## Findings addressed in this slice
+## Findings addressed in merged PR #274
 
-The shared `useDialogA11y` hook previously captured its dialog node once in a mount-only effect. When a component stayed mounted while its dialog rendered conditionally (for example, a sheet opened from a page), the hook ran while the ref was null and never installed focus management. This made it unsafe to apply the shared hook consistently to late-mounted sheets.
+The shared `useDialogA11y` hook previously inspected its ref only when the owning component mounted. For sheets rendered conditionally while their owner remained mounted, the ref was null and the hook never installed Escape handling, focus containment, or focus restoration.
 
-The hook now uses a stable callback ref and re-runs focus management when the dialog node enters/leaves the DOM. It retains:
-- initial focus to an explicitly marked control, or to the modal container when none is marked;
+PR #274 changed the hook to use a stable callback ref and re-run focus management when a dialog enters/leaves the DOM. It retains:
+- initial focus to an explicitly marked control, or the modal container when none is marked;
 - Escape dismissal;
 - Tab and Shift+Tab containment for modal dialogs;
 - filtering of disabled/hidden/inert/closed-disclosure controls;
@@ -16,9 +16,9 @@ The hook now uses a stable callback ref and re-runs focus management when the di
 
 Regression tests cover wraparound, Escape, focus restoration, initial focus, conditionally mounted dialogs, and non-modal behavior.
 
-## Modal surfaces covered
+## Modal surfaces covered in PR #274
 
-The shared hook is now applied to previously uncovered modal dialogs:
+The shared hook was applied to previously uncovered modal dialogs:
 - Open Lists / Collections peek
 - Travel Vault
 - Plan a Trip
@@ -28,15 +28,15 @@ The shared hook is now applied to previously uncovered modal dialogs:
 
 Other core sheets already using the shared hook include capture, task details, Reality Check, meeting/job forms, scheduled tasks, nearby places, day shape, trip overview, map, library, accommodation, and meeting export review.
 
-## Intentionally not treated as modal
+## Remaining non-modal findings
 
-- `PillReveal` is a non-modal disclosure/popover. It must not trap focus. It still needs separate keyboard/focus-return review.
+- `PillReveal` is a non-modal disclosure/popover used for Connections, Job files, and Meetings. It must not trap focus. Its dialog role previously lacked an accessible name, and Escape closed it without returning focus to its trigger. PR #275 addresses the name, trigger relationship, initial focus, and Escape focus return without adding a focus trap.
 - `DesktopProductNav` plan popover is desktop navigation and remains outside this mobile-web slice.
 - The export-generation overlay uses `role="status"`, not modal semantics; its busy announcement and focus behavior need a separate check.
 
 ## Remaining manual acceptance
 
-- Verify on a real mobile browser with keyboard and screen reader: open/close each representative modal, navigate all controls, confirm focus stays inside and returns to the invoking control, and confirm the virtual keyboard does not obscure the active field.
+- Verify on a real mobile browser with keyboard and screen reader: open/close representative modals, navigate controls, confirm focus stays inside modal dialogs and returns to the invoking control, and confirm the virtual keyboard does not obscure the active field.
 - Verify reduced-motion, contrast, touch target size, 200% zoom/reflow, and screen-reader names/announcements across the full web experience.
 - Confirm non-modal popovers remain keyboard reachable without focus trapping and return focus appropriately when dismissed.
 - Full WCAG 2.2 AA acceptance remains outstanding until these checks are completed.
