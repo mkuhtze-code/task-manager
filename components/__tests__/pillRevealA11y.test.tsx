@@ -21,7 +21,9 @@ describe('PillReveal accessibility', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(child));
 
-    fireEvent.keyDown(document, { key: 'Escape' });
+    // Escape originates from the focused control inside the popover so the
+    // component-local handler can stop it before an enclosing modal sees it.
+    fireEvent.keyDown(child, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(document.activeElement).toBe(trigger);
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
