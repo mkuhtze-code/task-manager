@@ -33,11 +33,6 @@ export default function SurfaceDateCarousel({
     const now = new Date();
     const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayKey = localDateKey(todayDate);
-    const nearbyStart = new Date(todayDate);
-    nearbyStart.setDate(nearbyStart.getDate() - 3);
-    const nearbyEnd = new Date(todayDate);
-    nearbyEnd.setDate(nearbyEnd.getDate() + 10);
-
     // Keep the nearby window anchored to today unless the user explicitly
     // jumps to a distant date. Scrolling among dates must not keep shifting
     // the window underneath the user's finger.
