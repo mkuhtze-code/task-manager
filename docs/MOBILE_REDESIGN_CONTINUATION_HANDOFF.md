@@ -2,7 +2,7 @@
 
 **Purpose:** Durable continuation record for a new ChatGPT conversation. Read this document together with `docs/MOBILE_REDESIGN_AUTHORITY.md` and `docs/MOBILE_REDESIGN_CURRENT_STATE_AUDIT.md` before proposing or changing redesign work.
 
-**Current baseline:** `main` at `478b3962185bc26fc647a71072f02a0301be4797` (2026-10-14). Repository: `mkuhtze-code/task-manager`.
+**Current baseline:** `main` at `8addb07314c4424dce427536ecd21ca84b5d1b22` (2026-10-14). Repository: `mkuhtze-code/task-manager`.
 
 ## 1. Product and delivery order
 
@@ -71,8 +71,16 @@ Confirm the live PR/commit state before acting, but as of this handoff the follo
 - [PR #272](https://github.com/mkuhtze-code/task-manager/pull/272) — keyboard focus containment/restoration for modal sheets.
 - [PR #274](https://github.com/mkuhtze-code/task-manager/pull/274) — fix shared focus management for conditionally mounted modal sheets; apply it to additional Travel and Meeting modals.
 - [PR #276](https://github.com/mkuhtze-code/task-manager/pull/276) — accessible naming, initial focus, and Escape focus return for non-modal `PillReveal` popovers, without focus trapping.
+- [PR #280](https://github.com/mkuhtze-code/task-manager/pull/280) — regression test for jumping to a distant date and returning to today.
+- [PR #285](https://github.com/mkuhtze-code/task-manager/pull/285) — integration tests for Today capacity with timed calendar commitments and overlapping intervals.
+- [PR #289](https://github.com/mkuhtze-code/task-manager/pull/289) — explicit dialog semantics and focus management for trip-stop editing/capture.
+- [PR #292](https://github.com/mkuhtze-code/task-manager/pull/292) — preserve invalid task-detail drafts and block completion when validation fails.
+- [PR #294](https://github.com/mkuhtze-code/task-manager/pull/294) — topmost-modal keyboard ownership, nested focus restoration, local popover Escape, and scoped photo navigation.
+- [PR #298](https://github.com/mkuhtze-code/task-manager/pull/298) — capacity regression for untimed manual meetings without double-counting Outlook rows.
+- [PR #299](https://github.com/mkuhtze-code/task-manager/pull/299) — distinct focus lifecycle for meeting export phases; generation is a non-dismissible, focus-managed modal with a status announcement.
+- [PR #302](https://github.com/mkuhtze-code/task-manager/pull/302) — regression coverage for task-to-Job/Meeting link destinations and return-state snapshots including the open/expanded task.
 
-Latest known main commit: `478b3962185bc26fc647a71072f02a0301be4797`. PRs #274 and #276 passed both Vercel checks for `task-manager` and `task-manager-capacitor-test`; CodeRabbit and Devin Review checks passed. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
+Latest known main commit: `8addb07314c4424dce427536ecd21ca84b5d1b22`. The merged date, capacity, task-validation, modal-layering, and export-phase changes passed both Vercel checks for `task-manager` and `task-manager-capacitor-test`, with review checks passing. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
 
 ### Important validation boundaries
 
@@ -84,25 +92,29 @@ Latest known main commit: `478b3962185bc26fc647a71072f02a0301be4797`. PRs #274 a
 ## 6. Important architecture and risk notes
 
 - Capture path: `components/CaptureSheet.tsx` → `lib/engine/captureDock.ts` → deterministic CPU/interaction engine. Keep it deterministic and preserve drafts through errors.
+- **Confirmed multi-item wiring gap:** the deterministic speech interpretation layer already emits `CREATE_MULTIPLE_TASKS` with per-act proposals, and `useCaptureSpeech` displays “N actions detected — review before Dock.” But `CaptureSheet` renders only the status message (no proposal list/confirmation) and its Dock path still runs one `processCpuInteraction` decision, producing one create/update action. Typed input also follows the one-action CPU path. Multi-act understanding exists; review, batch execution, and typed/speech parity are not wired through to task creation. The agreed dictaphone/day-dump requirement is therefore not yet satisfied end to end.
 - Today combines tasks, meetings, external calendar events, route/travel duration, active commitments, capacity, Reality Check (Done/Partial/Carry), actual duration, and learning. Do not weaken the shared model for appearance.
 - Calendar source areas include `app/api/auth/microsoft/connect/route.ts`, `app/api/auth/microsoft/callback/route.ts`, `app/api/calendar/calendars/route.ts`, `app/api/calendar/sync-now/route.ts`, `lib/calendar/store.ts`, `lib/calendar/sync.ts`, and `supabase/schema.sql`. Re-check names against main before edits.
 - `components/SurfaceNav.tsx` defines Today/Jobs/Meetings/Travel; shared Add action. Some surfaces are Pro-gated.
 - `components/SurfaceDateCarousel.tsx` has a 14-day nearby strip plus direct date input and Back to today.
-- `hooks/useDialogA11y.ts` handles Escape, initial focus, focus trap for modal sheets, and focus restoration. Task detail's desktop pane must remain non-modal (uses `trapFocus: presentation === 'sheet'`). Audit other dialogs for actual semantics and focus behavior.
+- `hooks/useDialogA11y.ts` handles initial focus, Escape, modal focus containment, focus restoration, and topmost-modal keyboard ownership. `PillReveal` remains non-modal and closes locally on Escape; meeting photo arrow keys are scoped to its focused lightbox. Task detail's desktop pane must remain non-modal (uses `trapFocus: presentation === 'sheet'`).
 - Interaction vocabulary is distributed among `TaskDetailSheet.tsx`, `RealityCheckSheet.tsx`, create/edit sheets for jobs/meetings/travel, and settings. Audit consistency instead of blindly unifying every implementation.
 - CSS has legacy cascade complexity. `docs/CSS_CASCADE_AUDIT.md` recorded hundreds of `!important` rules in some legacy files. Treat counts as a warning/guardrail, not permission for a broad cleanup; inspect computed behavior and owning stylesheet before each scoped change.
 - Offline/persistence behavior is mixed: web has local-first task mutation and a durable queue, with incomplete routing/conflict handling documented; native offline mutation gaps exist. Show pending/success/failure truthfully and preserve drafts.
 
 ## 7. Remaining sequence — continue in this order
 
-### Immediate next task: validate the working slice
-The source-level focus audit and fixes in PRs #274 and #276 are merged. The remaining accessibility work is broader manual acceptance, not a claim of WCAG compliance.
+### Immediate next task: close the existing multi-item capture gap
 
-1. Validate the working slice in this order: Today → multi-item capture → edit item → follow a job/meeting relationship → return to exact prior state → simulate save/sync failure → recover without lost input.
-2. Use the existing capture authorization/retry and surface-return tests; identify any missing integration coverage before adding tests.
-3. Verify direct date jump/return-to-today and capacity changes. Use automation/source evidence where preview is inaccessible and explicitly mark what still needs live human/device verification.
-4. Fix proven defects in small PRs; run both Vercel checks and inspect review feedback before merge.
+**This is a core capability wiring gap, not a request for unrelated new features.** The deterministic speech interpreter already detects multiple acts, but the capture UI/execution path does not show or execute the resulting proposals as a batch; typed input also follows a one-action path. The agreed product model requires one utterance to produce multiple independent tasks when the user gives a day dump, including distinct dates/reminders and corrections. The full working slice cannot yet be accepted.
 
+1. Extend the existing deterministic capture/action contract so one utterance can produce an ordered batch of task mutations. Preserve universal language handling; do not add trade-specific grammar, an LLM, or an external AI dependency.
+2. Add acceptance cases for: two or more independent tasks in one utterance; different dates/reminders per item; a correction such as “actually, move the first one to tomorrow”; job/place context on the appropriate item; and a single-item regression.
+3. Define safe batch failure behavior before wiring it into Today: retain the whole original dump, track which items were confirmed, and retry only failed/unconfirmed items so successful tasks are neither lost nor duplicated. Keep user-visible failure feedback explicit.
+4. PR #302 is merged and checks task-to-Job/Meeting link destinations and snapshots that include date/filter/search/scroll/open-task/expanded-task state. Those are useful component/hook contracts, not proof of the full journey.
+5. After the batch contract exists, add one page-level integration test using real Today/Capture wiring (not a synthetic harness) for Today → multi-item capture → edit one item → follow Job/Meeting → return to exact state → controlled save failure → recovery without loss/duplication.
+6. Branch previews can return 404 because the Task Manager app is routed through the Dokkit site project. Use green builds and focused source tests, but do not call that visual/device acceptance. The actual `/app` journey still needs a human visual/touch pass when a working deployment path is available.
+7. Live Microsoft OAuth/first-sync acceptance remains outstanding and needs a real test account. Keep WCAG 2.2 AA and physical-device acceptance explicitly open until tested.
 ### Then continue the surfaces
 - Bring Jobs, Meetings, and Travel into the shared object grammar and navigation/return-state model without making them feel like separate apps.
 - Complete the calendar journey's live acceptance.
@@ -124,4 +136,4 @@ Do not call the redesign complete merely because CI is green. Required:
 
 ## 9. First instruction for the next chat
 
-Read this handoff and the three source-of-truth docs. Confirm the current `main` SHA and live PR/check status; do not assume this snapshot is still current. Then resume with the **mobile-web accessibility and interaction audit**, making the smallest proven fixes and continuing the web-first sequence. Do not ask the user to restate the design decisions above.
+Read this handoff and the three source-of-truth docs. Confirm the current `main` SHA and live PR/check status; do not assume this snapshot is still current. Resume with the **real mobile-web working-slice acceptance gap**, adding a genuine page-level integration test only where it proves actual app wiring, then continue the visual/accessibility acceptance. Keep the order web → native Android → desktop. Do not ask the user to restate the design decisions above.
