@@ -2350,6 +2350,8 @@ export function TodayPage() {
 
 <TodayTaskList
         taskLoadError={taskLoadError}
+        openCount={openVisible.length}
+        isDesktop={isDesktop}
         emptyTitle={todayEmptyCopy(userProfile).title}
         emptySub={todayEmptyCopy(userProfile).sub}
         showRealityCheck={showRealityCheck}
