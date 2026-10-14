@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { CloseIcon, PlusIcon, TrashIcon } from '@/components/icons';
 import {
   TRAVEL_DOC_TYPE_OPTIONS,
@@ -66,6 +67,7 @@ export default function TravelVaultSheet({
   /** Default on for flights — put a stop on the itinerary */
   const [addToItinerary, setAddToItinerary] = useState(true);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const dialogRef = useDialogA11y(onClose);
   const [file, setFile] = useState<File | null>(null);
   /** Expanded vault row id — full body / actions */
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -347,6 +349,7 @@ export default function TravelVaultSheet({
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="capture-sheet task-detail-sheet"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
