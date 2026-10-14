@@ -3,11 +3,15 @@ import { verifyUser } from '@/lib/verifyUser';
 import { assertCanUseFeature } from '@/lib/billing/serverEntitlements';
 import { checkRateLimit } from '@/lib/ratelimit';
 import {
+  getCalendarConnectionForUser,
   listCalendarConnections,
   listUserExternalCalendars,
   setExternalCalendarSelected,
+  updateConnectionSyncStatus,
   type ExternalCalendarRow,
 } from '@/lib/calendar/store';
+import { syncConnection } from '@/lib/calendar/sync';
+import { logError } from '@/lib/logError';
 
 export async function GET(req: NextRequest) {
   const auth = await verifyUser(req);
@@ -96,8 +100,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Calendar not found' }, { status: 404 });
   }
 
+  let connectionId: string | null = null;
+  let syncError: string | null = null;
+  try {
+    const connection = await getCalendarConnectionForUser(row.connection_id, auth.userId);
+    if (!connection) {
+      throw new Error('Calendar connection not found for this account');
+    }
+    connectionId = connection.id;
+    await syncConnection(connection, { force: true });
+  } catch (error) {
+    syncError = (
+      error instanceof Error
+        ? error.message.split(String.fromCharCode(10))[0]
+        : 'Calendar sync failed'
+    ).slice(0, 300);
+
+    if (connectionId) {
+      try {
+        await updateConnectionSyncStatus(connectionId, 'error', syncError);
+      } catch (statusError) {
+        await logError('server', 'calendar:selection-sync', statusError, {
+          stage: 'record-sync-error',
+          connectionId,
+          calendarId: row.id,
+        }, auth.userId);
+      }
+    }
+    await logError('server', 'calendar:selection-sync', error, {
+      stage: 'sync-selected-calendar',
+      connectionId: row.connection_id,
+      calendarId: row.id,
+    }, auth.userId);
+  }
+
   return NextResponse.json({
     ok: true,
+    syncStatus: syncError ? 'error' : 'ok',
+    syncError: syncError
+      ? 'Calendar selection was saved, but syncing changes failed. Try again shortly.'
+      : null,
     calendar: {
       id: row.id,
       name: row.name,

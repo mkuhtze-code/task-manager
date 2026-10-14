@@ -3,8 +3,8 @@ import { exchangeCodeForTokens, fetchMe } from '@/lib/microsoftGraph';
 import { checkRateLimit, getClientIp } from '@/lib/ratelimit';
 import { API_BASE_PATH } from '@/lib/authedFetch';
 import { logError } from '@/lib/logError';
-import { upsertConnection } from '@/lib/calendar/store';
-import { seedConnectionCalendars } from '@/lib/calendar/sync';
+import { upsertConnection, updateConnectionSyncStatus } from '@/lib/calendar/store';
+import { seedConnectionCalendars, syncConnection } from '@/lib/calendar/sync';
 import { assertCanUseFeature } from '@/lib/billing/serverEntitlements';
 import {
   oauthCookieOptions,
@@ -86,18 +86,40 @@ export async function GET(req: NextRequest) {
       scopes: 'offline_access Calendars.Read User.Read',
     });
 
-    // Best-effort: discover the account's calendars so Preferences shows
-    // them (default already selected) immediately. A failure here must not
-    // fail the whole connection — the cron sync will populate calendars.
+    // Seed the calendar list for Preferences, then fetch the first event
+    // window immediately so connected commitments can affect Today without
+    // waiting for the four-hour background cron.
     try {
       await seedConnectionCalendars(connection);
     } catch (seedError) {
       await logError('server', 'microsoft-oauth-callback', seedError, {
         stage: 'seed-calendars',
-      });
+      }, userCookie);
     }
 
-    const res = NextResponse.redirect(`${preferencesUrl}?calendar=connected`);
+    let initialSyncError: string | null = null;
+    try {
+      await syncConnection(connection, { force: true });
+    } catch (syncError) {
+      initialSyncError = (
+        syncError instanceof Error ? syncError.message.split(String.fromCharCode(10))[0] : 'Initial calendar sync failed'
+      ).slice(0, 300);
+      try {
+        await updateConnectionSyncStatus(connection.id, 'error', initialSyncError);
+      } catch (statusError) {
+        await logError('server', 'microsoft-oauth-callback', statusError, {
+          stage: 'record-initial-sync-error',
+          connectionId: connection.id,
+        }, userCookie);
+      }
+      await logError('server', 'microsoft-oauth-callback', syncError, {
+        stage: 'initial-sync',
+        connectionId: connection.id,
+      }, userCookie);
+    }
+
+    const result = initialSyncError ? 'connected_sync_error' : 'connected';
+    const res = NextResponse.redirect(`${preferencesUrl}?calendar=${result}`);
     clearOauthCookies(req, res);
     return res;
   } catch (error) {
