@@ -80,6 +80,65 @@ evidence?: LearningEvidence[];
 workingMemory?: WorkingMemorySnapshot;
 };
 
+type ReviewedCaptureProposal = CaptureProposal & {
+  selected: boolean;
+  status: 'pending' | 'created' | 'failed' | 'excluded';
+  error?: string;
+};
+type PendingCaptureBatch = {
+  rawText: string;
+  proposals: ReviewedCaptureProposal[];
+  completed?: boolean;
+};
+
+function captureBatchStorageKey(userId: string | null, rawText: string): string {
+  // The key is content-derived without exposing the capture text in storage keys.
+  let hash = 2166136261;
+  const value = `${userId ?? 'anon'}\\u0000${rawText}`;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `dokkit.capture-batch.v1.${(hash >>> 0).toString(36)}`;
+}
+
+function loadPendingCaptureBatch(
+  userId: string | null,
+  rawText: string
+): PendingCaptureBatch | null {
+  if (typeof window === 'undefined' || !rawText.trim()) return null;
+  try {
+    const stored = window.sessionStorage.getItem(captureBatchStorageKey(userId, rawText));
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as PendingCaptureBatch;
+    return parsed.rawText === rawText && Array.isArray(parsed.proposals) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePendingCaptureBatch(userId: string | null, batch: PendingCaptureBatch): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(
+      captureBatchStorageKey(userId, batch.rawText),
+      JSON.stringify(batch)
+    );
+  } catch {
+    // Session storage may be unavailable; the in-memory review still protects
+    // against duplicate submission for as long as this sheet remains mounted.
+  }
+}
+
+function removePendingCaptureBatch(userId: string | null, rawText: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(captureBatchStorageKey(userId, rawText));
+  } catch {
+    // Storage cleanup is best-effort and never blocks capture.
+  }
+}
+
 type CaptureDraftController = { flush: () => void; clear: () => void };
 
 /**
@@ -294,15 +353,12 @@ const [showTimeField, setShowTimeField] = useState(false);
 const [moreOpen, setMoreOpen] = useState(false);
 const [estimateHintVisible, setEstimateHintVisible] = useState(false);
 const [collectionFeedback, setCollectionFeedback] = useState<string | null>(null);
-type ReviewedCaptureProposal = CaptureProposal & {
-  selected: boolean;
-  status: 'pending' | 'created' | 'failed' | 'excluded';
-  error?: string;
-};
-const [pendingCaptureBatch, setPendingCaptureBatch] = useState<{
-  rawText: string;
-  proposals: ReviewedCaptureProposal[];
-} | null>(null);
+const [pendingCaptureBatch, setPendingCaptureBatch] = useState<PendingCaptureBatch | null>(
+  () => loadPendingCaptureBatch(userId, taskText)
+);
+useEffect(() => {
+  if (pendingCaptureBatch) savePendingCaptureBatch(userId, pendingCaptureBatch);
+}, [pendingCaptureBatch, userId]);
 const [listBusy, setListBusy] = useState(false);
 const [dockBusy, setDockBusy] = useState(false);
 const dockBusyRef = useRef(false);
@@ -710,7 +766,7 @@ async function executeReviewedCaptureBatch() {
     );
     if (unresolved) return current;
     completedDraftRef.current = current.rawText;
-    return null;
+    return { ...current, completed: true };
   });
 }
 
@@ -720,6 +776,10 @@ if (dockBusyRef.current) return;
 const draftToDock = draftTextRef.current.trim();
 if (!draftToDock) return;
 if (pendingCaptureBatch && pendingCaptureBatch.rawText === draftToDock) {
+  if (pendingCaptureBatch.completed) {
+    setCollectionFeedback('This capture was already processed. Edit the text to start another capture.');
+    return;
+  }
   dockBusyRef.current = true;
   setDockBusy(true);
   try {
@@ -1151,6 +1211,9 @@ onClick={(e) => e.stopPropagation()}
         onSubmit={tryDock}
         onDraftChange={() => {
           completedDraftRef.current = null;
+          // Preserve any unfinished batch in session storage for the original
+          // dump, but detach it from the newly edited draft.
+          setPendingCaptureBatch(null);
         }}
       />
 
@@ -1188,7 +1251,9 @@ onClick={(e) => e.stopPropagation()}
     {pendingCaptureBatch ? (
       <div className="capture-batch-review" role="group" aria-label="Review actions to create">
         <p className="settings-help">
-          Review the actions below. Each date is resolved independently; completed actions will not be submitted again during this review.
+          {pendingCaptureBatch.completed
+            ? 'This capture has been processed. Edit the text to start a new capture.'
+            : 'Review the actions below. Each date is resolved independently; completed actions will not be submitted again during this review.'}
         </p>
         <ul className="capture-batch-review-list">
           {pendingCaptureBatch.proposals.map((proposal) => (
@@ -1222,7 +1287,9 @@ onClick={(e) => e.stopPropagation()}
         <button
           type="button"
           className="btn-text"
+          disabled={pendingCaptureBatch.completed || pendingCaptureBatch.proposals.some((item) => item.status === 'created' || item.status === 'failed')}
           onClick={() => {
+            removePendingCaptureBatch(userId, pendingCaptureBatch.rawText);
             setPendingCaptureBatch(null);
             setCollectionFeedback(null);
           }}
@@ -1403,11 +1470,12 @@ onClick={(e) => e.stopPropagation()}
       disabled={
         !engineStateReady ||
         listBusy ||
-        dockBusy
+        dockBusy ||
+        !!pendingCaptureBatch?.completed
       }
       onClick={tryDock}
     >
-      {dockBusy ? 'Saving…' : pendingCaptureBatch ? `Create selected (${pendingCaptureBatch.proposals.filter((item) => item.selected && (item.status === 'pending' || item.status === 'failed')).length})` : 'Dock'}
+      {dockBusy ? 'Saving…' : pendingCaptureBatch?.completed ? 'Processed' : pendingCaptureBatch ? `Create selected (${pendingCaptureBatch.proposals.filter((item) => item.selected && (item.status === 'pending' || item.status === 'failed')).length})` : 'Dock'}
     </button>
 
     {error && (
