@@ -21,7 +21,7 @@ export default function SurfaceHeaderIdentity({
       </div>
       <div
         className={['surface-pulse', attention ? 'is-attention' : '', clear ? 'is-clear' : ''].filter(Boolean).join(' ')}
-        aria-label={`${title} status`}
+        aria-label={`${title}: ${attention ? "attention" : clear ? "clear" : "status"}, ${signal}${meta ? `. ${meta}` : ""}`}
       >
         <div className="surface-pulse-body">
           <span className="surface-pulse-title">{signal}</span>
