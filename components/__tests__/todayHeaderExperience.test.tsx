@@ -65,6 +65,18 @@ describe('replacement mobile Today instrument', () => {
     expect(screen.queryByText('DAY TIMELINE')).toBeNull();
   });
 
+  it('retains the compact day-header collapse control', () => {
+    renderMobileTodayHeader();
+
+    const capacity = screen.getByText('Work time remaining').closest('.experience-capacity') as HTMLElement;
+    expect(capacity.hidden).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse day details' }));
+    expect(capacity.hidden).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand day details' }));
+    expect(capacity.hidden).toBe(false);
+  });
+
   it('reveals fixed commitments only when the timeline is requested', () => {
     renderMobileTodayHeader();
 
