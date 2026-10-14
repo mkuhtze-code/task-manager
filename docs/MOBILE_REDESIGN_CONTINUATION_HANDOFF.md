@@ -2,7 +2,7 @@
 
 **Purpose:** Durable continuation record for a new ChatGPT conversation. Read this document together with `docs/MOBILE_REDESIGN_AUTHORITY.md` and `docs/MOBILE_REDESIGN_CURRENT_STATE_AUDIT.md` before proposing or changing redesign work.
 
-**Current baseline:** `main` at `478b3962185bc26fc647a71072f02a0301be4797` (2026-10-14). Repository: `mkuhtze-code/task-manager`.
+**Current baseline:** `main` at `41a2c1e68ca933a3b52b966a61762128a238aeb5` (2026-10-14). Repository: `mkuhtze-code/task-manager`.
 
 ## 1. Product and delivery order
 
@@ -71,8 +71,11 @@ Confirm the live PR/commit state before acting, but as of this handoff the follo
 - [PR #272](https://github.com/mkuhtze-code/task-manager/pull/272) — keyboard focus containment/restoration for modal sheets.
 - [PR #274](https://github.com/mkuhtze-code/task-manager/pull/274) — fix shared focus management for conditionally mounted modal sheets; apply it to additional Travel and Meeting modals.
 - [PR #276](https://github.com/mkuhtze-code/task-manager/pull/276) — accessible naming, initial focus, and Escape focus return for non-modal `PillReveal` popovers, without focus trapping.
+- [PR #280](https://github.com/mkuhtze-code/task-manager/pull/280) — regression test for jumping to a distant date and returning to today.
+- [PR #285](https://github.com/mkuhtze-code/task-manager/pull/285) — integration tests for Today capacity with timed calendar commitments and overlapping intervals.
+- [Follow-up accessibility commit](https://github.com/mkuhtze-code/task-manager/commit/5feb02cc45bbeac636d6c1548898e7fe8a0c25b2) — modal focus handling for export failure and stabilized popover focus regression coverage.
 
-Latest known main commit: `478b3962185bc26fc647a71072f02a0301be4797`. PRs #274 and #276 passed both Vercel checks for `task-manager` and `task-manager-capacitor-test`; CodeRabbit and Devin Review checks passed. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
+Latest known main commit: `41a2c1e68ca933a3b52b966a61762128a238aeb5`. PRs #274, #276, #280, and #285 passed both Vercel checks for `task-manager` and `task-manager-capacitor-test`; review checks passed. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
 
 ### Important validation boundaries
 
@@ -96,7 +99,7 @@ Latest known main commit: `478b3962185bc26fc647a71072f02a0301be4797`. PRs #274 a
 ## 7. Remaining sequence — continue in this order
 
 ### Immediate next task: validate the working slice
-The source-level focus audit and fixes in PRs #274 and #276 are merged. The remaining accessibility work is broader manual acceptance, not a claim of WCAG compliance.
+The source-level focus audit and fixes in PRs #274 and #276 are merged. Date jump/return and Today capacity regression tests are also merged in PRs #280 and #285. The remaining accessibility work is broader manual acceptance, not a claim of WCAG compliance.
 
 1. Validate the working slice in this order: Today → multi-item capture → edit item → follow a job/meeting relationship → return to exact prior state → simulate save/sync failure → recover without lost input.
 2. Use the existing capture authorization/retry and surface-return tests; identify any missing integration coverage before adding tests.
