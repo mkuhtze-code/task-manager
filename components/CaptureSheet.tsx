@@ -552,10 +552,11 @@ try {
     setCollectionFeedback(
       applied.message || (applied.ok ? 'List updated.' : 'Could not update list.')
     );
-    clearDraftText();
 
-    if (applied.openTaskId) {
-      onClose();
+    // Preserve the user's words when a list mutation was not confirmed.
+    if (applied.ok) {
+      clearDraftText();
+      if (applied.openTaskId) onClose();
     }
   }
 } finally {
@@ -747,7 +748,7 @@ if (line && addTaskWithOverrides) {
               throw new Error('Capture task executor is not connected.');
             }
 
-            return (await addTaskWithOverrides({
+            const createdId = await addTaskWithOverrides({
               text: action.text,
               parsedThought: currentThought ?? undefined,
               locationText: action.locationText,
@@ -759,14 +760,18 @@ if (line && addTaskWithOverrides) {
               engineRequest: dock.overrides.engineRequest,
               evidence: dock.overrides.evidence,
               workingMemory: dock.overrides.workingMemory,
-            })) ?? null;
+            });
+            if (!createdId) {
+              throw new Error('Could not confirm the save. Your capture is still here; retry when ready.');
+            }
+            return createdId;
           },
           updateTask: async (action) => {
             if (!addTaskWithOverrides) {
               throw new Error('Capture task executor is not connected.');
             }
 
-            await addTaskWithOverrides({
+            const updatedId = await addTaskWithOverrides({
               text: action.text ?? dock.overrides.text,
               parsedThought: currentThought ?? undefined,
               locationText: action.locationText,
@@ -780,6 +785,9 @@ if (line && addTaskWithOverrides) {
               evidence: dock.overrides.evidence,
               workingMemory: dock.overrides.workingMemory,
             });
+            if (!updatedId) {
+              throw new Error('Could not confirm the update. Your capture is still here; retry when ready.');
+            }
           },
         },
       });
@@ -837,7 +845,7 @@ if (line && addTaskWithOverrides) {
       // A missing day is planning uncertainty, not a reason to reject an
       // explicit Dock. Save the user's exact wording as a flexible task;
       // leave the date unset so Dokkit can learn/refine it later.
-      await addTaskWithOverrides({
+      const savedId = await addTaskWithOverrides({
         text: parsedTaskText,
         parsedThought: currentThought ?? undefined,
         originalInput: line,
@@ -845,6 +853,10 @@ if (line && addTaskWithOverrides) {
         jobId: captureJobId,
         surfaceDate: captureSurfaceDate || null,
       });
+      if (!savedId) {
+        setCollectionFeedback('Could not confirm the save. Your capture is still here; retry when ready.');
+        return;
+      }
       completedDraftRef.current = line;
       setEngineExplain('Saved as a flexible task. No day was assigned.');
       setCollectionFeedback('Saved as a flexible task. No day was assigned.');
@@ -879,12 +891,16 @@ if (!currentGate.ready) return;
 confirmSpeechLearning();
 clearSpeechStatus();
 if (addTaskWithOverrides) {
-  await addTaskWithOverrides({
+  const savedId = await addTaskWithOverrides({
     text: parsedTaskText,
     parsedThought: currentThoughtForDock ?? undefined,
     originalInput: line,
     jobId: effectiveCaptureJobId,
   });
+  if (!savedId) {
+    setCollectionFeedback('Could not confirm the save. Your capture is still here; retry when ready.');
+    return;
+  }
   completedDraftRef.current = line;
 } else {
   // Compatibility path for callers that have not adopted structured payloads.
