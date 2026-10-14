@@ -505,7 +505,13 @@ export default function MeetingExport(props: Props) {
 
       {flow.kind === 'error' && (
         <div className="sheet-backdrop">
-          <div className="meeting-export-sheet" role="alert" aria-label="Export failed">
+          <div
+            ref={exportDialogRef}
+            className="meeting-export-sheet"
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="Export failed"
+          >
             <div className="capture-sheet-title">{flow.message}</div>
             <div className="capture-sheet-hint">Nothing was saved — you can try again.</div>
             <div className="export-review-buttons">

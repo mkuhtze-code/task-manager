@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
-import { render, screen, waitFor } from '@testing-library/react';
+import PillReveal from '@/components/PillReveal';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function DialogFixture({
@@ -135,6 +136,35 @@ describe('useDialogA11y', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(dialog));
     expect(dialog.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('returns focus to a non-modal popover trigger when Escape closes it', async () => {
+    render(
+      <PillReveal label="Connections">
+        <button type="button">Open job</button>
+      </PillReveal>,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Connections' });
+    fireEvent.click(trigger);
+    const panelAction = screen.getByRole('button', { name: 'Open job' });
+
+    // Wait for the popover's open effect and initial-focus frame before
+    // testing its Escape listener; this avoids racing the effect setup.
+    await waitFor(() => expect(document.activeElement).toBe(panelAction));
+
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      document.dispatchEvent(escape);
+    });
+
+    expect(escape.defaultPrevented).toBe(true);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
   it('does not trap focus in a non-modal detail pane', () => {
