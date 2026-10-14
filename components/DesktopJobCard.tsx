@@ -57,10 +57,6 @@ export default function DesktopJobCard({
       <div className="desk-job-card-head">
         <div className="desk-job-card-identity">
           <span className="desk-job-card-name surface-object-title">{job.name}</span>
-
-          {job.client && (
-            <span className="desk-job-card-client">{job.client}</span>
-          )}
         </div>
 
         {done ? (
@@ -72,10 +68,11 @@ export default function DesktopJobCard({
         )}
       </div>
 
-      {todayCount > 0 || job.location_text ? (
+      {job.client || todayCount > 0 || job.location_text ? (
         <ContextLine
           className="desk-job-card-context"
           items={[
+            ...(job.client ? [{ label: job.client }] : []),
             ...(todayCount > 0
               ? [{ label: todayCount === 1 ? 'Today · 1 task' : 'Today · ' + todayCount + ' tasks', href: '/' }]
               : []),
