@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
     syncError: syncError
       ? 'Calendar selection was saved, but syncing changes failed. Try again shortly.'
       : null,
+    syncErrorDetail: syncError,
     calendar: {
       id: row.id,
       name: row.name,
