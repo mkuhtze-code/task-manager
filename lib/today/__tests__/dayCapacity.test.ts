@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { deriveTodayCapacity, type TodayCalendarEvent } from '@/lib/today/dayCapacity';
 
-function eventAt(now: Date, startHour: number, endHour: number): TodayCalendarEvent {
+function eventAt(now: Date, startHour: number, endHour: number, id = `event-${startHour}-${endHour}`): TodayCalendarEvent {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, 0);
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHour, 0);
   return {
-    id: `event-${startHour}-${endHour}`,
+    id,
     title: 'Calendar commitment',
     start_at: start.toISOString(),
     end_at: end.toISOString(),
@@ -49,9 +49,9 @@ describe('Today capacity integration', () => {
 
   it('does not double-count overlapping calendar commitments', () => {
     const now = new Date(2026, 9, 15, 9, 0);
-    const result = derive(now, [eventAt(now, 10, 11), eventAt(now, 10, 11)]);
+    const result = derive(now, [eventAt(now, 10, 11, 'event-a'), eventAt(now, 10, 12, 'event-b')]);
 
-    expect(result.availability.blockedMinutes).toBe(60);
-    expect(result.taskCapacity).toBe(420);
+    expect(result.availability.blockedMinutes).toBe(180);
+    expect(result.taskCapacity).toBe(300);
   });
 });
