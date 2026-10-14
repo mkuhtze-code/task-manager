@@ -18,6 +18,7 @@ import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
 import DesktopTravelHeader, {
   type TravelListFilter,
@@ -68,6 +69,7 @@ export default function TravelHome() {
   useProRedirect(!entLoading && Boolean(session), canTravel, 'travel');
 
   const [createOpen, setCreateOpen] = useState(false);
+  const createDialogRef = useDialogA11y(() => setCreateOpen(false));
   const [tripIntent, setTripIntent] = useState<'personal' | 'work'>(
     'work'
   );
@@ -550,6 +552,7 @@ export default function TravelHome() {
       {createOpen && (
         <div className="sheet-backdrop" onClick={closeCreate}>
           <div
+            ref={createDialogRef}
             className="capture-sheet"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
