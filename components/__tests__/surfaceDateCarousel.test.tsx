@@ -31,7 +31,7 @@ describe('SurfaceDateCarousel mobile date navigation', () => {
     fireEvent.change(dateInput, { target: { value: '2030-02-03' } });
 
     await waitFor(() => expect(dateInput.value).toBe('2030-02-03'));
-    expect(await screen.findByRole('tab', { name: /February 3/ })).toBeTruthy();
+    expect(await screen.findByRole('tab', { name: /Feb 3/ })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to today' }));
     await waitFor(() => expect((dateInput as HTMLInputElement).value).toBe(localDateKey(new Date())));
