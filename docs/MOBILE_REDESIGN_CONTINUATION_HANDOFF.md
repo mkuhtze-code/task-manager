@@ -2,7 +2,7 @@
 
 **Purpose:** Durable continuation record for a new ChatGPT conversation. Read this document together with `docs/MOBILE_REDESIGN_AUTHORITY.md` and `docs/MOBILE_REDESIGN_CURRENT_STATE_AUDIT.md` before proposing or changing redesign work.
 
-**Current baseline:** `main` at `478b3962185bc26fc647a71072f02a0301be4797` (2026-10-14). Repository: `mkuhtze-code/task-manager`.
+**Current baseline:** `main` at `9c1a49ce40694d2c4bca98e1458f9ce379c9681b` (2026-10-15 NZ date). Repository: `mkuhtze-code/task-manager`.
 
 ## 1. Product and delivery order
 
@@ -71,8 +71,16 @@ Confirm the live PR/commit state before acting, but as of this handoff the follo
 - [PR #272](https://github.com/mkuhtze-code/task-manager/pull/272) — keyboard focus containment/restoration for modal sheets.
 - [PR #274](https://github.com/mkuhtze-code/task-manager/pull/274) — fix shared focus management for conditionally mounted modal sheets; apply it to additional Travel and Meeting modals.
 - [PR #276](https://github.com/mkuhtze-code/task-manager/pull/276) — accessible naming, initial focus, and Escape focus return for non-modal `PillReveal` popovers, without focus trapping.
+- [PR #280](https://github.com/mkuhtze-code/task-manager/pull/280) — regression test for jumping to a distant date and returning to today.
+- [PR #281](https://github.com/mkuhtze-code/task-manager/pull/281) — accessible meeting-export failure alertdialog and focus management.
+- [PR #285](https://github.com/mkuhtze-code/task-manager/pull/285) — Today capacity integration tests for timed and overlapping calendar commitments.
+- [PR #289](https://github.com/mkuhtze-code/task-manager/pull/289) — focus management for trip-stop editor and Add-a-trip-stop sheet.
+- [PR #292](https://github.com/mkuhtze-code/task-manager/pull/292) — keep invalid task-detail drafts open and require validation before Done.
+- [PR #294](https://github.com/mkuhtze-code/task-manager/pull/294) — topmost-modal keyboard ownership, popover Escape isolation, and scoped photo navigation.
+- [PR #298](https://github.com/mkuhtze-code/task-manager/pull/298) — capacity regression for untimed manual meetings and Outlook duplicate rows.
+- [PR #299](https://github.com/mkuhtze-code/task-manager/pull/299) — independent focus lifecycle for meeting-export phases, including a non-dismissible busy modal.
 
-Latest known main commit: `478b3962185bc26fc647a71072f02a0301be4797`. PRs #274 and #276 passed both Vercel checks for `task-manager` and `task-manager-capacitor-test`; CodeRabbit and Devin Review checks passed. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
+Latest known main commit: `9c1a49ce40694d2c4bca98e1458f9ce379c9681b`. PRs #289, #292, #294, #298, and #299 passed both Vercel checks for `task-manager` and `task-manager-capacitor-test`; review checks passed. PR #271's code checks also passed, but live Microsoft OAuth/first-sync acceptance remains outstanding. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
 
 ### Important validation boundaries
 
@@ -96,12 +104,14 @@ Latest known main commit: `478b3962185bc26fc647a71072f02a0301be4797`. PRs #274 a
 ## 7. Remaining sequence — continue in this order
 
 ### Immediate next task: validate the working slice
-The source-level focus audit and fixes in PRs #274 and #276 are merged. The remaining accessibility work is broader manual acceptance, not a claim of WCAG compliance.
+Source-level fixes for modal focus, nested keyboard ownership, popovers, trip-stop sheets, task-detail validation recovery, date navigation, and Today capacity are merged. The automated checks are green; that is not equivalent to visual, live OAuth, screen-reader, or device acceptance.
 
 1. Validate the working slice in this order: Today → multi-item capture → edit item → follow a job/meeting relationship → return to exact prior state → simulate save/sync failure → recover without lost input.
-2. Use the existing capture authorization/retry and surface-return tests; identify any missing integration coverage before adding tests.
-3. Verify direct date jump/return-to-today and capacity changes. Use automation/source evidence where preview is inaccessible and explicitly mark what still needs live human/device verification.
-4. Fix proven defects in small PRs; run both Vercel checks and inspect review feedback before merge.
+2. Existing automated coverage includes capture authorization/draft retry, generic surface-state save/restore, distant date jump/return, task-detail validation recovery, timed/overlapping calendar capacity, untimed manual-meeting subtraction, and modal keyboard/focus behavior.
+3. **Known acceptance gap to resolve:** collection/list capture supports multiple list items, but the ordinary capture path appears to return one executable action per Dock run. The current tests do not demonstrate a single spoken dump creating several independent tasks with different dates/reminders. Audit the intended deterministic contract and existing call path before changing code; do not treat a grocery/snags list as proof that general multi-task dump is satisfied.
+4. Add an integration test for following a job/meeting relationship from Today and returning to the exact previous state if current route-level behavior cannot be demonstrated by existing tests.
+5. Simulate a failed task save and a failed calendar sync; verify the draft/selection is retained and the retry outcome is truthful. Calendar's live Microsoft OAuth/first sync still needs a real test account.
+6. Fix proven defects in small PRs; run both Vercel checks and inspect review feedback before merge.
 
 ### Then continue the surfaces
 - Bring Jobs, Meetings, and Travel into the shared object grammar and navigation/return-state model without making them feel like separate apps.
@@ -124,4 +134,4 @@ Do not call the redesign complete merely because CI is green. Required:
 
 ## 9. First instruction for the next chat
 
-Read this handoff and the three source-of-truth docs. Confirm the current `main` SHA and live PR/check status; do not assume this snapshot is still current. Then resume with the **mobile-web accessibility and interaction audit**, making the smallest proven fixes and continuing the web-first sequence. Do not ask the user to restate the design decisions above.
+Read this handoff and the source-of-truth docs. Confirm the current `main` SHA and live PR/check status; do not assume this snapshot is still current. Resume with the **working-slice acceptance**, starting by resolving the deterministic multi-item/day-dump capture contract and adding the smallest integration tests needed to prove the journey. Keep the responsive web app first; do not ask the user to restate the design decisions above.
