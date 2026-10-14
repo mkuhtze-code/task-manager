@@ -2,6 +2,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import PillReveal from '@/components/PillReveal';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
+
+function ModalWithPopover({ onClose }: { onClose: () => void }) {
+  const dialogRef = useDialogA11y(onClose);
+  return (
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Meeting detail">
+      <PillReveal label="Connections">
+        <button type="button">Open connection</button>
+      </PillReveal>
+    </div>
+  );
+}
 
 describe('PillReveal accessibility', () => {
   it('names the non-modal dialog, moves focus into it, and restores focus on Escape', async () => {
@@ -21,10 +33,31 @@ describe('PillReveal accessibility', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(child));
 
-    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.keyDown(child, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(document.activeElement).toBe(trigger);
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('closes a non-modal popover without closing its enclosing modal', async () => {
+    const onModalClose = vi.fn();
+    render(<ModalWithPopover onClose={onModalClose} />);
+
+    const modal = screen.getByRole('dialog', { name: 'Meeting detail' });
+    const trigger = screen.getByRole('button', { name: 'Connections' });
+    await waitFor(() => expect(document.activeElement).toBe(modal));
+    fireEvent.click(trigger);
+
+    const child = await screen.findByRole('button', { name: 'Open connection' });
+    await waitFor(() => expect(document.activeElement).toBe(child));
+    fireEvent.keyDown(child, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Connections' })).toBeNull());
+    expect(document.activeElement).toBe(trigger);
+    expect(onModalClose).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(trigger, { key: 'Escape' });
+    expect(onModalClose).toHaveBeenCalledTimes(1);
   });
 
   it('does not trap Tab in the non-modal panel', async () => {
