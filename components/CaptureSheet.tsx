@@ -96,6 +96,7 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
   clearCollectionFeedback: () => void;
   error: string;
   onSubmit: () => void;
+  onDraftChange: () => void;
 }) {
   const {
     value,
@@ -108,6 +109,7 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
     clearCollectionFeedback,
     error,
     onSubmit,
+    onDraftChange,
   } = props;
   const [draft, setDraft] = useState(value);
   const lastPropValueRef = useRef(value);
@@ -137,7 +139,8 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
     };
   }, [controllerRef, draftRef, setTaskText]);
 
-  function onDraftChange(next: string) {
+  function handleDraftChange(next: string) {
+    onDraftChange();
     draftRef.current = next;
     setDraft(next);
     if (speechStatusActive) clearSpeechStatus();
@@ -149,7 +152,7 @@ const CaptureTextInput = memo(function CaptureTextInput(props: {
       id="capture-task-text"
       type="text"
       value={draft}
-      onChange={(e) => onDraftChange(e.target.value)}
+      onChange={(e) => handleDraftChange(e.target.value)}
       onBlur={(e) => {
         // Moving focus to Dock is not a draft commit: Dock reads draftRef
         // directly and must not trigger TodayPage's debounced parse cascade.
@@ -292,6 +295,9 @@ const [collectionFeedback, setCollectionFeedback] = useState<string | null>(null
 const [listBusy, setListBusy] = useState(false);
 const [dockBusy, setDockBusy] = useState(false);
 const dockBusyRef = useRef(false);
+// Prevent an accidental second Dock after a successful create when the user
+// has not changed the capture. Editing the draft starts a new capture.
+const completedDraftRef = useRef<string | null>(null);
 const [pendingClarification, setPendingClarification] = useState<{
 spoken: string;
 candidates: Array<{ taskId: string; title: string; reason: string }>;
@@ -587,6 +593,12 @@ void applyListDock(next).finally(() => {
 async function tryDock() {
 if (!engineStateReady) return;
 if (dockBusyRef.current) return;
+const draftToDock = draftTextRef.current.trim();
+if (!draftToDock) return;
+if (completedDraftRef.current === draftToDock) {
+  setCollectionFeedback('This capture was already saved. Edit the text to create another task.');
+  return;
+}
 dockBusyRef.current = true;
 setDockBusy(true);
 try {
@@ -742,7 +754,7 @@ if (line && addTaskWithOverrides) {
               jobId: action.jobId,
               surfaceDate: action.surfaceDate,
               estimateMins: action.estimateMins ?? undefined,
-              originalInput: dock.overrides.originalInput ?? line,
+              originalInput: line,
               explanation: dock.overrides.explanation,
               engineRequest: dock.overrides.engineRequest,
               evidence: dock.overrides.evidence,
@@ -761,7 +773,7 @@ if (line && addTaskWithOverrides) {
               jobId: action.jobId,
               surfaceDate: action.surfaceDate,
               estimateMins: action.estimateMins ?? undefined,
-              originalInput: dock.overrides.originalInput ?? line,
+              originalInput: line,
               explanation: dock.overrides.explanation,
               updateTaskId: action.taskId,
               engineRequest: dock.overrides.engineRequest,
@@ -774,6 +786,7 @@ if (line && addTaskWithOverrides) {
 
       if (execution.execution?.status === 'executed') {
         if (dock.kind === 'act_create') {
+          completedDraftRef.current = line;
           // A completed create is a boundary between captures, not an unfinished
           // request to resume. Keep active-request state only for refinements.
           setEnginePriorRequest(null);
@@ -832,6 +845,7 @@ if (line && addTaskWithOverrides) {
         jobId: captureJobId,
         surfaceDate: captureSurfaceDate || null,
       });
+      completedDraftRef.current = line;
       setEngineExplain('Saved as a flexible task. No day was assigned.');
       setCollectionFeedback('Saved as a flexible task. No day was assigned.');
       confirmSpeechLearning();
@@ -871,10 +885,12 @@ if (addTaskWithOverrides) {
     originalInput: line,
     jobId: effectiveCaptureJobId,
   });
+  completedDraftRef.current = line;
 } else {
   // Compatibility path for callers that have not adopted structured payloads.
   flushDraftText();
   addTask();
+  completedDraftRef.current = line;
 }
 
 } finally {
@@ -933,6 +949,9 @@ onClick={(e) => e.stopPropagation()}
         clearCollectionFeedback={() => setCollectionFeedback(null)}
         error={error}
         onSubmit={tryDock}
+        onDraftChange={() => {
+          completedDraftRef.current = null;
+        }}
       />
 
       <MicButton onResult={onSpeechResult} />
