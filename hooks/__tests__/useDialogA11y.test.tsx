@@ -122,7 +122,12 @@ describe('useDialogA11y', () => {
     expect(backwardTab.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(last);
 
-    fireEvent.keyDown(document, { key: 'Escape' });
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(escape);
     expect(escape.defaultPrevented).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);
 
@@ -145,12 +150,7 @@ describe('useDialogA11y', () => {
     fireEvent.keyDown(document, { key: 'Tab' });
     expect(document.activeElement).toBe(first);
 
-    const escape = new KeyboardEvent('keydown', {
-      key: 'Escape',
-      bubbles: true,
-      cancelable: true,
-    });
-    document.dispatchEvent(escape);
+    fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(opener));
     view.unmount();
