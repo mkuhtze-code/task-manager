@@ -35,7 +35,7 @@ Other core sheets already using the shared hook include capture, task details, R
 - **Add-a-trip-stop sheet:** the existing sheet now has shared modal focus management and explicit dialog semantics.
 - **Meeting export failure:** the failure state is now a named `alertdialog` with `aria-modal="true"` and shared focus management. The existing Close and Try again actions remain unchanged.
 - `DesktopProductNav` plan popover is desktop navigation and remains outside this mobile-web slice.
-- The export-generation overlay remains a busy `role="status"`, not a dismissible modal; its announcement and focus behavior still need manual acceptance.
+- **Meeting export generation:** the existing blocking generation state is now a focus-managed `dialog` with `aria-modal="true"` and `aria-busy="true"`; the “Generating export…” announcement remains a nested `role="status"`. Escape does not dismiss the in-progress operation. Real screen-reader announcement and focus behavior still need manual acceptance.
 
 ## Remaining manual acceptance
 
