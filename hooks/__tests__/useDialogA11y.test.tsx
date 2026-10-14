@@ -113,12 +113,7 @@ describe('useDialogA11y', () => {
     const dialog = screen.getByRole('dialog', { name: 'Conditional dialog' });
     await waitFor(() => expect(document.activeElement).toBe(dialog));
 
-    const escape = new KeyboardEvent('keydown', {
-      key: 'Escape',
-      bubbles: true,
-      cancelable: true,
-    });
-    document.dispatchEvent(escape);
+    fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(opener));
   });
