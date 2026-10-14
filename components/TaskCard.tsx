@@ -164,7 +164,16 @@ export function TaskCard(props: {
   );
 
   return (
-    <div className={rowClass}>
+    <div
+      className={rowClass}
+      title={!expanded && fitLabel ? fitLabel : undefined}
+      aria-label={[
+        t.text,
+        running ? 'Timer running' : null,
+        overCap ? 'Over estimate' : null,
+        fitLabel ? `Fit: ${fitLabel}` : null,
+      ].filter(Boolean).join('. ')}
+    >
       <div className="task-main">
         <button
           type="button"
