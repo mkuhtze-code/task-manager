@@ -213,12 +213,12 @@ export function TaskDetailSheet(props: {
     setLocalSubs(subs);
   }, [subs]);
 
-  function commit(visitOverride?: boolean | null) {
+  function commit(visitOverride?: boolean | null): boolean {
     const trimmed = text.trim();
 
     if (trimmed.length === 0) {
       setError('Name cannot be empty');
-      return;
+      return false;
     }
 
     const mins = parseMins(timeStr);
@@ -227,7 +227,7 @@ export function TaskDetailSheet(props: {
       setError(
         'Could not read that time, try 15m, 1.5h, or 0m'
       );
-      return;
+      return false;
     }
 
     setError('');
@@ -247,10 +247,11 @@ export function TaskDetailSheet(props: {
       locationCoords?.lng ?? null,
       visit
     );
+    return true;
   }
 
   function handleClose() {
-    commit();
+    if (!commit()) return;
     onClose();
   }
 
@@ -1228,6 +1229,7 @@ export function TaskDetailSheet(props: {
               type="button"
               className="detail-pill detail-pill-done"
               onClick={() => {
+                if (!commit()) return;
                 onComplete(task.id);
                 onClose();
               }}
@@ -1499,6 +1501,7 @@ export function TaskDetailSheet(props: {
             type="button"
             className="detail-pill detail-pill-done"
             onClick={() => {
+              if (!commit()) return;
               onComplete(task.id);
               onClose();
             }}
