@@ -7,12 +7,15 @@ function DialogFixture({
   onClose,
   trapFocus = true,
   autoFocus = true,
+  enabled = true,
 }: {
   onClose: () => void;
   trapFocus?: boolean;
   autoFocus?: boolean;
+  enabled?: boolean;
 }) {
-  const dialogRef = useDialogA11y(onClose, { trapFocus });
+  const dialogRef = useDialogA11y(onClose, { trapFocus, enabled });
+  if (!enabled) return null;
   return (
     <div ref={dialogRef} role="dialog" aria-modal={trapFocus ? 'true' : undefined}>
       <button data-autofocus={autoFocus ? '' : undefined}>First action</button>
@@ -86,6 +89,39 @@ describe('useDialogA11y', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(dialog));
     expect(dialog.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('attaches focus handling when a dialog opens after its parent mounted', async () => {
+    const opener = document.createElement('button');
+    opener.textContent = 'Open dialog';
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const onClose = vi.fn();
+    const view = render(<DialogFixture onClose={onClose} enabled={false} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    view.rerender(<DialogFixture onClose={onClose} enabled />);
+    const dialog = screen.getByRole('dialog');
+    const first = screen.getByRole('button', { name: 'First action' });
+    const last = screen.getByRole('button', { name: 'Last action' });
+
+    await waitFor(() => expect(document.activeElement).toBe(first));
+
+    last.focus();
+    const tab = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(first);
+
+    view.rerender(<DialogFixture onClose={onClose} enabled={false} />);
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(dialog.isConnected).toBe(false);
   });
 
   it('does not trap focus in a non-modal detail pane', () => {
