@@ -14,7 +14,7 @@ PR #274 changed the hook to use a stable callback ref and re-run focus managemen
 - focus restoration when a dialog is removed;
 - opt-out of focus trapping for non-modal desktop task-detail panes.
 
-Regression tests cover wraparound, Escape, focus restoration, initial focus, conditionally mounted dialogs, and non-modal behavior.
+Regression tests cover wraparound, Escape, focus restoration, initial focus, conditionally mounted dialogs, non-modal behavior, and Escape dismissal/focus return for the non-modal `PillReveal` popover.
 
 ## Modal surfaces covered in PR #274
 
