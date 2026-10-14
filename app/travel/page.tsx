@@ -23,6 +23,7 @@ import DesktopTravelHeader, {
   type TravelListFilter,
 } from '@/components/DesktopTravelHeader';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import {
   buildTravelSurfaceModel,
   fmtDateRange,
@@ -79,6 +80,7 @@ export default function TravelHome() {
   const [listFilter, setListFilter] = useState<TravelListFilter>('all');
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const createDialogRef = useDialogA11y<HTMLDivElement>(closeCreate, { enabled: createOpen });
 
   useSurfaceReturnState(
     session?.user?.id ? `dokkit.surface-return.${session.user.id}.travel.v1` : null,
@@ -550,6 +552,7 @@ export default function TravelHome() {
       {createOpen && (
         <div className="sheet-backdrop" onClick={closeCreate}>
           <div
+            ref={createDialogRef}
             className="capture-sheet"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
