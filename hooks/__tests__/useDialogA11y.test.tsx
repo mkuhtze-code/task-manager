@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { useDialogA11y } from '@/hooks/useDialogA11y';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 
@@ -108,7 +108,7 @@ describe('useDialogA11y', () => {
     render(<ConditionalDialogFixture />);
     const opener = screen.getByRole('button', { name: 'Open dialog' });
     opener.focus();
-    opener.click();
+    fireEvent.click(opener);
 
     const dialog = screen.getByRole('dialog', { name: 'Conditional dialog' });
     await waitFor(() => expect(document.activeElement).toBe(dialog));
