@@ -22,6 +22,7 @@ import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
 import DesktopTravelHeader, {
   type TravelListFilter,
 } from '@/components/DesktopTravelHeader';
+import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
 import {
   buildTravelSurfaceModel,
   fmtDateRange,
@@ -78,6 +79,30 @@ export default function TravelHome() {
   const [listFilter, setListFilter] = useState<TravelListFilter>('all');
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  useSurfaceReturnState(
+    'dokkit.surface-return.travel.v1',
+    { listFilter, search, selectedDate },
+    (saved) => {
+      if (!saved || typeof saved !== 'object') return;
+      if (
+        saved.listFilter === 'active' ||
+        saved.listFilter === 'upcoming' ||
+        saved.listFilter === 'past' ||
+        saved.listFilter === 'all'
+      ) {
+        setListFilter(saved.listFilter);
+      }
+      if (typeof saved.search === 'string') setSearch(saved.search);
+      if (
+        saved.selectedDate === null ||
+        (typeof saved.selectedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.selectedDate))
+      ) {
+        setSelectedDate(saved.selectedDate);
+      }
+    },
+    !loading,
+  );
 
   const todayStr = localDateStr(new Date());
 
