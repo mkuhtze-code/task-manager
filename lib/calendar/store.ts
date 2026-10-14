@@ -70,6 +70,24 @@ export async function listCalendarConnections(provider?: CalendarProvider) {
   return (data ?? []) as CalendarConnectionRow[];
 }
 
+export async function listUserCalendarConnections(
+  userId: string,
+  provider?: CalendarProvider,
+): Promise<CalendarConnectionRow[]> {
+  let query = supabaseAdmin
+    .from('calendar_connections')
+    .select(CONNECTION_COLUMNS)
+    .eq('user_id', userId);
+  if (provider) {
+    query = query.eq('provider', provider);
+  }
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to list this user's calendar connections: ${error.message}`);
+  }
+  return (data ?? []) as CalendarConnectionRow[];
+}
+
 export async function getCalendarConnectionForUser(
   connectionId: string,
   userId: string,
