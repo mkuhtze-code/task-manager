@@ -2155,3 +2155,116 @@ html[data-theme='dark']{
 .trip-section-lede {
   display: none;
 }
+
+
+/* Phase C — collapsed object grammar. Identity leads; one mono glance follows. */
+.job-row-top,
+.meeting-row-top,
+.trip-row-top,
+.desk-job-card.surface-object .desk-job-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.job-row-numeral,
+.meeting-row-glance,
+.trip-row-glance,
+.desk-job-card-status {
+  flex: 0 0 auto;
+  max-width: 58%;
+  font-family: var(--font-mono, var(--font-label));
+  font-size: var(--object-meta-size);
+  line-height: var(--object-meta-leading);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-semibold);
+  color: var(--ink-soft);
+  text-align: end;
+  white-space: nowrap;
+}
+.job-row-meta,
+.desk-job-card-context,
+.meeting-row-context,
+.trip-row-context {
+  min-width: 0;
+  color: var(--ink-faint);
+  font-size: var(--object-meta-size);
+  line-height: var(--object-meta-leading);
+}
+.job-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px 10px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.job-row-meta > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.job-row-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.job-row-next,
+.desk-job-card-next,
+.desk-job-card-summary {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-faint);
+  font-family: var(--font-mono, var(--font-label));
+  font-size: var(--object-meta-size);
+  line-height: var(--object-meta-leading);
+  font-variant-numeric: tabular-nums;
+}
+.job-row .job-row-next {
+  margin-top: 3px;
+  padding-top: 0;
+  border-top: 0;
+  font-size: var(--object-meta-size);
+}
+.meeting-row.surface-object .meeting-row-top,
+.trip-row-maybach.surface-object .trip-row-top {
+  align-items: baseline;
+}
+.meeting-row-glance,
+.trip-row-glance {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meeting-row-context,
+.trip-row-context {
+  margin-top: 4px;
+}
+.meeting-source-tag {
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+}
+.desk-job-card.surface-object .desk-job-card-head {
+  align-items: flex-start;
+}
+.desk-job-card.surface-object .desk-job-card-identity {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.desk-job-card.surface-object .desk-job-card-client {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.desk-job-card.surface-object .desk-job-card-next,
+.desk-job-card.surface-object .desk-job-card-summary {
+  display: block;
+  margin-top: 5px;
+  padding-top: 0;
+  border-top: 0;
+}
