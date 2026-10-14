@@ -15,6 +15,7 @@ import TravelVaultSheet from '@/components/TravelVaultSheet';
 import DaySheet from '@/components/DaySheet';
 import TripDayMeetings from '@/components/TripDayMeetings';
 import MapView from '@/components/MapView';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { TravelLeg } from '@/components/TravelLeg';
 import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
 import GearMenu from '@/components/GearMenu';
@@ -606,6 +607,10 @@ export default function TripDayView() {
   const [vaultOpen, setVaultOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [tripToolsOpen, setTripToolsOpen] = useState(false);
+  const tripToolsDialogRef = useDialogA11y(
+    () => setTripToolsOpen(false),
+    { enabled: tripToolsOpen },
+  );
   const [captureMoreOpen, setCaptureMoreOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureText, setCaptureText] = useState('');
@@ -2028,6 +2033,7 @@ export default function TripDayView() {
       {tripToolsOpen && (
         <div className="sheet-backdrop" onClick={() => setTripToolsOpen(false)}>
           <div
+            ref={tripToolsDialogRef}
             className="capture-sheet"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
