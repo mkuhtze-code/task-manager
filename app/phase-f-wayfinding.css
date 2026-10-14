@@ -1,0 +1,113 @@
+/* Phase F — shared wayfinding polish. Presentation-only; loaded after Phase D. */
+
+/* Active surface: weight plus a persistent bottom hairline, never colour alone. */
+.surface-nav.surface-nav-tabs .surface-tab {
+  position: relative;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  transition: color 150ms var(--ease), opacity 150ms var(--ease);
+}
+.surface-nav.surface-nav-tabs .surface-tab.current {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: inset 0 -2px 0 var(--text-primary);
+  font-weight: 700;
+}
+.surface-nav.surface-nav-tabs .surface-tab.current .surface-tab-icon {
+  transform: none;
+}
+.surface-nav.surface-nav-tabs .surface-tab.current .surface-tab-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.surface-nav.surface-nav-tabs .surface-tab.current .surface-tab-icon svg * {
+  stroke-width: 1.9;
+}
+.surface-nav.surface-nav-tabs .surface-tab.current .surface-tab-label {
+  font-weight: 750;
+}
+.surface-nav.surface-nav-tabs .surface-tab.locked {
+  opacity: .62;
+}
+.surface-nav.surface-nav-tabs .surface-tab:focus-visible,
+.surface-nav.surface-nav-tabs .surface-add:focus-visible,
+.surface-filter-btn:focus-visible,
+.surface-search-button:focus-visible,
+.surface-search input:focus-visible,
+.surface-header a:focus-visible,
+.surface-header button:focus-visible,
+.surface-date-carousel button:focus-visible,
+.surface-date-carousel a:focus-visible {
+  outline: 2px solid var(--focus-ring-color, var(--steel));
+  outline-offset: 3px;
+  box-shadow: var(--focus-ring, 0 0 0 3px color-mix(in srgb, var(--steel) 28%, transparent));
+}
+
+/* One shared segmented-filter language and quiet, tabular counts. */
+.surface-filter {
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+}
+.surface-filter-btn {
+  min-height: 34px;
+  border-radius: 7px;
+  white-space: nowrap;
+}
+.surface-filter-btn.active {
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.surface-filter-btn .mono,
+.surface-filter-btn [data-count],
+.surface-filter-btn .count {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-weight: 500;
+  color: var(--ink-faint);
+}
+
+/* Search stays icon-first; the existing open/close state owns expansion. */
+.surface-search-button {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+}
+.surface-search input[type='search'] {
+  min-width: 0;
+  width: min(16rem, 42vw);
+  transition: border-color 150ms var(--ease);
+}
+
+/* Date selection uses the same quiet selected-state language wherever present. */
+.surface-date-carousel [aria-current='date'],
+.surface-date-carousel [aria-pressed='true'],
+.surface-date-carousel .selected,
+.surface-date-carousel .active {
+  font-weight: 750;
+  border-color: var(--line-strong);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+/* Featured objects align with the shared list rhythm; no new card treatment. */
+.meetings-featured,
+.travel-featured,
+.meeting-featured,
+.trip-featured {
+  margin-bottom: var(--dk-gap, 10px);
+}
+.meetings-featured > *,
+.travel-featured > *,
+.meeting-featured > *,
+.trip-featured > * {
+  border-radius: var(--dk-radius, var(--radius-md));
+}
+
+/* Keyboard focus must remain visible in both themes. */
+@media (prefers-reduced-motion: reduce) {
+  .surface-nav.surface-nav-tabs .surface-tab,
+  .surface-search input[type='search'] {
+    transition: none;
+  }
+}
