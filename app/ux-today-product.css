@@ -313,7 +313,7 @@
   justify-content: center !important;
 }
 
-.sheet-panel,
+.sheet-panel:not(.capture-sheet),
 .task-detail-sheet {
   position: relative !important;
   z-index: 1 !important;
