@@ -3,6 +3,8 @@ import { useEffect, useRef } from 'react';
 type DialogA11yOptions = {
   /** Modal sheets trap keyboard focus; non-modal desktop panes do not. */
   trapFocus?: boolean;
+  /** Enable focus management only while a conditionally rendered dialog is open. */
+  enabled?: boolean;
 };
 
 export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
@@ -12,6 +14,7 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
   const dialogRef = useRef<T | null>(null);
   const onCloseRef = useRef(onClose);
   const trapFocusRef = useRef(options.trapFocus ?? true);
+  const enabled = options.enabled ?? true;
 
   // Keep current callbacks and presentation mode without restarting the dialog lifecycle.
   useEffect(() => {
@@ -20,6 +23,7 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
   trapFocusRef.current = options.trapFocus ?? true;
 
   useEffect(() => {
+    if (!enabled) return;
     const dialog = dialogRef.current;
     if (!dialog) return;
 
@@ -124,7 +128,7 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
         });
       }
     };
-  }, []);
+  }, [enabled]);
 
   return dialogRef;
 }
