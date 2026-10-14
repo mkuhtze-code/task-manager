@@ -54,18 +54,18 @@ export function useSurfaceReturnState<T>(
 ) {
   const stateRef = useRef(state);
   const restoreRef = useRef(restoreState);
-  const restoredRef = useRef(false);
+  const restoredKeyRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<PendingWrite | null>(null);
 
   stateRef.current = state;
   restoreRef.current = restoreState;
 
   useEffect(() => {
-    if (!key || !ready || restoredRef.current) return;
+    if (!key || !ready || restoredKeyRef.current === key) return;
 
     const snapshot = readSnapshot<T>(key);
     if (!snapshot) {
-      restoredRef.current = true;
+      restoredKeyRef.current = key;
       return;
     }
 
@@ -75,7 +75,7 @@ export function useSurfaceReturnState<T>(
     // effect cleanup can cancel and safely reschedule this work.
     const frame = window.requestAnimationFrame(() => {
       window.scrollTo(0, snapshot.scrollY);
-      restoredRef.current = true;
+      restoredKeyRef.current = key;
     });
     return () => window.cancelAnimationFrame(frame);
   }, [key, ready]);
