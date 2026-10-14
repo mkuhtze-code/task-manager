@@ -122,12 +122,7 @@ describe('useDialogA11y', () => {
     expect(backwardTab.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(last);
 
-    const escape = new KeyboardEvent('keydown', {
-      key: 'Escape',
-      bubbles: true,
-      cancelable: true,
-    });
-    document.dispatchEvent(escape);
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(escape.defaultPrevented).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);
 
@@ -139,7 +134,7 @@ describe('useDialogA11y', () => {
     const view = render(<ConditionalDialogFixture />);
     const opener = screen.getByRole('button', { name: 'Open conditional dialog' });
     opener.focus();
-    opener.click();
+    fireEvent.click(opener);
 
     const dialog = await screen.findByRole('dialog', { name: 'Conditional dialog' });
     const first = screen.getByRole('button', { name: 'First action' });
@@ -147,12 +142,7 @@ describe('useDialogA11y', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(dialog));
     last.focus();
-    const tab = new KeyboardEvent('keydown', {
-      key: 'Tab',
-      bubbles: true,
-      cancelable: true,
-    });
-    document.dispatchEvent(tab);
+    fireEvent.keyDown(document, { key: 'Tab' });
     expect(tab.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(first);
 
