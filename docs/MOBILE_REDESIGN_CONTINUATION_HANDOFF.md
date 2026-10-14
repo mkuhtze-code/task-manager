@@ -91,6 +91,7 @@ Latest known main commit: `9c1a49ce40694d2c4bca98e1458f9ce379c9681b`. The merged
 ## 6. Important architecture and risk notes
 
 - Capture path: `components/CaptureSheet.tsx` → `lib/engine/captureDock.ts` → deterministic CPU/interaction engine. Keep it deterministic and preserve drafts through errors.
+- **Confirmed multi-item gap:** `runCaptureDock` consumes one `processCpuInteraction` result and returns one `act_create` or `act_update` action; `CaptureSheet.tryDock` executes that single decision per submission. There is no explicit batch contract for multiple independent tasks from one utterance. The agreed dictaphone/day-dump capture requirement is therefore not yet satisfied at the action layer.
 - Today combines tasks, meetings, external calendar events, route/travel duration, active commitments, capacity, Reality Check (Done/Partial/Carry), actual duration, and learning. Do not weaken the shared model for appearance.
 - Calendar source areas include `app/api/auth/microsoft/connect/route.ts`, `app/api/auth/microsoft/callback/route.ts`, `app/api/calendar/calendars/route.ts`, `app/api/calendar/sync-now/route.ts`, `lib/calendar/store.ts`, `lib/calendar/sync.ts`, and `supabase/schema.sql`. Re-check names against main before edits.
 - `components/SurfaceNav.tsx` defines Today/Jobs/Meetings/Travel; shared Add action. Some surfaces are Pro-gated.
@@ -102,14 +103,17 @@ Latest known main commit: `9c1a49ce40694d2c4bca98e1458f9ce379c9681b`. The merged
 
 ## 7. Remaining sequence — continue in this order
 
-### Immediate next task: close the web working-slice acceptance gap
-Source-level contracts now cover capture authorization/duplicate prevention/draft retry (`test:capture-ui`), surface return state (`test:surface-state`), direct date jump/return (`test:date-navigation`), Today capacity and untimed manual meetings (`test:today-capacity`), task-detail validation recovery (`test:task-detail-validation`), and modal/popover keyboard ownership (`test:dialog-a11y`, `test:pill-reveal-a11y`).
+### Immediate next task: close the existing multi-item capture gap
 
-1. Validate the real journey in order: Today → multi-item capture → edit item → follow a job/meeting relationship → return to exact prior state → controlled save/sync failure → recovery without lost or duplicate input.
-2. The tests currently cover these contracts in component/hook/pure-function slices; a single page-level integration test for actual Today wiring and relationship navigation is still missing. Add one only if it exercises the real page/component wiring, not a synthetic harness that merely repeats hook behavior.
-3. The branch preview routing can return 404 because the Task Manager app is routed through the Dokkit site project. Continue using green builds and focused source tests, but do not call that visual/device acceptance. The actual `/app` journey still needs a human visual/touch pass when a working deployment path is available.
-4. Calendar capacity calculations have source-level coverage, but live Microsoft OAuth/first-sync acceptance remains outstanding and needs a real test account.
-5. Fix proven defects in small PRs; run both Vercel projects and review checks before merge. Keep WCAG 2.2 AA and physical-device acceptance explicitly open until tested.
+**This is a core capability gap, not a request for unrelated new features.** The agreed product model requires one utterance to produce multiple independent tasks when the user gives a day dump, including distinct dates/reminders and corrections. The current source action contract returns one create/update action per Dock submission, so the full working slice cannot yet be accepted.
+
+1. Extend the existing deterministic capture/action contract so one utterance can produce an ordered batch of task mutations. Preserve universal language handling; do not add trade-specific grammar, an LLM, or an external AI dependency.
+2. Add acceptance cases for: two or more independent tasks in one utterance; different dates/reminders per item; a correction such as “actually, move the first one to tomorrow”; job/place context on the appropriate item; and a single-item regression.
+3. Define safe batch failure behavior before wiring it into Today: retain the whole original dump, track which items were confirmed, and retry only failed/unconfirmed items so successful tasks are neither lost nor duplicated. Keep user-visible failure feedback explicit.
+4. The route/state test PR adds checks for task-to-Job/Meeting link destinations and snapshots that include date/filter/search/scroll/open-task/expanded-task state. Those are useful component/hook contracts, not proof of the full journey.
+5. After the batch contract exists, add one page-level integration test using real Today/Capture wiring (not a synthetic harness) for Today → multi-item capture → edit one item → follow Job/Meeting → return to exact state → controlled save failure → recovery without loss/duplication.
+6. Branch previews can return 404 because the Task Manager app is routed through the Dokkit site project. Use green builds and focused source tests, but do not call that visual/device acceptance. The actual `/app` journey still needs a human visual/touch pass when a working deployment path is available.
+7. Live Microsoft OAuth/first-sync acceptance remains outstanding and needs a real test account. Keep WCAG 2.2 AA and physical-device acceptance explicitly open until tested.
 ### Then continue the surfaces
 - Bring Jobs, Meetings, and Travel into the shared object grammar and navigation/return-state model without making them feel like separate apps.
 - Complete the calendar journey's live acceptance.
