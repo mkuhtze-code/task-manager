@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PillReveal from '@/components/PillReveal';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function DialogFixture({
@@ -156,7 +156,9 @@ describe('useDialogA11y', () => {
       bubbles: true,
       cancelable: true,
     });
-    document.dispatchEvent(escape);
+    act(() => {
+      document.dispatchEvent(escape);
+    });
 
     expect(escape.defaultPrevented).toBe(true);
     expect(screen.queryByRole('dialog')).toBeNull();
