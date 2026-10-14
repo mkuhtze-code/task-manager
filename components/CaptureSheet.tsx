@@ -775,6 +775,18 @@ if (!engineStateReady) return;
 if (dockBusyRef.current) return;
 const draftToDock = draftTextRef.current.trim();
 if (!draftToDock) return;
+if (!pendingCaptureBatch) {
+  const storedBatch = loadPendingCaptureBatch(userId, draftToDock);
+  if (storedBatch) {
+    setPendingCaptureBatch(storedBatch);
+    setCollectionFeedback(
+      storedBatch.completed
+        ? 'This capture was already processed. Edit the text to start another capture.'
+        : 'Restored your previous action review. Completed items will not be submitted again.'
+    );
+    return;
+  }
+}
 if (pendingCaptureBatch && pendingCaptureBatch.rawText === draftToDock) {
   if (pendingCaptureBatch.completed) {
     setCollectionFeedback('This capture was already processed. Edit the text to start another capture.');
