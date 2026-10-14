@@ -22,9 +22,9 @@ export function CollectionsPeekSheet(props: {
   onClose: () => void;
 }) {
   const { userId, open, onClose } = props;
-  const dialogRef = useDialogA11y(onClose);
   const uid = (userId && userId.trim()) || 'anon';
   const [store, setStore] = useState<CollectionStore | null>(null);
+  const dialogRef = useDialogA11y<HTMLDivElement>(onClose, { enabled: open });
 
   useEffect(() => {
     if (!open) return;
