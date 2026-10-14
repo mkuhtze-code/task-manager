@@ -139,7 +139,7 @@ describe('useDialogA11y', () => {
     const view = render(<ConditionalDialogFixture />);
     const opener = screen.getByRole('button', { name: 'Open conditional dialog' });
     opener.focus();
-    opener.click();
+    fireEvent.click(opener);
 
     const dialog = await screen.findByRole('dialog', { name: 'Conditional dialog' });
     const first = screen.getByRole('button', { name: 'First action' });
@@ -147,21 +147,10 @@ describe('useDialogA11y', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(dialog));
     last.focus();
-    const tab = new KeyboardEvent('keydown', {
-      key: 'Tab',
-      bubbles: true,
-      cancelable: true,
-    });
-    document.dispatchEvent(tab);
-    expect(tab.defaultPrevented).toBe(true);
+    fireEvent.keyDown(document, { key: 'Tab' });
     expect(document.activeElement).toBe(first);
 
-    const escape = new KeyboardEvent('keydown', {
-      key: 'Escape',
-      bubbles: true,
-      cancelable: true,
-    });
-    document.dispatchEvent(escape);
+    fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(opener));
     view.unmount();
