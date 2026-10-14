@@ -2109,3 +2109,49 @@ html[data-theme='dark']{
 .fit-uncertain { --fit-cue: var(--fit-uncertain); }
 .fit-blocked { --fit-cue: var(--fit-blocked); }
 .fit-protect { --fit-cue: var(--fit-protect); }
+
+
+/* Phase B — quiet status instrument. State is carried by a leading mark,
+   weight and semantic token as well as the explicit accessible label. */
+.surface-pulse {
+  position: relative;
+  border-inline-start: 3px solid var(--line-strong);
+}
+.surface-pulse::before {
+  content: "";
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--ink-faint);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.surface-pulse.is-attention {
+  border-inline-start-color: var(--pressure-now);
+  background: color-mix(in srgb, var(--pressure-now) 7%, var(--paper));
+}
+.surface-pulse.is-attention::before {
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--pressure-now);
+  background: var(--pressure-now);
+}
+.surface-pulse.is-clear {
+  border-inline-start-color: var(--fit-ok);
+}
+.surface-pulse.is-clear::before {
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--fit-ok);
+  border-radius: 2px;
+}
+.surface-pulse-title {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+/* Section descriptions remain in the DOM/source as optional context but do
+   not compete with the section title and object list in the default view. */
+.meeting-section-lede,
+.trip-section-lede {
+  display: none !important;
+}
