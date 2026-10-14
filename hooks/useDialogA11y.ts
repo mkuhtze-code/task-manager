@@ -68,6 +68,13 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
         ) {
           return false;
         }
+        const closedDetails = element.closest('details:not([open])');
+        if (
+          closedDetails &&
+          !(element.tagName.toLowerCase() === 'summary' && element.parentElement === closedDetails)
+        ) {
+          return false;
+        }
         const style = window.getComputedStyle(element);
         return style.display !== 'none' && style.visibility !== 'hidden';
       });
