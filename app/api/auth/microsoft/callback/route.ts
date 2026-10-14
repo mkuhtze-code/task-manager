@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
       await syncConnection(connection, { force: true });
     } catch (syncError) {
       initialSyncError = (
-        syncError instanceof Error ? syncError.message.split('\\n')[0] : 'Initial calendar sync failed'
+        syncError instanceof Error ? syncError.message.split(String.fromCharCode(10))[0] : 'Initial calendar sync failed'
       ).slice(0, 300);
       try {
         await updateConnectionSyncStatus(connection.id, 'error', initialSyncError);
