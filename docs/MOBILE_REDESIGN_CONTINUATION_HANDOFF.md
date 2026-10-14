@@ -2,7 +2,7 @@
 
 **Purpose:** Durable continuation record for a new ChatGPT conversation. Read this document together with `docs/MOBILE_REDESIGN_AUTHORITY.md` and `docs/MOBILE_REDESIGN_CURRENT_STATE_AUDIT.md` before proposing or changing redesign work.
 
-**Current baseline:** `main` at `9c1a49ce40694d2c4bca98e1458f9ce379c9681b` (2026-10-14). Repository: `mkuhtze-code/task-manager`.
+**Current baseline:** `main` at `8addb07314c4424dce427536ecd21ca84b5d1b22` (2026-10-14). Repository: `mkuhtze-code/task-manager`.
 
 ## 1. Product and delivery order
 
@@ -78,8 +78,9 @@ Confirm the live PR/commit state before acting, but as of this handoff the follo
 - [PR #294](https://github.com/mkuhtze-code/task-manager/pull/294) — topmost-modal keyboard ownership, nested focus restoration, local popover Escape, and scoped photo navigation.
 - [PR #298](https://github.com/mkuhtze-code/task-manager/pull/298) — capacity regression for untimed manual meetings without double-counting Outlook rows.
 - [PR #299](https://github.com/mkuhtze-code/task-manager/pull/299) — distinct focus lifecycle for meeting export phases; generation is a non-dismissible, focus-managed modal with a status announcement.
+- [PR #302](https://github.com/mkuhtze-code/task-manager/pull/302) — regression coverage for task-to-Job/Meeting link destinations and return-state snapshots including the open/expanded task.
 
-Latest known main commit: `9c1a49ce40694d2c4bca98e1458f9ce379c9681b`. The merged date, capacity, task-validation, modal-layering, and export-phase changes passed both Vercel checks for `task-manager` and `task-manager-capacitor-test`, with review checks passing. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
+Latest known main commit: `8addb07314c4424dce427536ecd21ca84b5d1b22`. The merged date, capacity, task-validation, modal-layering, and export-phase changes passed both Vercel checks for `task-manager` and `task-manager-capacitor-test`, with review checks passing. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
 
 ### Important validation boundaries
 
@@ -110,7 +111,7 @@ Latest known main commit: `9c1a49ce40694d2c4bca98e1458f9ce379c9681b`. The merged
 1. Extend the existing deterministic capture/action contract so one utterance can produce an ordered batch of task mutations. Preserve universal language handling; do not add trade-specific grammar, an LLM, or an external AI dependency.
 2. Add acceptance cases for: two or more independent tasks in one utterance; different dates/reminders per item; a correction such as “actually, move the first one to tomorrow”; job/place context on the appropriate item; and a single-item regression.
 3. Define safe batch failure behavior before wiring it into Today: retain the whole original dump, track which items were confirmed, and retry only failed/unconfirmed items so successful tasks are neither lost nor duplicated. Keep user-visible failure feedback explicit.
-4. PR #302 adds checks for task-to-Job/Meeting link destinations and snapshots that include date/filter/search/scroll/open-task/expanded-task state. Those are useful component/hook contracts, not proof of the full journey; confirm its final Vercel result and merge state before relying on those tests as part of main.
+4. PR #302 is merged and checks task-to-Job/Meeting link destinations and snapshots that include date/filter/search/scroll/open-task/expanded-task state. Those are useful component/hook contracts, not proof of the full journey.
 5. After the batch contract exists, add one page-level integration test using real Today/Capture wiring (not a synthetic harness) for Today → multi-item capture → edit one item → follow Job/Meeting → return to exact state → controlled save failure → recovery without loss/duplication.
 6. Branch previews can return 404 because the Task Manager app is routed through the Dokkit site project. Use green builds and focused source tests, but do not call that visual/device acceptance. The actual `/app` journey still needs a human visual/touch pass when a working deployment path is available.
 7. Live Microsoft OAuth/first-sync acceptance remains outstanding and needs a real test account. Keep WCAG 2.2 AA and physical-device acceptance explicitly open until tested.
