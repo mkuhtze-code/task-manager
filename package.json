@@ -56,7 +56,7 @@
     "test:stt-production": "node scripts/check-stt-production.mjs",
     "test:capture-ui": "NODE_ENV=test vitest run components/__tests__/captureSheetDockAuthorization.test.tsx",
     "test:surface-state": "NODE_ENV=test vitest run hooks/__tests__/useSurfaceReturnState.test.tsx",
-    "test:task-detail-validation": "NODE_ENV=test vitest run components/__tests__/taskDetailSheetValidation.test.tsx",
+    "test:task-detail-validation": "NODE_ENV=test vitest run components/__tests__/taskDetailSheetValidation.test.tsx lib/today/__tests__/taskActionsPersistence.test.ts",
     "test:date-navigation": "NODE_ENV=test vitest run components/__tests__/surfaceDateCarousel.test.tsx",
     "test:today-capacity": "NODE_ENV=test vitest run lib/today/__tests__/dayCapacity.test.ts",
     "test:dialog-a11y": "NODE_ENV=test vitest run hooks/__tests__/useDialogA11y.test.tsx",
