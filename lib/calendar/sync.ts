@@ -30,9 +30,9 @@ import type {
   SyncResult,
 } from '@/lib/calendar/types';
 import { localDayBounds } from '@/lib/calendar/time';
+import { shouldSkipCalendarSync } from '@/lib/calendar/syncPolicy';
 
 const SYNC_HORIZON_DAYS = 1;
-const MIN_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 export async function getUserTimeZone(userId: string): Promise<string | null> {
   const { data } = await supabaseAdmin
@@ -95,16 +95,14 @@ async function getAccessToken(
 }
 
 export async function syncConnection(
-  connection: CalendarConnectionRow
+  connection: CalendarConnectionRow,
+  options: { force?: boolean } = {},
 ): Promise<SyncResult> {
   if (connection.provider !== 'microsoft') {
     throw new Error(`Unsupported calendar provider: ${connection.provider}`);
   }
 
-  const lastSyncAt = connection.last_sync_at
-    ? new Date(connection.last_sync_at).getTime()
-    : 0;
-  if (Date.now() - lastSyncAt < MIN_SYNC_INTERVAL_MS) {
+  if (shouldSkipCalendarSync(connection.last_sync_at, Date.now(), options.force)) {
     return {
       connectionId: connection.id,
       eventsUpserted: 0,
