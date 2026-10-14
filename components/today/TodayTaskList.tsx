@@ -7,6 +7,8 @@ import { TodayTaskRows } from '@/components/today/TodayTaskRows';
 
 type TodayTaskListProps = {
   taskLoadError: string | null;
+  openCount: number;
+  isDesktop: boolean;
   emptyTitle: string;
   emptySub: string;
   showRealityCheck: boolean;
@@ -23,6 +25,8 @@ type TodayTaskListProps = {
 
 export function TodayTaskList({
   taskLoadError,
+  openCount,
+  isDesktop,
   emptyTitle,
   emptySub,
   showRealityCheck,
@@ -38,6 +42,15 @@ export function TodayTaskList({
 }: TodayTaskListProps) {
   return (
     <div className="task-list">
+      {!isDesktop ? (
+        <div className="experience-work-list-heading">
+          <div>
+            <h2>Work</h2>
+            <p>Flexible work around your fixed commitments.</p>
+          </div>
+          <span aria-label={`${openCount} open tasks`}>{openCount} open</span>
+        </div>
+      ) : null}
       {postStopPrompt && (
         <PostStopPrompt
           prompt={postStopPrompt}
