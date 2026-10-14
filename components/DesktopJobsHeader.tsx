@@ -68,10 +68,10 @@ export default function DesktopJobsHeader({
 
   const pulseTitle =
     activeTodayCount > 0
-      ? `${activeTodayCount} active today`
+      ? `${activeTodayCount} active`
       : openCount > 0
         ? `${openCount} open`
-        : 'No open work';
+        : 'Clear';
 
   const workRead =
     activeTodayCount > 0
