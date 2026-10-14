@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let connections;
+  let connections: Awaited<ReturnType<typeof listUserCalendarConnections>>;
   try {
     connections = await listUserCalendarConnections(auth.userId, 'microsoft');
   } catch (error) {
