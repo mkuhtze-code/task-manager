@@ -97,6 +97,7 @@ export default function Preferences() {
   const [calendarMessage, setCalendarMessage] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [retryingCalendarSync, setRetryingCalendarSync] = useState(false);
 
   const [calendarConnectionsState, setCalendarConnectionsState] = useState<
     Array<{
@@ -310,6 +311,39 @@ export default function Preferences() {
       setCalendarMessage('Could not disconnect the calendar. Check your connection and try again.');
     } finally {
       setDisconnecting(false);
+    }
+  }
+
+  async function retryCalendarSync() {
+    setRetryingCalendarSync(true);
+    setCalendarMessage('');
+    try {
+      const res = await fetch(apiUrl('/api/calendar/sync-now'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({}),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload?.ok) {
+        setCalendarMessage(payload?.error || 'Could not sync the calendar. Try again shortly.');
+        setCalendarConnection((prev) =>
+          prev ? { ...prev, sync_status: 'error' } : prev
+        );
+        return;
+      }
+
+      setCalendarMessage('Calendar synced. Selected commitments are included in Today.');
+      setCalendarConnection((prev) =>
+        prev ? { ...prev, sync_status: 'ok', sync_error: null } : prev
+      );
+      await Promise.all([loadCalendarConnection(), loadExternalCalendars()]);
+    } catch {
+      setCalendarMessage('Could not sync the calendar. Check your connection and try again.');
+    } finally {
+      setRetryingCalendarSync(false);
     }
   }
 
@@ -811,6 +845,15 @@ export default function Preferences() {
               </div>
             ))}
             {calendarListMsg && <span className="settings-status">{calendarListMsg}</span>}
+            {calendarConnection.sync_status === 'error' && (
+              <button
+                className="btn btn-ghost"
+                onClick={retryCalendarSync}
+                disabled={retryingCalendarSync}
+              >
+                {retryingCalendarSync ? 'Syncing…' : 'Retry calendar sync'}
+              </button>
+            )}
             <button className="btn btn-ghost" onClick={disconnectCalendar} disabled={disconnecting}>
               {disconnecting ? 'Disconnecting…' : 'Disconnect calendar'}
             </button>
