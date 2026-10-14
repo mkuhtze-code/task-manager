@@ -360,7 +360,7 @@ export default function MeetingsHome() {
     const pressure = row?.pressure ?? 'later';
     const openN = row?.openActionCount ?? 0;
     const timeWindow = fmtMeetingWindow(m.start_time, m.duration_mins);
-    const stateLabel = pressure === 'now' ? 'live' : pressure === 'soon' ? 'soon' : pressure === 'past' ? 'past' : 'upcoming';
+    const stateLabel = pressure === 'now' ? 'live' : pressure === 'soon' ? 'soon' : pressure === 'done' ? 'past' : 'upcoming';
     const accessibleState = openN > 0 ? ', ' + openN + ' open actions' : row?.hasNotes || row?.hasSummary ? ', captured' : '';
 
     return (
