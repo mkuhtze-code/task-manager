@@ -214,6 +214,22 @@ export function TaskDetailSheet(props: {
   }, [subs]);
 
   const commitInFlightRef = useRef<{ key: string; promise: Promise<boolean> } | null>(null);
+  const closeActionInFlightRef = useRef(false);
+
+  function currentDraftKey() {
+    return JSON.stringify([
+      task.id,
+      text,
+      timeStr,
+      surfaceDate,
+      locationText,
+      locationCoords?.lat ?? null,
+      locationCoords?.lng ?? null,
+      requiresVisit,
+    ]);
+  }
+  const latestDraftKeyRef = useRef(currentDraftKey());
+  latestDraftKeyRef.current = currentDraftKey();
 
   async function commit(visitOverride?: boolean | null): Promise<boolean> {
     const trimmed = text.trim();
@@ -291,8 +307,36 @@ export function TaskDetailSheet(props: {
   }
 
   async function handleClose() {
-    if (!(await commit())) return;
-    onClose();
+    if (closeActionInFlightRef.current) return;
+    closeActionInFlightRef.current = true;
+    const submittedDraftKey = latestDraftKeyRef.current;
+    try {
+      if (!(await commit())) return;
+      if (latestDraftKeyRef.current !== submittedDraftKey) {
+        setError('Your edits changed while a save was in progress. Save again to keep the latest changes.');
+        return;
+      }
+      onClose();
+    } finally {
+      closeActionInFlightRef.current = false;
+    }
+  }
+
+  async function handleDone() {
+    if (closeActionInFlightRef.current) return;
+    closeActionInFlightRef.current = true;
+    const submittedDraftKey = latestDraftKeyRef.current;
+    try {
+      if (!(await commit())) return;
+      if (latestDraftKeyRef.current !== submittedDraftKey) {
+        setError('Your edits changed while a save was in progress. Save again to keep the latest changes.');
+        return;
+      }
+      onComplete(task.id);
+      onClose();
+    } finally {
+      closeActionInFlightRef.current = false;
+    }
   }
 
   const dialogRef = useDialogA11y(handleClose, { trapFocus: presentation === 'sheet' });
@@ -1268,11 +1312,7 @@ export function TaskDetailSheet(props: {
             <button
               type="button"
               className="detail-pill detail-pill-done"
-              onClick={async () => {
-                if (!(await commit())) return;
-                onComplete(task.id);
-                onClose();
-              }}
+              onClick={handleDone}
             >
               <CheckIcon done />
               Done
@@ -1540,11 +1580,7 @@ export function TaskDetailSheet(props: {
           <button
             type="button"
             className="detail-pill detail-pill-done"
-            onClick={async () => {
-              if (!(await commit())) return;
-              onComplete(task.id);
-              onClose();
-            }}
+            onClick={handleDone}
           >
             <CheckIcon done />
             Done
