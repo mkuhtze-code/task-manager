@@ -399,19 +399,27 @@ export default function JobDetailPage() {
     );
   }
 
-  async function updateTask(id: string, text: string, mins: number, surfaceDate: string | null, locationText: string | null, lat: number | null, lng: number | null) {
+  async function updateTask(
+    id: string,
+    text: string,
+    mins: number,
+    surfaceDate: string | null,
+    locationText: string | null,
+    lat: number | null,
+    lng: number | null
+  ): Promise<boolean> {
     const { error } = await supabase
       .from('tasks')
       .update({ text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng })
       .eq('id', id);
     if (error) {
-      console.error(error);
-      alert('Could not save your changes: ' + error.message);
-      return;
+      console.error('[job-task] save failed', { taskId: id, message: error.message });
+      return false;
     }
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng } : t))
     );
+    return true;
   }
 
   async function saveTaskInfo(id: string, info: string) {
