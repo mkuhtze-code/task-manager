@@ -62,7 +62,7 @@ export default function MeetingsHome() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useSurfaceReturnState(
-    'dokkit.surface-return.meetings.v1',
+    session?.user?.id ? `dokkit.surface-return.${session.user.id}.meetings.v1` : null,
     { listFilter, search, selectedDate },
     (saved) => {
       if (!saved || typeof saved !== 'object') return;
