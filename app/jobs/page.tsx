@@ -502,7 +502,7 @@ export default function JobsHome() {
               <SurfaceHeaderIdentity
                 kicker="Work / Field"
                 title="Jobs"
-                signal={activeTodayCount > 0 ? `${activeTodayCount} active today` : openCount > 0 ? `${openCount} open jobs` : 'No open work'}
+                signal={activeTodayCount > 0 ? `${activeTodayCount} active` : openCount > 0 ? `${openCount} open` : 'Clear'}
                 meta={spotlightJobName ? `Focus: ${spotlightJobName}` : attentionCount > 0 ? `${attentionCount} need attention` : `${doneCount} completed`}
                 attention={attentionCount > 0}
                 clear={openCount === 0}

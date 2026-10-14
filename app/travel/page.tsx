@@ -414,7 +414,7 @@ export default function TravelHome() {
               <SurfaceHeaderIdentity
                 kicker="Place / Motion"
                 title="Travel"
-                signal={surface.pulseTitle}
+                signal={surface.active.length > 0 ? `${surface.active.length} active` : surface.upcoming.length > 0 ? `${surface.upcoming.length} upcoming` : 'Clear'}
                 meta={surface.pulseMeta || null}
                 attention={surface.pulseAttention}
                 clear={surface.active.length + surface.upcoming.length === 0}
@@ -429,7 +429,7 @@ export default function TravelHome() {
 
       {isDesktop ? (
         <DesktopTravelHeader
-          pulseTitle={surface.pulseTitle}
+          pulseTitle={surface.active.length > 0 ? `${surface.active.length} active` : surface.upcoming.length > 0 ? `${surface.upcoming.length} upcoming` : 'Clear'}
           pulseMeta={surface.pulseMeta}
           pulseAttention={surface.pulseAttention}
           depthRead={surface.depthRead}
