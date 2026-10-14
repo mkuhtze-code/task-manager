@@ -28,11 +28,12 @@ The shared hook was applied to previously uncovered modal dialogs:
 
 Other core sheets already using the shared hook include capture, task details, Reality Check, meeting/job forms, scheduled tasks, nearby places, day shape, trip overview, map, library, accommodation, and meeting export review.
 
-## Remaining non-modal findings
+## Follow-up defects addressed
 
-- `PillReveal` is a non-modal disclosure/popover used for Connections, Job files, and Meetings. It must not trap focus. Its dialog role previously lacked an accessible name, and Escape closed it without returning focus to its trigger. PR #275 addresses the name, trigger relationship, initial focus, and Escape focus return without adding a focus trap.
-- `DesktopProductNav` plan popover is desktop navigation and remains outside this mobile-web slice.
-- The export-generation overlay uses `role="status"`, not modal semantics; its busy announcement and focus behavior need a separate check.
+- **Non-modal `PillReveal` popover:** merged PR #276 adds an accessible trigger/panel relationship, moves focus into the panel, and restores focus to the trigger on Escape without trapping focus. The behavior has dedicated regression coverage.
+- **Meeting export failure:** this change upgrades the interactive failure overlay from `role="alert"` to `role="alertdialog"`, marks it modal, and attaches the shared focus-management ref. The existing `closeFlow` action handles Escape; the shared hook contains Tab/Shift+Tab and restores focus after dismissal.
+- **DesktopProductNav** plan popover is desktop navigation and remains outside this mobile-web slice.
+- The export-generation overlay remains a transient `role="status"` announcement, not an interactive dialog. Its announcement and focus behavior still need separate acceptance.
 
 ## Remaining manual acceptance
 
