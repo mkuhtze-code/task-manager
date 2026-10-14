@@ -8,6 +8,11 @@ type PersistedSurfaceState<T> = {
   scrollY: number;
 };
 
+type PendingWrite = {
+  key: string;
+  timer: number;
+};
+
 function readSnapshot<T>(key: string): PersistedSurfaceState<T> | null {
   try {
     const raw = window.sessionStorage.getItem(key);
@@ -28,6 +33,14 @@ function readSnapshot<T>(key: string): PersistedSurfaceState<T> | null {
   }
 }
 
+function writeSnapshot<T>(key: string, snapshot: PersistedSurfaceState<T>) {
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(snapshot));
+  } catch {
+    // State restoration is best-effort; storage restrictions must not block navigation.
+  }
+}
+
 /**
  * Preserve a surface's small, non-sensitive view state and scroll position
  * across client-side navigation. Data and drafts remain owned by their normal
@@ -42,39 +55,55 @@ export function useSurfaceReturnState<T>(
   const stateRef = useRef(state);
   const restoreRef = useRef(restoreState);
   const restoredRef = useRef(false);
+  const pendingWriteRef = useRef<PendingWrite | null>(null);
 
   stateRef.current = state;
   restoreRef.current = restoreState;
 
   useEffect(() => {
     if (!key || !ready || restoredRef.current) return;
-    restoredRef.current = true;
 
     const snapshot = readSnapshot<T>(key);
-    if (!snapshot) return;
+    if (!snapshot) {
+      restoredRef.current = true;
+      return;
+    }
 
     restoreRef.current(snapshot.state);
 
-    // Wait for the restored state to render before putting the viewport back.
+    // Mark restored only after the frame executes so Strict Mode's simulated
+    // effect cleanup can cancel and safely reschedule this work.
     const frame = window.requestAnimationFrame(() => {
       window.scrollTo(0, snapshot.scrollY);
+      restoredRef.current = true;
     });
     return () => window.cancelAnimationFrame(frame);
   }, [key, ready]);
 
   useEffect(() => {
+    const pending = pendingWriteRef.current;
+    // React Strict Mode immediately re-runs effects after a simulated cleanup.
+    // Cancel only that same-key write; a real account-key change still saves
+    // the previous account's state under its own key.
+    if (pending && pending.key === key) {
+      window.clearTimeout(pending.timer);
+      pendingWriteRef.current = null;
+    }
     if (!key) return;
+
     return () => {
-      try {
-        const snapshot: PersistedSurfaceState<T> = {
-          version: 1,
-          state: stateRef.current,
-          scrollY: Math.max(0, window.scrollY || 0),
-        };
-        window.sessionStorage.setItem(key, JSON.stringify(snapshot));
-      } catch {
-        // State restoration is best-effort; storage restrictions must not block navigation.
-      }
+      const snapshot: PersistedSurfaceState<T> = {
+        version: 1,
+        state: stateRef.current,
+        scrollY: Math.max(0, window.scrollY || 0),
+      };
+      const timer = window.setTimeout(() => {
+        writeSnapshot(key, snapshot);
+        if (pendingWriteRef.current?.timer === timer) {
+          pendingWriteRef.current = null;
+        }
+      }, 0);
+      pendingWriteRef.current = { key, timer };
     };
   }, [key]);
 }
