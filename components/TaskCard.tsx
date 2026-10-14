@@ -167,12 +167,6 @@ export function TaskCard(props: {
     <div
       className={rowClass}
       title={!expanded && fitLabel ? fitLabel : undefined}
-      aria-label={[
-        t.text,
-        running ? 'Timer running' : null,
-        overCap ? 'Over estimate' : null,
-        fitLabel ? `Fit: ${fitLabel}` : null,
-      ].filter(Boolean).join('. ')}
     >
       <div className="task-main">
         <button
@@ -203,7 +197,7 @@ export function TaskCard(props: {
             }
           }}
           aria-expanded={expanded}
-          aria-label={`${t.text} — ${expanded ? 'collapse' : 'expand'}`}
+          aria-label={[t.text, expanded ? 'collapse' : 'expand', running ? 'Timer running' : null, overCap ? 'Over estimate' : null, fitLabel ? `Fit: ${fitLabel}` : null].filter(Boolean).join('. ')}
         >
           <div className="task-text">{t.text}</div>
           {t.intended_time ? (
