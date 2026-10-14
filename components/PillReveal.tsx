@@ -50,18 +50,9 @@ export default function PillReveal(props: {
         setOpen(false);
       }
     }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    }
     document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
     };
   }, [open]);
 
@@ -77,6 +68,14 @@ export default function PillReveal(props: {
     <div
       className={`pill-reveal${open ? ' is-open' : ''} ${className}`.trim()}
       ref={wrapRef}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || !open) return;
+        // A focused non-modal disclosure closes before an enclosing modal sees Escape.
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(false);
+        triggerRef.current?.focus();
+      }}
     >
       <button
         ref={triggerRef}
