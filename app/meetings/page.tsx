@@ -359,42 +359,33 @@ export default function MeetingsHome() {
     const job = jobName(m.job_id);
     const pressure = row?.pressure ?? 'later';
     const openN = row?.openActionCount ?? 0;
+    const timeWindow = fmtMeetingWindow(m.start_time, m.duration_mins);
+    const stateLabel = pressure === 'now' ? 'live' : pressure === 'soon' ? 'soon' : pressure === 'past' ? 'past' : 'upcoming';
+    const accessibleState = openN > 0 ? ', ' + openN + ' open actions' : row?.hasNotes || row?.hasSummary ? ', captured' : '';
 
     return (
       <Link
         key={m.id}
-        href={`/meetings/${m.id}`}
-        className={`meeting-row surface-object pressure-${pressure}`}
+        href={'/meetings/' + m.id}
+        aria-label={m.text + ', ' + stateLabel + ', ' + timeWindow + accessibleState}
+        className={'meeting-row surface-object pressure-' + pressure}
       >
         <div className="meeting-row-main">
           <div className="meeting-row-top">
             <span className="meeting-row-name surface-object-title">{m.text}</span>
-            {m.source === 'outlook' ? <span className="meeting-source-tag">Outlook</span> : null}
-          </div>
-          <div className="meeting-row-time surface-object-time mono">
-            {fmtMeetingWindow(m.start_time, m.duration_mins)}
-            {row?.relativeLine ? (
-              <>
-                <span className="meeting-row-state-sep" aria-hidden="true"> · </span>
-                <span className={pressure === 'now' || pressure === 'soon' ? 'meeting-row-relative is-urgent' : 'meeting-row-relative'}>
-                  {row.relativeLine}
-                </span>
-              </>
-            ) : null}
+            <span className="meeting-row-glance surface-object-time mono" title={row?.relativeLine || undefined}>
+              {timeWindow}{openN > 0 ? ' · ' + openN + ' open' : ''}
+            </span>
+            {m.source === 'outlook' ? <span className="meeting-source-tag" title="Outlook calendar" aria-label="From Outlook">Outlook</span> : null}
           </div>
           {job || m.location_text ? (
             <ContextLine
               className="meeting-row-context"
               items={[
-                ...(job ? [{ label: job, href: m.job_id ? `/jobs/${m.job_id}` : undefined }] : []),
+                ...(job ? [{ label: job, href: m.job_id ? '/jobs/' + m.job_id : undefined }] : []),
                 ...(m.location_text ? [{ label: m.location_text }] : []),
               ]}
             />
-          ) : null}
-          {(openN > 0 || row?.hasNotes || row?.hasSummary) ? (
-            <div className="meeting-row-state surface-object-state">
-              {openN > 0 ? <span>{openN} open action{openN === 1 ? '' : 's'}</span> : <span>Captured</span>}
-            </div>
           ) : null}
         </div>
       </Link>
