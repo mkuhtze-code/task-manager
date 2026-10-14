@@ -355,22 +355,6 @@
   padding: 0 12px 12px;
 }
 
-.task-detail-sheet {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 560px;
-  max-height: min(84dvh, 760px);
-  overflow-y: auto;
-  border-radius: 20px;
-  border: 1px solid var(--line);
-  background: var(--paper-raised);
-  box-shadow:
-    0 -12px 40px rgba(var(--shadow-rgb), 0.14),
-    0 0 0 1px color-mix(in srgb, #fff 40%, transparent) inset;
-  padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
-}
-
 @media (max-width: 360px) {
   .sheet-backdrop:has(> .task-detail-sheet) {
     padding: 0 8px 8px;
