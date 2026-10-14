@@ -532,6 +532,12 @@
   }
 }
 
+.experience-capacity[hidden],
+.experience-day-controls[hidden],
+.experience-day-detail[hidden] {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .experience-day-header *,
   .experience-mobile-frame * {
@@ -541,7 +547,4 @@
     animation-iteration-count: 1;
   }
 
-  .experience-day-detail[hidden] {
-    display: none;
-  }
 }
