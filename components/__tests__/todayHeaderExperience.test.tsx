@@ -85,7 +85,7 @@ describe('replacement mobile Today instrument', () => {
     fireEvent.click(screen.getByRole('button', { name: /Timeline Show/i }));
 
     expect(screen.getByRole('region', { name: 'Day timeline' })).toBeTruthy();
-    expect(screen.getByText('Project review')).toBeTruthy();
+    expect(screen.getAllByText('Project review').length).toBeGreaterThan(0);
     expect(screen.getByText('10a')).toBeTruthy();
   });
 
