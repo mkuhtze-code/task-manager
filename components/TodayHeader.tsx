@@ -117,6 +117,7 @@ export function TodayHeader(props: {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [depthOpen, setDepthOpen] = useState(false);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
 
   const overBy = Math.max(remainingWorkMins - minutesLeftToday, 0);
   const remainingCapacity = Math.max(minutesLeftToday - remainingWorkMins, 0);
@@ -245,11 +246,28 @@ export function TodayHeader(props: {
             </div>
           </div>
         </div>
+        <div className="today-capacity-summary" aria-label="Work capacity">
+          <div className="today-capacity-summary-item">
+            <span>Planned work</span>
+            <strong>{planned > 0 ? fmtMins(planned) : 'Not timed'}</strong>
+          </div>
+          <div className="today-capacity-summary-item">
+            <span>Usable time</span>
+            <strong>{fmtMins(Math.max(usable, 0))}</strong>
+          </div>
+          <p className={`today-capacity-summary-read${overloaded ? ' is-over' : ''}`}>
+            {overloaded ? `Over capacity by ${fmtMins(overBy)}` : dayRead}
+          </p>
+        </div>
         <div className="today-timebar-wrap">
           <div className="today-timebar-topline">
             <span className="today-timebar-title">DAY TIMELINE</span>
             <span className="today-timebar-state">{overloaded ? `Over capacity by ${fmtMins(overBy)}` : `${fmtMins(Math.max(usable, 0))} usable time`}</span>
+            <button type="button" className="today-timeline-toggle" aria-expanded={timelineOpen} aria-controls="today-timebar-details" onClick={() => setTimelineOpen((value) => !value)}>
+              {timelineOpen ? 'Hide' : 'Timeline'}
+            </button>
           </div>
+          <div id="today-timebar-details" className="today-timebar-details" hidden={!timelineOpen}>
           <div className="today-timebar" role="img" aria-label={`Workday from ${fmtClock(workStart)} to ${fmtClock(workEnd)}, current time position ${Math.round(clockPct)} percent`}>
             <span className="today-timebar-elapsed" style={{ width: `${clockPct}%` }} />
             <span className="today-timebar-plan" style={{ left: `${clockPct}%`, width: `${planPct}%` }} />
@@ -273,6 +291,7 @@ export function TodayHeader(props: {
           ) : (
             <p className="today-timebar-empty">No fixed commitments on your timeline</p>
           )}
+          </div>
         </div>
         <button
           type="button"
