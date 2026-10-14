@@ -73,7 +73,7 @@ export default function JobsHome() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useSurfaceReturnState(
-    'dokkit.surface-return.jobs.v1',
+    session?.user?.id ? `dokkit.surface-return.${session.user.id}.jobs.v1` : null,
     { listFilter, search, selectedDate },
     (saved) => {
       if (!saved || typeof saved !== 'object') return;
