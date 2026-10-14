@@ -18,12 +18,12 @@ import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
-import { useDialogA11y } from '@/hooks/useDialogA11y';
 import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
 import DesktopTravelHeader, {
   type TravelListFilter,
 } from '@/components/DesktopTravelHeader';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import {
   buildTravelSurfaceModel,
   fmtDateRange,
@@ -69,7 +69,6 @@ export default function TravelHome() {
   useProRedirect(!entLoading && Boolean(session), canTravel, 'travel');
 
   const [createOpen, setCreateOpen] = useState(false);
-  const createDialogRef = useDialogA11y(() => setCreateOpen(false));
   const [tripIntent, setTripIntent] = useState<'personal' | 'work'>(
     'work'
   );
@@ -81,6 +80,7 @@ export default function TravelHome() {
   const [listFilter, setListFilter] = useState<TravelListFilter>('all');
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const createDialogRef = useDialogA11y<HTMLDivElement>(closeCreate, { enabled: createOpen });
 
   useSurfaceReturnState(
     session?.user?.id ? `dokkit.surface-return.${session.user.id}.travel.v1` : null,
