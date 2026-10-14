@@ -30,8 +30,26 @@ export default function SurfaceDateCarousel({
 
   const { today, dates } = useMemo(() => {
     const now = new Date();
-    const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayKey = localDateKey(base);
+    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayKey = localDateKey(todayDate);
+    const nearbyStart = new Date(todayDate);
+    nearbyStart.setDate(nearbyStart.getDate() - 3);
+    const nearbyEnd = new Date(todayDate);
+    nearbyEnd.setDate(nearbyEnd.getDate() + 10);
+
+    // Keep the familiar today-centered strip unless a direct date jump lands
+    // outside it. Then recenter the same 14-day window around the chosen date.
+    const selected = selectedDate
+      ? (() => {
+          const [year, month, day] = selectedDate.split('-').map(Number);
+          return new Date(year, month - 1, day);
+        })()
+      : todayDate;
+    const outsideNearbyWindow =
+      selected.getTime() < nearbyStart.getTime() ||
+      selected.getTime() > nearbyEnd.getTime();
+    const base = outsideNearbyWindow ? selected : todayDate;
+
     const days = Array.from({ length: 14 }, (_, index) => {
       const date = new Date(base);
       date.setDate(base.getDate() + index - 3);
@@ -44,7 +62,7 @@ export default function SurfaceDateCarousel({
       };
     });
     return { today: todayKey, dates: days };
-  }, []);
+  }, [selectedDate]);
 
   const focusKey = wheelFocusKey ?? selectedDate ?? today;
   const focusIndex = dates.findIndex((date) => date.key === focusKey);
