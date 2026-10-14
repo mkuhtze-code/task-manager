@@ -81,7 +81,7 @@ export default function TravelHome() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useSurfaceReturnState(
-    'dokkit.surface-return.travel.v1',
+    session?.user?.id ? `dokkit.surface-return.${session.user.id}.travel.v1` : null,
     { listFilter, search, selectedDate },
     (saved) => {
       if (!saved || typeof saved !== 'object') return;
