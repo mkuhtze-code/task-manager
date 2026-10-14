@@ -39,6 +39,37 @@ function ConditionalDialogFixture() {
   );
 }
 
+function NestedDialogFixture({
+  onOuterClose,
+  onInnerClose,
+}: {
+  onOuterClose: () => void;
+  onInnerClose: () => void;
+}) {
+  const [innerOpen, setInnerOpen] = useState(false);
+  const outerRef = useDialogA11y(onOuterClose);
+  const innerRef = useDialogA11y(() => {
+    onInnerClose();
+    setInnerOpen(false);
+  });
+
+  return (
+    <>
+      <div ref={outerRef} role="dialog" aria-modal="true" aria-label="Outer dialog">
+        <button data-autofocus type="button" onClick={() => setInnerOpen(true)}>
+          Open inner dialog
+        </button>
+      </div>
+      {innerOpen ? (
+        <div ref={innerRef} role="dialog" aria-modal="true" aria-label="Inner dialog">
+          <button data-autofocus>First inner action</button>
+          <button>Last inner action</button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 beforeEach(() => {
   document.body.innerHTML = '';
   vi.clearAllMocks();
@@ -122,6 +153,52 @@ describe('useDialogA11y', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(opener));
     view.unmount();
+  });
+
+  it('gives Tab and Escape to the topmost nested modal only', async () => {
+    const onOuterClose = vi.fn();
+    const onInnerClose = vi.fn();
+    render(<NestedDialogFixture onOuterClose={onOuterClose} onInnerClose={onInnerClose} />);
+
+    const openInner = screen.getByRole('button', { name: 'Open inner dialog' });
+    await waitFor(() => expect(document.activeElement).toBe(openInner));
+    openInner.click();
+
+    const innerDialog = await screen.findByRole('dialog', { name: 'Inner dialog' });
+    const first = screen.getByRole('button', { name: 'First inner action' });
+    const last = screen.getByRole('button', { name: 'Last inner action' });
+    await waitFor(() => expect(document.activeElement).toBe(first));
+
+    last.focus();
+    const tab = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(first);
+
+    const escapeInner = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(escapeInner);
+    expect(onInnerClose).toHaveBeenCalledTimes(1);
+    expect(onOuterClose).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Inner dialog' })).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(openInner));
+
+    const escapeOuter = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(escapeOuter);
+    expect(onOuterClose).toHaveBeenCalledTimes(1);
+    expect(innerDialog.isConnected).toBe(false);
   });
 
   it('moves initial focus to the modal container when no control is designated', async () => {
