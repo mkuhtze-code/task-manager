@@ -1487,7 +1487,7 @@ onClick={(e) => e.stopPropagation()}
       }
       onClick={tryDock}
     >
-      {dockBusy ? 'Saving…' : pendingCaptureBatch?.completed ? 'Processed' : pendingCaptureBatch ? `Create selected (${pendingCaptureBatch.proposals.filter((item) => item.selected && (item.status === 'pending' || item.status === 'failed')).length})` : 'Dock'}
+      {dockBusy ? (pendingCaptureBatch ? 'Saving…' : 'Docking…') : pendingCaptureBatch?.completed ? 'Processed' : pendingCaptureBatch ? `Create selected (${pendingCaptureBatch.proposals.filter((item) => item.selected && (item.status === 'pending' || item.status === 'failed')).length})` : 'Dock'}
     </button>
 
     {error && (
