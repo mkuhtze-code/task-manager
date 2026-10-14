@@ -229,11 +229,20 @@ export function TodayHeader(props: {
             >
               <span className="experience-more-dots" aria-hidden="true" />
             </button>
+            <button
+              type="button"
+              className="experience-icon-action"
+              aria-label={headerCollapsed ? 'Expand day details' : 'Collapse day details'}
+              aria-expanded={!headerCollapsed}
+              onClick={() => setHeaderCollapsed((value) => !value)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d={headerCollapsed ? 'm6 14 6-6 6 6' : 'm6 10 6 6 6-6'} /></svg>
+            </button>
             <GearMenu userId={userId} />
           </div>
         </div>
 
-        <div className="experience-capacity">
+        <div className="experience-capacity" hidden={headerCollapsed}>
           <div className="experience-capacity-top">
             <div className="experience-capacity-remaining">
               <span>{isWorkDay ? 'Work time remaining' : 'Workday status'}</span>
@@ -270,7 +279,7 @@ export function TodayHeader(props: {
           ) : null}
         </div>
 
-        <div className="experience-day-controls">
+        <div className="experience-day-controls" hidden={headerCollapsed}>
           <button
             type="button"
             className="experience-disclosure"
@@ -291,7 +300,7 @@ export function TodayHeader(props: {
           </button>
         </div>
 
-        <section id="experience-day-timeline" className="experience-day-detail" aria-label="Day timeline" hidden={!timelineOpen}>
+        <section id="experience-day-timeline" className="experience-day-detail" aria-label="Day timeline" hidden={!timelineOpen || headerCollapsed}>
             <div className="experience-timeline-axis"><span>{fmtClock(workStart)}</span><span>Now</span><span>{fmtClock(workEnd)}</span></div>
             <div className="experience-timeline-track" role="img" aria-label={`Workday from ${fmtClock(workStart)} to ${fmtClock(workEnd)}; current time ${Math.round(clockPct)} percent through`}>
               <span className="experience-timeline-elapsed" style={{ width: `${clockPct}%` }} />
@@ -310,7 +319,7 @@ export function TodayHeader(props: {
             ) : <p className="experience-day-detail-empty">No fixed commitments on your timeline.</p>}
         </section>
 
-        <section id="experience-day-depth" className="experience-day-detail" aria-label="Patterns and fit" hidden={!depthOpen}>
+        <section id="experience-day-depth" className="experience-day-detail" aria-label="Patterns and fit" hidden={!depthOpen || headerCollapsed}>
             {patternInsight ? (
               <div className="experience-pattern-read">
                 <p className="experience-day-eyebrow">Learned from completed work</p>
@@ -332,7 +341,7 @@ export function TodayHeader(props: {
             ) : null}
         </section>
 
-        <section className="experience-day-detail experience-day-tools" aria-label="Today tools" hidden={!toolsOpen}>
+        <section className="experience-day-detail experience-day-tools" aria-label="Today tools" hidden={!toolsOpen || headerCollapsed}>
             {showRealityCheck && onRealityCheck ? (
               <button type="button" onClick={() => { onRealityCheck(); setToolsOpen(false); }}>
                 Reality check{realityCheckMessage ? <span>{realityCheckMessage}</span> : null}
