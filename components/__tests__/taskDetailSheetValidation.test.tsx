@@ -89,6 +89,36 @@ describe('TaskDetailSheet validation recovery', () => {
     expect(props.onClose).not.toHaveBeenCalled();
   });
 
+  it('preserves valid edits and stays open when persistence fails on close', async () => {
+    const { props } = renderTaskDetail();
+    props.onSave.mockResolvedValue(false);
+    fireEvent.change(screen.getByPlaceholderText('Task name'), {
+      target: { value: 'Updated task name' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(await screen.findByText('Could not save your changes. Your edits are still here; try again.')).toBeTruthy();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Task name')).toHaveProperty('value', 'Updated task name');
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it('does not complete or close a task when its valid edit fails to persist', async () => {
+    const { props } = renderTaskDetail();
+    props.onSave.mockResolvedValue(false);
+    fireEvent.change(screen.getByPlaceholderText('Task name'), {
+      target: { value: 'Updated before Done' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(await screen.findByText('Could not save your changes. Your edits are still here; try again.')).toBeTruthy();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(props.onComplete).not.toHaveBeenCalled();
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+
   it('does not complete or close a task while its estimate is invalid', () => {
     const { props } = renderTaskDetail();
     fireEvent.click(screen.getByRole('button', { name: 'Time, place, job' }));
