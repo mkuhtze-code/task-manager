@@ -33,7 +33,7 @@ function renderTaskDetail() {
       lat: null,
       lng: null,
       requires_visit: null,
-      status: 'open',
+      status: 'pending',
       due_today: false,
       created_at: '2026-10-15T00:00:00.000Z',
       job_id: null,
