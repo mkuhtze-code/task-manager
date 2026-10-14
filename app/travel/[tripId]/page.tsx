@@ -33,6 +33,7 @@ import {
   TrashIcon,
 } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
@@ -613,6 +614,11 @@ export default function TripDayView() {
   const [captureCoords, setCaptureCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [captureEstimate, setCaptureEstimate] = useState('30m');
   const [error, setError] = useState('');
+  const captureDialogRef = useDialogA11y<HTMLDivElement>(closeCapture, { enabled: captureOpen });
+  const tripToolsDialogRef = useDialogA11y<HTMLDivElement>(
+    () => setTripToolsOpen(false),
+    { enabled: tripToolsOpen },
+  );
 
   const [dragState, setDragState] = useState<DragState | null>(null);
   const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
@@ -1697,7 +1703,14 @@ export default function TripDayView() {
 
       {captureOpen && (
         <div className="sheet-backdrop" onClick={closeCapture}>
-          <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={captureDialogRef}
+            className="capture-sheet"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add a trip stop"
+          >
             <div className="task-detail-header" style={{ marginBottom: 0 }}>
               <div className="settings-panel-title">Where next?</div>
               <button className="gear-btn" onClick={closeCapture} aria-label="Close">
@@ -2028,6 +2041,7 @@ export default function TripDayView() {
       {tripToolsOpen && (
         <div className="sheet-backdrop" onClick={() => setTripToolsOpen(false)}>
           <div
+            ref={tripToolsDialogRef}
             className="capture-sheet"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
