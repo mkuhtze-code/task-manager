@@ -1,0 +1,72 @@
+/* Phase D — restrained, state-driven motion.
+   These transitions animate existing signals only; they do not move list layout. */
+
+.task-card-active-dot {
+  animation: none;
+  transition: opacity 180ms linear, background-color 180ms linear;
+}
+
+.task-card-progress-fill,
+.reveal-time-fill,
+.task-progress-fill {
+  transition: width 200ms ease-out;
+}
+
+.task-card.surface-object::before {
+  transition: background-color 180ms ease-out, opacity 180ms ease-out, width 180ms ease-out;
+}
+
+.task-card.fit-ok,
+.task-card.fit-later,
+.task-card.fit-uncertain,
+.task-card.fit-blocked,
+.task-card.fit-protect,
+.task-card.task-overtime,
+.task-card.task-due-today {
+  transition: border-color 180ms ease-out, background-color 180ms ease-out, opacity 180ms ease-out;
+}
+
+/* Match the shared object selector and its existing important transition. */
+.meeting-row.surface-object,
+.trip-row-maybach.surface-object {
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out !important;
+}
+
+.meetings-featured,
+.travel-featured {
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.surface-pulse {
+  transition: background-color 180ms ease-out, border-color 180ms ease-out;
+}
+
+.mobile-today-capacity-track > span,
+.today-day-header .today-capacity-segment {
+  transition: width 200ms ease-out, background-color 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-card-active-dot,
+  .task-card-progress-fill,
+  .reveal-time-fill,
+  .task-progress-fill,
+  .task-card.surface-object::before,
+  .task-card.fit-ok,
+  .task-card.fit-later,
+  .task-card.fit-uncertain,
+  .task-card.fit-blocked,
+  .task-card.fit-protect,
+  .task-card.task-overtime,
+  .task-card.task-due-today,
+  .meeting-row.surface-object,
+  .trip-row-maybach.surface-object,
+  .meetings-featured,
+  .travel-featured,
+  .surface-pulse,
+  .mobile-today-capacity-track > span,
+  .today-day-header .today-capacity-segment {
+    transition: none !important;
+    animation: none !important;
+  }
+}

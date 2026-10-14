@@ -37,6 +37,7 @@ import './ux-today-product.css';
 import './ux-act-product.css';
 import './ux-design-primitives.css';
 import './ux-trip-design-parity.css';
+import './phase-d-motion.css';
 import DokkitSplash from '@/components/DokkitSplash';
 import AppChrome from '@/components/AppChrome';
 import AppProviders from '@/components/providers/AppProviders';
