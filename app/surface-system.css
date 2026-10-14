@@ -2062,3 +2062,50 @@ html[data-theme='dark']{
     padding: 5px 9px;
   }
 }
+
+
+/* Phase A — semantic state cue contract.
+   Classes carry state through shape/weight/position as well as tokenized colour.
+   Canonical classes: pressure-now|pressure-soon|pressure-later|pressure-past;
+   fit-ok|fit-later|fit-uncertain|fit-blocked|fit-protect; .task-card-active-dot;
+   .task-card-progress + .task-card-progress-fill.
+*/
+:root {
+  --pressure-now: var(--hazard);
+  --pressure-soon: var(--steel);
+  --pressure-later: var(--ink-faint);
+  --pressure-past: var(--line-strong);
+  --fit-ok: var(--moss);
+  --fit-tight: var(--steel);
+  --fit-over: var(--hazard);
+  --fit-uncertain: var(--ink-faint);
+  --fit-blocked: var(--hazard);
+  --fit-protect: var(--steel);
+  --state-active: var(--steel);
+  --progress-track: var(--line);
+  --progress-fill: var(--steel);
+}
+[data-theme="dark"] {
+  --pressure-now: var(--hazard-text, var(--hazard));
+  --pressure-soon: var(--steel-text, var(--steel));
+  --pressure-later: var(--ink-faint);
+  --pressure-past: var(--line-strong);
+  --fit-ok: var(--moss-text, var(--moss));
+  --fit-tight: var(--steel-text, var(--steel));
+  --fit-over: var(--hazard-text, var(--hazard));
+  --fit-uncertain: var(--ink-faint);
+  --fit-blocked: var(--hazard-text, var(--hazard));
+  --fit-protect: var(--steel-text, var(--steel));
+  --state-active: var(--steel-text, var(--steel));
+  --progress-track: var(--line);
+  --progress-fill: var(--steel);
+}
+.pressure-now { --pressure-cue: var(--pressure-now); border-inline-start: 3px solid var(--pressure-cue); font-weight: 700; }
+.pressure-soon { --pressure-cue: var(--pressure-soon); border-inline-start: 2px solid var(--pressure-cue); }
+.pressure-later { --pressure-cue: var(--pressure-later); border-inline-start: 1px solid var(--pressure-cue); }
+.pressure-past { --pressure-cue: var(--pressure-past); border-inline-start: 2px dashed var(--pressure-cue); }
+.fit-ok { --fit-cue: var(--fit-ok); }
+.fit-later { --fit-cue: var(--fit-tight); }
+.fit-uncertain { --fit-cue: var(--fit-uncertain); }
+.fit-blocked { --fit-cue: var(--fit-blocked); }
+.fit-protect { --fit-cue: var(--fit-protect); }
