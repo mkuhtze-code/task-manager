@@ -26,6 +26,7 @@ export default function PillReveal(props: {
   } = props;
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -34,14 +35,9 @@ export default function PillReveal(props: {
         setOpen(false);
       }
     }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
     document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
     };
   }, [open]);
 
@@ -57,9 +53,18 @@ export default function PillReveal(props: {
     <div
       className={`pill-reveal${open ? ' is-open' : ''} ${className}`.trim()}
       ref={wrapRef}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || !open) return;
+        // A focused non-modal disclosure closes before an enclosing modal sees Escape.
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(false);
+        triggerRef.current?.focus();
+      }}
     >
       <button
         type="button"
+        ref={triggerRef}
         className={open ? 'meeting-pill meeting-pill--primary' : 'meeting-pill'}
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -71,7 +76,7 @@ export default function PillReveal(props: {
         ) : null}
       </button>
       {open && (
-        <div className={panelClasses} role="dialog">
+        <div className={panelClasses} role="dialog" aria-label={label}>
           {children}
         </div>
       )}
