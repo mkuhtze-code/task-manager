@@ -360,9 +360,6 @@
     padding: 0 8px 8px;
   }
 
-  .task-detail-sheet {
-    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
-  }
 }
 
 @media (min-width: 900px) {
