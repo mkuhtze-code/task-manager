@@ -1,33 +1,39 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 type DialogA11yOptions = {
   /** Modal sheets trap keyboard focus; non-modal desktop panes do not. */
   trapFocus?: boolean;
+  /** Allows an always-mounted component to activate its dialog only while visible. */
+  active?: boolean;
 };
+
+// The topmost active modal owns Escape and Tab. This prevents nested sheets
+// from all responding to one key press.
+const activeDialogStack: HTMLElement[] = [];
 
 export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
   onClose: () => void,
   options: DialogA11yOptions = {},
 ) {
-  // A state-backed callback ref supports dialogs that appear conditionally after
-  // the owning component mounts (for example, an overlay opened from a page).
-  const [dialog, setDialog] = useState<T | null>(null);
-  const dialogRef = useCallback((node: T | null) => {
-    setDialog(node);
-  }, []);
+  const dialogRef = useRef<T | null>(null);
   const onCloseRef = useRef(onClose);
   const trapFocusRef = useRef(options.trapFocus ?? true);
+  const active = options.active ?? true;
 
+  // Keep current callbacks and presentation mode without restarting the dialog lifecycle.
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
   trapFocusRef.current = options.trapFocus ?? true;
 
   useEffect(() => {
+    if (!active) return;
+    const dialog = dialogRef.current;
     if (!dialog) return;
 
     // Capture the element that had focus when the dialog opened.
     const previousFocus = document.activeElement as HTMLElement | null;
+    activeDialogStack.push(dialog);
 
     // Prefer an explicitly designated control. If none is designated, move
     // focus to the modal container without choosing an input on the user's behalf.
@@ -50,6 +56,9 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Only the topmost modal may consume Escape or constrain Tab.
+      if (activeDialogStack[activeDialogStack.length - 1] !== dialog) return;
+
       if (event.key === 'Escape') {
         event.preventDefault();
         onCloseRef.current();
@@ -58,9 +67,8 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
 
       if (event.key !== 'Tab' || !trapFocusRef.current) return;
 
-      const activeDialog = dialog;
       const focusable = Array.from(
-        activeDialog.querySelectorAll<HTMLElement>(
+        dialog.querySelectorAll<HTMLElement>(
           'a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), summary:not([tabindex="-1"]), [contenteditable="true"]:not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
         ),
       ).filter((element) => {
@@ -89,14 +97,12 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
 
       if (!first || !last) {
         event.preventDefault();
-        if (!activeDialog.hasAttribute('tabindex')) {
-          activeDialog.setAttribute('tabindex', '-1');
-        }
-        activeDialog.focus();
+        if (!dialog.hasAttribute('tabindex')) dialog.setAttribute('tabindex', '-1');
+        dialog.focus();
         return;
       }
 
-      const focusIsOutside = !activeDialog.contains(activeElement);
+      const focusIsOutside = !dialog.contains(activeElement);
       if (event.shiftKey && (activeElement === first || focusIsOutside)) {
         event.preventDefault();
         last.focus();
@@ -110,22 +116,30 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      const stackIndex = activeDialogStack.lastIndexOf(dialog);
+      if (stackIndex !== -1) activeDialogStack.splice(stackIndex, 1);
 
-      // Restore focus only when the dialog has actually been removed.
-      // Do not steal focus during normal parent rerenders.
+      // Restore focus to the opener or the still-active parent dialog, but
+      // never steal focus from a different modal that remains on screen.
       if (
         previousFocus &&
         previousFocus !== document.body &&
-        typeof previousFocus.focus === 'function'
+        typeof previousFocus.focus === 'function' &&
+        (!activeDialogStack.length ||
+          activeDialogStack.some((activeDialog) => activeDialog.contains(previousFocus)))
       ) {
         requestAnimationFrame(() => {
-          if (!document.body.contains(dialog)) {
+          if (
+            !document.body.contains(dialog) &&
+            (!activeDialogStack.length ||
+              activeDialogStack.some((activeDialog) => activeDialog.contains(previousFocus)))
+          ) {
             previousFocus.focus();
           }
         });
       }
     };
-  }, [dialog]);
+  }, [active]);
 
   return dialogRef;
 }
