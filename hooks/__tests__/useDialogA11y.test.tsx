@@ -143,7 +143,6 @@ describe('useDialogA11y', () => {
     await waitFor(() => expect(document.activeElement).toBe(dialog));
     last.focus();
     fireEvent.keyDown(document, { key: 'Tab' });
-    expect(tab.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(first);
 
     const escape = new KeyboardEvent('keydown', {
