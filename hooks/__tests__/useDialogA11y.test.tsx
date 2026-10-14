@@ -178,7 +178,7 @@ describe('useDialogA11y', () => {
 
     await screen.findByRole('dialog', { name: 'Inner dialog' });
     const first = screen.getByRole('button', { name: 'First inner action' });
-    const last = screen.getByRole('button', { name: 'Last action' });
+    const last = screen.getByRole('button', { name: 'Last inner action' });
     await waitFor(() => expect(document.activeElement).toBe(first));
 
     last.focus();
