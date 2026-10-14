@@ -2,7 +2,7 @@
 
 **Purpose:** Durable continuation record for a new ChatGPT conversation. Read this document together with `docs/MOBILE_REDESIGN_AUTHORITY.md` and `docs/MOBILE_REDESIGN_CURRENT_STATE_AUDIT.md` before proposing or changing redesign work.
 
-**Current baseline:** `main` at `0d0960cbbf4daa51abcbdeaea1ead8324a4c0817` (2026-10-14). Repository: `mkuhtze-code/task-manager`.
+**Current baseline:** `main` at `478b3962185bc26fc647a71072f02a0301be4797` (2026-10-14). Repository: `mkuhtze-code/task-manager`.
 
 ## 1. Product and delivery order
 
@@ -49,7 +49,8 @@ The user currently uses the web app and has not adopted the native Android app. 
 
 - `docs/MOBILE_REDESIGN_AUTHORITY.md`: product decisions, journeys, gates, acceptance criteria, non-authorised work.
 - `docs/MOBILE_REDESIGN_CURRENT_STATE_AUDIT.md`: evidence-based current-state/release-path audit; source-level only, not device validation.
-- `docs/MOBILE_CALENDAR_JOURNEY_AUDIT.md`: calendar flow and remaining live OAuth acceptance (added in calendar work; verify current branch/main contents before relying on exact latest details).
+- `docs/MOBILE_CALENDAR_JOURNEY_AUDIT.md`: calendar flow and remaining live OAuth acceptance.
+- `docs/MOBILE_MODAL_ACCESSIBILITY_AUDIT.md`: modal/popover focus findings, source-level fixes, and remaining manual acceptance.
 - `docs/CSS_CASCADE_AUDIT.md`: existing stylesheet complexity/guardrails.
 - Older `docs/UX_IMPLEMENTATION_ROADMAP.md` is historical and must not override the redesign authority.
 
@@ -68,8 +69,10 @@ Confirm the live PR/commit state before acting, but as of this handoff the follo
 - [PR #270](https://github.com/mkuhtze-code/task-manager/pull/270) — contained floating mobile task-detail surface.
 - [PR #271](https://github.com/mkuhtze-code/task-manager/pull/271) — immediate Microsoft calendar sync and sync-failure recovery.
 - [PR #272](https://github.com/mkuhtze-code/task-manager/pull/272) — keyboard focus containment/restoration for modal sheets.
+- [PR #274](https://github.com/mkuhtze-code/task-manager/pull/274) — fix shared focus management for conditionally mounted modal sheets; apply it to additional Travel and Meeting modals.
+- [PR #276](https://github.com/mkuhtze-code/task-manager/pull/276) — accessible naming, initial focus, and Escape focus return for non-modal `PillReveal` popovers, without focus trapping.
 
-Latest known main commit: `0d0960cbbf4daa51abcbdeaea1ead8324a4c0817`. Latest PR #272 Vercel checks passed for both `task-manager` and `task-manager-capacitor-test`; CodeRabbit check passed. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
+Latest known main commit: `478b3962185bc26fc647a71072f02a0301be4797`. PRs #274 and #276 passed both Vercel checks for `task-manager` and `task-manager-capacitor-test`; CodeRabbit and Devin Review checks passed. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
 
 ### Important validation boundaries
 
@@ -92,13 +95,15 @@ Latest known main commit: `0d0960cbbf4daa51abcbdeaea1ead8324a4c0817`. Latest PR 
 
 ## 7. Remaining sequence — continue in this order
 
-### Immediate next task: complete the mobile-web accessibility and interaction audit
-1. Inspect every `useDialogA11y` caller and every modal/sheet/composer in the core journeys. Check accessible name/description, modal semantics, initial focus, focus trap, Escape behavior, close button, focus restoration, nested dialogs, keyboard/touch behavior, and reduced-motion/keyboard overlap as relevant.
-2. Check that only truly modal sheets trap focus; desktop panes/non-modal popovers must not.
-3. Add focused tests for any demonstrated gaps and include tests in the established CI/build chain.
-4. Fix proven defects in small PRs; run both Vercel checks and inspect CodeRabbit/review feedback before merge.
+### Immediate next task: validate the working slice
+The source-level focus audit and fixes in PRs #274 and #276 are merged. The remaining accessibility work is broader manual acceptance, not a claim of WCAG compliance.
 
-### Then validate the working slice
+1. Validate the working slice in this order: Today → multi-item capture → edit item → follow a job/meeting relationship → return to exact prior state → simulate save/sync failure → recover without lost input.
+2. Use the existing capture authorization/retry and surface-return tests; identify any missing integration coverage before adding tests.
+3. Verify direct date jump/return-to-today and capacity changes. Use automation/source evidence where preview is inaccessible and explicitly mark what still needs live human/device verification.
+4. Fix proven defects in small PRs; run both Vercel checks and inspect review feedback before merge.
+
+### Then continue the surfaces
 Prove this end-to-end in the mobile web app, using test automation/source evidence where preview is inaccessible and explicitly marking what still requires live human/device validation:
 Today → multi-item capture → edit item → follow a job/meeting relationship → return to exact previous state → simulate save/sync failure → recover without lost input.
 Also verify date jump/return-to-today and capacity changes. Do not expand to full-surface rewrites until the slice passes.
