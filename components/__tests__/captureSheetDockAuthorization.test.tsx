@@ -112,6 +112,7 @@ function renderCaptureSheet() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  if (typeof window !== 'undefined') window.sessionStorage.clear();
   mocks.addTaskWithOverrides.mockResolvedValue('task-1');
   mocks.detectCaptureCollection.mockReturnValue(null);
   mocks.detectListIntent.mockReturnValue(null);
