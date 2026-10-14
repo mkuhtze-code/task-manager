@@ -6,14 +6,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 function DialogFixture({
   onClose,
   trapFocus = true,
+  autoFocus = true,
 }: {
   onClose: () => void;
   trapFocus?: boolean;
+  autoFocus?: boolean;
 }) {
   const dialogRef = useDialogA11y(onClose, { trapFocus });
   return (
     <div ref={dialogRef} role="dialog" aria-modal={trapFocus ? 'true' : undefined}>
-      <button data-autofocus>First action</button>
+      <button data-autofocus={autoFocus ? '' : undefined}>First action</button>
       <button>Middle action</button>
       <button>Last action</button>
     </div>
@@ -71,6 +73,19 @@ describe('useDialogA11y', () => {
 
     view.unmount();
     await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+
+  it('moves initial focus to the modal container when no control is designated', async () => {
+    const opener = document.createElement('button');
+    opener.textContent = 'Open dialog';
+    document.body.appendChild(opener);
+    opener.focus();
+
+    render(<DialogFixture onClose={vi.fn()} autoFocus={false} />);
+    const dialog = screen.getByRole('dialog');
+
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
+    expect(dialog.getAttribute('tabindex')).toBe('-1');
   });
 
   it('does not trap focus in a non-modal detail pane', () => {
