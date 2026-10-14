@@ -2,41 +2,42 @@
 
 **Scope:** Source-level audit of modal/dialog semantics and keyboard focus on the responsive web app. This does not substitute for keyboard, screen-reader, zoom/reflow, or physical-device acceptance.
 
-## Findings addressed in merged PR #274
+## Shared modal behavior
 
-The shared `useDialogA11y` hook previously inspected its ref only when the owning component mounted. For sheets rendered conditionally while their owner remained mounted, the ref was null and the hook never installed Escape handling, focus containment, or focus restoration.
+The shared `useDialogA11y` hook provides initial focus, Escape dismissal, Tab/Shift+Tab containment for modal sheets, filtering of hidden/disabled/inert controls, and focus restoration when a dialog is removed. A state-backed callback ref ensures it attaches when a sheet opens after its owning page has mounted.
 
-PR #274 changed the hook to use a stable callback ref and re-run focus management when a dialog enters/leaves the DOM. It retains:
-- initial focus to an explicitly marked control, or the modal container when none is marked;
-- Escape dismissal;
-- Tab and Shift+Tab containment for modal dialogs;
-- filtering of disabled/hidden/inert/closed-disclosure controls;
-- focus restoration when a dialog is removed;
-- opt-out of focus trapping for non-modal desktop task-detail panes.
+The hook now tracks active modal layers. Only the topmost modal owns document-level Escape and Tab handling. Closing a child modal restores focus to its opener inside the still-open parent; closing a child must not steal focus behind an active modal. Non-modal desktop task-detail panes are not registered as modal layers and do not trap focus.
 
-Regression tests cover wraparound, Escape, focus restoration, initial focus, conditionally mounted dialogs, non-modal behavior, and Escape dismissal/focus return for the non-modal `PillReveal` popover.
+## Non-modal popovers
 
-## Modal surfaces covered in PR #274
+`PillReveal` is a non-modal disclosure/popover used for Connections, Job files, and Meetings. It has an accessible name, a programmatic trigger relationship, and initial focus when opened, but no focus trap. Escape is handled on the popover wrapper, closes that popover first, and restores focus to its trigger without also closing an enclosing modal.
 
-The shared hook was applied to previously uncovered modal dialogs:
-- Open Lists / Collections peek
-- Travel Vault
-- Plan a Trip
-- Trip Tools
-- Meeting export's missing-media and export-ready dialogs
-- Meeting photo lightbox
+## Other modal interaction boundaries
 
-Other core sheets already using the shared hook include capture, task details, Reality Check, meeting/job forms, scheduled tasks, nearby places, day shape, trip overview, map, library, accommodation, and meeting export review.
+- Meeting export's missing-media, ready, and failure decision states use the shared focus lifecycle and explicit modal semantics.
+- The export-generation overlay remains a status announcement, not an interactive dialog.
+- Meeting photo left/right navigation is handled by the focused lightbox itself, rather than a global key listener that could react while another overlay owns focus.
+- Trip Tools closes before opening its selected child sheet; nested focus traps are not intentionally mounted by that flow.
+- The desktop plan popover remains outside this mobile-web slice.
 
-## Remaining non-modal findings
+## Automated regression coverage
 
-- `PillReveal` is a non-modal disclosure/popover used for Connections, Job files, and Meetings. It must not trap focus. Its dialog role previously lacked an accessible name, and Escape closed it without returning focus to its trigger. PR #275 addresses the name, trigger relationship, initial focus, and Escape focus return without adding a focus trap.
-- `DesktopProductNav` plan popover is desktop navigation and remains outside this mobile-web slice.
-- The export-generation overlay uses `role="status"`, not modal semantics; its busy announcement and focus behavior need a separate check.
+The dialog accessibility suite covers:
+- Tab and Shift+Tab wraparound inside a modal;
+- Escape dismissal and focus restoration;
+- a modal that is mounted conditionally after its owner;
+- safe initial focus when no control is designated;
+- non-modal panes not trapping focus;
+- only the topmost nested modal consuming keyboard input;
+- a non-modal popover closing without also closing its enclosing modal;
+- popover Escape dismissal and focus return.
+
+The date-navigation suite separately verifies direct jump to a distant date and return to today. These tests establish source behavior, not visual or device acceptance.
 
 ## Remaining manual acceptance
 
-- Verify on a real mobile browser with keyboard and screen reader: open/close representative modals, navigate controls, confirm focus stays inside modal dialogs and returns to the invoking control, and confirm the virtual keyboard does not obscure the active field.
-- Verify reduced-motion, contrast, touch target size, 200% zoom/reflow, and screen-reader names/announcements across the full web experience.
-- Confirm non-modal popovers remain keyboard reachable without focus trapping and return focus appropriately when dismissed.
-- Full WCAG 2.2 AA acceptance remains outstanding until these checks are completed.
+- On a real mobile browser, verify representative modals and popovers with a physical/soft keyboard and a screen reader.
+- Confirm the virtual keyboard does not obscure active fields and focus indicators remain visible.
+- Verify reduced motion, contrast, touch target size, 200% zoom/reflow, accessible names, and announcements across the full web experience.
+- Exercise focus return from every modal close path, including backdrop, cancel, save, and failure recovery.
+- Full WCAG 2.2 AA acceptance remains outstanding until manual checks are completed and documented.
