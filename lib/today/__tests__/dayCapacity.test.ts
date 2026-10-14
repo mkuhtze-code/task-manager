@@ -51,7 +51,7 @@ describe('Today capacity integration', () => {
     const now = new Date(2026, 9, 15, 9, 0);
     const result = derive(now, [eventAt(now, 10, 11, 'event-a'), eventAt(now, 10, 12, 'event-b')]);
 
-    expect(result.availability.blockedMinutes).toBe(180);
-    expect(result.taskCapacity).toBe(300);
+    expect(result.availability.blockedMinutes).toBe(120);
+    expect(result.taskCapacity).toBe(360);
   });
 });
