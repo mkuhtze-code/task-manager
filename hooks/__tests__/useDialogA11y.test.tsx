@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PillReveal from '@/components/PillReveal';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function DialogFixture({
@@ -198,33 +198,35 @@ describe('useDialogA11y', () => {
     expect(dialog.getAttribute('tabindex')).toBe('-1');
   });
 
-  it('returns focus to a non-modal popover trigger when Escape closes it', async () => {
-    render(
-      <PillReveal label="Connections">
-        <button type="button">Open job</button>
-      </PillReveal>,
-    );
+  it('lets a non-modal popover consume Escape before its parent modal', async () => {
+    const onModalClose = vi.fn();
+    function ModalWithPopover() {
+      const dialogRef = useDialogA11y(onModalClose);
+      return (
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Meeting detail">
+          <PillReveal label="Connections">
+            <button type="button">Open job</button>
+          </PillReveal>
+        </div>
+      );
+    }
 
+    render(<ModalWithPopover />);
     const trigger = screen.getByRole('button', { name: 'Connections' });
     fireEvent.click(trigger);
     const panelAction = screen.getByRole('button', { name: 'Open job' });
 
-    // Wait for the popover's open effect and initial-focus frame before
-    // testing its Escape listener; this avoids racing the effect setup.
+    // Wait for initial focus before verifying the nested Escape behavior.
     await waitFor(() => expect(document.activeElement).toBe(panelAction));
+    fireEvent.keyDown(panelAction, { key: 'Escape' });
 
-    const escape = new KeyboardEvent('keydown', {
-      key: 'Escape',
-      bubbles: true,
-      cancelable: true,
-    });
-    act(() => {
-      document.dispatchEvent(escape);
-    });
-
-    expect(escape.defaultPrevented).toBe(true);
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Connections' })).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(onModalClose).not.toHaveBeenCalled();
+
+    // Once the disclosure is closed, Escape belongs to the enclosing modal.
+    fireEvent.keyDown(trigger, { key: 'Escape' });
+    expect(onModalClose).toHaveBeenCalledTimes(1);
   });
 
   it('does not trap focus in a non-modal detail pane', () => {
