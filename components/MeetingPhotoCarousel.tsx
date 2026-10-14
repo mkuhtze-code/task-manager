@@ -51,18 +51,10 @@ export default function MeetingPhotoCarousel(props: {
     if (open === null) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'ArrowLeft')
-        setOpen((v) => (v === null ? v : (v - 1 + photos.length) % photos.length));
-      else if (e.key === 'ArrowRight')
-        setOpen((v) => (v === null ? v : (v + 1) % photos.length));
-    }
-    window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = previous;
-      window.removeEventListener('keydown', onKey);
     };
-  }, [open, photos.length]);
+  }, [open]);
 
   if (photos.length === 0) return null;
 
@@ -144,6 +136,19 @@ export default function MeetingPhotoCarousel(props: {
           ref={frameRef}
           tabIndex={-1}
           onClick={() => setOpen(null)}
+          onKeyDown={(event) => {
+            // Keep photo navigation scoped to this focused lightbox. A nested
+            // modal elsewhere on the page must own its own keyboard commands.
+            if (event.key === 'ArrowLeft') {
+              event.preventDefault();
+              setOpen((value) =>
+                value === null ? value : (value - 1 + photos.length) % photos.length
+              );
+            } else if (event.key === 'ArrowRight') {
+              event.preventDefault();
+              setOpen((value) => (value === null ? value : (value + 1) % photos.length));
+            }
+          }}
         >
           <button type="button" className="meeting-lightbox-close" aria-label="Close photo" onClick={() => setOpen(null)}>
             <CloseIcon />
