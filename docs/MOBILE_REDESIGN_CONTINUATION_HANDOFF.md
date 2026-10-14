@@ -2,7 +2,7 @@
 
 **Purpose:** Durable continuation record for a new ChatGPT conversation. Read this document together with `docs/MOBILE_REDESIGN_AUTHORITY.md` and `docs/MOBILE_REDESIGN_CURRENT_STATE_AUDIT.md` before proposing or changing redesign work.
 
-**Current baseline:** `main` at `49d86ca3d92945965147d599a008c7083ce2594f` (2026-10-15). Repository: `mkuhtze-code/task-manager`.
+**Current baseline:** `main` at `9c1a49ce40694d2c4bca98e1458f9ce379c9681b` (2026-10-15). Repository: `mkuhtze-code/task-manager`.
 
 ## 1. Product and delivery order
 
@@ -75,7 +75,7 @@ Confirm the live PR/commit state before acting, but as of this handoff the follo
 - [PR #285](https://github.com/mkuhtze-code/task-manager/pull/285) — integration tests for Today capacity with timed calendar commitments and overlapping intervals.
 - [Follow-up accessibility commit](https://github.com/mkuhtze-code/task-manager/commit/5feb02cc45bbeac636d6c1548898e7fe8a0c25b2) — modal focus handling for export failure and stabilized popover focus regression coverage.
 
-Latest known main commit: `49d86ca3d92945965147d599a008c7083ce2594f`. Merged and validated web-first slices include date navigation, Today capacity derivation, trip-stop dialog semantics, task-detail validation recovery, and nested-modal keyboard ownership. Both Vercel projects and review checks passed for the merged changes. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
+Latest known main commit: `9c1a49ce40694d2c4bca98e1458f9ce379c9681b`. Merged and validated web-first slices include date navigation, Today capacity derivation, trip-stop dialog semantics, task-detail validation recovery, nested-modal keyboard ownership, and distinct focus lifecycles for meeting-export phases. Both Vercel projects and review checks passed for the merged changes. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
 
 ### Important validation boundaries
 
