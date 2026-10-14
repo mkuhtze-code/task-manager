@@ -2,7 +2,7 @@
 
 **Purpose:** Durable continuation record for a new ChatGPT conversation. Read this document together with `docs/MOBILE_REDESIGN_AUTHORITY.md` and `docs/MOBILE_REDESIGN_CURRENT_STATE_AUDIT.md` before proposing or changing redesign work.
 
-**Current baseline:** `main` at `478b3962185bc26fc647a71072f02a0301be4797` (2026-10-14). Repository: `mkuhtze-code/task-manager`.
+**Current baseline:** `main` at `49d86ca3d92945965147d599a008c7083ce2594f` (2026-10-15). Repository: `mkuhtze-code/task-manager`.
 
 ## 1. Product and delivery order
 
@@ -71,8 +71,11 @@ Confirm the live PR/commit state before acting, but as of this handoff the follo
 - [PR #272](https://github.com/mkuhtze-code/task-manager/pull/272) — keyboard focus containment/restoration for modal sheets.
 - [PR #274](https://github.com/mkuhtze-code/task-manager/pull/274) — fix shared focus management for conditionally mounted modal sheets; apply it to additional Travel and Meeting modals.
 - [PR #276](https://github.com/mkuhtze-code/task-manager/pull/276) — accessible naming, initial focus, and Escape focus return for non-modal `PillReveal` popovers, without focus trapping.
+- [PR #280](https://github.com/mkuhtze-code/task-manager/pull/280) — regression test for jumping to a distant date and returning to today.
+- [PR #285](https://github.com/mkuhtze-code/task-manager/pull/285) — integration tests for Today capacity with timed calendar commitments and overlapping intervals.
+- [Follow-up accessibility commit](https://github.com/mkuhtze-code/task-manager/commit/5feb02cc45bbeac636d6c1548898e7fe8a0c25b2) — modal focus handling for export failure and stabilized popover focus regression coverage.
 
-Latest known main commit: `478b3962185bc26fc647a71072f02a0301be4797`. PRs #274 and #276 passed both Vercel checks for `task-manager` and `task-manager-capacitor-test`; CodeRabbit and Devin Review checks passed. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
+Latest known main commit: `49d86ca3d92945965147d599a008c7083ce2594f`. Merged and validated web-first slices include date navigation, Today capacity derivation, trip-stop dialog semantics, task-detail validation recovery, and nested-modal keyboard ownership. Both Vercel projects and review checks passed for the merged changes. The Android-named Vercel project is not proof that the native Android app is being redesigned or accepted.
 
 ### Important validation boundaries
 
@@ -88,7 +91,7 @@ Latest known main commit: `478b3962185bc26fc647a71072f02a0301be4797`. PRs #274 a
 - Calendar source areas include `app/api/auth/microsoft/connect/route.ts`, `app/api/auth/microsoft/callback/route.ts`, `app/api/calendar/calendars/route.ts`, `app/api/calendar/sync-now/route.ts`, `lib/calendar/store.ts`, `lib/calendar/sync.ts`, and `supabase/schema.sql`. Re-check names against main before edits.
 - `components/SurfaceNav.tsx` defines Today/Jobs/Meetings/Travel; shared Add action. Some surfaces are Pro-gated.
 - `components/SurfaceDateCarousel.tsx` has a 14-day nearby strip plus direct date input and Back to today.
-- `hooks/useDialogA11y.ts` handles Escape, initial focus, focus trap for modal sheets, and focus restoration. Task detail's desktop pane must remain non-modal (uses `trapFocus: presentation === 'sheet'`). Audit other dialogs for actual semantics and focus behavior.
+- `hooks/useDialogA11y.ts` handles initial focus, Escape, modal focus containment/restoration, and topmost-modal keyboard ownership. Non-modal `PillReveal` and desktop task detail must remain non-trapping. `MeetingPhotoCarousel` arrow navigation is scoped to its focused lightbox.
 - Interaction vocabulary is distributed among `TaskDetailSheet.tsx`, `RealityCheckSheet.tsx`, create/edit sheets for jobs/meetings/travel, and settings. Audit consistency instead of blindly unifying every implementation.
 - CSS has legacy cascade complexity. `docs/CSS_CASCADE_AUDIT.md` recorded hundreds of `!important` rules in some legacy files. Treat counts as a warning/guardrail, not permission for a broad cleanup; inspect computed behavior and owning stylesheet before each scoped change.
 - Offline/persistence behavior is mixed: web has local-first task mutation and a durable queue, with incomplete routing/conflict handling documented; native offline mutation gaps exist. Show pending/success/failure truthfully and preserve drafts.
@@ -96,12 +99,12 @@ Latest known main commit: `478b3962185bc26fc647a71072f02a0301be4797`. PRs #274 a
 ## 7. Remaining sequence — continue in this order
 
 ### Immediate next task: validate the working slice
-The source-level focus audit and fixes in PRs #274 and #276 are merged. The remaining accessibility work is broader manual acceptance, not a claim of WCAG compliance.
+The source-level modal/popover audit and nested-modal keyboard fixes are merged. Date jump/return and Today-capacity tests are on main. Task-detail validation recovery is merged. The working-slice tests now separately cover capture retry, return-state snapshots (including the open/expanded task), relationship-link destinations, date navigation, capacity derivation, and dialog focus. These are source-level regression checks, not proof of a single end-to-end run or full WCAG compliance.
 
-1. Validate the working slice in this order: Today → multi-item capture → edit item → follow a job/meeting relationship → return to exact prior state → simulate save/sync failure → recover without lost input.
-2. Use the existing capture authorization/retry and surface-return tests; identify any missing integration coverage before adding tests.
-3. Verify direct date jump/return-to-today and capacity changes. Use automation/source evidence where preview is inaccessible and explicitly mark what still needs live human/device verification.
-4. Fix proven defects in small PRs; run both Vercel checks and inspect review feedback before merge.
+1. Run and review the full build/CI chain, including `test:capture-ui`, `test:surface-state`, `test:working-slice-navigation`, `test:date-navigation`, `test:today-capacity`, `test:task-detail-validation`, `test:dialog-a11y`, `test:pill-reveal-a11y`, and `test:calendar-sync-policy`.
+2. Confirm from source/tests that capture preserves input on failure, retry does not duplicate work, task-detail validation does not discard drafts, job/meeting links point to the correct surfaces, and return-state snapshots preserve date/filter/search/scroll/open-task/expanded-task state.
+3. Because branch previews may return 404, use automated/source evidence for code-level contracts, but explicitly keep the integrated Today → multi-item capture → edit → relationship → exact return → controlled failure → recovery run marked as not manually accepted until it can be observed in a working mobile browser session.
+4. Fix only demonstrated gaps in small PRs; run both Vercel checks and inspect review feedback before merge.
 
 ### Then continue the surfaces
 - Bring Jobs, Meetings, and Travel into the shared object grammar and navigation/return-state model without making them feel like separate apps.
