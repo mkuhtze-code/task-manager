@@ -22,9 +22,9 @@ const DAY_OPTIONS: { label: string; value: number }[] = [
   { label: 'S', value: 0 },
 ];
 
-// Temporary UI gate: Microsoft Calendar connection is hidden from Preferences.
-// Flip to true to re-enable the panel. Backend/OAuth/calendar code is untouched.
-const CALENDAR_CONNECT_ENABLED = false;
+// The existing read-only Microsoft Calendar journey is available now that
+// first-sync and selection-sync failures are surfaced without losing selection.
+const CALENDAR_CONNECT_ENABLED = true;
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -141,7 +141,9 @@ export default function Preferences() {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('calendar') === 'connected') {
-      setCalendarMessage('Calendar connected — your commitments will show up in Today within a few minutes.');
+      setCalendarMessage('Calendar connected and synced. Selected commitments are included in Today.');
+    } else if (params.get('calendar') === 'connected_sync_error') {
+      setCalendarMessage('Calendar connected, but the first sync did not complete. The background sync will retry automatically.');
     } else if (params.get('calendar') === 'denied') {
       setCalendarMessage('You chose not to connect your calendar. No changes were made.');
     } else if (params.get('calendar') === 'expired') {
@@ -204,15 +206,19 @@ export default function Preferences() {
       const res = await fetch(apiUrl('/api/calendar/calendars'), {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
+      const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setCalendarListMsg(payload?.error || 'Could not load calendars. Refresh and try again.');
         return;
       }
-      const payload = await res.json();
       if (Array.isArray(payload?.connections)) {
         setCalendarConnectionsState(payload.connections);
+        setCalendarListMsg('');
+      } else {
+        setCalendarListMsg('Calendar list was incomplete. Refresh and try again.');
       }
     } catch {
-      // leave panel showing connection state on failure
+      setCalendarListMsg('Could not load calendars. Check your connection and try again.');
     }
   }
 
@@ -242,6 +248,19 @@ export default function Preferences() {
           ),
         }))
       );
+      if (payload.syncStatus === 'error') {
+        const message =
+          payload.syncError || 'Calendar selection was saved, but syncing changes failed. Try again shortly.';
+        setCalendarListMsg(message);
+        setCalendarConnection((prev) =>
+          prev ? { ...prev, sync_status: 'error', sync_error: message } : prev
+        );
+      } else {
+        setCalendarListMsg('Calendar selection saved and synced.');
+        setCalendarConnection((prev) =>
+          prev ? { ...prev, sync_status: 'ok', sync_error: null } : prev
+        );
+      }
     } catch {
       setCalendarListMsg('Could not update calendars — try again.');
     } finally {
@@ -268,19 +287,30 @@ export default function Preferences() {
 
   async function disconnectCalendar() {
     setDisconnecting(true);
-    await fetch(apiUrl('/api/auth/microsoft/disconnect'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({}),
-    });
-    setCalendarConnection(null);
-    setCalendarConnectionsState([]);
-    setCalendarListMsg('');
-    setCalendarMessage('Calendar disconnected.');
-    setDisconnecting(false);
+    setCalendarMessage('');
+    try {
+      const res = await fetch(apiUrl('/api/auth/microsoft/disconnect'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({}),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload?.ok) {
+        setCalendarMessage(payload?.error || 'Could not disconnect the calendar. Try again.');
+        return;
+      }
+      setCalendarConnection(null);
+      setCalendarConnectionsState([]);
+      setCalendarListMsg('');
+      setCalendarMessage('Calendar disconnected.');
+    } catch {
+      setCalendarMessage('Could not disconnect the calendar. Check your connection and try again.');
+    } finally {
+      setDisconnecting(false);
+    }
   }
 
   function toggleDay(day: number) {
