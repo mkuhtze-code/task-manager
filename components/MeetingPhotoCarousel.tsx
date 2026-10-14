@@ -5,6 +5,7 @@ import type { MeetingMedia } from '@/lib/meetingTypes';
 import { photoAlt } from '@/lib/meetingCapture';
 import { PhotoImage } from '@/components/MediaRender';
 import { CloseIcon } from '@/components/icons';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 export default function MeetingPhotoCarousel(props: {
   photos: MeetingMedia[];
@@ -12,7 +13,7 @@ export default function MeetingPhotoCarousel(props: {
 }) {
   const { photos, labelBase = 'Observation photos' } = props;
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const frameRef = useRef<HTMLDivElement | null>(null);
+  const frameRef = useDialogA11y(() => setOpen(null));
   const [index, setIndex] = useState(0);
   const [open, setOpen] = useState<number | null>(null);
   const hasNav = photos.length > 1;
@@ -50,10 +51,8 @@ export default function MeetingPhotoCarousel(props: {
     if (open === null) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    frameRef.current?.focus();
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(null);
-      else if (e.key === 'ArrowLeft')
+      if (e.key === 'ArrowLeft')
         setOpen((v) => (v === null ? v : (v - 1 + photos.length) % photos.length));
       else if (e.key === 'ArrowRight')
         setOpen((v) => (v === null ? v : (v + 1) % photos.length));
