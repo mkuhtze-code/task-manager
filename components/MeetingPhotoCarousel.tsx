@@ -13,9 +13,12 @@ export default function MeetingPhotoCarousel(props: {
 }) {
   const { photos, labelBase = 'Observation photos' } = props;
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const frameRef = useDialogA11y(() => setOpen(null));
   const [index, setIndex] = useState(0);
   const [open, setOpen] = useState<number | null>(null);
+  const frameRef = useDialogA11y<HTMLDivElement>(
+    () => setOpen(null),
+    { enabled: open !== null },
+  );
   const hasNav = photos.length > 1;
   const safeIndex = photos.length === 0 ? 0 : Math.min(index, photos.length - 1);
 
@@ -51,6 +54,7 @@ export default function MeetingPhotoCarousel(props: {
     if (open === null) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    frameRef.current?.focus();
     function onKey(e: KeyboardEvent) {
       if (e.key === 'ArrowLeft')
         setOpen((v) => (v === null ? v : (v - 1 + photos.length) % photos.length));
