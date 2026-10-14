@@ -32,6 +32,7 @@ import DesktopMeetingsHeader, {
 } from '@/components/DesktopMeetingsHeader';
 import { useNow } from '@/hooks/useNow';
 import ContextLine from '@/components/ContextLine';
+import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
 
 function fmtDur(mins: number): string {
   if (mins <= 0) return '';
@@ -59,6 +60,25 @@ export default function MeetingsHome() {
     useState<MeetingsListFilter>('all');
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  useSurfaceReturnState(
+    'dokkit.surface-return.meetings.v1',
+    { listFilter, search, selectedDate },
+    (saved) => {
+      if (!saved || typeof saved !== 'object') return;
+      if (saved.listFilter === 'all' || saved.listFilter === 'upcoming' || saved.listFilter === 'past') {
+        setListFilter(saved.listFilter);
+      }
+      if (typeof saved.search === 'string') setSearch(saved.search);
+      if (
+        saved.selectedDate === null ||
+        (typeof saved.selectedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.selectedDate))
+      ) {
+        setSelectedDate(saved.selectedDate);
+      }
+    },
+    !loading,
+  );
 
   const { isDesktop } = useSurfaceMode();
   const { entitlements, loading: entLoading } = useEntitlements(
