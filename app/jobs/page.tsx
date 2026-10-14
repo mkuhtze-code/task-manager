@@ -675,104 +675,46 @@ export default function JobsHome() {
             const nextTask =
               tasks.find((task) => task.status !== 'done') ||
               null;
+            const openTasks = tasks.filter((task) => task.status !== 'done').length;
 
             return (
               <Link
                 key={job.id}
-                href={`/jobs/${job.id}`}
-                className={
-                  done
-                    ? 'job-row completed'
-                    : 'job-row'
-                }
+                href={'/jobs/' + job.id}
+                aria-label={job.name + ', ' + (done ? 'complete' : openTasks + ' open tasks')}
+                className={done ? 'job-row completed' : 'job-row'}
               >
                 <div className="job-row-top">
-                  <span className="job-row-name">
-                    {job.name}
-                  </span>
-
+                  <span className="job-row-name">{job.name}</span>
                   {done ? (
-                    <span
-                      className="job-row-done-mark"
-                      aria-label="Complete"
-                    >
+                    <span className="job-row-done-mark" aria-label="Complete">
                       <CheckIcon done />
                     </span>
                   ) : (
-                    <span className="job-row-numeral mono">
-                      {tasks.length}
+                    <span className="job-row-numeral mono" aria-label={openTasks + ' open tasks'}>
+                      {openTasks} open
                     </span>
                   )}
                 </div>
 
-                {(job.client ||
-                  onToday > 0 ||
-                  job.location_text) && (
-                  <div
-                    className="job-row-meta"
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '6px 12px',
-                      marginTop: 4,
-                      fontSize: 12,
-                      color: 'var(--ink-faint)',
-                      alignItems: 'center',
-                    }}
-                  >
-                    {job.client && (
-                      <span>{job.client}</span>
-                    )}
-
-                    {onToday > 0 && (
-                      <span>
-                        {onToday === 1
-                          ? '1 on today'
-                          : `${onToday} on today`}
-                      </span>
-                    )}
-
-                    {job.location_text && (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                        }}
-                      >
+                {(job.client || onToday > 0 || job.location_text) && (
+                  <div className="job-row-meta">
+                    {job.client ? <span>{job.client}</span> : null}
+                    {onToday > 0 ? <span>{onToday === 1 ? '1 today' : onToday + ' today'}</span> : null}
+                    {job.location_text ? (
+                      <span className="job-row-location">
                         <MapPinIcon size={12} />
-
-                        <span
-                          style={{
-                            maxWidth: 160,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {job.location_text}
-                        </span>
+                        <span>{job.location_text}</span>
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 )}
 
-                {!done && nextTask && (
-                  <div
-                    className="job-row-next"
-                    style={{
-                      marginTop: 4,
-                      fontSize: 13,
-                      color:
-                        'var(--ink-muted, var(--ink-faint))',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Next: {nextTask.text}
+                {!done && nextTask ? (
+                  <div className="job-row-next" title={nextTask.text}>
+                    <span className="mono">Next</span> {nextTask.text}
                   </div>
-                )}
+                ) : null}
               </Link>
             );
           })}

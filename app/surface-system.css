@@ -360,8 +360,8 @@
 .task-card.surface-object{overflow:hidden;}.task-card.surface-object .task-body{min-width:0}.task-card.surface-object .task-text{margin:0}.task-card.surface-object .task-card-glance{align-self:center}
 
 /* Jobs */
-.job-row{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none!important}.job-row-top{min-height:20px}.job-row-meta{margin-top:5px!important}.job-row-next{margin-top:11px!important;padding-top:9px!important;border-top:1px solid var(--line)!important;font-size:12px!important;color:var(--ink-soft)!important}.job-row-numeral,.job-row-done-mark{color:var(--ink-soft)!important}
-.desk-job-card.surface-object{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none}.desk-job-card.surface-object .desk-job-card-head{margin:0!important;min-height:22px}.desk-job-card.surface-object .desk-job-card-client{margin-top:3px;font-size:12px;color:var(--ink-soft)}.desk-job-card.surface-object .desk-job-card-state{margin-top:10px!important}.desk-job-card.surface-object .desk-job-card-next,.desk-job-card.surface-object .desk-job-card-section{margin-top:10px!important;padding-top:10px!important;border-top:1px solid var(--line)!important}.desk-job-card.surface-object .desk-job-card-chip{border:0!important;background:transparent!important;padding:0!important;font-size:12px!important;color:var(--ink-soft)!important}
+.job-row{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none!important}.job-row-top{min-height:20px}.job-row-meta{margin-top:5px!important}.job-row-next{margin-top:3px;padding-top:0;border-top:0;font-size:var(--object-meta-size);color:var(--ink-faint)}.job-row-numeral,.job-row-done-mark{color:var(--ink-soft)!important}
+.desk-job-card.surface-object{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none}.desk-job-card.surface-object .desk-job-card-head{margin:0!important;min-height:22px}.desk-job-card.surface-object .desk-job-card-client{margin-top:3px;font-size:12px;color:var(--ink-soft)}.desk-job-card.surface-object .desk-job-card-state{margin-top:10px!important}.desk-job-card.surface-object .desk-job-card-section{margin-top:10px!important;padding-top:10px!important;border-top:1px solid var(--line)!important}.desk-job-card.surface-object .desk-job-card-chip{border:0!important;background:transparent!important;padding:0!important;font-size:12px!important;color:var(--ink-soft)!important}
 
 /* Meetings */
 .meeting-row.surface-object{display:block!important;min-height:var(--row-height)!important;padding:var(--space-3) var(--space-4)!important;text-decoration:none!important}.meeting-row-main{display:block!important;width:100%;min-width:0}.meeting-row-top{display:flex;align-items:baseline;gap:8px;min-width:0}.meeting-row-name{display:block;flex:1}.meeting-source-tag{flex:0 0 auto;padding:0!important;border:0!important;background:transparent!important;color:var(--ink-faint)!important;font-size:10px!important;font-weight:600!important}.meeting-row-time{margin-top:5px!important}.meeting-row-context{display:flex!important;margin-top:4px!important}.meeting-row-aside{display:none!important}.meeting-row-relative.is-urgent{color:var(--steel-dark,var(--steel))!important}
@@ -2154,4 +2154,117 @@ html[data-theme='dark']{
 .meeting-section-lede,
 .trip-section-lede {
   display: none;
+}
+
+
+/* Phase C — collapsed object grammar. Identity leads; one mono glance follows. */
+.job-row-top,
+.meeting-row-top,
+.trip-row-top,
+.desk-job-card.surface-object .desk-job-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.job-row-numeral,
+.meeting-row-glance,
+.trip-row-glance,
+.desk-job-card-status {
+  flex: 0 0 auto;
+  max-width: 58%;
+  font-family: var(--font-mono, var(--font-label));
+  font-size: var(--object-meta-size);
+  line-height: var(--object-meta-leading);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-semibold);
+  color: var(--ink-soft);
+  text-align: end;
+  white-space: nowrap;
+}
+.job-row-meta,
+.desk-job-card-context,
+.meeting-row-context,
+.trip-row-context {
+  min-width: 0;
+  color: var(--ink-faint);
+  font-size: var(--object-meta-size);
+  line-height: var(--object-meta-leading);
+}
+.job-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px 10px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.job-row-meta > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.job-row-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.job-row-next,
+.desk-job-card-next,
+.desk-job-card-summary {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-faint);
+  font-family: var(--font-mono, var(--font-label));
+  font-size: var(--object-meta-size);
+  line-height: var(--object-meta-leading);
+  font-variant-numeric: tabular-nums;
+}
+.job-row .job-row-next {
+  margin-top: 3px;
+  padding-top: 0;
+  border-top: 0;
+  font-size: var(--object-meta-size);
+}
+.meeting-row.surface-object .meeting-row-top,
+.trip-row-maybach.surface-object .trip-row-top {
+  align-items: baseline;
+}
+.meeting-row-glance,
+.trip-row-glance {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meeting-row-context,
+.trip-row-context {
+  margin-top: 4px;
+}
+.meeting-source-tag {
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+}
+.desk-job-card.surface-object .desk-job-card-head {
+  align-items: flex-start;
+}
+.desk-job-card.surface-object .desk-job-card-identity {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.desk-job-card.surface-object .desk-job-card-client {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.desk-job-card.surface-object .desk-job-card-next,
+.desk-job-card.surface-object .desk-job-card-summary {
+  display: block;
+  margin-top: 5px;
+  padding-top: 0;
+  border-top: 0;
 }
