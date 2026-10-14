@@ -205,7 +205,7 @@ export function TodayHeader(props: {
         <div className="experience-day-heading">
           <div className="experience-day-identity">
             <p className="experience-day-eyebrow">Today</p>
-            <h1 className="experience-day-title">
+            <h1 className="experience-day-title" aria-label={`${weekdayLabel} ${dateOnlyLabel}`}>
               {weekdayLabel}<span>{dateOnlyLabel}</span>
             </h1>
             <p className="experience-day-read">{dayReadWithCommitment}</p>
