@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   onClose: vi.fn(),
   detectCaptureCollection: vi.fn(() => null),
   detectListIntent: vi.fn(() => null),
+  processCaptureSpeech: vi.fn(() => ({ outcome: 'CREATE_TASK', proposals: [], rawText: '', collection: null })),
 }));
 
 vi.mock('@/lib/supabaseClient', () => ({ supabase: {} }));
@@ -45,6 +46,7 @@ vi.mock('@/lib/cpu', () => ({
 vi.mock('@/lib/speech', () => ({
   captureIsCollectionMutation: () => false,
   detectCaptureCollection: mocks.detectCaptureCollection,
+  processCaptureSpeech: mocks.processCaptureSpeech,
 }));
 vi.mock('@/lib/speech/taskListBridge', () => ({
   applyListIntent: vi.fn(),
@@ -113,6 +115,7 @@ beforeEach(() => {
   mocks.addTaskWithOverrides.mockResolvedValue('task-1');
   mocks.detectCaptureCollection.mockReturnValue(null);
   mocks.detectListIntent.mockReturnValue(null);
+  mocks.processCaptureSpeech.mockReturnValue({ outcome: 'CREATE_TASK', proposals: [], rawText: '', collection: null });
   mocks.runCaptureDock.mockReturnValue({
     kind: 'act_create',
     message: 'Ready to create task',
@@ -128,6 +131,121 @@ beforeEach(() => {
   });
 
 
+
+
+  it('reviews multiple typed actions before creating any task and keeps each resolved date', async () => {
+    mocks.processCaptureSpeech.mockReturnValueOnce({
+      outcome: 'CREATE_MULTIPLE_TASKS',
+      rawText: 'Call John tomorrow and email Sarah Friday',
+      collection: null,
+      proposals: [
+        {
+          actId: 'act-john',
+          kind: 'action',
+          summary: 'Call John',
+          objectText: 'John',
+          temporalRaw: 'tomorrow',
+          temporalResolvedDate: '2026-10-16',
+          temporalRelation: 'on',
+          entityLinks: [],
+          polarity: 'positive',
+          actionConfidence: 'medium',
+          blocked: false,
+          reason: 'positive_action',
+        },
+        {
+          actId: 'act-sarah',
+          kind: 'action',
+          summary: 'Email Sarah',
+          objectText: 'Sarah',
+          temporalRaw: 'Friday',
+          temporalResolvedDate: '2026-10-16',
+          temporalRelation: 'on',
+          entityLinks: [],
+          polarity: 'positive',
+          actionConfidence: 'medium',
+          blocked: false,
+          reason: 'positive_action',
+        },
+      ],
+    } as never);
+
+    renderCaptureSheet();
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+
+    expect(await screen.findByRole('group', { name: 'Review actions to create' })).toBeTruthy();
+    expect(mocks.addTaskWithOverrides).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create selected (2)' }));
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(2));
+    expect(mocks.addTaskWithOverrides).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      text: 'Call John',
+      surfaceDate: '2026-10-16',
+      originalInput: 'Call the client tomorrow',
+    }));
+    expect(mocks.addTaskWithOverrides).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      text: 'Email Sarah',
+      surfaceDate: '2026-10-16',
+      originalInput: 'Call the client tomorrow',
+    }));
+  });
+
+  it('retries only failed batch items and never resubmits a created item in the same review', async () => {
+    mocks.processCaptureSpeech.mockReturnValueOnce({
+      outcome: 'CREATE_MULTIPLE_TASKS',
+      rawText: 'Call John and email Sarah',
+      collection: null,
+      proposals: [
+        {
+          actId: 'act-john',
+          kind: 'action',
+          summary: 'Call John',
+          objectText: 'John',
+          temporalRaw: undefined,
+          temporalResolvedDate: null,
+          temporalRelation: undefined,
+          entityLinks: [],
+          polarity: 'positive',
+          actionConfidence: 'medium',
+          blocked: false,
+          reason: 'positive_action',
+        },
+        {
+          actId: 'act-sarah',
+          kind: 'action',
+          summary: 'Email Sarah',
+          objectText: 'Sarah',
+          temporalRaw: undefined,
+          temporalResolvedDate: null,
+          temporalRelation: undefined,
+          entityLinks: [],
+          polarity: 'positive',
+          actionConfidence: 'medium',
+          blocked: false,
+          reason: 'positive_action',
+        },
+      ],
+    } as never);
+    mocks.addTaskWithOverrides
+      .mockResolvedValueOnce('task-john')
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce('task-sarah');
+
+    renderCaptureSheet();
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Create selected (2)' }));
+
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/Created 1; 1 need retry/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Create selected (1)' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create selected (1)' }));
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(3));
+    expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(3);
+    expect(mocks.addTaskWithOverrides).toHaveBeenNthCalledWith(3, expect.objectContaining({ text: 'Email Sarah' }));
+  });
 
 });
 
