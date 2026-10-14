@@ -34,7 +34,7 @@ function readSnapshot<T>(key: string): PersistedSurfaceState<T> | null {
  * stores; this hook only restores presentation state after the surface is ready.
  */
 export function useSurfaceReturnState<T>(
-  key: string,
+  key: string | null,
   state: T,
   restoreState: (state: T) => void,
   ready: boolean,
@@ -47,7 +47,7 @@ export function useSurfaceReturnState<T>(
   restoreRef.current = restoreState;
 
   useEffect(() => {
-    if (!ready || restoredRef.current) return;
+    if (!key || !ready || restoredRef.current) return;
     restoredRef.current = true;
 
     const snapshot = readSnapshot<T>(key);
@@ -63,6 +63,7 @@ export function useSurfaceReturnState<T>(
   }, [key, ready]);
 
   useEffect(() => {
+    if (!key) return;
     return () => {
       try {
         const snapshot: PersistedSurfaceState<T> = {
