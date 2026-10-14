@@ -36,6 +36,7 @@ import SurfaceNav from '@/components/SurfaceNav';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import ProPlanGate from '@/components/ProPlanGate';
 import type { Job } from '@/lib/jobTypes';
 import {
@@ -606,6 +607,7 @@ export default function TripDayView() {
   const [vaultOpen, setVaultOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [tripToolsOpen, setTripToolsOpen] = useState(false);
+  const tripToolsDialogRef = useDialogA11y(() => setTripToolsOpen(false));
   const [captureMoreOpen, setCaptureMoreOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureText, setCaptureText] = useState('');
@@ -2028,6 +2030,7 @@ export default function TripDayView() {
       {tripToolsOpen && (
         <div className="sheet-backdrop" onClick={() => setTripToolsOpen(false)}>
           <div
+            ref={tripToolsDialogRef}
             className="capture-sheet"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
