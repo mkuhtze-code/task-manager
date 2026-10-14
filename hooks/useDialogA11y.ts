@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type DialogA11yOptions = {
   /** Modal sheets trap keyboard focus; non-modal desktop panes do not. */
@@ -9,18 +9,21 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
   onClose: () => void,
   options: DialogA11yOptions = {},
 ) {
-  const dialogRef = useRef<T | null>(null);
+  // A state-backed callback ref supports dialogs that appear conditionally after
+  // the owning component mounts (for example, an overlay opened from a page).
+  const [dialog, setDialog] = useState<T | null>(null);
+  const dialogRef = useCallback((node: T | null) => {
+    setDialog(node);
+  }, []);
   const onCloseRef = useRef(onClose);
   const trapFocusRef = useRef(options.trapFocus ?? true);
 
-  // Keep current callbacks and presentation mode without restarting the dialog lifecycle.
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
   trapFocusRef.current = options.trapFocus ?? true;
 
   useEffect(() => {
-    const dialog = dialogRef.current;
     if (!dialog) return;
 
     // Capture the element that had focus when the dialog opened.
@@ -37,11 +40,9 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
         dialog.setAttribute('tabindex', '-1');
       }
       requestAnimationFrame(() => {
-        const activeDialog = dialogRef.current;
         if (
-          activeDialog &&
-          document.body.contains(activeDialog) &&
-          !activeDialog.contains(document.activeElement)
+          document.body.contains(dialog) &&
+          !dialog.contains(document.activeElement)
         ) {
           focusTarget.focus();
         }
@@ -57,9 +58,7 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
 
       if (event.key !== 'Tab' || !trapFocusRef.current) return;
 
-      const activeDialog = dialogRef.current;
-      if (!activeDialog) return;
-
+      const activeDialog = dialog;
       const focusable = Array.from(
         activeDialog.querySelectorAll<HTMLElement>(
           'a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), summary:not([tabindex="-1"]), [contenteditable="true"]:not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
@@ -90,7 +89,9 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
 
       if (!first || !last) {
         event.preventDefault();
-        activeDialog.setAttribute('tabindex', '-1');
+        if (!activeDialog.hasAttribute('tabindex')) {
+          activeDialog.setAttribute('tabindex', '-1');
+        }
         activeDialog.focus();
         return;
       }
@@ -124,7 +125,7 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
         });
       }
     };
-  }, []);
+  }, [dialog]);
 
   return dialogRef;
 }
