@@ -255,9 +255,11 @@ export function TodayHeader(props: {
             <span>Usable time</span>
             <strong>{fmtMins(Math.max(usable, 0))}</strong>
           </div>
-          <p className={`today-capacity-summary-read${overloaded ? ' is-over' : ''}`}>
-            {overloaded ? `Over capacity by ${fmtMins(overBy)}` : dayRead}
-          </p>
+          {overloaded ? (
+            <p className="today-capacity-summary-read is-over">
+              Over capacity by {fmtMins(overBy)}
+            </p>
+          ) : null}
         </div>
         <div className="today-timebar-wrap">
           <div className="today-timebar-topline">
