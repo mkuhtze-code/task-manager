@@ -86,6 +86,7 @@ type ReviewedCaptureProposal = CaptureProposal & {
   error?: string;
 };
 type PendingCaptureBatch = {
+  ownerUserId: string | null;
   rawText: string;
   proposals: ReviewedCaptureProposal[];
   completed?: boolean;
@@ -111,14 +112,14 @@ function loadPendingCaptureBatch(
     const stored = window.sessionStorage.getItem(captureBatchStorageKey(userId, rawText));
     if (!stored) return null;
     const parsed = JSON.parse(stored) as PendingCaptureBatch;
-    return parsed.rawText === rawText && Array.isArray(parsed.proposals) ? parsed : null;
+    return parsed.ownerUserId === userId && parsed.rawText === rawText && Array.isArray(parsed.proposals) ? parsed : null;
   } catch {
     return null;
   }
 }
 
 function savePendingCaptureBatch(userId: string | null, batch: PendingCaptureBatch): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || batch.ownerUserId !== userId) return;
   try {
     window.sessionStorage.setItem(
       captureBatchStorageKey(userId, batch.rawText),
@@ -359,6 +360,14 @@ const [pendingCaptureBatch, setPendingCaptureBatch] = useState<PendingCaptureBat
 useEffect(() => {
   if (pendingCaptureBatch) savePendingCaptureBatch(userId, pendingCaptureBatch);
 }, [pendingCaptureBatch, userId]);
+const captureBatchOwnerRef = useRef(userId);
+useEffect(() => {
+  if (captureBatchOwnerRef.current === userId) return;
+  captureBatchOwnerRef.current = userId;
+  setPendingCaptureBatch(
+    loadPendingCaptureBatch(userId, draftTextRef.current.trim() || taskText)
+  );
+}, [userId]);
 const [listBusy, setListBusy] = useState(false);
 const [dockBusy, setDockBusy] = useState(false);
 const dockBusyRef = useRef(false);
@@ -920,6 +929,7 @@ if (
   createableBatchItems.length > 1
 ) {
   setPendingCaptureBatch({
+    ownerUserId: userId,
     rawText: line,
     proposals: batchInterpretation.proposals.map((proposal) => {
       const canCreate =
