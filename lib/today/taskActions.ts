@@ -55,7 +55,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
     lat: number | null,
     lng: number | null,
     requiresVisit?: boolean | null
-  ) {
+  ): Promise<boolean> {
     const payload: Partial<Task> = {
       text,
       estimate_mins: mins,
@@ -70,9 +70,8 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
     if (!queueTaskPatch(id, payload)) {
       const { error } = await supabase.from('tasks').update(payload).eq('id', id);
       if (error) {
-        console.error(error);
-        alert('Could not save your changes: ' + error.message);
-        return;
+        console.error('[task-detail] save failed', { taskId: id, message: error.message });
+        return false;
       }
     }
     setTasks((prev) =>
@@ -93,6 +92,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
       )
     );
     if (sortMode === 'geo_aware') recalcRoute();
+    return true;
   }
 
   async function setRouteIntent(id: string, requiresVisit: boolean | null) {
