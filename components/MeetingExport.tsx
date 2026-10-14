@@ -148,7 +148,19 @@ export default function MeetingExport(props: Props) {
   const { records, prefs, refresh, persistRecord } = useMeetingExports(meetingId, userId);
 
   const [flow, setFlow] = useState<Flow>({ kind: 'closed' });
-  const exportDialogRef = useDialogA11y(closeFlow);
+  function closeOverlay() {
+    if (flow.kind === 'missing') {
+      setFlow({ kind: 'review', state: flow.reviewState, source: 'prefs' });
+    } else if (flow.kind !== 'generating') {
+      closeFlow();
+    }
+  }
+  // Each interactive phase owns a distinct focus lifecycle. The generating
+  // phase contains focus but remains intentionally non-dismissible.
+  const missingDialogRef = useDialogA11y<HTMLDivElement>(closeOverlay);
+  const generatingDialogRef = useDialogA11y<HTMLDivElement>(closeOverlay);
+  const readyDialogRef = useDialogA11y<HTMLDivElement>(closeOverlay);
+  const errorDialogRef = useDialogA11y<HTMLDivElement>(closeOverlay);
   const [historyOpen, setHistoryOpen] = useState(false);
   const lastPlanRef = useRef<MeetingExportPlan | null>(null);
 
@@ -438,7 +450,7 @@ export default function MeetingExport(props: Props) {
 
       {flow.kind === 'missing' && (
         <div className="sheet-backdrop">
-          <div ref={exportDialogRef} className="meeting-export-sheet" role="dialog" aria-modal="true" aria-label="Missing media">
+          <div ref={missingDialogRef} className="meeting-export-sheet" role="dialog" aria-modal="true" aria-label="Missing media">
             <div className="capture-sheet-header">
               <div>
                 <div className="capture-sheet-title">Some evidence is missing</div>
@@ -466,8 +478,8 @@ export default function MeetingExport(props: Props) {
 
       {flow.kind === 'generating' && (
         <div className="sheet-backdrop">
-          <div className="meeting-export-sheet" role="status" aria-label="Generating export">
-            <div className="capture-sheet-title">Generating export…</div>
+          <div ref={generatingDialogRef} className="meeting-export-sheet" role="dialog" aria-modal="true" aria-label="Generating export" aria-busy="true">
+            <div className="capture-sheet-title" role="status">Generating export…</div>
             <div className="capture-sheet-hint">Building the record and packaging the original media.</div>
           </div>
         </div>
@@ -475,7 +487,7 @@ export default function MeetingExport(props: Props) {
 
       {flow.kind === 'ready' && (
         <div className="sheet-backdrop">
-          <div ref={exportDialogRef} className="meeting-export-sheet" role="dialog" aria-modal="true" aria-label="Export ready">
+          <div ref={readyDialogRef} className="meeting-export-sheet" role="dialog" aria-modal="true" aria-label="Export ready">
             <div className="capture-sheet-header">
               <div>
                 <div className="capture-sheet-title">Export ready</div>
@@ -506,7 +518,7 @@ export default function MeetingExport(props: Props) {
       {flow.kind === 'error' && (
         <div className="sheet-backdrop">
           <div
-            ref={exportDialogRef}
+            ref={errorDialogRef}
             className="meeting-export-sheet"
             role="alertdialog"
             aria-modal="true"
