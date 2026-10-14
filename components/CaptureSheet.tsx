@@ -1098,6 +1098,37 @@ onClick={(e) => e.stopPropagation()}
             >
               Skip
             </button>
+          </span>
+        </div>
+      )}
+
+    {resolutionNeedsAttention &&
+      !isLiveListIntent &&
+      locationResolution?.state === 'choose' && (
+        <div className="unified-thought-choose">
+          <span className="unified-thought-prompt">Job</span>
+
+          <div className="sheet-inline-options">
+            {locationResolution.candidates.map((c) => (
+              <button
+                type="button"
+                key={c.jobId}
+                className="move-day-option"
+                onClick={() => onConfirmResolution(c)}
+              >
+                {c.matchedField === 'location' && c.locationText
+                  ? `${c.locationText} (${c.jobName})`
+                  : c.jobName}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              className="btn-text"
+              onClick={onDeclineResolution}
+            >
+              Skip
+            </button>
           </div>
         </div>
       )}
