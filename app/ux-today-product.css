@@ -313,8 +313,7 @@
   justify-content: center !important;
 }
 
-.sheet-panel,
-.sheet-panel.capture-sheet,
+.sheet-panel:not(.capture-sheet),
 .task-detail-sheet {
   position: relative !important;
   z-index: 1 !important;
@@ -329,6 +328,27 @@
     0 -12px 40px rgba(var(--shadow-rgb), 0.14),
     0 0 0 1px color-mix(in srgb, #fff 40%, transparent) inset !important;
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Mobile capture is a contained floating composer, not an edge-to-edge drawer. */
+.sheet-overlay:has(> .sheet-panel.capture-sheet) {
+  padding: 0 12px 12px;
+}
+
+.sheet-panel.capture-sheet {
+  max-height: min(84dvh, 760px);
+  border-radius: 20px;
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 360px) {
+  .sheet-overlay:has(> .sheet-panel.capture-sheet) {
+    padding: 0 8px 8px;
+  }
+
+  .sheet-panel.capture-sheet {
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @media (min-width: 900px) {
@@ -348,9 +368,9 @@
 
 .capture-sheet-paper .capture-text-row input[type='text'],
 .capture-sheet input[type='text'] {
-  min-height: 56px !important;
-  padding: 14px 16px !important;
-  font-size: 1.2rem !important;
+  min-height: 52px !important;
+  padding: 12px 14px !important;
+  font-size: 1.05rem !important;
   font-weight: 600 !important;
   letter-spacing: -0.025em !important;
   border-radius: 14px !important;
@@ -370,9 +390,9 @@
 
 .capture-dock-btn,
 .capture-sheet .btn-primary {
-  min-height: 52px !important;
-  border-radius: 14px !important;
-  font-size: 1.05rem !important;
+  min-height: 48px !important;
+  border-radius: 12px !important;
+  font-size: 1rem !important;
   font-weight: 700 !important;
   letter-spacing: -0.01em !important;
   background: var(--steel) !important;
