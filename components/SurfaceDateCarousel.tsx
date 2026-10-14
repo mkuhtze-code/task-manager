@@ -20,6 +20,7 @@ export default function SurfaceDateCarousel({
 }: SurfaceDateCarouselProps) {
   const [ready, setReady] = useState(false);
   const [wheelFocusKey, setWheelFocusKey] = useState<string | null>(null);
+  const [dateWindowAnchor, setDateWindowAnchor] = useState<string | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const settleTimer = useRef<number | null>(null);
   const userGesture = useRef(false);
@@ -37,18 +38,16 @@ export default function SurfaceDateCarousel({
     const nearbyEnd = new Date(todayDate);
     nearbyEnd.setDate(nearbyEnd.getDate() + 10);
 
-    // Keep the familiar today-centered strip unless a direct date jump lands
-    // outside it. Then recenter the same 14-day window around the chosen date.
-    const selected = selectedDate
+    // Keep the nearby window anchored to today unless the user explicitly
+    // jumps to a distant date. Scrolling among dates must not keep shifting
+    // the window underneath the user's finger.
+    const anchor = dateWindowAnchor
       ? (() => {
-          const [year, month, day] = selectedDate.split('-').map(Number);
+          const [year, month, day] = dateWindowAnchor.split('-').map(Number);
           return new Date(year, month - 1, day);
         })()
       : todayDate;
-    const outsideNearbyWindow =
-      selected.getTime() < nearbyStart.getTime() ||
-      selected.getTime() > nearbyEnd.getTime();
-    const base = outsideNearbyWindow ? selected : todayDate;
+    const base = dateWindowAnchor ? anchor : todayDate;
 
     const days = Array.from({ length: 14 }, (_, index) => {
       const date = new Date(base);
@@ -62,7 +61,7 @@ export default function SurfaceDateCarousel({
       };
     });
     return { today: todayKey, dates: days };
-  }, [selectedDate]);
+  }, [dateWindowAnchor]);
 
   const focusKey = wheelFocusKey ?? selectedDate ?? today;
   const focusIndex = dates.findIndex((date) => date.key === focusKey);
@@ -126,10 +125,27 @@ export default function SurfaceDateCarousel({
 
   const chooseDate = useCallback((key: string | null) => {
     userGesture.current = false;
+    if (key === null || key === today) setDateWindowAnchor(null);
     onChange(key);
     setWheelFocusKey(key ?? today);
     vibrate();
   }, [onChange, today, vibrate]);
+
+  const jumpToDate = useCallback((key: string) => {
+    const [year, month, day] = key.split('-').map(Number);
+    const selected = new Date(year, month - 1, day);
+    const now = new Date();
+    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const nearbyStart = new Date(todayDate);
+    nearbyStart.setDate(nearbyStart.getDate() - 3);
+    const nearbyEnd = new Date(todayDate);
+    nearbyEnd.setDate(nearbyEnd.getDate() + 10);
+    const outsideNearbyWindow =
+      selected.getTime() < nearbyStart.getTime() ||
+      selected.getTime() > nearbyEnd.getTime();
+    setDateWindowAnchor(outsideNearbyWindow ? key : null);
+    chooseDate(key);
+  }, [chooseDate]);
 
   if (!ready) {
     return <div className="surface-date-carousel-wrap" aria-hidden="true" style={{ minHeight: 82 }} />;
@@ -145,7 +161,7 @@ export default function SurfaceDateCarousel({
             aria-label="Jump to date"
             value={selectedDate ?? today}
             onChange={(event) => {
-              if (event.currentTarget.value) chooseDate(event.currentTarget.value);
+              if (event.currentTarget.value) jumpToDate(event.currentTarget.value);
             }}
           />
         </label>
