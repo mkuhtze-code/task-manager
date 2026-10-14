@@ -66,7 +66,7 @@ function applyTheme(theme: Theme) {
 
 export default function Preferences() {
   const [session, setSession] = useState<any>(null);
-  const { entitlements } = useEntitlements(session?.user?.id);
+  const { entitlements, loading: entitlementsLoading } = useEntitlements(session?.user?.id);
   const [workStart, setWorkStart] = useState('08:00');
   const [workEnd, setWorkEnd] = useState('16:00');
   const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5]);
@@ -153,6 +153,8 @@ export default function Preferences() {
       setCalendarMessage('That connection link was incomplete or invalid — please try again.');
     } else if (params.get('calendar') === 'not_authed') {
       setCalendarMessage('Please sign in again, then reconnect your calendar.');
+    } else if (params.get('calendar') === 'plan_required') {
+      setCalendarMessage('Calendar integration is available on the Dokkit plan. View your plan to continue.');
     } else if (params.get('calendar') === 'error') {
       setCalendarMessage('Could not connect your calendar. Please try again.');
     }
@@ -803,6 +805,11 @@ export default function Preferences() {
         </div>
 
       {CALENDAR_CONNECT_ENABLED && (
+      entitlementsLoading ? (
+        <div className="settings-panel">
+          <p className="settings-help">Checking calendar access…</p>
+        </div>
+      ) : entitlements.canUseCalendar ? (
       <div className="settings-panel">
         <div className="settings-panel-title">Calendar</div>
         {calendarMessage && <div className="settings-status">{calendarMessage}</div>}
@@ -869,6 +876,14 @@ export default function Preferences() {
           </>
         )}
       </div>
+      ) : (
+        <div className="settings-panel">
+          <p className="prefs-plan-note">
+            Calendar integration is available on the Dokkit plan.{' '}
+            <Link href="/account/billing">View plan</Link>
+          </p>
+        </div>
+      )
       )}
 
         <div className="prefs-section">
