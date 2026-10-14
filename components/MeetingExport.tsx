@@ -148,7 +148,7 @@ export default function MeetingExport(props: Props) {
   const { records, prefs, refresh, persistRecord } = useMeetingExports(meetingId, userId);
 
   const [flow, setFlow] = useState<Flow>({ kind: 'closed' });
-  const exportDialogRef = useDialogA11y(() => setFlow({ kind: 'closed' }));
+  const exportDialogRef = useDialogA11y(closeFlow);
   const [historyOpen, setHistoryOpen] = useState(false);
   const lastPlanRef = useRef<MeetingExportPlan | null>(null);
 
