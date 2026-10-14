@@ -39,6 +39,7 @@ import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
 import { localDateStr } from '@/lib/timeFormat';
 import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
+import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
 
 type EvidenceCounts = Record<string, JobEvidenceSummary>;
 
@@ -70,6 +71,25 @@ export default function JobsHome() {
 
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  useSurfaceReturnState(
+    session?.user?.id ? `dokkit.surface-return.${session.user.id}.jobs.v1` : null,
+    { listFilter, search, selectedDate },
+    (saved) => {
+      if (!saved || typeof saved !== 'object') return;
+      if (saved.listFilter === 'open' || saved.listFilter === 'done' || saved.listFilter === 'all') {
+        setListFilter(saved.listFilter);
+      }
+      if (typeof saved.search === 'string') setSearch(saved.search);
+      if (
+        saved.selectedDate === null ||
+        (typeof saved.selectedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.selectedDate))
+      ) {
+        setSelectedDate(saved.selectedDate);
+      }
+    },
+    !loading,
+  );
 
   const recordEvent = useRecordSurfaceEvent();
   const { isDesktop } = useSurfaceMode();

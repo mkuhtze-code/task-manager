@@ -126,6 +126,7 @@ import {
   flushSyncQueue,
   isOnline,
 } from '@/lib/offline';
+import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
 
 /** Authenticated Today surface — mounted only after authReady && session. */
 
@@ -446,6 +447,26 @@ export function TodayPage() {
   // waits for this: GPS acquisition plus a Directions round-trip must not
   // compete with startup reads or delay first paint of the task list.
   const [todayDataReady, setTodayDataReady] = useState(false);
+
+  useSurfaceReturnState(
+    session?.user?.id ? `dokkit.surface-return.${session.user.id}.today.v1` : null,
+    { openTaskId, expandedId },
+    (saved) => {
+      if (!saved || typeof saved !== 'object') return;
+      const availableTaskIds = new Set(tasks.map((task) => task.id));
+      setOpenTaskId(
+        typeof saved.openTaskId === 'string' && availableTaskIds.has(saved.openTaskId)
+          ? saved.openTaskId
+          : null,
+      );
+      setExpandedId(
+        typeof saved.expandedId === 'string' && availableTaskIds.has(saved.expandedId)
+          ? saved.expandedId
+          : null,
+      );
+    },
+    todayDataReady,
+  );
   // ── Personal Gravity (Scope 3G) ────────────────────────────────
   // Surface events drive the gravity decision — which surface the
   // user naturally gravitates toward. The decision is computed once
