@@ -26,9 +26,10 @@
   transition: border-color 180ms ease-out, background-color 180ms ease-out, opacity 180ms ease-out;
 }
 
-.meeting-row,
-.trip-row-maybach {
-  transition: background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out;
+/* Match the shared object selector and its existing important transition. */
+.meeting-row.surface-object,
+.trip-row-maybach.surface-object {
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out !important;
 }
 
 .meetings-featured,
@@ -58,8 +59,8 @@
   .task-card.fit-protect,
   .task-card.task-overtime,
   .task-card.task-due-today,
-  .meeting-row,
-  .trip-row-maybach,
+  .meeting-row.surface-object,
+  .trip-row-maybach.surface-object,
   .meetings-featured,
   .travel-featured,
   .surface-pulse,
