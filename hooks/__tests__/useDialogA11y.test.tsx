@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { useDialogA11y } from '@/hooks/useDialogA11y';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function DialogFixture({
