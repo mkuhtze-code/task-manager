@@ -70,6 +70,22 @@ export async function listCalendarConnections(provider?: CalendarProvider) {
   return (data ?? []) as CalendarConnectionRow[];
 }
 
+export async function getCalendarConnectionForUser(
+  connectionId: string,
+  userId: string,
+): Promise<CalendarConnectionRow | null> {
+  const { data, error } = await supabaseAdmin
+    .from('calendar_connections')
+    .select(CONNECTION_COLUMNS)
+    .eq('id', connectionId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`Failed to load calendar connection: ${error.message}`);
+  }
+  return (data ?? null) as CalendarConnectionRow | null;
+}
+
 export interface UpsertConnectionInput {
   userId: string;
   provider: CalendarProvider;
