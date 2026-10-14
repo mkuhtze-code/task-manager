@@ -5,6 +5,9 @@ type DialogA11yOptions = {
   trapFocus?: boolean;
 };
 
+/** Only the topmost modal may consume Escape or constrain keyboard focus. */
+const activeDialogStack: HTMLElement[] = [];
+
 export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
   onClose: () => void,
   options: DialogA11yOptions = {},
@@ -16,18 +19,20 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
     setDialog(node);
   }, []);
   const onCloseRef = useRef(onClose);
-  const trapFocusRef = useRef(options.trapFocus ?? true);
+  const trapFocus = options.trapFocus ?? true;
+  const trapFocusRef = useRef(trapFocus);
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
-  trapFocusRef.current = options.trapFocus ?? true;
+  trapFocusRef.current = trapFocus;
 
   useEffect(() => {
     if (!dialog) return;
 
     // Capture the element that had focus when the dialog opened.
     const previousFocus = document.activeElement as HTMLElement | null;
+    if (trapFocus) activeDialogStack.push(dialog);
 
     // Prefer an explicitly designated control. If none is designated, move
     // focus to the modal container without choosing an input on the user's behalf.
@@ -50,6 +55,11 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Only the topmost modal owns keys. A non-modal desktop pane yields to
+      // any active modal, but can still close itself with Escape otherwise.
+      if (trapFocus && activeDialogStack[activeDialogStack.length - 1] !== dialog) return;
+      if (!trapFocus && activeDialogStack.length > 0) return;
+
       if (event.key === 'Escape') {
         event.preventDefault();
         onCloseRef.current();
@@ -110,22 +120,35 @@ export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      if (trapFocus) {
+        const stackIndex = activeDialogStack.lastIndexOf(dialog);
+        if (stackIndex !== -1) activeDialogStack.splice(stackIndex, 1);
+      }
 
-      // Restore focus only when the dialog has actually been removed.
-      // Do not steal focus during normal parent rerenders.
+      // Restore focus to the opener or a still-active parent dialog, but never
+      // steal focus from a different modal that remains on screen.
+      const focusStillBelongsToActiveLayer = () =>
+        !activeDialogStack.length ||
+        (previousFocus !== null &&
+          activeDialogStack.some((activeDialog) => activeDialog.contains(previousFocus)));
+
       if (
         previousFocus &&
         previousFocus !== document.body &&
-        typeof previousFocus.focus === 'function'
+        typeof previousFocus.focus === 'function' &&
+        focusStillBelongsToActiveLayer()
       ) {
         requestAnimationFrame(() => {
-          if (!document.body.contains(dialog)) {
+          if (
+            !document.body.contains(dialog) &&
+            focusStillBelongsToActiveLayer()
+          ) {
             previousFocus.focus();
           }
         });
       }
     };
-  }, [dialog]);
+  }, [dialog, trapFocus]);
 
   return dialogRef;
 }
