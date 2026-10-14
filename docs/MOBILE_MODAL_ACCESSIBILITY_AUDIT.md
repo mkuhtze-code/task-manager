@@ -8,9 +8,9 @@ This pass follows the web-first redesign contract. It closes demonstrated keyboa
 
 ## Existing shared modal behavior
 
-The shared `useDialogA11y` hook manages initial focus, Escape dismissal, Tab/Shift+Tab containment for modal sheets, and focus restoration when the dialog is removed. It supports conditional overlays that open while the owning page remains mounted.
+The shared `useDialogA11y` hook manages initial focus, Escape dismissal, Tab/Shift+Tab containment for modal sheets, and focus restoration when the dialog is removed. It supports conditional overlays that open while the owning page remains mounted. Active modal layers are tracked so only the topmost modal consumes Escape and Tab; closing a child restores focus into the still-open parent. Non-modal desktop task-detail panes are not registered as modal layers.
 
-Regression tests cover focus wrapping, Escape, focus restoration, safe initial focus, conditional open/close, and non-modal task-detail behavior.
+Regression tests cover focus wrapping, Escape, focus restoration, safe initial focus, conditional open/close, nested-modal keyboard ownership, and non-modal task-detail behavior.
 
 ## Modal surfaces covered by this audit
 
@@ -24,11 +24,11 @@ The shared hook is applied to:
 - Meeting export review and its missing-media, generating, ready, and failure phases.
 - Meeting photo lightbox.
 
-The trip-stop editor and trip-stop capture now expose explicit dialog semantics and accessible names. The photo lightbox retains its arrow-key photo navigation and body-scroll lock. Meeting export uses a separate focus lifecycle for each interactive phase so focus moves into the current phase; the Generating state remains non-dismissible and exposes its busy/status announcement.
+The trip-stop editor and trip-stop capture now expose explicit dialog semantics and accessible names. The photo lightbox retains its arrow-key photo navigation and body-scroll lock; arrow-key handling is scoped to the focused lightbox instead of a global listener. Meeting export uses a separate focus lifecycle for each interactive phase so focus moves into the current phase; the Generating state remains non-dismissible and exposes its busy/status announcement.
 
 ## Non-modal popovers
 
-`PillReveal` is a non-modal disclosure/popover used for Connections, Job files, and Meetings. It has an accessible name and explicit trigger relationship, moves focus into the opened panel, returns focus to its trigger on Escape, and does not trap focus. The desktop plan popover is outside this mobile-web slice and must remain non-modal.
+`PillReveal` is a non-modal disclosure/popover used for Connections, Job files, and Meetings. It has an accessible name and explicit trigger relationship, moves focus into the opened panel, returns focus to its trigger on Escape, and does not trap focus. Escape is handled locally so a popover inside a modal closes first without closing the parent modal. The desktop plan popover is outside this mobile-web slice and must remain non-modal.
 
 ## Implementation details
 
@@ -39,7 +39,7 @@ The trip-stop editor and trip-stop capture now expose explicit dialog semantics 
 
 ## Automated validation
 
-The established build/CI chain runs `test:dialog-a11y` and `test:pill-reveal-a11y`. The dialog suite covers Tab/Shift+Tab wraparound, Escape, focus restoration, safe initial focus, conditional mounting, and non-modal task-detail behavior. The popover suite covers its accessible name, trigger relationship, initial focus, Escape focus return, and the absence of a modal focus trap.
+The established build/CI chain runs `test:dialog-a11y` and `test:pill-reveal-a11y`. The dialog suite covers Tab/Shift+Tab wraparound, Escape, focus restoration, safe initial focus, conditional mounting, nested-modal keyboard ownership, and non-modal task-detail behavior. The popover suite covers its accessible name, trigger relationship, initial focus, Escape focus return, the absence of a modal focus trap, and isolation from an enclosing modal.
 
 Both Vercel projects and review checks must pass before merge.
 
