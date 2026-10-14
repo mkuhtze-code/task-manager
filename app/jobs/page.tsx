@@ -83,7 +83,7 @@ export default function JobsHome() {
       if (typeof saved.search === 'string') setSearch(saved.search);
       if (
         saved.selectedDate === null ||
-        (typeof saved.selectedDate === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(saved.selectedDate))
+        (typeof saved.selectedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.selectedDate))
       ) {
         setSelectedDate(saved.selectedDate);
       }
