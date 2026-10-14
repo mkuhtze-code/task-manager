@@ -68,12 +68,13 @@ describe('replacement mobile Today instrument', () => {
   it('reveals fixed commitments only when the timeline is requested', () => {
     renderMobileTodayHeader();
 
-    expect(screen.queryByText('Project review')).toBeNull();
+    const timeline = screen.getByRole('region', { name: 'Day timeline', hidden: true }) as HTMLElement;
+    expect(timeline.hidden).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: /Timeline Show/i }));
 
     expect(screen.getByRole('region', { name: 'Day timeline' })).toBeTruthy();
     expect(screen.getByText('Project review')).toBeTruthy();
-    expect(screen.getByText('10:00')).toBeTruthy();
+    expect(screen.getByText('10a')).toBeTruthy();
   });
 
   it('exposes learned fit on demand and keeps the map action available', () => {
