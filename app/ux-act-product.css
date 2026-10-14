@@ -57,6 +57,12 @@
   background: var(--surface-page);
 }
 
+@media (max-width: 360px) {
+  .task-detail-sheet {
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* Desktop: centre the sheet rather than floor-dock only */
 @media (min-width: 900px) {
   .sheet-backdrop,
