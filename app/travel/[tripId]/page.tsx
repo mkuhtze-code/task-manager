@@ -33,10 +33,10 @@ import {
   TrashIcon,
 } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
-import { useDialogA11y } from '@/hooks/useDialogA11y';
 import ProPlanGate from '@/components/ProPlanGate';
 import type { Job } from '@/lib/jobTypes';
 import {
@@ -240,6 +240,10 @@ function ActivityDetailSheet(props: {
   const [fixedTime, setFixedTime] = useState(a.fixed_time || '');
   const [moveOpen, setMoveOpen] = useState(false);
   const [error, setError] = useState('');
+  const dialogRef = useDialogA11y<HTMLDivElement>(() => {
+    commit();
+    onClose();
+  });
 
   const linkedJob = jobId ? jobs.find((j) => j.id === jobId) : null;
 
@@ -313,7 +317,14 @@ function ActivityDetailSheet(props: {
         onClose();
       }}
     >
-      <div className="capture-sheet task-detail-sheet stop-detail-sheet" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className="capture-sheet task-detail-sheet stop-detail-sheet"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Edit stop: ${a.text}`}
+      >
         <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
           <button
             className="gear-btn"
@@ -607,7 +618,6 @@ export default function TripDayView() {
   const [vaultOpen, setVaultOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [tripToolsOpen, setTripToolsOpen] = useState(false);
-  const tripToolsDialogRef = useDialogA11y(() => setTripToolsOpen(false));
   const [captureMoreOpen, setCaptureMoreOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureText, setCaptureText] = useState('');
@@ -615,6 +625,11 @@ export default function TripDayView() {
   const [captureCoords, setCaptureCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [captureEstimate, setCaptureEstimate] = useState('30m');
   const [error, setError] = useState('');
+  const captureDialogRef = useDialogA11y<HTMLDivElement>(closeCapture, { enabled: captureOpen });
+  const tripToolsDialogRef = useDialogA11y<HTMLDivElement>(
+    () => setTripToolsOpen(false),
+    { enabled: tripToolsOpen },
+  );
 
   const [dragState, setDragState] = useState<DragState | null>(null);
   const rowElsRef = useRef<Record<string, HTMLDivElement | null>>({});
@@ -1699,7 +1714,14 @@ export default function TripDayView() {
 
       {captureOpen && (
         <div className="sheet-backdrop" onClick={closeCapture}>
-          <div className="capture-sheet" onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={captureDialogRef}
+            className="capture-sheet"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add a trip stop"
+          >
             <div className="task-detail-header" style={{ marginBottom: 0 }}>
               <div className="settings-panel-title">Where next?</div>
               <button className="gear-btn" onClick={closeCapture} aria-label="Close">
