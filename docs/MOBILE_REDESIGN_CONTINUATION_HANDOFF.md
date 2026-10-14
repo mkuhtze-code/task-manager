@@ -104,11 +104,6 @@ The source-level focus audit and fixes in PRs #274 and #276 are merged. The rema
 4. Fix proven defects in small PRs; run both Vercel checks and inspect review feedback before merge.
 
 ### Then continue the surfaces
-Prove this end-to-end in the mobile web app, using test automation/source evidence where preview is inaccessible and explicitly marking what still requires live human/device validation:
-Today → multi-item capture → edit item → follow a job/meeting relationship → return to exact previous state → simulate save/sync failure → recover without lost input.
-Also verify date jump/return-to-today and capacity changes. Do not expand to full-surface rewrites until the slice passes.
-
-### Then continue the surfaces
 - Bring Jobs, Meetings, and Travel into the shared object grammar and navigation/return-state model without making them feel like separate apps.
 - Complete the calendar journey's live acceptance.
 - Perform a full WCAG 2.2 AA pass: keyboard, focus, labels/names, contrast, touch targets, reflow/zoom, screen reader, reduced motion, and mobile virtual keyboard.
