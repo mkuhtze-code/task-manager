@@ -68,7 +68,9 @@ export default function TravelHome() {
 
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => registerDesktopPrimaryAction('Plan trip', () => {
+  useEffect(() => {
+    if (!canTravel) return;
+    return registerDesktopPrimaryAction('Plan trip', () => {
     const today = localDateStr(new Date());
     setStartDate((current) => current || today);
     setEndDate((current) => {
@@ -80,7 +82,8 @@ export default function TravelHome() {
     setTripIntent('work');
     setError('');
     setCreateOpen(true);
-  }), []);
+    });
+  }, [canTravel]);
   const createDialogRef = useDialogA11y(() => setCreateOpen(false));
   const [tripIntent, setTripIntent] = useState<'personal' | 'work'>(
     'work'
