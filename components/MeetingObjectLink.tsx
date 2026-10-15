@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { Meeting } from '@/lib/meetingTypes';
 import ContextLine from '@/components/ContextLine';
 
-type MeetingPressure = 'now' | 'soon' | 'done' | 'later';
+type MeetingPressure = 'now' | 'soon' | 'done' | 'later' | 'open';
 
 type MeetingObjectLinkProps = {
   meeting: Meeting;
