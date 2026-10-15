@@ -1,6 +1,6 @@
 # Experience reconstruction — canonical object grammar
 
-**Status:** Task, Jobs overview, Meetings overview, and Travel overview objects implemented; universal visual convergence and live acceptance pending  
+**Status:** Canonical mobile object hierarchy consolidated across Today, Jobs, Meetings, and Travel; live visual/accessibility acceptance pending  
 **Scope:** Responsive web at `/app`. Native Android and desktop adaptation remain deferred until mobile-web acceptance.
 
 ## Purpose
@@ -51,9 +51,18 @@ For the task implementation these are exposed through `data-experience-object="t
 - Mobile-only styling aligns trip summaries with the task, job, and meeting object grammar. Trip classification, stop counts, date filtering, ordering, create flow, travel calculations, and persistence are unchanged.
 - Focused regression tests cover identity, route, state, date/stop glance, duration context, and separation of navigation from deletion. The suite runs in build and CI.
 
+## Universal canonical visual pass
+
+- Shared ownership now lives in `app/experience-objects.css`: object title typography, glance metadata, context typography, focus-visible treatment, and shared responsive rhythm for meeting/trip summary lines.
+- The Jobs, Meetings, and Travel object sheets now own only their composition and domain-specific information. They no longer independently define the same title, glance, context, or focus rules.
+- The four object types share a common type scale and semantic token hooks while retaining their own structure: Today tasks keep completion/fit/detail controls; Jobs keep status and work evidence; Meetings keep time and relationship context; Trips keep date/stop context and a separate delete action.
+- Shared row presentation uses neutral paper/ink/line tokens. State remains readable from text/content and is not dependent on decorative colour bands.
+- This pass does not remove the broader legacy cascade wholesale. It establishes a single source of truth for the replacement experience's canonical object grammar before verified legacy selectors are retired.
+- Validation must include the CSS cascade audit, focused object suites, typecheck, production build, and both Vercel projects. A green build is not visual acceptance.
+
 ## Boundaries
 
-This is not yet a shared component rewrite across all entity types. Do not mechanically apply task-specific markup or state semantics to jobs, meetings, or trips. Their next migrations should implement the same contract using their existing authoritative records and actions.
+The object markup remains type-specific where meaning and actions differ. Keep the shared presentation contract in one stylesheet; do not reintroduce duplicate type/context/focus definitions in surface-specific files. Continue to use each entity's existing authoritative record and actions.
 
 Do not silently cascade changes to related objects. Cross-lens navigation must preserve canonical IDs and originating context, and returning must restore the prior date/filter/search/scroll/open state where supported.
 
