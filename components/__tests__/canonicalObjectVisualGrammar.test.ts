@@ -70,6 +70,22 @@ describe('canonical object visual ownership', () => {
     expect(travel).not.toContain('<SurfaceNav');
   });
 
+  it('recomposes Today as a flexible work stream instead of a dashboard list', () => {
+    const list = readFileSync(join(process.cwd(), 'components', 'today', 'TodayTaskList.tsx'), 'utf8');
+    const rows = readFileSync(join(process.cwd(), 'components', 'today', 'TodayTaskRows.tsx'), 'utf8');
+    const navigationCss = readCss('experience-navigation.css');
+
+    expect(list).toContain('The flexible part of your day');
+    expect(list).toContain('id="experience-work-heading"');
+    expect(list).toContain('className="experience-work-stream"');
+    expect(list).toContain('tasks in play');
+    expect(rows).toContain('className="experience-work-stream__item"');
+    expect(rows).toContain('data-work-state={task.status');
+    expect(navigationCss).toContain('.experience-work-stream__item[data-work-state="active"]');
+    expect(navigationCss).toContain('grid-template-columns: 32px minmax(0, 1fr) auto auto');
+    expect(navigationCss).toContain('@media (max-width: 360px)');
+  });
+
   it('keeps domain-specific composition in the owning object sheet', () => {
     expect(surfaceSheets[0]).toContain('[data-experience-part="evidence"]');
     expect(surfaceSheets[1]).toContain('[data-experience-part="summary"]');

@@ -82,6 +82,8 @@ export function TodayTaskRows({
               />
             )}
             <div
+              className="experience-work-stream__item"
+              data-work-state={task.status === 'active' ? 'active' : task.status === 'done' ? 'complete' : 'open'}
               ref={(element) => { rowElsRef.current[task.id] = element; }}
               style={dragRowStyle(index, task.id)}
             >

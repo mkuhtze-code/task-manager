@@ -43,13 +43,19 @@ export function TodayTaskList({
   return (
     <div className="task-list">
       {!isDesktop ? (
-        <div className="experience-work-list-heading">
-          <div>
-            <h2>Work</h2>
-            <p>Flexible work around your fixed commitments.</p>
+        <header className="experience-work-list-heading">
+          <div className="experience-work-list-heading__identity">
+            <p className="experience-work-list-heading__eyebrow">The flexible part of your day</p>
+            <h2 id="experience-work-heading">Your work</h2>
+            <p className="experience-work-list-heading__description">
+              Work around the commitments that cannot move.
+            </p>
           </div>
-          <span aria-label={`${openCount} open tasks`}>{openCount} open</span>
-        </div>
+          <p className="experience-work-list-heading__measure" aria-label={`${openCount} open tasks`}>
+            <strong>{openCount}</strong>
+            <span>{openCount === 1 ? "task in play" : "tasks in play"}</span>
+          </p>
+        </header>
       ) : null}
       {postStopPrompt && (
         <PostStopPrompt
@@ -60,6 +66,7 @@ export function TodayTaskList({
         />
       )}
 
+      <section className="experience-work-stream" aria-labelledby={isDesktop ? undefined : 'experience-work-heading'} aria-label={isDesktop ? 'Tasks for today' : undefined}>
       {taskLoadError ? (
         <div className="empty-state">
           <div className="empty-state-title">Couldn't load your tasks.</div>
@@ -85,6 +92,7 @@ export function TodayTaskList({
       )}
 
       <TodayTaskRows {...rowProps} />
+      </section>
 
       {scheduledCount > 0 && (
         <div className="scheduled-link-row">
