@@ -64,6 +64,7 @@
     "test:task-object": "NODE_ENV=test vitest run components/__tests__/taskObjectExperience.test.tsx",
     "test:job-object": "NODE_ENV=test vitest run components/__tests__/jobObjectExperience.test.tsx",
     "test:meeting-object": "NODE_ENV=test vitest run components/__tests__/meetingObjectExperience.test.tsx",
+    "test:travel-object": "NODE_ENV=test vitest run components/__tests__/travelObjectExperience.test.tsx",
     "test:dialog-a11y": "NODE_ENV=test vitest run hooks/__tests__/useDialogA11y.test.tsx",
     "test:pill-reveal-a11y": "NODE_ENV=test vitest run components/__tests__/pillRevealA11y.test.tsx",
     "test:calendar-sync-policy": "NODE_ENV=test vitest run lib/calendar/__tests__/syncPolicy.test.ts",
