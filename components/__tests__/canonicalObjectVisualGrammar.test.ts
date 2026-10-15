@@ -39,7 +39,7 @@ describe('canonical object visual ownership', () => {
   it('keeps domain-specific composition in the owning object sheet', () => {
     expect(surfaceSheets[0]).toContain('[data-experience-part="evidence"]');
     expect(surfaceSheets[1]).toContain('[data-experience-part="summary"]');
-    expect(surfaceSheets[2]).toContain('trip-row-delete');
+    expect(surfaceSheets[2]).toContain('flex: 1 1 auto');
     expect(shared).toContain('[data-experience-object="task"] [data-experience-part="detail"]');
   });
 });
