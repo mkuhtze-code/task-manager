@@ -1,6 +1,6 @@
 # Experience reconstruction — canonical object grammar
 
-**Status:** First implementation slice; mobile task object only  
+**Status:** Task object and Jobs overview object implemented; further surfaces and live acceptance pending  
 **Scope:** Responsive web at `/app`. Native Android and desktop adaptation remain deferred until mobile-web acceptance.
 
 ## Purpose
@@ -28,6 +28,13 @@ For the task implementation these are exposed through `data-experience-object="t
 - Leaves task ordering, fit classification, estimates, timer semantics, subtasks, job/location relationships, persistence, and completion logic unchanged.
 - Loads object styles after the replacement mobile frame so ownership is explicit; does not add `!important` overrides or alter desktop styling.
 - Adds a targeted regression test and includes it in build and CI chains.
+
+## Jobs overview slice
+
+- The Jobs overview now marks the existing job link as the canonical job object, with stable identity, open/complete state, client/location context, next-work glance, evidence summary, and empty state landmarks.
+- The existing job ID and `/jobs/{id}` destination remain unchanged. The job's open/complete status continues to derive from its existing task collection; no new persisted job status is introduced.
+- Mobile styling aligns job objects with the task-row grammar without changing desktop composition, job sorting, filtering, evidence aggregation, entitlements, or data fetching.
+- A focused regression suite verifies identity/state/context, next-work glance, canonical route, and complete/empty states. It is included in build and CI.
 
 ## Boundaries
 
