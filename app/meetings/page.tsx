@@ -54,11 +54,6 @@ export default function MeetingsHome() {
     Record<string, number>
   >({});
   const [newMeetingOpen, setNewMeetingOpen] = useState(false);
-
-  useEffect(() => {
-    if (!canMeetings) return;
-    return registerDesktopPrimaryAction('Record meeting', () => setNewMeetingOpen(true));
-  }, [canMeetings]);
   const [saving, setSaving] = useState(false);
   const [listFilter, setListFilter] =
     useState<MeetingsListFilter>('all');
@@ -90,6 +85,11 @@ export default function MeetingsHome() {
   );
 
   const canMeetings = entitlements.canUseMeetings;
+
+  useEffect(() => {
+    if (!canMeetings) return;
+    return registerDesktopPrimaryAction('Record meeting', () => setNewMeetingOpen(true));
+  }, [canMeetings]);
 
   useProRedirect(
     !entLoading && Boolean(session),
