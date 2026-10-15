@@ -55,7 +55,10 @@ export default function MeetingsHome() {
   >({});
   const [newMeetingOpen, setNewMeetingOpen] = useState(false);
 
-  useEffect(() => registerDesktopPrimaryAction('Record meeting', () => setNewMeetingOpen(true)), []);
+  useEffect(() => {
+    if (!canMeetings) return;
+    return registerDesktopPrimaryAction('Record meeting', () => setNewMeetingOpen(true));
+  }, [canMeetings]);
   const [saving, setSaving] = useState(false);
   const [listFilter, setListFilter] =
     useState<MeetingsListFilter>('all');
