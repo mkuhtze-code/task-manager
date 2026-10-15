@@ -63,11 +63,6 @@ export default function JobsHome() {
   const [evidenceByJob, setEvidenceByJob] = useState<EvidenceCounts>({});
 
   const [newJobOpen, setNewJobOpen] = useState(false);
-
-  useEffect(() => {
-    if (!canJobs) return;
-    return registerDesktopPrimaryAction('New job', () => setNewJobOpen(true));
-  }, [canJobs]);
   const [saving, setSaving] = useState(false);
 
   const [listFilter, setListFilter] =
@@ -103,6 +98,11 @@ export default function JobsHome() {
   } = useEntitlements(session?.user?.id);
 
   const canJobs = entitlements.canUseJobs;
+
+  useEffect(() => {
+    if (!canJobs) return;
+    return registerDesktopPrimaryAction('New job', () => setNewJobOpen(true));
+  }, [canJobs]);
 
   useProRedirect(
     !entLoading && Boolean(session),
