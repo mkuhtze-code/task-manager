@@ -53,24 +53,28 @@ export default function DesktopJobCard({
     <Link
       href={`/jobs/${job.id}`}
       className={done ? 'desk-job-card surface-object completed' : 'desk-job-card surface-object'}
+      data-experience-object="job"
+      data-object-state={done ? 'complete' : 'open'}
+      data-job-id={job.id}
     >
-      <div className="desk-job-card-head">
-        <div className="desk-job-card-identity">
-          <span className="desk-job-card-name surface-object-title">{job.name}</span>
+      <div className="desk-job-card-head" data-experience-part="summary">
+        <div className="desk-job-card-identity" data-experience-part="identity">
+          <span className="desk-job-card-name surface-object-title" data-experience-part="title">{job.name}</span>
         </div>
 
         {done ? (
-          <span className="desk-job-card-status done" aria-label="Complete">
+          <span className="desk-job-card-status done" data-experience-part="state" aria-label="Complete">
             <CheckIcon done />
           </span>
         ) : (
-          <span className="desk-job-card-status mono" aria-label={openTasks + ' open tasks'}>{openTasks} open</span>
+          <span className="desk-job-card-status mono" data-experience-part="state" aria-label={openTasks + ' open tasks'}>{openTasks} open</span>
         )}
       </div>
 
       {job.client || todayCount > 0 || job.location_text ? (
         <ContextLine
           className="desk-job-card-context"
+          data-experience-part="context"
           items={[
             ...(job.client ? [{ label: job.client }] : []),
             ...(todayCount > 0
@@ -82,19 +86,19 @@ export default function DesktopJobCard({
       ) : null}
 
       {next && !done ? (
-        <div className="desk-job-card-next mono" title={next}>
+        <div className="desk-job-card-next mono" data-experience-part="glance" title={next}>
           <span className="desk-job-card-section-label">Next</span> {next}
         </div>
       ) : null}
 
       {evidenceSummary ? (
-        <div className="desk-job-card-summary mono" title={evidenceSummary} aria-label={'Evidence and activity: ' + evidenceSummary}>
+        <div className="desk-job-card-summary mono" data-experience-part="evidence" title={evidenceSummary} aria-label={'Evidence and activity: ' + evidenceSummary}>
           {evidenceSummary}
         </div>
       ) : null}
 
       {!evidenceSummary && tasks.length === 0 ? (
-        <div className="desk-job-card-quiet">No work or evidence captured yet.</div>
+        <div className="desk-job-card-quiet" data-experience-part="empty-state">No work or evidence captured yet.</div>
       ) : null}
     </Link>
   );
