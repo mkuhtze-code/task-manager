@@ -1,10 +1,11 @@
-/* Canonical mobile job-object grammar. The job record and its route remain authoritative. */
+/* Canonical mobile job-object composition. Shared typography, metadata,
+   context, focus and row rhythm live in experience-objects.css. */
 @media (max-width: 767px) {
   .experience-mobile-frame [data-experience-object="job"] {
     display: block;
     min-width: 0;
     margin: 0;
-    padding: 12px 0;
+    padding: var(--experience-object-row-pad) 0;
     border: 0;
     border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.1));
     border-radius: 0;
@@ -26,35 +27,15 @@
     min-width: 0;
   }
 
-  .experience-mobile-frame [data-experience-object="job"] [data-experience-part="title"] {
-    overflow-wrap: anywhere;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.4;
-    letter-spacing: -0.01em;
-  }
-
   .experience-mobile-frame [data-experience-object="job"] [data-experience-part="state"] {
     flex: 0 0 auto;
-    font-size: 11px;
+    font-size: var(--experience-object-context-size);
     font-weight: 550;
     font-variant-numeric: tabular-nums;
   }
 
-  .experience-mobile-frame [data-experience-object="job"] .desk-job-card-context {
-    min-width: 0;
-    margin-top: 4px;
-    overflow-wrap: anywhere;
-    font-size: 11px;
-    line-height: 1.4;
-  }
-
   .experience-mobile-frame [data-experience-object="job"] [data-experience-part="glance"] {
-    min-width: 0;
     margin-top: 8px;
-    overflow-wrap: anywhere;
-    font-size: 12px;
-    line-height: 1.4;
   }
 
   .experience-mobile-frame [data-experience-object="job"] [data-experience-part="evidence"],
@@ -62,18 +43,7 @@
     min-width: 0;
     margin-top: 7px;
     overflow-wrap: anywhere;
-    font-size: 11px;
-    line-height: 1.4;
-  }
-
-  .experience-mobile-frame [data-experience-object="job"]:focus-visible {
-    outline: 2px solid var(--steel, #2451d4);
-    outline-offset: 3px;
-  }
-}
-
-@media (max-width: 360px) {
-  .experience-mobile-frame [data-experience-object="job"] [data-experience-part="summary"] {
-    gap: 8px;
+    font-size: var(--experience-object-context-size);
+    line-height: var(--experience-object-context-leading);
   }
 }
