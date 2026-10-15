@@ -285,16 +285,6 @@
     flex: 1 1 auto;
   }
 
-  .experience-work-list-heading__eyebrow {
-    margin: 0 0 8px;
-    color: var(--ink-faint, #777168);
-    font-size: 10px;
-    line-height: 1.25;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
   .experience-mobile-frame .experience-work-list-heading h2 {
     margin: 0;
     color: var(--ink, #1a1814);
@@ -302,14 +292,6 @@
     line-height: 1.06;
     font-weight: 650;
     letter-spacing: -0.055em;
-  }
-
-  .experience-work-list-heading__description {
-    max-width: 250px;
-    margin: 8px 0 0;
-    color: var(--ink-soft, #5c574f);
-    font-size: 12px;
-    line-height: 1.45;
   }
 
   .experience-work-list-heading__measure {
@@ -472,10 +454,6 @@
 }
 
 @media (max-width: 360px) {
-  .experience-work-list-heading__description {
-    max-width: 205px;
-  }
-
   .experience-work-stream__item [data-experience-part="summary"] {
     grid-template-columns: 28px minmax(0, 1fr) auto;
     gap: 6px;
@@ -497,81 +475,8 @@
 }
 
 
-/* Workspace composition: each lens gets its own working premise, not just a renamed list. */
+/* Workspace object rhythm: direct lens headers lead into the work itself. */
 @media (max-width: 767px) {
-  .experience-mobile-frame__workspace .experience-workspace-lede {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    gap: 18px;
-    margin: 12px 0 0;
-    padding: 26px clamp(16px, 4vw, 24px) 24px;
-    border-bottom: 1px solid var(--line-strong, rgba(26, 24, 20, 0.16));
-    background: transparent;
-  }
-
-  .experience-workspace-lede__copy {
-    min-width: 0;
-    max-width: 410px;
-  }
-
-  .experience-workspace-lede__eyebrow {
-    margin: 0 0 10px;
-    color: var(--ink-faint, #777168);
-    font-size: 10px;
-    line-height: 1.25;
-    font-weight: 700;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-  }
-
-  .experience-mobile-frame .experience-workspace-lede h2 {
-    max-width: 340px;
-    margin: 0;
-    color: var(--ink, #1a1814);
-    font-size: clamp(24px, 6.5vw, 30px);
-    line-height: 1.08;
-    font-weight: 620;
-    letter-spacing: -0.05em;
-  }
-
-  .experience-workspace-lede__copy > p:last-child {
-    max-width: 340px;
-    margin: 10px 0 0;
-    color: var(--ink-soft, #5c574f);
-    font-size: 12px;
-    line-height: 1.5;
-  }
-
-  .experience-workspace-lede__measure {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    max-width: 94px;
-    padding-bottom: 2px;
-    color: var(--ink-faint, #777168);
-    font-size: 10px;
-    line-height: 1.3;
-    text-align: right;
-  }
-
-  .experience-workspace-lede__measure strong {
-    color: var(--ink, #1a1814);
-    font-size: 25px;
-    line-height: 1;
-    font-weight: 600;
-    letter-spacing: -0.05em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .experience-workspace-lede--jobs + .empty-state,
-  .experience-workspace-lede--meetings + .empty-state,
-  .experience-workspace-lede--travel + .empty-state {
-    margin: 0 clamp(16px, 4vw, 24px);
-  }
-
   .experience-mobile-frame .job-list {
     margin: 0 clamp(16px, 4vw, 24px);
     border-top: 1px solid var(--line-strong, rgba(26, 24, 20, 0.16));
@@ -740,23 +645,6 @@
 }
 
 @media (max-width: 360px) {
-  .experience-mobile-frame__workspace .experience-workspace-lede {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 14px;
-  }
-
-  .experience-workspace-lede__measure {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 7px;
-    max-width: none;
-    text-align: left;
-  }
-
-  .experience-workspace-lede__measure strong {
-    font-size: 20px;
-  }
-
   .experience-mobile-frame .meeting-section-header,
   .experience-mobile-frame .trip-section-header {
     align-items: flex-start;

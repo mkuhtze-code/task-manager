@@ -70,38 +70,38 @@ describe('canonical object visual ownership', () => {
     expect(travel).not.toContain('<SurfaceNav');
   });
 
-  it('recomposes Today as a flexible work stream instead of a dashboard list', () => {
+  it('keeps Today workspace language direct and task-focused', () => {
     const list = readFileSync(join(process.cwd(), 'components', 'today', 'TodayTaskList.tsx'), 'utf8');
     const rows = readFileSync(join(process.cwd(), 'components', 'today', 'TodayTaskRows.tsx'), 'utf8');
     const navigationCss = readCss('experience-navigation.css');
 
-    expect(list).toContain('The flexible part of your day');
-    expect(list).toContain('id="experience-work-heading"');
+    expect(list).toContain('<h2 id="experience-work-heading">Tasks</h2>');
+    expect(list).not.toContain('The flexible part of your day');
+    expect(list).not.toContain('Your work');
+    expect(list).not.toContain('Work around the commitments that cannot move.');
     expect(list).toContain('className="experience-work-stream"');
-    expect(list).toContain('tasks in play');
+    expect(list).toContain('open tasks');
     expect(rows).toContain('className="experience-work-stream__item"');
     expect(rows).toContain('data-work-state={task.status');
     expect(navigationCss).toContain('.experience-work-stream__item[data-work-state="active"]');
     expect(navigationCss).toContain('grid-template-columns: 32px minmax(0, 1fr) auto auto');
     expect(navigationCss).toContain('@media (max-width: 360px)');
+    expect(navigationCss).not.toContain('experience-work-list-heading__eyebrow');
+    expect(navigationCss).not.toContain('experience-work-list-heading__description');
   });
 
-  it('gives Jobs, Meetings and Travel distinct mobile workspace compositions', () => {
+  it('leads each mobile lens with its actual objects, not explanatory marketing copy', () => {
     const jobs = readFileSync(join(process.cwd(), 'app', 'jobs', 'page.tsx'), 'utf8');
     const meetings = readFileSync(join(process.cwd(), 'app', 'meetings', 'page.tsx'), 'utf8');
     const travel = readFileSync(join(process.cwd(), 'app', 'travel', 'page.tsx'), 'utf8');
     const navigationCss = readCss('experience-navigation.css');
 
-    expect(jobs).toContain('Keep the whole job together.');
+    expect(jobs).not.toContain('Keep the whole job together.');
     expect(jobs).toContain('data-experience-object="job"');
     expect(jobs).toContain('data-experience-part="evidence"');
-    expect(meetings).toContain('Keep the thread, not just the time.');
-    expect(meetings).toContain('surface.openLoopCount');
-    expect(travel).toContain('Make the movement part of the plan.');
-    expect(travel).toContain('surface.active.length + surface.upcoming.length');
-    expect(navigationCss).toContain('.experience-workspace-lede--jobs');
-    expect(navigationCss).toContain('.experience-workspace-lede--meetings');
-    expect(navigationCss).toContain('.experience-workspace-lede--travel');
+    expect(meetings).not.toContain('Keep the thread, not just the time.');
+    expect(travel).not.toContain('Make the movement part of the plan.');
+    expect(navigationCss).not.toContain('experience-workspace-lede');
     expect(navigationCss).toContain('.meeting-section-title');
     expect(navigationCss).toContain('.trip-section-title');
   });
