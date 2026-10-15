@@ -58,3 +58,13 @@ The replacement frame must speak in the product's own nouns, not explain the pro
 - Distinction should come from object hierarchy, content, controls and rhythm—not invented slogans.
 
 This is a presentation/copy correction only. Routes, models, counts used elsewhere, task intelligence, sorting, persistence and existing actions remain unchanged.
+
+
+## Shared filter and list treatment — 2026-10
+
+The next consistency pass addresses a concrete source of the “separate mini-apps” feeling: Today used a bounded, clearly separated work stream while the other lenses had different filter controls and legacy list rules.
+
+- One `ExperienceFilterBar` supplies the mobile segmented control on Jobs, Meetings and Travel. Each lens retains its own meaningful filter choices and counts.
+- Job, meeting and trip lists now use the same outer margins, top rule, separator rhythm and left gutter as Today’s task stream. Live meetings and active trips receive the same quiet active cue as a running task.
+- Legacy row styling is scoped away from the replacement mobile frame rather than overridden with another layer of `!important` declarations.
+- No engine, schema, data access, filtering meaning, date selection, sorting, section grouping, routes or mutation actions change.

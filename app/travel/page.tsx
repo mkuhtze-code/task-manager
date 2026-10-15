@@ -17,6 +17,7 @@ import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
+import { ExperienceFilterBar } from '@/components/ExperienceFilterBar';
 import TripObjectLink from '@/components/TripObjectLink';
 import DesktopTravelHeader, {
   type TravelListFilter,
@@ -489,28 +490,17 @@ export default function TravelHome() {
               </div>
             </Link>
           ) : null}
-          <div className="surface-filters" role="tablist" aria-label="Filters">
-            {(
-              [
-                ['all', 'All', trips.length],
-                ['active', 'Active', surface.active.length],
-                ['upcoming', 'Ahead', surface.upcoming.length],
-                ['past', 'Past', surface.past.length],
-              ] as const
-            ).map(([key, label, count]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={listFilter === key}
-                className={listFilter === key ? 'surface-filter is-active' : 'surface-filter'}
-                onClick={() => setListFilter(key)}
-              >
-                {label}
-                <span className="mono">{count}</span>
-              </button>
-            ))}
-          </div>
+          <ExperienceFilterBar
+            ariaLabel="Travel filters"
+            value={listFilter}
+            onChange={setListFilter}
+            options={[
+              { key: 'all', label: 'All', count: trips.length },
+              { key: 'active', label: 'Active', count: surface.active.length },
+              { key: 'upcoming', label: 'Ahead', count: surface.upcoming.length },
+              { key: 'past', label: 'Past', count: surface.past.length },
+            ]}
+          />
         </div>
       ) : null}
 
