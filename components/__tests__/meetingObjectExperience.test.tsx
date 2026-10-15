@@ -64,6 +64,9 @@ describe('canonical meeting object landmarks', () => {
     expect(object.getAttribute('data-object-state')).toBe('past');
     expect(object.getAttribute('href')).toBe('/meetings/meeting-17');
     expect(object.textContent).toContain('Confirm the handover plan');
-    expect(object.querySelector('[data-experience-part="context"]')).toBeNull();
+    const context = object.querySelector('[data-experience-part="context"]');
+    expect(context).not.toBeNull();
+    expect(context?.textContent).toContain('Devonport site');
+    expect(context?.textContent).not.toContain('Harbour renovation');
   });
 });
