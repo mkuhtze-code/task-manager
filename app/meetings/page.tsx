@@ -500,6 +500,20 @@ export default function MeetingsHome() {
         </div>
       ) : null}
 
+      {!loading && !isDesktop && meetings.length > 0 ? (
+        <section className="experience-workspace-lede experience-workspace-lede--meetings" aria-label="Meetings workspace context">
+          <div className="experience-workspace-lede__copy">
+            <p className="experience-workspace-lede__eyebrow">Conversation → consequence</p>
+            <h2>Keep the thread, not just the time.</h2>
+            <p>What was said, what was decided and what still needs action belongs together.</p>
+          </div>
+          <div className="experience-workspace-lede__measure">
+            <strong>{surface.openLoopCount}</strong>
+            <span>{surface.openLoopCount === 1 ? 'open loop' : 'open loops'}</span>
+          </div>
+        </section>
+      ) : null}
+
       {error ? (
         <button
           type="button"
