@@ -64,7 +64,10 @@ export default function JobsHome() {
 
   const [newJobOpen, setNewJobOpen] = useState(false);
 
-  useEffect(() => registerDesktopPrimaryAction('New job', () => setNewJobOpen(true)), []);
+  useEffect(() => {
+    if (!canJobs) return;
+    return registerDesktopPrimaryAction('New job', () => setNewJobOpen(true));
+  }, [canJobs]);
   const [saving, setSaving] = useState(false);
 
   const [listFilter, setListFilter] =
