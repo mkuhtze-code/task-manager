@@ -12,6 +12,8 @@ import DesktopContextStrip from '@/components/DesktopContextStrip';
 import DesktopProductNav from '@/components/DesktopProductNav';
 import DesktopSidebar from '@/components/DesktopSidebar';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
+import SurfaceNav from '@/components/SurfaceNav';
+import { getDesktopPrimaryAction, requestCaptureOpen, subscribeDesktopPrimaryAction } from '@/lib/captureOpen';
 
 const SURFACE_PATHS = ['/', '/jobs', '/meetings', '/travel'] as const;
 type SwipePoint = { x: number; y: number; ignored: boolean };
@@ -38,6 +40,13 @@ export default function AppChrome({
   const touchStart = useRef<SwipePoint | null>(null);
   const pendingDirection = useRef<'next' | 'previous' | null>(null);
   const [enterDirection, setEnterDirection] = useState<'next' | 'previous' | null>(null);
+  const [primaryAction, setPrimaryAction] = useState(() => getDesktopPrimaryAction());
+
+  useEffect(() => {
+    const refresh = () => setPrimaryAction(getDesktopPrimaryAction());
+    refresh();
+    return subscribeDesktopPrimaryAction(refresh);
+  }, []);
 
   useEffect(() => {
     const direction = pendingDirection.current;
@@ -149,7 +158,7 @@ export default function AppChrome({
         ) : null}
       </div>
 
-      {session?.user?.id && headerProps ? (
+      {session?.user?.id && headerProps && pathname === '/' ? (
         <div className="experience-mobile-frame__day">
           <TodayHeader
             {...headerProps}
@@ -172,6 +181,14 @@ export default function AppChrome({
       >
         {children}
       </main>
+
+      {currentSurfaceIndex(pathname) >= 0 ? (
+        <SurfaceNav
+          active={currentSurfaceIndex(pathname) === 0 ? 'today' : currentSurfaceIndex(pathname) === 1 ? 'jobs' : currentSurfaceIndex(pathname) === 2 ? 'meetings' : 'travel'}
+          onAdd={primaryAction ? requestCaptureOpen : undefined}
+          addLabel={primaryAction?.label ?? 'Add'}
+        />
+      ) : null}
     </div>
   );
 }
