@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
 import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
-import { BackIcon, CloseIcon, TrashIcon } from '@/components/icons';
+import { CloseIcon, TrashIcon } from '@/components/icons';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
@@ -422,9 +422,6 @@ export default function TravelHome() {
       {!isDesktop && (
         <div className="app-header travel-mobile-header">
           <div className="app-header-left">
-            <Link href="/" className="back-link" aria-label="Back to today">
-              <BackIcon />
-            </Link>
             <div className="travel-mobile-identity surface-mobile-identity">
               <SurfaceHeaderIdentity
                 kicker="Place / Motion"
