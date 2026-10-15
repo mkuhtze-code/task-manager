@@ -182,7 +182,7 @@ export default function AppChrome({
         {children}
       </main>
 
-      {currentSurfaceIndex(pathname) >= 0 ? (
+      {session?.user?.id && currentSurfaceIndex(pathname) >= 0 ? (
         <SurfaceNav
           active={currentSurfaceIndex(pathname) === 0 ? 'today' : currentSurfaceIndex(pathname) === 1 ? 'jobs' : currentSurfaceIndex(pathname) === 2 ? 'meetings' : 'travel'}
           onAdd={primaryAction ? requestCaptureOpen : undefined}
