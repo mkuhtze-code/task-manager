@@ -37,6 +37,17 @@ describe('canonical object visual ownership', () => {
     }
   });
 
+  it('keeps legacy surface-system typography and layout rules off canonical frame descendants', () => {
+    expect(legacy).toContain('.surface-object-title:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.surface-object-time:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.task-card-context:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.desk-job-card-context:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.meeting-row-context:not(.experience-mobile-frame *){display:flex!important');
+    expect(legacy).toContain('.trip-row-context:not(.experience-mobile-frame *){display:flex!important');
+    expect(legacy).toContain('.meeting-row-glance:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.desk-job-card-next:not(.experience-mobile-frame *)');
+  });
+
   it('keeps domain-specific composition in the owning object sheet', () => {
     expect(surfaceSheets[0]).toContain('[data-experience-part="evidence"]');
     expect(surfaceSheets[1]).toContain('[data-experience-part="summary"]');
