@@ -114,7 +114,6 @@
 
   .experience-mobile-frame__workspace .jobs-filter-row {
     position: static;
-    padding: 0 0 12px !important;
     border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.1));
     background: transparent;
   }
