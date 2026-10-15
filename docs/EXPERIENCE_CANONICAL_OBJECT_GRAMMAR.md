@@ -82,3 +82,12 @@ Do not silently cascade changes to related objects. Cross-lens navigation must p
 - Validate a real task-to-job relationship and return-state restoration through the live app.
 
 Green CI is necessary but does not constitute visual or WCAG 2.2 AA acceptance.
+
+
+## Unified mobile filter and row grammar — 2026-10
+
+- Jobs, Meetings and Travel now use the same `ExperienceFilterBar` and the same segmented-button treatment. Labels, counts and selected values remain lens-specific; control geometry, active contrast, touch height, horizontal overflow and tab semantics are shared.
+- The Jobs, Meetings and Travel list fields share Today’s outer bounds, strong top rule, quiet row separators and a narrow left gutter. Live meetings and active trips use the same restrained steel cue as a running task; other states remain readable from their existing text and metadata.
+- Legacy `surface-system.css` row/list rules are scoped away from descendants of the replacement mobile frame, so they no longer override the canonical mobile object composition with older `!important` declarations. The legacy presentation remains in place outside that frame.
+- Existing filters, counts, search/date state, sectioning, record order, route IDs, create/delete actions and domain logic remain authoritative. This is a shared presentation and control pass, not a data-model change.
+- Acceptance still requires visual inspection on a phone across narrow widths, dark mode, text scaling, keyboard overlap and reduced motion. Source tests and green builds are not a substitute for that review.

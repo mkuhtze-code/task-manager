@@ -106,6 +106,30 @@ describe('canonical object visual ownership', () => {
     expect(navigationCss).toContain('.trip-section-title');
   });
 
+  it('uses the same segmented filters and bounded row grammar across mobile lenses', () => {
+    const filter = readFileSync(join(process.cwd(), 'components', 'ExperienceFilterBar.tsx'), 'utf8');
+    const jobs = readFileSync(join(process.cwd(), 'app', 'jobs', 'page.tsx'), 'utf8');
+    const meetings = readFileSync(join(process.cwd(), 'app', 'meetings', 'page.tsx'), 'utf8');
+    const travel = readFileSync(join(process.cwd(), 'app', 'travel', 'page.tsx'), 'utf8');
+    const navigationCss = readCss('experience-navigation.css');
+
+    expect(filter).toContain("role=\"tablist\"");
+    expect(filter).toContain("className={value === option.key ? 'segmented-btn active' : 'segmented-btn'}");
+    expect(filter).toContain('aria-selected={value === option.key}');
+    for (const page of [jobs, meetings, travel]) {
+      expect(page).toContain('<ExperienceFilterBar');
+      expect(page).not.toContain('className="surface-filters" role="tablist"');
+    }
+    expect(navigationCss).toContain('.experience-filter-bar .segmented-btn');
+    expect(navigationCss).toContain('.experience-mobile-frame .job-list,');
+    expect(navigationCss).toContain('.experience-mobile-frame .meeting-list,');
+    expect(navigationCss).toContain('.experience-mobile-frame .trip-list-maybach');
+    expect(navigationCss).toContain('border-left: 2px solid transparent');
+    expect(legacy).toContain('.job-row:not(.experience-mobile-frame *){display:block!important');
+    expect(legacy).toContain('.meeting-row.surface-object:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.trip-row-maybach.surface-object:not(.experience-mobile-frame *)');
+  });
+
   it('keeps domain-specific composition in the owning object sheet', () => {
     expect(surfaceSheets[0]).toContain('[data-experience-part="evidence"]');
     expect(surfaceSheets[1]).toContain('[data-experience-part="summary"]');

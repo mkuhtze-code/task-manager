@@ -14,6 +14,7 @@ import type { Job } from '@/lib/jobTypes';
 import { fmtMeetingWindow } from '@/lib/meetingUtils';
 import { localDateStr } from '@/lib/timeFormat';
 import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
+import { ExperienceFilterBar } from '@/components/ExperienceFilterBar';
 import { buildMeetingsSurfaceModel } from '@/lib/meetings/meetingSurface';
 import {
   NewMeetingSheet,
@@ -472,31 +473,16 @@ export default function MeetingsHome() {
               </div>
             </Link>
           ) : null}
-          <div className="surface-filters" role="tablist" aria-label="Filters">
-            {(
-              [
-                ['all', 'All', filterCounts.all],
-                ['upcoming', 'Ahead', filterCounts.upcoming],
-                ['past', 'Past', filterCounts.past],
-              ] as const
-            ).map(([key, label, count]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={listFilter === key}
-                className={
-                  listFilter === key
-                    ? 'surface-filter is-active'
-                    : 'surface-filter'
-                }
-                onClick={() => setListFilter(key)}
-              >
-                {label}
-                <span className="mono">{count}</span>
-              </button>
-            ))}
-          </div>
+          <ExperienceFilterBar
+            ariaLabel="Meeting filters"
+            value={listFilter}
+            onChange={setListFilter}
+            options={[
+              { key: 'all', label: 'All', count: filterCounts.all },
+              { key: 'upcoming', label: 'Ahead', count: filterCounts.upcoming },
+              { key: 'past', label: 'Past', count: filterCounts.past },
+            ]}
+          />
         </div>
       ) : null}
 

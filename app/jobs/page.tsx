@@ -37,6 +37,7 @@ import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
 import { localDateStr } from '@/lib/timeFormat';
 import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
+import { ExperienceFilterBar } from '@/components/ExperienceFilterBar';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 
@@ -565,53 +566,17 @@ export default function JobsHome() {
       )}
 
       {!loading && !isDesktop && sorted.length > 0 && (
-        <div
+        <ExperienceFilterBar
+          ariaLabel="Job filters"
+          value={listFilter}
+          onChange={setListFilter}
           className="jobs-filter-row job-list-filter-sticky"
-          style={{
-            display: 'flex',
-            gap: 8,
-            padding:
-              '8px var(--space-page, 16px) 10px',
-            flexWrap: 'wrap',
-          }}
-        >
-          {[
-            {
-              key: 'open' as const,
-              label: `Open${
-                openCount ? ` · ${openCount}` : ''
-              }`,
-            },
-            {
-              key: 'done' as const,
-              label: `Done${
-                doneCount ? ` · ${doneCount}` : ''
-              }`,
-            },
-            {
-              key: 'all' as const,
-              label: 'All',
-            },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              className={
-                listFilter === key
-                  ? 'segmented-btn active'
-                  : 'segmented-btn'
-              }
-              style={{
-                minHeight: 32,
-                fontSize: 12,
-                padding: '0 12px',
-              }}
-              onClick={() => setListFilter(key)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          options={[
+            { key: 'open', label: 'Open', count: openCount },
+            { key: 'done', label: 'Done', count: doneCount },
+            { key: 'all', label: 'All' },
+          ]}
+        />
       )}
 
       {loading || entLoading ? (
