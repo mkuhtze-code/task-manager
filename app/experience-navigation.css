@@ -495,3 +495,278 @@
     transition: none;
   }
 }
+
+
+/* Workspace composition: each lens gets its own working premise, not just a renamed list. */
+@media (max-width: 767px) {
+  .experience-mobile-frame__workspace .experience-workspace-lede {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 18px;
+    margin: 12px 0 0;
+    padding: 26px clamp(16px, 4vw, 24px) 24px;
+    border-bottom: 1px solid var(--line-strong, rgba(26, 24, 20, 0.16));
+    background: transparent;
+  }
+
+  .experience-workspace-lede__copy {
+    min-width: 0;
+    max-width: 410px;
+  }
+
+  .experience-workspace-lede__eyebrow {
+    margin: 0 0 10px;
+    color: var(--ink-faint, #777168);
+    font-size: 10px;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  .experience-mobile-frame .experience-workspace-lede h2 {
+    max-width: 340px;
+    margin: 0;
+    color: var(--ink, #1a1814);
+    font-size: clamp(24px, 6.5vw, 30px);
+    line-height: 1.08;
+    font-weight: 620;
+    letter-spacing: -0.05em;
+  }
+
+  .experience-workspace-lede__copy > p:last-child {
+    max-width: 340px;
+    margin: 10px 0 0;
+    color: var(--ink-soft, #5c574f);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .experience-workspace-lede__measure {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    max-width: 94px;
+    padding-bottom: 2px;
+    color: var(--ink-faint, #777168);
+    font-size: 10px;
+    line-height: 1.3;
+    text-align: right;
+  }
+
+  .experience-workspace-lede__measure strong {
+    color: var(--ink, #1a1814);
+    font-size: 25px;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .experience-workspace-lede--jobs + .empty-state,
+  .experience-workspace-lede--meetings + .empty-state,
+  .experience-workspace-lede--travel + .empty-state {
+    margin: 0 clamp(16px, 4vw, 24px);
+  }
+
+  .experience-mobile-frame .job-list {
+    margin: 0 clamp(16px, 4vw, 24px);
+    border-top: 1px solid var(--line-strong, rgba(26, 24, 20, 0.16));
+  }
+
+  .experience-mobile-frame .job-list .experience-job-stream__item {
+    display: block;
+    min-width: 0;
+    margin: 0;
+    padding: 17px 0 18px;
+    border: 0;
+    border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.1));
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .experience-mobile-frame .job-list .experience-job-stream__item[data-object-state="complete"] {
+    opacity: 0.68;
+  }
+
+  .experience-mobile-frame .job-list .job-row-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .experience-mobile-frame .job-list .job-row-name {
+    min-width: 0;
+    color: var(--ink, #1a1814);
+    font-size: 16px;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+  }
+
+  .experience-mobile-frame .job-list .job-row-numeral,
+  .experience-mobile-frame .job-list .job-row-done-mark {
+    flex: 0 0 auto;
+    color: var(--ink-faint, #777168);
+    font-size: 11px;
+    font-weight: 550;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .experience-mobile-frame .job-list .job-row-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 10px;
+    margin-top: 8px;
+    color: var(--ink-faint, #777168);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .experience-mobile-frame .job-list .job-row-location {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .experience-mobile-frame .job-list .job-row-next {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line, rgba(26, 24, 20, 0.08));
+    color: var(--ink-soft, #5c574f);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .experience-mobile-frame .job-list .job-row-next .mono {
+    color: var(--ink-faint, #777168);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+  }
+
+  .experience-mobile-frame .meetings-workspace,
+  .experience-mobile-frame .travel-workspace {
+    margin: 0 clamp(16px, 4vw, 24px);
+  }
+
+  .experience-mobile-frame .meeting-section,
+  .experience-mobile-frame .trip-section {
+    margin: 0;
+    padding: 24px 0 0;
+  }
+
+  .experience-mobile-frame .meeting-section-header,
+  .experience-mobile-frame .trip-section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 0 0 12px;
+    border-bottom: 1px solid var(--line-strong, rgba(26, 24, 20, 0.16));
+    background: transparent;
+  }
+
+  .experience-mobile-frame .meeting-section-title,
+  .experience-mobile-frame .trip-section-title {
+    margin: 0;
+    color: var(--ink, #1a1814);
+    font-size: 19px;
+    line-height: 1.2;
+    font-weight: 620;
+    letter-spacing: -0.04em;
+  }
+
+  .experience-mobile-frame .meeting-section-lede,
+  .experience-mobile-frame .trip-section-lede {
+    max-width: 150px;
+    margin: 0;
+    color: var(--ink-faint, #777168);
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: right;
+  }
+
+  .experience-mobile-frame .meeting-list,
+  .experience-mobile-frame .trip-list-maybach {
+    border-top: 0;
+  }
+
+  .experience-mobile-frame .meeting-list [data-experience-object="meeting"],
+  .experience-mobile-frame .trip-list-maybach [data-experience-object="trip"] {
+    padding-top: 17px;
+    padding-bottom: 18px;
+  }
+
+  .experience-mobile-frame .meetings-featured-mobile,
+  .experience-mobile-frame .travel-featured-mobile {
+    margin: 0 clamp(16px, 4vw, 24px) 12px;
+    padding: 12px 0;
+    border: 0;
+    border-top: 1px solid var(--line-strong, rgba(26, 24, 20, 0.16));
+    border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.1));
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .experience-mobile-frame .meetings-featured-mobile .meetings-featured-title,
+  .experience-mobile-frame .travel-featured-mobile .travel-featured-title {
+    font-size: 15px;
+    line-height: 1.35;
+    font-weight: 620;
+    letter-spacing: -0.02em;
+  }
+
+  .experience-mobile-frame .meetings-featured-mobile .meetings-featured-time,
+  .experience-mobile-frame .travel-featured-mobile .travel-featured-time {
+    color: var(--ink-soft, #5c574f);
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 360px) {
+  .experience-mobile-frame__workspace .experience-workspace-lede {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .experience-workspace-lede__measure {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 7px;
+    max-width: none;
+    text-align: left;
+  }
+
+  .experience-workspace-lede__measure strong {
+    font-size: 20px;
+  }
+
+  .experience-mobile-frame .meeting-section-header,
+  .experience-mobile-frame .trip-section-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .experience-mobile-frame .meeting-section-lede,
+  .experience-mobile-frame .trip-section-lede {
+    max-width: none;
+    text-align: left;
+  }
+}
