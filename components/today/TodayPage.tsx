@@ -31,6 +31,7 @@ import MapView from '@/components/MapView';
 import { OnboardingScreen } from '@/components/AuthScreen';
 import type { PostStopPromptState } from '@/components/PostStopPrompt';
 import { useDragReorder } from '@/hooks/useDragReorder';
+import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { registerCaptureOpen } from '@/lib/captureOpen';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useDesktopWorkspaceKeys } from '@/hooks/useDesktopWorkspaceKeys';
@@ -221,6 +222,7 @@ export function TodayPage() {
 
   // Desktop sidebar Dock it → open capture sheet
   useEffect(() => registerCaptureOpen(() => setCaptureOpen(true)), []);
+  const recordEvent = useRecordSurfaceEvent();
   const { isDesktop } = useSurfaceMode();
   const [deskListWidth, setDeskListWidth] = useState(320);
   const deskSplitDragging = useRef(false);
