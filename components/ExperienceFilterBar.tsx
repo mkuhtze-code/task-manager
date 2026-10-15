@@ -35,10 +35,7 @@ export function ExperienceFilterBar<Key extends string>({
           className={value === option.key ? 'segmented-btn active' : 'segmented-btn'}
           onClick={() => onChange(option.key)}
         >
-          {option.label}
-          {option.count !== undefined ? (
-            <span className="experience-filter-bar__count">{option.count}</span>
-          ) : null}
+          {option.label}{option.count !== undefined ? ` · ${option.count}` : ''}
         </button>
       ))}
     </div>

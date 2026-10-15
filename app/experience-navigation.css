@@ -133,33 +133,29 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 auto;
-    gap: 6px;
-    min-height: 36px;
+    flex: 1 1 auto;
+    min-width: max-content;
+    min-height: 32px;
     padding: 0 12px;
-    border: 1px solid var(--line, rgba(26, 24, 20, 0.12));
-    border-radius: 9px;
+    border: 0;
+    border-radius: var(--radius-sm, 8px);
     background: transparent;
     color: var(--ink-soft, #5c574f);
     font: inherit;
     font-size: 12px;
-    font-weight: 560;
-    line-height: 1;
+    font-weight: 600;
+    line-height: 1.2;
     white-space: nowrap;
     cursor: pointer;
+    transition: background 0.2s var(--ease), color 0.2s var(--ease), box-shadow 0.2s var(--ease);
   }
 
   .experience-mobile-frame__workspace .experience-filter-bar .segmented-btn.active {
-    border-color: var(--ink, #1a1814);
-    background: var(--ink, #1a1814);
-    color: var(--paper, #f6f3ed);
+    background: var(--paper-raised, rgba(26, 24, 20, 0.055));
+    color: var(--ink, #1a1814);
+    box-shadow: 0 1px 3px rgba(var(--shadow-rgb, 15, 23, 42), 0.15);
   }
 
-  .experience-mobile-frame__workspace .experience-filter-bar__count {
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    opacity: 0.76;
-  }
 
   .experience-mobile-frame__workspace .meetings-mobile-controls .experience-filter-bar,
   .experience-mobile-frame__workspace .travel-mobile-controls .experience-filter-bar {
