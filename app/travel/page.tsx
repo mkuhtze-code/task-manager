@@ -11,7 +11,6 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
 import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
-import ContextLine from '@/components/ContextLine';
 import { BackIcon, CloseIcon, TrashIcon } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
 import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
@@ -20,6 +19,7 @@ import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
+import TripObjectLink from '@/components/TripObjectLink';
 import DesktopTravelHeader, {
   type TravelListFilter,
 } from '@/components/DesktopTravelHeader';
@@ -370,33 +370,18 @@ export default function TravelHome() {
   function renderRow(tr: TripLike) {
     const row = surface.rows[tr.id];
     const pressure = row?.pressure ?? 'later';
-    const stops = row?.stopCount;
-    const dateRange = fmtDateRange(tr.start_date, tr.end_date);
-    const stateLabel = pressure === 'now' ? 'active' : pressure === 'soon' ? 'upcoming soon' : pressure === 'done' ? 'past' : 'upcoming';
-    const stopGlance = stops != null && stops > 0 ? ' · ' + stops + ' stop' + (stops === 1 ? '' : 's') : '';
 
     return (
       <div key={tr.id} className={'trip-row-maybach surface-object pressure-' + pressure}>
-        <Link
-          href={'/travel/' + tr.id}
-          className="trip-row-link"
-          aria-label={tr.name + ', ' + stateLabel + ', ' + dateRange + stopGlance + (row?.phaseLabel ? ', ' + row.phaseLabel : '')}
-        >
-          <div className="trip-row-main">
-            <div className="trip-row-top">
-              <span className="trip-row-name surface-object-title">{tr.name}</span>
-              <span className="trip-row-glance surface-object-time mono" title={row?.relativeLine || row?.phaseLabel || undefined}>
-                {dateRange}{stopGlance}
-              </span>
-            </div>
-            {row?.dayCount && row.dayCount > 1 ? (
-              <ContextLine
-                className="trip-row-context"
-                items={[{ label: row.dayCount + ' days' }]}
-              />
-            ) : null}
-          </div>
-        </Link>
+        <TripObjectLink
+          trip={tr}
+          pressure={pressure}
+          dateRange={fmtDateRange(tr.start_date, tr.end_date)}
+          stopCount={row?.stopCount ?? null}
+          phaseLabel={row?.phaseLabel ?? null}
+          relativeLine={row?.relativeLine ?? null}
+          dayCount={row?.dayCount ?? null}
+        />
         <button type="button" className="trip-row-delete" onClick={(e) => deleteTrip(tr.id, e)} aria-label={'Delete ' + tr.name}>
           <TrashIcon />
         </button>
