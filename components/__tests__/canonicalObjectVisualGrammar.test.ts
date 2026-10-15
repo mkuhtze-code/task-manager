@@ -7,6 +7,7 @@ const readCss = (file: string) =>
 
 describe('canonical object visual ownership', () => {
   const shared = readCss('experience-objects.css');
+  const legacy = readCss('surface-system.css');
   const surfaceSheets = [
     readCss('experience-job-object.css'),
     readCss('experience-meeting-object.css'),
