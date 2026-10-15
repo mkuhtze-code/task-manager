@@ -31,3 +31,18 @@ No changes are made to deterministic interpretation, task-fit/capacity calculati
 ## Next scope
 
 After this frame is validated, the next implementation should replace the lens workspaces themselves as a coherent working slice—starting with Today’s day instrument and task flow, then reusing the same workspace grammar in Jobs, Meetings, and Travel. Avoid returning to isolated typography-only passes.
+
+
+## Follow-on workspace reconstruction — 2026-10
+
+The next slice moves beyond a shared frame and recomposes the three remaining mobile workspaces around their actual purpose:
+
+- **Jobs — durable work context:** mobile job rows expose canonical job identity/state/glance/evidence landmarks. A distinct workspace lead explains that tasks, places, conversations and evidence remain attached as work spans days. The next task is presented as the next piece of work, not generic card metadata.
+- **Meetings — conversation and consequence:** the workspace lead describes the relationship between what was said, decisions and unresolved actions, with the existing open-loop count. Existing live/upcoming/past sectioning and meeting actions are preserved.
+- **Travel — movement and time:** the workspace lead explains how trips affect when work can happen, with the existing active/upcoming trip count. Existing trip grouping, dates, stops and actions are preserved.
+- **Shared hierarchy, different rhythm:** all three use the same quiet editorial language and measure treatment, while section headers and object rows keep their domain-specific structure. Featured meetings/trips are reduced to a compact lead-in rather than a heavy card.
+- **Small-screen fit:** the workspace lead reflows to a single column at narrow widths; long job names, client/location metadata and next-task text can wrap.
+
+These are mobile web composition changes. They do not alter filters, sort order, trip/meeting/job models, data access, routes, entitlement checks, or creation flows. The canonical object landmarks are now used by the mobile Jobs list as well as the previously instrumented desktop job object.
+
+The added source-level regression test verifies the workspace-specific structure and its CSS ownership. As before, actual phone visual acceptance (including dark mode, text scaling, keyboard overlap, reduced motion and assistive technology) remains a separate required step; passing a build does not establish visual acceptance.

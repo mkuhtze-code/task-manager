@@ -614,6 +614,20 @@ export default function JobsHome() {
         </div>
       )}
 
+      {!loading && !isDesktop && sorted.length > 0 ? (
+        <section className="experience-workspace-lede experience-workspace-lede--jobs" aria-label="Jobs workspace context">
+          <div className="experience-workspace-lede__copy">
+            <p className="experience-workspace-lede__eyebrow">Long-running work</p>
+            <h2>Keep the whole job together.</h2>
+            <p>Tasks, places, conversations and evidence stay attached as work moves across days.</p>
+          </div>
+          <div className="experience-workspace-lede__measure">
+            <strong>{openCount}</strong>
+            <span>{openCount === 1 ? 'open job' : 'open jobs'}</span>
+          </div>
+        </section>
+      ) : null}
+
       {loading || entLoading ? (
         <div className="empty-state">
           Loading…
@@ -697,23 +711,26 @@ export default function JobsHome() {
                 key={job.id}
                 href={'/jobs/' + job.id}
                 aria-label={job.name + ', ' + (done ? 'complete' : openTasks + ' open tasks')}
-                className={done ? 'job-row completed' : 'job-row'}
+                className={done ? 'job-row completed experience-job-stream__item' : 'job-row experience-job-stream__item'}
+                data-experience-object="job"
+                data-object-state={done ? 'complete' : 'open'}
+                data-job-id={job.id}
               >
-                <div className="job-row-top">
-                  <span className="job-row-name">{job.name}</span>
+                <div className="job-row-top" data-experience-part="summary">
+                  <span className="job-row-name" data-experience-part="title">{job.name}</span>
                   {done ? (
-                    <span className="job-row-done-mark" aria-label="Complete">
+                    <span className="job-row-done-mark" data-experience-part="state" aria-label="Complete">
                       <CheckIcon done />
                     </span>
                   ) : (
-                    <span className="job-row-numeral mono" aria-label={openTasks + ' open tasks'}>
+                    <span className="job-row-numeral mono" data-experience-part="state" aria-label={openTasks + ' open tasks'}>
                       {openTasks} open
                     </span>
                   )}
                 </div>
 
                 {(job.client || onToday > 0 || job.location_text) && (
-                  <div className="job-row-meta">
+                  <div className="job-row-meta" data-experience-part="glance">
                     {job.client ? <span>{job.client}</span> : null}
                     {onToday > 0 ? <span>{onToday === 1 ? '1 today' : onToday + ' today'}</span> : null}
                     {job.location_text ? (
@@ -726,8 +743,8 @@ export default function JobsHome() {
                 )}
 
                 {!done && nextTask ? (
-                  <div className="job-row-next" title={nextTask.text}>
-                    <span className="mono">Next</span> {nextTask.text}
+                  <div className="job-row-next" data-experience-part="evidence" title={nextTask.text}>
+                    <span className="mono">NEXT</span> {nextTask.text}
                   </div>
                 ) : null}
               </Link>

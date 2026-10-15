@@ -86,6 +86,26 @@ describe('canonical object visual ownership', () => {
     expect(navigationCss).toContain('@media (max-width: 360px)');
   });
 
+  it('gives Jobs, Meetings and Travel distinct mobile workspace compositions', () => {
+    const jobs = readFileSync(join(process.cwd(), 'app', 'jobs', 'page.tsx'), 'utf8');
+    const meetings = readFileSync(join(process.cwd(), 'app', 'meetings', 'page.tsx'), 'utf8');
+    const travel = readFileSync(join(process.cwd(), 'app', 'travel', 'page.tsx'), 'utf8');
+    const navigationCss = readCss('experience-navigation.css');
+
+    expect(jobs).toContain('Keep the whole job together.');
+    expect(jobs).toContain('data-experience-object="job"');
+    expect(jobs).toContain('data-experience-part="evidence"');
+    expect(meetings).toContain('Keep the thread, not just the time.');
+    expect(meetings).toContain('surface.openLoopCount');
+    expect(travel).toContain('Make the movement part of the plan.');
+    expect(travel).toContain('surface.active.length + surface.upcoming.length');
+    expect(navigationCss).toContain('.experience-workspace-lede--jobs');
+    expect(navigationCss).toContain('.experience-workspace-lede--meetings');
+    expect(navigationCss).toContain('.experience-workspace-lede--travel');
+    expect(navigationCss).toContain('.meeting-section-title');
+    expect(navigationCss).toContain('.trip-section-title');
+  });
+
   it('keeps domain-specific composition in the owning object sheet', () => {
     expect(surfaceSheets[0]).toContain('[data-experience-part="evidence"]');
     expect(surfaceSheets[1]).toContain('[data-experience-part="summary"]');
