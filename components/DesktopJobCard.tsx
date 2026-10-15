@@ -74,7 +74,6 @@ export default function DesktopJobCard({
       {job.client || todayCount > 0 || job.location_text ? (
         <ContextLine
           className="desk-job-card-context"
-          data-experience-part="context"
           items={[
             ...(job.client ? [{ label: job.client }] : []),
             ...(todayCount > 0
