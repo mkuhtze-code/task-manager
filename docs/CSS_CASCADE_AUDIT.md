@@ -178,3 +178,13 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - Reduced `experience-job-object.css`, `experience-meeting-object.css`, and `experience-travel-object.css` to composition and domain-specific details; removed their duplicate typography and focus definitions.
 - Kept the task-specific completion/fit/detail geometry, the job state/evidence, meeting summary composition, and trip wrapper/delete separation distinct.
 - No `!important` declarations added. The canonical pass does not claim legacy CSS debt is resolved or browser acceptance complete.
+
+
+## Legacy object-style source migration — 2026-10
+
+- Scoped legacy `surface-system.css` title, glance, context, and row-rhythm declarations to elements outside `.experience-mobile-frame`. The selectors continue styling existing legacy pages while no longer competing with canonical object landmarks inside the replacement mobile frame.
+- Removed legacy `!important` typography/spacing/display precedence from canonical descendants by excluding them at the original selectors rather than adding another override layer.
+- Restored wrapping for canonical meeting/trip glance content and let the shared context rule own canonical context typography and spacing.
+- Added regression assertions to the existing canonical object visual-ownership test.
+- This is a selector-ownership migration, not a blanket removal of legacy CSS. Existing non-canonical screens retain their prior styling. No data, engine, route, persistence, sorting, or action changes.
+- Source validation must be followed by the canonical test, CSS cascade audit, focused object suites, typecheck, production build, and both Vercel previews. Browser-level mobile acceptance remains required.
