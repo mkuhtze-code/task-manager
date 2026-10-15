@@ -64,26 +64,26 @@ export default function TravelHome() {
   );
   const canTravel = entitlements.canUseTravel;
 
-  useProRedirect(!entLoading && Boolean(session), canTravel, 'travel');
-
-  const [createOpen, setCreateOpen] = useState(false);
-
   useEffect(() => {
     if (!canTravel) return;
     return registerDesktopPrimaryAction('Plan trip', () => {
-    const today = localDateStr(new Date());
-    setStartDate((current) => current || today);
-    setEndDate((current) => {
-      if (current) return current;
-      const end = new Date();
-      end.setDate(end.getDate() + 2);
-      return localDateStr(end);
-    });
-    setTripIntent('work');
-    setError('');
-    setCreateOpen(true);
+      const today = localDateStr(new Date());
+      setStartDate((current) => current || today);
+      setEndDate((current) => {
+        if (current) return current;
+        const end = new Date();
+        end.setDate(end.getDate() + 2);
+        return localDateStr(end);
+      });
+      setTripIntent('work');
+      setError('');
+      setCreateOpen(true);
     });
   }, [canTravel]);
+
+  useProRedirect(!entLoading && Boolean(session), canTravel, 'travel');
+
+  const [createOpen, setCreateOpen] = useState(false);
   const createDialogRef = useDialogA11y(() => setCreateOpen(false));
   const [tripIntent, setTripIntent] = useState<'personal' | 'work'>(
     'work'
