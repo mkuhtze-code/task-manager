@@ -21,7 +21,6 @@ import {
 } from '@/components/MeetingSheets';
 import GearMenu from '@/components/GearMenu';
 import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
-import { BackIcon } from '@/components/icons';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { authedFetch } from '@/lib/authedFetch';
 import { useEntitlements } from '@/hooks/useEntitlements';
@@ -406,9 +405,6 @@ export default function MeetingsHome() {
       {!isDesktop && (
         <div className="app-header meetings-mobile-header">
           <div className="app-header-left">
-            <Link href="/" className="back-link" aria-label="Back to today">
-              <BackIcon />
-            </Link>
             <div className="meetings-mobile-identity surface-mobile-identity">
               <SurfaceHeaderIdentity
                 kicker="People / Time"
