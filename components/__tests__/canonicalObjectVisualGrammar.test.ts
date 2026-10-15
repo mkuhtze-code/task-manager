@@ -7,6 +7,7 @@ const readCss = (file: string) =>
 
 describe('canonical object visual ownership', () => {
   const shared = readCss('experience-objects.css');
+  const legacy = readCss('surface-system.css');
   const surfaceSheets = [
     readCss('experience-job-object.css'),
     readCss('experience-meeting-object.css'),
@@ -34,6 +35,17 @@ describe('canonical object visual ownership', () => {
       expect(css).not.toMatch(/\[data-experience-part="glance"\][\s\S]{0,180}font-size:/);
       expect(css).not.toContain(':focus-visible');
     }
+  });
+
+  it('keeps legacy surface-system typography and layout rules off canonical frame descendants', () => {
+    expect(legacy).toContain('.surface-object-title:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.surface-object-time:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.task-card-context:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.desk-job-card-context:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.meeting-row-context:not(.experience-mobile-frame *){display:flex!important');
+    expect(legacy).toContain('.trip-row-context:not(.experience-mobile-frame *){display:flex!important');
+    expect(legacy).toContain('.meeting-row-glance:not(.experience-mobile-frame *)');
+    expect(legacy).toContain('.desk-job-card-next:not(.experience-mobile-frame *)');
   });
 
   it('keeps domain-specific composition in the owning object sheet', () => {
