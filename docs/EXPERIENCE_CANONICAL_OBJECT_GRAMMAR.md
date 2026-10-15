@@ -1,6 +1,6 @@
 # Experience reconstruction — canonical object grammar
 
-**Status:** Task object and Jobs overview object implemented; further surfaces and live acceptance pending  
+**Status:** Task, Jobs overview, and Meetings overview objects implemented; Travel and live acceptance pending  
 **Scope:** Responsive web at `/app`. Native Android and desktop adaptation remain deferred until mobile-web acceptance.
 
 ## Purpose
@@ -35,6 +35,14 @@ For the task implementation these are exposed through `data-experience-object="t
 - The existing job ID and `/jobs/{id}` destination remain unchanged. The job's open/complete status continues to derive from its existing task collection; no new persisted job status is introduced.
 - Mobile styling aligns job objects with the task-row grammar without changing desktop composition, job sorting, filtering, evidence aggregation, entitlements, or data fetching.
 - A focused regression suite verifies identity/state/context, next-work glance, canonical route, and complete/empty states. It is included in build and CI.
+
+
+## Meetings overview slice
+
+- The existing meeting link is now rendered through a focused canonical meeting object, with stable meeting ID, semantic temporal state, conversation identity, time/action glance, source, and job/location context landmarks.
+- The existing `meetings` row remains authoritative. The `/meetings/{id}` route, Outlook source marker, linked job route, open-action count, date/filter/search behavior, and existing meeting detail flows are preserved.
+- Mobile-only styling aligns the meeting row with the task and job object grammar without changing desktop composition, scheduling, meeting actions, decisions, observations, participants, or persistence.
+- Focused regression tests cover identity, state, time/action glance, source, relationship context, and canonical route. The suite runs in the build and CI chains.
 
 ## Boundaries
 
