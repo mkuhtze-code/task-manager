@@ -22,7 +22,7 @@ import {
 import GearMenu from '@/components/GearMenu';
 import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 import { NewJobSheet } from '@/components/JobSheets';
-import { BackIcon, CheckIcon, MapPinIcon } from '@/components/icons';
+import { CheckIcon, MapPinIcon } from '@/components/icons';
 
 import DesktopJobsHeader, {
   type JobsListFilter,
@@ -510,14 +510,6 @@ export default function JobsHome() {
       {!isDesktop && (
         <div className="app-header">
           <div className="app-header-left">
-            <Link
-              href="/"
-              className="back-link"
-              aria-label="Back to today"
-            >
-              <BackIcon />
-            </Link>
-
             <div className="jobs-mobile-identity surface-mobile-identity">
               <SurfaceHeaderIdentity
                 kicker="Work / Field"
