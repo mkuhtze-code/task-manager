@@ -1,6 +1,6 @@
 # Experience reconstruction — canonical object grammar
 
-**Status:** Task, Jobs overview, and Meetings overview objects implemented; Travel and live acceptance pending  
+**Status:** Task, Jobs overview, Meetings overview, and Travel overview objects implemented; universal visual convergence and live acceptance pending  
 **Scope:** Responsive web at `/app`. Native Android and desktop adaptation remain deferred until mobile-web acceptance.
 
 ## Purpose
@@ -43,6 +43,13 @@ For the task implementation these are exposed through `data-experience-object="t
 - The existing `meetings` row remains authoritative. The `/meetings/{id}` route, Outlook source marker, linked job route, open-action count, date/filter/search behavior, and existing meeting detail flows are preserved.
 - Mobile-only styling aligns the meeting row with the task and job object grammar without changing desktop composition, scheduling, meeting actions, decisions, observations, participants, or persistence.
 - Focused regression tests cover identity, state, time/action glance, source, relationship context, and canonical route. The suite runs in the build and CI chains.
+
+## Travel overview slice
+
+- The existing trip link now exposes the canonical trip identity, semantic movement state, date/stop glance, relative phase, and day-count context.
+- Existing trip IDs and `/travel/{id}` routes remain authoritative. The delete action remains outside the navigation link and continues to use the existing confirmation and mutation path.
+- Mobile-only styling aligns trip summaries with the task, job, and meeting object grammar. Trip classification, stop counts, date filtering, ordering, create flow, travel calculations, and persistence are unchanged.
+- Focused regression tests cover identity, route, state, date/stop glance, duration context, and separation of navigation from deletion. The suite runs in build and CI.
 
 ## Boundaries
 
