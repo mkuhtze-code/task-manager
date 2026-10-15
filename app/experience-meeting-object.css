@@ -1,10 +1,11 @@
-/* Canonical mobile meeting object: conversation and consequence share one identity. */
+/* Canonical mobile meeting-object composition. Shared hierarchy and
+   metadata are owned by experience-objects.css. */
 @media (max-width: 767px) {
   .experience-mobile-frame [data-experience-object="meeting"] {
     display: block;
     min-width: 0;
     margin: 0;
-    padding: 12px 0;
+    padding: var(--experience-object-row-pad) 0;
     border: 0;
     border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.1));
     border-radius: 0;
@@ -19,49 +20,11 @@
     min-width: 0;
   }
 
-  .experience-mobile-frame [data-experience-object="meeting"] .meeting-row-top {
-    display: flex;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 4px 10px;
-    min-width: 0;
-  }
-
-  .experience-mobile-frame [data-experience-object="meeting"] [data-experience-part="title"] {
-    flex: 1 1 150px;
-    min-width: 0;
-    overflow-wrap: anywhere;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.4;
-    letter-spacing: -0.01em;
-  }
-
   .experience-mobile-frame [data-experience-object="meeting"] [data-experience-part="glance"] {
     flex: 0 1 auto;
-    min-width: 0;
-    overflow-wrap: anywhere;
-    font-size: 11px;
-    line-height: 1.45;
-    font-variant-numeric: tabular-nums;
   }
 
   .experience-mobile-frame [data-experience-object="meeting"] [data-experience-part="context"] {
-    min-width: 0;
     margin-top: 5px;
-    overflow-wrap: anywhere;
-    font-size: 11px;
-    line-height: 1.4;
-  }
-
-  .experience-mobile-frame [data-experience-object="meeting"]:focus-visible {
-    outline: 2px solid var(--steel, #2451d4);
-    outline-offset: 3px;
-  }
-}
-
-@media (max-width: 360px) {
-  .experience-mobile-frame [data-experience-object="meeting"] .meeting-row-top {
-    gap: 4px 7px;
   }
 }
