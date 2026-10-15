@@ -153,8 +153,8 @@ export default function SurfaceNav({
   }
 
   return (
-    <nav className="surface-nav surface-nav-tabs" aria-label="Surface navigation">
-      <div className="surface-tabs" role="tablist" aria-orientation="horizontal">
+    <nav className="experience-primary-nav" aria-label="Surface navigation">
+      <div className="experience-primary-nav__tabs" role="tablist" aria-orientation="horizontal">
         {ordered.map(({ key, label, path, pro }) => {
           const isCurrent = key === active;
           const locked = Boolean(pro && !isPro);
@@ -165,20 +165,20 @@ export default function SurfaceNav({
               role="tab"
               className={
                 isCurrent
-                  ? 'surface-tab current'
+                  ? 'experience-primary-nav__tab current'
                   : locked
-                    ? 'surface-tab locked'
-                    : 'surface-tab'
+                    ? 'experience-primary-nav__tab locked'
+                    : 'experience-primary-nav__tab'
               }
               aria-selected={isCurrent}
               aria-current={isCurrent ? 'page' : undefined}
               aria-label={locked ? `${label} (plan)` : label}
               onClick={() => onTab(key, path, pro)}
             >
-              <span className="surface-tab-icon" aria-hidden="true">
+              <span className="experience-primary-nav__icon" aria-hidden="true">
                 <SectionGlyph surface={key} />
               </span>
-              <span className="surface-tab-label">{label}</span>
+              <span className="experience-primary-nav__label">{label}</span>
             </button>
           );
         })}
@@ -187,7 +187,7 @@ export default function SurfaceNav({
       {onAdd && (
         <button
           type="button"
-          className="surface-add"
+          className="experience-primary-nav__add"
           onClick={onAdd}
           aria-label={addLabel ?? 'Add'}
         >
