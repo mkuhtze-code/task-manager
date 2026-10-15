@@ -169,3 +169,12 @@ These are ceilings copied from the current mainline, not acceptable end-state ta
 - The Today header was not modified. It remains the benchmark and keeps its own day/time/timeline structure.
 - This consolidates common identity markup rather than adding another page-header subsystem; no data queries, actions, or sorting behavior changed.
 - Validation still required: full typecheck/build and responsive/light-dark browser review, especially long status text at 320–390px and whether contextual content crowds the shared identity.
+
+
+## Canonical object presentation ownership — 2026-10
+
+- Consolidated the replacement experience's common object title, glance, context and keyboard-focus rules into `app/experience-objects.css`.
+- Centralized the shared title/meta/context type scale and responsive inline gap as scoped custom properties on `.experience-mobile-frame`.
+- Reduced `experience-job-object.css`, `experience-meeting-object.css`, and `experience-travel-object.css` to composition and domain-specific details; removed their duplicate typography and focus definitions.
+- Kept the task-specific completion/fit/detail geometry, the job state/evidence, meeting summary composition, and trip wrapper/delete separation distinct.
+- No `!important` declarations added. The canonical pass does not claim legacy CSS debt is resolved or browser acceptance complete.

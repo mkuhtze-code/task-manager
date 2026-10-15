@@ -161,3 +161,81 @@
     transition-duration: 0.01ms;
   }
 }
+
+
+/* Canonical shared object grammar — common hierarchy is owned here.
+   Surface/object sheets may define layout and domain-specific evidence only. */
+.experience-mobile-frame {
+  --experience-object-title-size: 14px;
+  --experience-object-title-weight: 600;
+  --experience-object-title-leading: 1.4;
+  --experience-object-glance-size: 12px;
+  --experience-object-context-size: 11px;
+  --experience-object-context-leading: 1.4;
+  --experience-object-row-pad: 12px;
+  --experience-object-inline-gap: 10px;
+}
+
+.experience-mobile-frame [data-experience-object="task"] [data-experience-part="title"],
+.experience-mobile-frame [data-experience-object="job"] [data-experience-part="title"],
+.experience-mobile-frame [data-experience-object="meeting"] [data-experience-part="title"],
+.experience-mobile-frame [data-experience-object="trip"] [data-experience-part="title"] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink, #1a1814);
+  font-size: var(--experience-object-title-size);
+  font-weight: var(--experience-object-title-weight);
+  line-height: var(--experience-object-title-leading);
+  letter-spacing: -0.01em;
+}
+
+.experience-mobile-frame [data-experience-object="task"] [data-experience-part="glance"],
+.experience-mobile-frame [data-experience-object="job"] [data-experience-part="glance"],
+.experience-mobile-frame [data-experience-object="meeting"] [data-experience-part="glance"],
+.experience-mobile-frame [data-experience-object="trip"] [data-experience-part="glance"] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--experience-object-glance-size);
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.experience-mobile-frame [data-experience-object="task"] [data-experience-part="context"],
+.experience-mobile-frame [data-experience-object="job"] [data-experience-part="context"],
+.experience-mobile-frame [data-experience-object="job"] .desk-job-card-context,
+.experience-mobile-frame [data-experience-object="meeting"] [data-experience-part="context"],
+.experience-mobile-frame [data-experience-object="trip"] [data-experience-part="context"] {
+  display: block;
+  min-width: 0;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  font-size: var(--experience-object-context-size);
+  line-height: var(--experience-object-context-leading);
+}
+
+.experience-mobile-frame [data-experience-object="meeting"] .meeting-row-top,
+.experience-mobile-frame [data-experience-object="trip"] .trip-row-top {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 4px var(--experience-object-inline-gap);
+  min-width: 0;
+}
+
+.experience-mobile-frame [data-experience-object="task"]:focus-visible,
+.experience-mobile-frame [data-experience-object="job"]:focus-visible,
+.experience-mobile-frame [data-experience-object="meeting"]:focus-visible,
+.experience-mobile-frame [data-experience-object="trip"]:focus-visible {
+  outline: 2px solid var(--steel, #2451d4);
+  outline-offset: 3px;
+}
+
+@media (max-width: 360px) {
+  .experience-mobile-frame {
+    --experience-object-inline-gap: 7px;
+  }
+
+  .experience-mobile-frame [data-experience-object="job"] [data-experience-part="summary"] {
+    gap: 8px;
+  }
+}

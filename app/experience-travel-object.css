@@ -1,11 +1,13 @@
-/* Canonical mobile trip object: movement, time and stops share one identity. */
+/* Canonical mobile trip-object composition. The containing trip row owns
+   its separator because the delete action sits beside this navigation link.
+   Shared hierarchy and metadata live in experience-objects.css. */
 @media (max-width: 767px) {
   .experience-mobile-frame [data-experience-object="trip"] {
     display: block;
     flex: 1 1 auto;
     min-width: 0;
     margin: 0;
-    padding: 12px 0;
+    padding: var(--experience-object-row-pad) 0;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -19,49 +21,7 @@
     min-width: 0;
   }
 
-  .experience-mobile-frame [data-experience-object="trip"] .trip-row-top {
-    display: flex;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 4px 10px;
-    min-width: 0;
-  }
-
-  .experience-mobile-frame [data-experience-object="trip"] [data-experience-part="title"] {
-    flex: 1 1 150px;
-    min-width: 0;
-    overflow-wrap: anywhere;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.4;
-    letter-spacing: -0.01em;
-  }
-
   .experience-mobile-frame [data-experience-object="trip"] [data-experience-part="glance"] {
     flex: 0 1 auto;
-    min-width: 0;
-    overflow-wrap: anywhere;
-    font-size: 11px;
-    line-height: 1.45;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .experience-mobile-frame [data-experience-object="trip"] [data-experience-part="context"] {
-    display: block;
-    min-width: 0;
-    margin-top: 5px;
-    font-size: 11px;
-    line-height: 1.4;
-  }
-
-  .experience-mobile-frame [data-experience-object="trip"]:focus-visible {
-    outline: 2px solid var(--steel, #2451d4);
-    outline-offset: 3px;
-  }
-}
-
-@media (max-width: 360px) {
-  .experience-mobile-frame [data-experience-object="trip"] .trip-row-top {
-    gap: 4px 7px;
   }
 }
