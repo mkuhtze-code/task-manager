@@ -31,7 +31,7 @@ import DesktopMeetingsHeader, {
   type MeetingsListFilter,
 } from '@/components/DesktopMeetingsHeader';
 import { useNow } from '@/hooks/useNow';
-import ContextLine from '@/components/ContextLine';
+import MeetingObjectLink from '@/components/MeetingObjectLink';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
 
 function fmtDur(mins: number): string {
@@ -376,39 +376,18 @@ export default function MeetingsHome() {
 
   function renderRow(m: Meeting) {
     const row = surface.rows[m.id];
-    const job = jobName(m.job_id);
-    const pressure = row?.pressure ?? 'later';
-    const openN = row?.openActionCount ?? 0;
-    const timeWindow = fmtMeetingWindow(m.start_time, m.duration_mins);
-    const stateLabel = pressure === 'now' ? 'live' : pressure === 'soon' ? 'soon' : pressure === 'done' ? 'past' : 'upcoming';
-    const accessibleState = openN > 0 ? ', ' + openN + ' open actions' : row?.hasNotes || row?.hasSummary ? ', captured' : '';
-
     return (
-      <Link
+      <MeetingObjectLink
         key={m.id}
-        href={'/meetings/' + m.id}
-        aria-label={m.text + ', ' + stateLabel + ', ' + timeWindow + accessibleState}
-        className={'meeting-row surface-object pressure-' + pressure}
-      >
-        <div className="meeting-row-main">
-          <div className="meeting-row-top">
-            <span className="meeting-row-name surface-object-title">{m.text}</span>
-            <span className="meeting-row-glance surface-object-time mono" title={row?.relativeLine || undefined}>
-              {timeWindow}{openN > 0 ? ' · ' + openN + ' open' : ''}
-            </span>
-            {m.source === 'outlook' ? <span className="meeting-source-tag" title="Outlook calendar" aria-label="From Outlook">Outlook</span> : null}
-          </div>
-          {job || m.location_text ? (
-            <ContextLine
-              className="meeting-row-context"
-              items={[
-                ...(job ? [{ label: job, href: m.job_id ? '/jobs/' + m.job_id : undefined }] : []),
-                ...(m.location_text ? [{ label: m.location_text }] : []),
-              ]}
-            />
-          ) : null}
-        </div>
-      </Link>
+        meeting={m}
+        jobName={jobName(m.job_id)}
+        pressure={row?.pressure ?? 'later'}
+        openActionCount={row?.openActionCount ?? 0}
+        timeWindow={fmtMeetingWindow(m.start_time, m.duration_mins)}
+        relativeLine={row?.relativeLine}
+        hasNotes={Boolean(row?.hasNotes)}
+        hasSummary={Boolean(row?.hasSummary)}
+      />
     );
   }
 
