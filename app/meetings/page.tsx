@@ -21,7 +21,6 @@ import {
 } from '@/components/MeetingSheets';
 import GearMenu from '@/components/GearMenu';
 import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
-import SurfaceNav from '@/components/SurfaceNav';
 import { BackIcon } from '@/components/icons';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { authedFetch } from '@/lib/authedFetch';
@@ -33,6 +32,7 @@ import DesktopMeetingsHeader, {
 import { useNow } from '@/hooks/useNow';
 import MeetingObjectLink from '@/components/MeetingObjectLink';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
+import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 
 function fmtDur(mins: number): string {
   if (mins <= 0) return '';
@@ -55,6 +55,8 @@ export default function MeetingsHome() {
     Record<string, number>
   >({});
   const [newMeetingOpen, setNewMeetingOpen] = useState(false);
+
+  useEffect(() => registerDesktopPrimaryAction('Record meeting', () => setNewMeetingOpen(true)), []);
   const [saving, setSaving] = useState(false);
   const [listFilter, setListFilter] =
     useState<MeetingsListFilter>('all');
@@ -558,17 +560,7 @@ export default function MeetingsHome() {
         />
       ) : null}
 
-      {!isDesktop ? (
-        <SurfaceNav
-          active="meetings"
-          onAdd={
-            !newMeetingOpen && meetings.length > 0
-              ? () => setNewMeetingOpen(true)
-              : undefined
-          }
-          addLabel="Record"
-        />
-      ) : null}
+
     </div>
   );
 }
