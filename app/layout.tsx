@@ -44,6 +44,7 @@ import './experience-objects.css';
 import './experience-job-object.css';
 import './experience-meeting-object.css';
 import './experience-travel-object.css';
+import './experience-navigation.css';
 import DokkitSplash from '@/components/DokkitSplash';
 import AppChrome from '@/components/AppChrome';
 import AppProviders from '@/components/providers/AppProviders';

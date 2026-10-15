@@ -1,0 +1,267 @@
+/* Replacement mobile navigation: one persistent spine for all four lenses. */
+@media (max-width: 767px) {
+  .experience-mobile-frame__workspace {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+
+  .experience-mobile-frame__workspace > .app-shell {
+    min-height: 100%;
+    padding-top: 0;
+  }
+
+  .experience-mobile-frame__workspace .app-header,
+  .experience-mobile-frame__workspace .meetings-mobile-header,
+  .experience-mobile-frame__workspace .travel-mobile-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin: 0;
+    padding: 22px 2px 18px;
+    border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.1));
+    background: transparent;
+  }
+
+  .experience-mobile-frame__workspace .app-header-left {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: flex-start;
+  }
+
+  .experience-mobile-frame__workspace .app-header-right {
+    flex: 0 0 auto;
+    padding-top: 2px;
+  }
+
+  .experience-mobile-frame__workspace .surface-header-orient {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 9px;
+    min-width: 0;
+  }
+
+  .experience-mobile-frame__workspace .surface-identity {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .experience-mobile-frame__workspace .surface-kicker {
+    color: var(--ink-faint, #777168);
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .experience-mobile-frame__workspace .surface-title {
+    margin: 0;
+    color: var(--ink, #1a1814);
+    font-size: clamp(30px, 8vw, 38px);
+    line-height: 1.04;
+    font-weight: 650;
+    letter-spacing: -0.055em;
+  }
+
+  .experience-mobile-frame__workspace .surface-pulse {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--ink-soft, #5c574f);
+  }
+
+  .experience-mobile-frame__workspace .surface-pulse-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .experience-mobile-frame__workspace .surface-pulse-title {
+    color: var(--ink, #1a1814);
+    font-size: 13px;
+    line-height: 1.35;
+    font-weight: 650;
+  }
+
+  .experience-mobile-frame__workspace .surface-pulse-meta {
+    color: var(--ink-faint, #777168);
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 450;
+  }
+
+  .experience-mobile-frame__workspace .app-header-right button,
+  .experience-mobile-frame__workspace .app-header-right a {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .experience-mobile-frame__workspace .jobs-filter-row,
+  .experience-mobile-frame__workspace .meetings-mobile-controls,
+  .experience-mobile-frame__workspace .travel-mobile-controls {
+    margin-top: 14px;
+  }
+
+  .experience-mobile-frame__workspace .jobs-filter-row {
+    position: static;
+    border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.1));
+    background: transparent;
+  }
+
+  .experience-mobile-frame__workspace .surface-date-carousel {
+    margin-top: 12px;
+  }
+
+  .experience-primary-nav {
+    position: fixed;
+    z-index: 120;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 54px;
+    align-items: center;
+    gap: 8px;
+    min-height: 76px;
+    padding: 8px max(12px, env(safe-area-inset-left, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-right, 0px));
+    border-top: 1px solid var(--line-strong, rgba(26, 24, 20, 0.14));
+    background: var(--paper, #f6f3ed);
+    color: var(--ink, #1a1814);
+    box-shadow: 0 -8px 28px rgba(26, 24, 20, 0.06);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+  }
+
+  .experience-primary-nav__tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .experience-primary-nav__tab {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+    min-height: 52px;
+    padding: 5px 2px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--ink-faint, #777168);
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .experience-primary-nav__tab.current {
+    color: var(--ink, #1a1814);
+    background: var(--paper-raised, rgba(26, 24, 20, 0.055));
+  }
+
+  .experience-primary-nav__tab.current::before {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--steel, #2451d4);
+    content: "";
+    transform: translateX(-50%);
+  }
+
+  .experience-primary-nav__tab.locked {
+    opacity: 0.55;
+  }
+
+  .experience-primary-nav__icon {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+  }
+
+  .experience-primary-nav__icon svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .experience-primary-nav__label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 10px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .experience-primary-nav__add {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    justify-self: end;
+    border: 0;
+    border-radius: 16px;
+    background: var(--ink, #1a1814);
+    color: var(--paper, #f6f3ed);
+    box-shadow: 0 3px 10px rgba(26, 24, 20, 0.16);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .experience-primary-nav__add svg {
+    width: 23px;
+    height: 23px;
+  }
+
+  .experience-primary-nav__tab:focus-visible,
+  .experience-primary-nav__add:focus-visible {
+    outline: 3px solid var(--steel, #2451d4);
+    outline-offset: 3px;
+  }
+
+  .experience-primary-nav__tab:active,
+  .experience-primary-nav__add:active {
+    transform: scale(0.97);
+  }
+
+  .experience-primary-nav__tab,
+  .experience-primary-nav__add {
+    transition: background-color 140ms ease, color 140ms ease, transform 100ms ease;
+  }
+}
+
+@media (min-width: 768px) {
+  .experience-primary-nav {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .experience-primary-nav *,
+  .experience-primary-nav *::before,
+  .experience-primary-nav *::after {
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+  }
+}

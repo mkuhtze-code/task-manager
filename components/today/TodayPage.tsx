@@ -28,7 +28,6 @@ import {
 import { RealityCheckSheet } from '@/components/RealityCheckSheet';
 import { TodayHeaderBridge } from '@/components/today/TodayHeaderState';
 import MapView from '@/components/MapView';
-import SurfaceNav from '@/components/SurfaceNav';
 import { OnboardingScreen } from '@/components/AuthScreen';
 import type { PostStopPromptState } from '@/components/PostStopPrompt';
 import { useDragReorder } from '@/hooks/useDragReorder';
@@ -223,6 +222,7 @@ export function TodayPage() {
 
   // Desktop sidebar Dock it → open capture sheet
   useEffect(() => registerCaptureOpen(() => setCaptureOpen(true)), []);
+  const recordEvent = useRecordSurfaceEvent();
   const { isDesktop } = useSurfaceMode();
   const [deskListWidth, setDeskListWidth] = useState(320);
   const deskSplitDragging = useRef(false);
@@ -435,7 +435,6 @@ export function TodayPage() {
   // Surfaced in the task list when the tasks query itself fails, so a
   // load failure is never mistaken for "Nothing on your plate yet."
   const [taskLoadError, setTaskLoadError] = useState('');
-  const recordEvent = useRecordSurfaceEvent();
   const hasRedirected = useRef(false);
   // Guards Today's data load so it runs once per authenticated user.
   // getSession() and onAuthStateChange's INITIAL_SESSION can both deliver
@@ -2594,13 +2593,7 @@ export function TodayPage() {
         />
       )}
 
-      <SurfaceNav
-        active="today"
-        onNavigate={(s: Surface) => recordEvent(s, true)}
-        onAdd={captureOpen ? undefined : () => setCaptureOpen(true)}
-        addLabel="Dock it"
-        sectionOrder={orderedNavSurfaces(userProfile)}
-      />
+
     </div>
   );
 }

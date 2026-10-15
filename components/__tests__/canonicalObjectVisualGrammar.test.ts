@@ -48,6 +48,28 @@ describe('canonical object visual ownership', () => {
     expect(legacy).toContain('.desk-job-card-next:not(.experience-mobile-frame *)');
   });
 
+  it('uses one global mobile navigation spine instead of per-page tab bars', () => {
+    const frame = readFileSync(join(process.cwd(), 'components', 'AppChrome.tsx'), 'utf8');
+    const nav = readFileSync(join(process.cwd(), 'components', 'SurfaceNav.tsx'), 'utf8');
+    const navigationCss = readCss('experience-navigation.css');
+    const today = readFileSync(join(process.cwd(), 'components', 'today', 'TodayPage.tsx'), 'utf8');
+    const jobs = readFileSync(join(process.cwd(), 'app', 'jobs', 'page.tsx'), 'utf8');
+    const meetings = readFileSync(join(process.cwd(), 'app', 'meetings', 'page.tsx'), 'utf8');
+    const travel = readFileSync(join(process.cwd(), 'app', 'travel', 'page.tsx'), 'utf8');
+
+    expect(frame).toContain('<SurfaceNav');
+    expect(frame).toContain('subscribeDesktopPrimaryAction');
+    expect(frame).toContain("pathname === '/'");
+    expect(nav).toContain('experience-primary-nav__tabs');
+    expect(navigationCss).toContain('position: fixed');
+    expect(navigationCss).toContain('env(safe-area-inset-bottom');
+    expect(navigationCss).toContain('.surface-title');
+    expect(today).not.toContain('<SurfaceNav');
+    expect(jobs).not.toContain('<SurfaceNav');
+    expect(meetings).not.toContain('<SurfaceNav');
+    expect(travel).not.toContain('<SurfaceNav');
+  });
+
   it('keeps domain-specific composition in the owning object sheet', () => {
     expect(surfaceSheets[0]).toContain('[data-experience-part="evidence"]');
     expect(surfaceSheets[1]).toContain('[data-experience-part="summary"]');

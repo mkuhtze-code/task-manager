@@ -22,8 +22,7 @@ import {
 import GearMenu from '@/components/GearMenu';
 import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 import { NewJobSheet } from '@/components/JobSheets';
-import SurfaceNav from '@/components/SurfaceNav';
-import { BackIcon, CheckIcon, MapPinIcon } from '@/components/icons';
+import { CheckIcon, MapPinIcon } from '@/components/icons';
 
 import DesktopJobsHeader, {
   type JobsListFilter,
@@ -33,13 +32,13 @@ import DesktopJobCard, {
   type JobEvidenceSummary,
 } from '@/components/DesktopJobCard';
 
-import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
 import { localDateStr } from '@/lib/timeFormat';
 import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
+import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 
 type EvidenceCounts = Record<string, JobEvidenceSummary>;
 
@@ -91,7 +90,6 @@ export default function JobsHome() {
     !loading,
   );
 
-  const recordEvent = useRecordSurfaceEvent();
   const { isDesktop } = useSurfaceMode();
 
   const {
@@ -100,6 +98,11 @@ export default function JobsHome() {
   } = useEntitlements(session?.user?.id);
 
   const canJobs = entitlements.canUseJobs;
+
+  useEffect(() => {
+    if (!canJobs) return;
+    return registerDesktopPrimaryAction('New job', () => setNewJobOpen(true));
+  }, [canJobs]);
 
   useProRedirect(
     !entLoading && Boolean(session),
@@ -510,14 +513,6 @@ export default function JobsHome() {
       {!isDesktop && (
         <div className="app-header">
           <div className="app-header-left">
-            <Link
-              href="/"
-              className="back-link"
-              aria-label="Back to today"
-            >
-              <BackIcon />
-            </Link>
-
             <div className="jobs-mobile-identity surface-mobile-identity">
               <SurfaceHeaderIdentity
                 kicker="Work / Field"
@@ -749,18 +744,7 @@ export default function JobsHome() {
         />
       )}
 
-      <SurfaceNav
-        active="jobs"
-        onNavigate={(surface) =>
-          recordEvent(surface, true)
-        }
-        onAdd={
-          !newJobOpen && sorted.length > 0
-            ? () => setNewJobOpen(true)
-            : undefined
-        }
-        addLabel="New job"
-      />
+
     </div>
   );
 }

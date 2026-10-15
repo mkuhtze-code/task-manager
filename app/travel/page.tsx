@@ -11,9 +11,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
 import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
-import { BackIcon, CloseIcon, TrashIcon } from '@/components/icons';
-import SurfaceNav from '@/components/SurfaceNav';
-import { useRecordSurfaceEvent } from '@/hooks/useRecordSurfaceEvent';
+import { CloseIcon, TrashIcon } from '@/components/icons';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
@@ -24,6 +22,7 @@ import DesktopTravelHeader, {
   type TravelListFilter,
 } from '@/components/DesktopTravelHeader';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
+import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import {
   buildTravelSurfaceModel,
   fmtDateRange,
@@ -59,12 +58,28 @@ export default function TravelHome() {
   >({});
   const [loading, setLoading] = useState(true);
 
-  const recordEvent = useRecordSurfaceEvent();
   const { isDesktop } = useSurfaceMode();
   const { entitlements, loading: entLoading } = useEntitlements(
     session?.user?.id
   );
   const canTravel = entitlements.canUseTravel;
+
+  useEffect(() => {
+    if (!canTravel) return;
+    return registerDesktopPrimaryAction('Plan trip', () => {
+      const today = localDateStr(new Date());
+      setStartDate((current) => current || today);
+      setEndDate((current) => {
+        if (current) return current;
+        const end = new Date();
+        end.setDate(end.getDate() + 2);
+        return localDateStr(end);
+      });
+      setTripIntent('work');
+      setError('');
+      setCreateOpen(true);
+    });
+  }, [canTravel]);
 
   useProRedirect(!entLoading && Boolean(session), canTravel, 'travel');
 
@@ -410,9 +425,6 @@ export default function TravelHome() {
       {!isDesktop && (
         <div className="app-header travel-mobile-header">
           <div className="app-header-left">
-            <Link href="/" className="back-link" aria-label="Back to today">
-              <BackIcon />
-            </Link>
             <div className="travel-mobile-identity surface-mobile-identity">
               <SurfaceHeaderIdentity
                 kicker="Place / Motion"
@@ -634,11 +646,7 @@ export default function TravelHome() {
         </div>
       )}
 
-      <SurfaceNav
-        active="travel"
-        onAdd={!createOpen && trips.length > 0 ? openCreate : undefined}
-        addLabel="Plan a trip"
-      />
+
     </div>
   );
 }
