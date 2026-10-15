@@ -138,18 +138,19 @@ export default function AppChrome({
   }
 
   return (
-    <>
-      <ActiveTimerBar />
+    <div className="experience-mobile-frame">
+      <div className="experience-mobile-frame__signals" aria-label="Current status">
+        <ActiveTimerBar />
+        {session?.user?.id ? (
+          <>
+            <TravelAwarenessBanner userId={session.user.id} />
+            <OfflineStatusBar userId={session.user.id} />
+          </>
+        ) : null}
+      </div>
 
-      {session?.user?.id && (
-        <>
-          <TravelAwarenessBanner userId={session.user.id} />
-          <OfflineStatusBar userId={session.user.id} />
-        </>
-      )}
-
-      {session?.user?.id && headerProps && (
-        <div className="persistent-today-header-shell">
+      {session?.user?.id && headerProps ? (
+        <div className="experience-mobile-frame__day">
           <TodayHeader
             {...headerProps}
             onRecalcRoute={pathname === '/' ? headerProps.onRecalcRoute : () => router.push('/')}
@@ -158,12 +159,11 @@ export default function AppChrome({
             onDockIt={pathname === '/' ? headerProps.onDockIt : () => router.push('/')}
           />
         </div>
-      )}
+      ) : null}
 
-      <div
+      <main
         id="main-content"
-        role="main"
-        className={enterDirection ? `surface-page-enter-${enterDirection}` : undefined}
+        className={`experience-mobile-frame__workspace${enterDirection ? ` surface-page-enter-${enterDirection}` : ''}`}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onTouchCancel={() => {
@@ -171,7 +171,7 @@ export default function AppChrome({
         }}
       >
         {children}
-      </div>
-    </>
+      </main>
+    </div>
   );
 }

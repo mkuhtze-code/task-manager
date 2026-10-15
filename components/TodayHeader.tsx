@@ -199,6 +199,168 @@ export function TodayHeader(props: {
     return `${startLabel} – ${endLabel}`;
   }
 
+  if (!isDesktop) {
+    return (
+      <header className={`experience-day-header${overloaded ? ' is-over' : ''}`} aria-label="Today at a glance">
+        <div className="experience-day-heading">
+          <div className="experience-day-identity">
+            <p className="experience-day-eyebrow">Today</p>
+            <h1 className="experience-day-title" aria-label={`${weekdayLabel} ${dateOnlyLabel}`}>
+              {weekdayLabel}<span>{dateOnlyLabel}</span>
+            </h1>
+            <p className="experience-day-read">{dayReadWithCommitment}</p>
+          </div>
+          <div className="experience-day-actions">
+            <button
+              type="button"
+              className="experience-icon-action"
+              aria-label="Open map"
+              title="Open map"
+              onClick={onViewMap}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 6.5 5-2 7 2 5-2v13l-5 2-7-2-5 2z" /><path d="M8.5 4.5v13M15.5 6.5v13" /></svg>
+            </button>
+            <button
+              type="button"
+              className="experience-icon-action"
+              aria-label="Today tools"
+              aria-expanded={toolsOpen}
+              onClick={() => setToolsOpen((value) => !value)}
+            >
+              <span className="experience-more-dots" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="experience-icon-action"
+              aria-label={headerCollapsed ? 'Expand day details' : 'Collapse day details'}
+              aria-expanded={!headerCollapsed}
+              onClick={() => setHeaderCollapsed((value) => !value)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d={headerCollapsed ? 'm6 14 6-6 6 6' : 'm6 10 6 6 6-6'} /></svg>
+            </button>
+            <GearMenu userId={userId} />
+          </div>
+        </div>
+
+        <div className="experience-capacity" hidden={headerCollapsed}>
+          <div className="experience-capacity-top">
+            <div className="experience-capacity-remaining">
+              <span>{isWorkDay ? 'Work time remaining' : 'Workday status'}</span>
+              <strong>{isWorkDay ? fmtMins(Math.max(minutesLeftToday, 0)) : 'Outside usual hours'}</strong>
+            </div>
+            {overloaded ? (
+              <p className="experience-capacity-warning">Over by {fmtMins(overBy)}</p>
+            ) : (
+              <p className="experience-capacity-available">{fmtMins(Math.max(usable, 0))} available</p>
+            )}
+          </div>
+          {isWorkDay ? (
+            <div
+              className="experience-capacity-track"
+              role="img"
+              aria-label={`Planned work ${fmtMins(planned)}, fixed commitments ${fmtMins(fixed)}, travel ${fmtMins(travel)}, remaining available time ${fmtMins(Math.max(usable, 0))}`}
+            >
+              <span className="experience-capacity-segment planned" style={{ width: `${plannedPct}%` }} />
+              <span className="experience-capacity-segment fixed" style={{ width: `${fixedPct}%` }} />
+              <span className="experience-capacity-segment travel" style={{ width: `${travelPct}%` }} />
+              <span className="experience-capacity-segment available" style={{ width: `${freePct}%` }} />
+            </div>
+          ) : null}
+          <div className="experience-capacity-legend">
+            <span><i className="planned" />Planned <strong>{planned > 0 ? fmtMins(planned) : '—'}</strong></span>
+            <span><i className="fixed" />Fixed <strong>{fmtMins(fixed)}</strong></span>
+            {travel > 0 ? <span><i className="travel" />Travel <strong>{fmtMins(travel)}</strong></span> : null}
+            <span><i className="available" />Free <strong>{fmtMins(Math.max(usable, 0))}</strong></span>
+          </div>
+          {nextCommitment ? (
+            <p className="experience-next-commitment">
+              <span>Next</span><strong>{nextCommitment.title}</strong><time>{nextCommitment.when}</time>
+            </p>
+          ) : null}
+        </div>
+
+        <div className="experience-day-controls" hidden={headerCollapsed}>
+          <button
+            type="button"
+            className="experience-disclosure"
+            aria-expanded={timelineOpen}
+            aria-controls="experience-day-timeline"
+            onClick={() => setTimelineOpen((value) => !value)}
+          >
+            <span>Timeline</span><span>{timelineOpen ? 'Hide' : 'Show'}</span>
+          </button>
+          <button
+            type="button"
+            className="experience-disclosure"
+            aria-expanded={depthOpen}
+            aria-controls="experience-day-depth"
+            onClick={() => setDepthOpen((value) => !value)}
+          >
+            <span>Patterns and fit</span><span>{depthOpen ? 'Hide' : 'Show'}</span>
+          </button>
+        </div>
+
+        <section id="experience-day-timeline" className="experience-day-detail" aria-label="Day timeline" hidden={!timelineOpen || headerCollapsed}>
+            <div className="experience-timeline-axis"><span>{fmtClock(workStart)}</span><span>Now</span><span>{fmtClock(workEnd)}</span></div>
+            <div className="experience-timeline-track" role="img" aria-label={`Workday from ${fmtClock(workStart)} to ${fmtClock(workEnd)}; current time ${Math.round(clockPct)} percent through`}>
+              <span className="experience-timeline-elapsed" style={{ width: `${clockPct}%` }} />
+              <span className="experience-timeline-plan" style={{ left: `${clockPct}%`, width: `${planPct}%` }} />
+              {timeMarkers.map((marker) => (
+                <span key={marker.id} className={`experience-timeline-event ${marker.kind === 'meeting' ? 'is-meeting' : 'is-calendar'}`} style={{ left: `${marker.left}%`, width: `${marker.width}%` }} />
+              ))}
+              <span className="experience-timeline-now" style={{ left: `${clockPct}%` }} />
+            </div>
+            {timeMarkers.length > 0 ? (
+              <ul className="experience-timeline-commitments">
+                {timeMarkers.map((marker) => (
+                  <li key={marker.id}><time>{marker.time}</time><span>{marker.title}</span><strong>{commitmentWindow(marker)}</strong></li>
+                ))}
+              </ul>
+            ) : <p className="experience-day-detail-empty">No fixed commitments on your timeline.</p>}
+        </section>
+
+        <section id="experience-day-depth" className="experience-day-detail" aria-label="Patterns and fit" hidden={!depthOpen || headerCollapsed}>
+            {patternInsight ? (
+              <div className="experience-pattern-read">
+                <p className="experience-day-eyebrow">Learned from completed work</p>
+                <strong>{patternInsight.deltaMins > Math.max(10, patternInsight.plannedMins * 0.15)
+                  ? `Plans are often short by ${fmtMins(patternInsight.deltaMins)}`
+                  : patternInsight.deltaMins < -Math.max(10, patternInsight.plannedMins * 0.15)
+                    ? `Plans often allow ${fmtMins(Math.abs(patternInsight.deltaMins))} extra`
+                    : 'Your plan is close to your usual pace'}</strong>
+                <p>For {patternInsight.patternLabel}, Dokkit has {patternInsight.sampleCount} measured examples. This task is planned for {fmtMins(patternInsight.plannedMins)}; the learned estimate is {fmtMins(patternInsight.learnedMins)}.</p>
+              </div>
+            ) : (
+              <p className="experience-day-detail-empty">Patterns appear here when Dokkit has enough completed work to make a reliable comparison.</p>
+            )}
+            {depth?.fitsNow.length ? (
+              <div className="experience-fit-list">
+                <p className="experience-day-eyebrow">Could fit in the time left</p>
+                <ul>{depth.fitsNow.slice(0, 3).map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
+              </div>
+            ) : null}
+        </section>
+
+        <section className="experience-day-detail experience-day-tools" aria-label="Today tools" hidden={!toolsOpen || headerCollapsed}>
+            {showRealityCheck && onRealityCheck ? (
+              <button type="button" onClick={() => { onRealityCheck(); setToolsOpen(false); }}>
+                Reality check{realityCheckMessage ? <span>{realityCheckMessage}</span> : null}
+              </button>
+            ) : null}
+            {geoAware ? (
+              <div className="experience-route-tool">
+                <span>{recalculatingRoute ? 'Updating route…' : routeError || (travel > 0 ? `About ${fmtMins(travel)} driving` : hasRoute ? 'Stops ordered by place' : 'No route yet')}</span>
+                <div>
+                  {hasRoute ? <button type="button" onClick={onViewMap}>Map</button> : null}
+                  <button type="button" onClick={onRecalcRoute} disabled={recalculatingRoute}>Refresh route</button>
+                </div>
+              </div>
+            ) : null}
+        </section>
+      </header>
+    );
+  }
+
   return (
     <header
       className={[
