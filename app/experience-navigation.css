@@ -4,6 +4,125 @@
     padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
+
+  .experience-mobile-frame__workspace > .app-shell {
+    min-height: 100%;
+    padding-top: 0;
+  }
+
+  .experience-mobile-frame__workspace .app-header,
+  .experience-mobile-frame__workspace .meetings-mobile-header,
+  .experience-mobile-frame__workspace .travel-mobile-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin: 0;
+    padding: 22px 2px 18px;
+    border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.1));
+    background: transparent;
+  }
+
+  .experience-mobile-frame__workspace .app-header-left {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: flex-start;
+  }
+
+  .experience-mobile-frame__workspace .app-header-right {
+    flex: 0 0 auto;
+    padding-top: 2px;
+  }
+
+  .experience-mobile-frame__workspace .surface-header-orient {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 9px;
+    min-width: 0;
+  }
+
+  .experience-mobile-frame__workspace .surface-identity {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .experience-mobile-frame__workspace .surface-kicker {
+    color: var(--ink-faint, #777168);
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .experience-mobile-frame__workspace .surface-title {
+    margin: 0;
+    color: var(--ink, #1a1814);
+    font-size: clamp(30px, 8vw, 38px);
+    line-height: 1.04;
+    font-weight: 650;
+    letter-spacing: -0.055em;
+  }
+
+  .experience-mobile-frame__workspace .surface-pulse {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--ink-soft, #5c574f);
+  }
+
+  .experience-mobile-frame__workspace .surface-pulse-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .experience-mobile-frame__workspace .surface-pulse-title {
+    color: var(--ink, #1a1814);
+    font-size: 13px;
+    line-height: 1.35;
+    font-weight: 650;
+  }
+
+  .experience-mobile-frame__workspace .surface-pulse-meta {
+    color: var(--ink-faint, #777168);
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 450;
+  }
+
+  .experience-mobile-frame__workspace .app-header-right button,
+  .experience-mobile-frame__workspace .app-header-right a {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .experience-mobile-frame__workspace .jobs-filter-row,
+  .experience-mobile-frame__workspace .meetings-mobile-controls,
+  .experience-mobile-frame__workspace .travel-mobile-controls {
+    margin-top: 14px;
+  }
+
+  .experience-mobile-frame__workspace .jobs-filter-row {
+    position: static;
+    padding: 0 0 12px !important;
+    border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.1));
+    background: transparent;
+  }
+
+  .experience-mobile-frame__workspace .surface-date-carousel {
+    margin-top: 12px;
+  }
+
   .experience-primary-nav {
     position: fixed;
     z-index: 120;
@@ -143,7 +262,7 @@
   .experience-primary-nav *,
   .experience-primary-nav *::before,
   .experience-primary-nav *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
   }
 }
