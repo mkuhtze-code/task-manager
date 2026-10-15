@@ -514,6 +514,20 @@ export default function TravelHome() {
         </div>
       ) : null}
 
+      {!loading && !isDesktop && trips.length > 0 ? (
+        <section className="experience-workspace-lede experience-workspace-lede--travel" aria-label="Travel workspace context">
+          <div className="experience-workspace-lede__copy">
+            <p className="experience-workspace-lede__eyebrow">Place → movement → time</p>
+            <h2>Make the movement part of the plan.</h2>
+            <p>Trips shape when work can happen. Keep the days, stops and travel context in one place.</p>
+          </div>
+          <div className="experience-workspace-lede__measure">
+            <strong>{surface.active.length + surface.upcoming.length}</strong>
+            <span>planned trips</span>
+          </div>
+        </section>
+      ) : null}
+
       {loading ? (
         <div className="empty-state">Loading…</div>
       ) : trips.length === 0 ? (
