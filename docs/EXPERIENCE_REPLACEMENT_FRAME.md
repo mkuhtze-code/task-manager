@@ -46,3 +46,15 @@ The next slice moves beyond a shared frame and recomposes the three remaining mo
 These are mobile web composition changes. They do not alter filters, sort order, trip/meeting/job models, data access, routes, entitlement checks, or creation flows. The canonical object landmarks are now used by the mobile Jobs list as well as the previously instrumented desktop job object.
 
 The added source-level regression test verifies the workspace-specific structure and its CSS ownership. As before, actual phone visual acceptance (including dark mode, text scaling, keyboard overlap, reduced motion and assistive technology) remains a separate required step; passing a build does not establish visual acceptance.
+
+
+## Product-language correction — 2026-10
+
+The replacement frame must speak in the product's own nouns, not explain the product's philosophy to the user.
+
+- Today uses the direct heading **Tasks** under the existing Today/day instrument. Remove “The flexible part of your day”, “Your work”, “task in play”, and explanatory copy about working around commitments.
+- Jobs, Meetings and Travel should lead with their actual records, controls and section structure. Remove promotional/explanatory workspace ledes such as “Keep the whole job together”, “Keep the thread, not just the time”, and “Make the movement part of the plan”.
+- Counts and metadata remain only where they help the user read actual objects or make a decision. Do not add concept labels or narrative blurbs merely to make surfaces feel distinct.
+- Distinction should come from object hierarchy, content, controls and rhythm—not invented slogans.
+
+This is a presentation/copy correction only. Routes, models, counts used elsewhere, task intelligence, sorting, persistence and existing actions remain unchanged.

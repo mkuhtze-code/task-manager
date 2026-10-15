@@ -614,20 +614,6 @@ export default function JobsHome() {
         </div>
       )}
 
-      {!loading && !isDesktop && sorted.length > 0 ? (
-        <section className="experience-workspace-lede experience-workspace-lede--jobs" aria-label="Jobs workspace context">
-          <div className="experience-workspace-lede__copy">
-            <p className="experience-workspace-lede__eyebrow">Long-running work</p>
-            <h2>Keep the whole job together.</h2>
-            <p>Tasks, places, conversations and evidence stay attached as work moves across days.</p>
-          </div>
-          <div className="experience-workspace-lede__measure">
-            <strong>{openCount}</strong>
-            <span>{openCount === 1 ? 'open job' : 'open jobs'}</span>
-          </div>
-        </section>
-      ) : null}
-
       {loading || entLoading ? (
         <div className="empty-state">
           Loading…

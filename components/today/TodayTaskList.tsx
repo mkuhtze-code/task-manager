@@ -45,15 +45,11 @@ export function TodayTaskList({
       {!isDesktop ? (
         <header className="experience-work-list-heading">
           <div className="experience-work-list-heading__identity">
-            <p className="experience-work-list-heading__eyebrow">The flexible part of your day</p>
-            <h2 id="experience-work-heading">Your work</h2>
-            <p className="experience-work-list-heading__description">
-              Work around the commitments that cannot move.
-            </p>
+            <h2 id="experience-work-heading">Tasks</h2>
           </div>
           <p className="experience-work-list-heading__measure" aria-label={`${openCount} open tasks`}>
             <strong>{openCount}</strong>
-            <span>{openCount === 1 ? "task in play" : "tasks in play"}</span>
+            <span>{openCount === 1 ? "open task" : "open tasks"}</span>
           </p>
         </header>
       ) : null}
