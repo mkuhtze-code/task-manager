@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { cleanup, render } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { TripLike } from '@/lib/travel/travelSurface';
 import TripObjectLink from '@/components/TripObjectLink';
 
