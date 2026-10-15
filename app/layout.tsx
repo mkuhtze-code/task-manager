@@ -40,6 +40,7 @@ import './ux-trip-design-parity.css';
 import './phase-d-motion.css';
 import './phase-f-wayfinding.css';
 import './experience-frame.css';
+import './experience-objects.css';
 import DokkitSplash from '@/components/DokkitSplash';
 import AppChrome from '@/components/AppChrome';
 import AppProviders from '@/components/providers/AppProviders';

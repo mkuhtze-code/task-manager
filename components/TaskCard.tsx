@@ -166,9 +166,12 @@ export function TaskCard(props: {
   return (
     <div
       className={rowClass}
+      data-experience-object="task"
+      data-object-state={running ? 'active' : t.status}
+      data-expanded={expanded ? 'true' : 'false'}
       title={!expanded && fitLabel ? fitLabel : undefined}
     >
-      <div className="task-main">
+      <div className="task-main" data-experience-part="summary">
         <button
           type="button"
           className="check-btn"
@@ -182,6 +185,7 @@ export function TaskCard(props: {
 
         <div
           className="task-body"
+          data-experience-part="identity"
           onClick={onToggleExpand}
           role="button"
           tabIndex={0}
@@ -199,7 +203,7 @@ export function TaskCard(props: {
           aria-expanded={expanded}
           aria-label={[t.text, expanded ? 'collapse' : 'expand', running ? 'Timer running' : null, overCap ? 'Over estimate' : null, fitLabel ? `Fit: ${fitLabel}` : null].filter(Boolean).join('. ')}
         >
-          <div className="task-text">{t.text}</div>
+          <div className="task-text" data-experience-part="title">{t.text}</div>
           {t.intended_time ? (
             <div
               className="task-card-intended-time"
@@ -229,6 +233,7 @@ export function TaskCard(props: {
 
         <div
           className="task-card-glance"
+          data-experience-part="glance"
           onClick={onToggleExpand}
           role="presentation"
         >
@@ -296,7 +301,7 @@ export function TaskCard(props: {
       ) : null}
 
       {expanded ? (
-        <div className="task-reveal">
+        <div className="task-reveal" data-experience-part="detail">
           {timed ? (
             <div className="reveal-time">
               <div className="reveal-time-track" aria-hidden>
@@ -429,7 +434,7 @@ export function TaskCard(props: {
             </div>
           ) : null}
 
-          <div className="reveal-actions">
+          <div className="reveal-actions" data-experience-part="actions">
             {timed ? (
               <button
                 type="button"
