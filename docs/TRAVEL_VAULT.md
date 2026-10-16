@@ -10,6 +10,15 @@
 6. **Engine travel context** — same speech/ANSWER capacity as jobs, scoped to the active trip day.
 7. **Auto flight → itinerary** — vault flights create a `activity_type: flight` stop on a matched trip day.
 
+## Trip-day temporal contract (T0)
+
+- `resolveDayAnchor` in `lib/travel/travelContext.ts` is the single source of truth for a day's usable window.
+- A local landing time starts usable time **45 minutes later** by default. The buffer is clamped to 0–180 minutes.
+- If there is no landing time, use `day_start`, then 08:00. The end uses departure time, then `day_end`, then 20:00.
+- Capacity, engine context, and fixed-time conflict checks use this same effective window. Arrival/departure clocks remain local wall-clock values.
+- The trip-day header shows landing/departure, effective opening/closing, usable minutes, and editable arrival/departure clocks.
+- Saving a flight with “Shape this day from flight times” updates the first-day arrival or last-day departure anchor. It defaults on for first/last trip days and off for middle days. Re-saving a matching flight updates its itinerary activity and vault record instead of adding duplicates. Deleting a flight that set a day anchor asks whether to clear that anchor or keep it as a manual time.
+
 ## Engine travel context
 
 - `lib/travel/travelContext.ts` — day window + remaining mins from stops/drives

@@ -66,6 +66,7 @@ export default function TravelVaultSheet({
   const [saving, setSaving] = useState(false);
   /** Default on for flights — put a stop on the itinerary */
   const [addToItinerary, setAddToItinerary] = useState(true);
+  const [shapeDay, setShapeDay] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const dialogRef = useDialogA11y(onClose);
   const [file, setFile] = useState<File | null>(null);
@@ -104,7 +105,11 @@ export default function TravelVaultSheet({
     setBody(parsed.body || paste);
     if (parsed.reference_code) setReference(parsed.reference_code);
     if (parsed.carrier) setCarrier(parsed.carrier);
-    if (parsed.doc_type === 'flight') setAddToItinerary(true);
+    if (parsed.doc_type === 'flight') {
+      setAddToItinerary(true);
+      const parsedDate = parsed.schedule?.dateYmd || tripDays[0]?.date || '';
+      setShapeDay(Boolean(parsedDate && (parsedDate === tripDays[0]?.date || parsedDate === tripDays[tripDays.length - 1]?.date)));
+    }
     const sched = extractFlightSchedule(paste, {
       tripDays,
       todayYmd: new Date().toISOString().slice(0, 10),
@@ -123,6 +128,7 @@ export default function TravelVaultSheet({
     setCarrier('');
     setDocType('note');
     setAddToItinerary(true);
+    setShapeDay(false);
     setFile(null);
     setEventDate('');
     setStartTime('');
@@ -177,9 +183,10 @@ export default function TravelVaultSheet({
     let tripDayId: string | null = null;
     let matchedDay: TripDayRef | null = null;
 
-    if (docType === 'flight' && addToItinerary && tripDays.length > 0) {
+    if (docType === 'flight' && (addToItinerary || shapeDay) && tripDays.length > 0) {
       matchedDay = matchTripDayForFlight(tripDays, formDate);
-      if (matchedDay) {
+      if (matchedDay) tripDayId = matchedDay.id;
+      if (matchedDay && addToItinerary) {
         const draft = buildFlightActivityDraft(
           t,
           schedule ?? {
@@ -199,38 +206,38 @@ export default function TravelVaultSheet({
 
         const { data: existingActs } = await supabase
           .from('activities')
-          .select('order_index')
+          .select('id,text,fixed_time,order_index')
           .eq('trip_day_id', matchedDay.id)
-          .order('order_index', { ascending: false })
-          .limit(1);
-        const maxOrder =
-          existingActs && existingActs.length > 0
-            ? (existingActs[0] as { order_index: number }).order_index
-            : 0;
-
-        const { data: actRow, error: actErr } = await supabase
-          .from('activities')
-          .insert({
-            user_id: userId,
-            trip_day_id: matchedDay.id,
-            text: draft.text,
-            activity_type: draft.activity_type,
-            estimate_mins: draft.estimate_mins,
-            drive_mins_to_next: draft.drive_mins_to_next,
-            location_text: draft.location_text,
-            order_index: maxOrder + 1,
-            time_type: formStart ? 'fixed' : draft.time_type,
-            fixed_time: formStart || draft.fixed_time,
-            stop_kind: draft.stop_kind,
-            presence: formStart ? 'fixed' : draft.presence,
-            status: draft.status,
-          })
-          .select('id')
-          .single();
-
-        if (actErr) {
+          .eq('activity_type', 'flight')
+          .order('order_index', { ascending: true });
+        const existingFlight = (existingActs || []).find((row: { id: string; text: string; fixed_time: string | null }) => {
+          if (schedule?.flightNumber) return row.text.toUpperCase().includes(schedule.flightNumber.toUpperCase());
+          return row.text.trim().toLowerCase() === draft.text.trim().toLowerCase();
+        });
+        const maxOrder = (existingActs || []).reduce((max: number, row: { order_index: number }) => Math.max(max, row.order_index || 0), 0);
+        const activityPayload = {
+          text: draft.text,
+          activity_type: draft.activity_type,
+          estimate_mins: draft.estimate_mins,
+          drive_mins_to_next: draft.drive_mins_to_next,
+          location_text: draft.location_text,
+          time_type: formStart ? 'fixed' : draft.time_type,
+          fixed_time: formStart || draft.fixed_time,
+          stop_kind: draft.stop_kind,
+          presence: formStart ? 'fixed' : draft.presence,
+          status: draft.status,
+        };
+        const { data: actRow, error: actErr } = existingFlight
+          ? await supabase.from('activities').update(activityPayload).eq('id', existingFlight.id).select('id').single()
+          : await supabase.from('activities').insert({
+              ...activityPayload,
+              user_id: userId,
+              trip_day_id: matchedDay.id,
+              order_index: maxOrder + 1,
+            }).select('id').single();
+        if (actErr || !actRow) {
           setSaving(false);
-          setError(`Vault save blocked: could not add flight to itinerary — ${actErr.message}`);
+          setError(`Vault save blocked: could not add flight to itinerary — ${actErr?.message || 'unknown error'}`);
           return;
         }
         activityId = (actRow as { id: string }).id;
@@ -265,7 +272,31 @@ export default function TravelVaultSheet({
         ? 'paste'
         : 'manual';
 
-    const { error: err } = await supabase.from('travel_documents').insert({
+    let existingFlightDoc: {
+      id: string;
+      storage_path: string | null;
+      original_filename: string | null;
+      reference_code: string | null;
+      title: string;
+    } | null = null;
+    if (docType === 'flight') {
+      const { data: existingDocs } = await supabase
+        .from('travel_documents')
+        .select('id,storage_path,original_filename,reference_code,title')
+        .eq('trip_id', tripId)
+        .eq('doc_type', 'flight');
+      existingFlightDoc = ((existingDocs || []) as Array<{
+        id: string;
+        storage_path: string | null;
+        original_filename: string | null;
+        reference_code: string | null;
+        title: string;
+      }>).find((doc) => reference.trim()
+        ? doc.reference_code === reference.trim()
+        : doc.title.trim().toLowerCase() === t.trim().toLowerCase()) || null;
+    }
+
+    const documentPayload = {
       user_id: userId,
       trip_id: tripId,
       doc_type: docType,
@@ -278,16 +309,36 @@ export default function TravelVaultSheet({
       ends_at,
       trip_day_id: tripDayId,
       activity_id: activityId,
-      storage_path: storagePath,
-      original_filename: originalFilename,
+      storage_path: storagePath ?? existingFlightDoc?.storage_path ?? null,
+      original_filename: originalFilename ?? existingFlightDoc?.original_filename ?? null,
       source,
-    });
+    };
+    const { error: err } = existingFlightDoc
+      ? await supabase.from('travel_documents').update(documentPayload).eq('id', existingFlightDoc.id)
+      : await supabase.from('travel_documents').insert(documentPayload);
 
     setSaving(false);
     if (err) {
       if (storagePath) await removeTravelVaultFile(supabase, storagePath);
       setError(err.message);
       return;
+    }
+    if (existingFlightDoc?.storage_path && storagePath && existingFlightDoc.storage_path !== storagePath) {
+      await removeTravelVaultFile(supabase, existingFlightDoc.storage_path);
+    }
+
+    if (docType === 'flight' && shapeDay && matchedDay) {
+      const isFirstDay = matchedDay.date === tripDays[0]?.date;
+      const isLastDay = matchedDay.date === tripDays[tripDays.length - 1]?.date;
+      const dayPatch: Record<string, string | null> = {};
+      if (isFirstDay && formEnd) dayPatch.arrival_time = formEnd;
+      else if (!isLastDay && formEnd) dayPatch.arrival_time = formEnd;
+      if (isLastDay && formStart) dayPatch.departure_time = formStart;
+      else if (!isFirstDay && formStart) dayPatch.departure_time = formStart;
+      if (Object.keys(dayPatch).length) {
+        const { error: anchorError } = await supabase.from('trip_days').update(dayPatch).eq('id', matchedDay.id);
+        if (anchorError) setError(`Flight saved, but day window could not be updated: ${anchorError.message}`);
+      }
     }
 
     const bits: string[] = [];
@@ -447,7 +498,13 @@ export default function TravelVaultSheet({
                   }
                   onClick={() => {
                     setDocType(opt.value);
-                    if (opt.value === 'flight') setAddToItinerary(true);
+                    if (opt.value === 'flight') {
+                      setAddToItinerary(true);
+                      if (!eventDate && tripDays[0]) {
+                        setEventDate(tripDays[0].date);
+                        setShapeDay(true);
+                      }
+                    }
                   }}
                 >
                   {opt.label}
@@ -456,6 +513,7 @@ export default function TravelVaultSheet({
             </div>
 
             {docType === 'flight' ? (
+              <>
               <label
                 style={{
                   display: 'flex',
@@ -478,6 +536,14 @@ export default function TravelVaultSheet({
                   </span>
                 ) : null}
               </label>
+              {tripDays.length > 0 ? (
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--ink)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={shapeDay} onChange={(e) => setShapeDay(e.target.checked)} />
+                  Shape this day from flight times
+                  <span style={{ color: 'var(--ink-faint)', fontSize: 11 }}>(landing opens after 45 min; departure closes the window)</span>
+                </label>
+              ) : null}
+              </>
             ) : null}
 
             <label className="field-label">Title</label>
@@ -510,7 +576,11 @@ export default function TravelVaultSheet({
                 <select
                   className="field-input"
                   value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEventDate(value);
+                    setShapeDay(Boolean(value && (value === tripDays[0]?.date || value === tripDays[tripDays.length - 1]?.date)));
+                  }}
                   style={{ width: '100%' }}
                 >
                   <option value="">Date (optional)</option>

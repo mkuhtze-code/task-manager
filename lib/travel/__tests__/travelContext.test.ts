@@ -1,10 +1,51 @@
 import { describe, it, expect } from 'vitest';
 import {
+  applyArrivalBuffer,
+  resolveDayAnchor,
   dayWindowFromTripDay,
   remainingMinsOnTripDay,
   buildTravelEngineContext,
 } from '../travelContext';
 import { processInteraction } from '@/lib/engine';
+import { findFixedTimeConflicts } from '@/lib/travelSort';
+
+describe('travel day anchors', () => {
+  it('starts usable time 45 minutes after landing, not at the old day start', () => {
+    const anchor = resolveDayAnchor({ arrival_time: '13:00', day_start: '07:30', day_end: '20:00' });
+    expect(anchor.arrivalMins).toBe(13 * 60);
+    expect(anchor.windowStartMins).toBe(13 * 60 + 45);
+    expect(anchor.source).toBe('arrival');
+    expect(anchor.usableMins).toBe(20 * 60 - (13 * 60 + 45));
+  });
+
+  it('flags a 10:00 fixed stop before landing but allows a 15:00 stop after landing', () => {
+    const activity = (id: string, fixed_time: string) => ({
+      id, text: id, time_type: 'fixed' as const, fixed_time,
+      estimate_mins: 30, drive_mins_to_next: 0, order_index: 0,
+      lat: null, lng: null,
+    });
+    const start = resolveDayAnchor({ arrival_time: '13:00', day_start: '07:30' }).windowStartMins;
+    expect(findFixedTimeConflicts([activity('before', '10:00')], start).before).toBe(true);
+    expect(findFixedTimeConflicts([activity('after', '15:00')], start).after).toBeUndefined();
+  });
+
+  it('clamps the arrival buffer to 0–180 minutes', () => {
+    expect(applyArrivalBuffer(13 * 60, -10)).toBe(13 * 60);
+    expect(applyArrivalBuffer(13 * 60, 999)).toBe(16 * 60);
+  });
+
+  it('uses an early departure as the day end', () => {
+    const anchor = resolveDayAnchor({ day_start: '07:30', day_end: '20:00', departure_time: '09:00' });
+    expect(anchor.windowEndMins).toBe(9 * 60);
+    expect(anchor.usableMins).toBe(90);
+  });
+
+  it('falls back to day_start then the default when no arrival exists', () => {
+    expect(resolveDayAnchor({ day_start: '07:30' }).windowStartMins).toBe(7 * 60 + 30);
+    expect(resolveDayAnchor({}).windowStartMins).toBe(8 * 60);
+    expect(resolveDayAnchor({}).source).toBe('default');
+  });
+});
 
 describe('travelContext capacity', () => {
   it('computes day window from arrival/departure', () => {
@@ -14,9 +55,18 @@ describe('travelContext capacity', () => {
       departure_time: '17:00',
       base_location_text: 'Hotel Grand',
     });
-    expect(w.dayStartMins).toBe(9 * 60);
+    expect(w.dayStartMins).toBe(9 * 60 + 45);
     expect(w.dayEndMins).toBe(17 * 60);
     expect(w.baseLocationText).toBe('Hotel Grand');
+  });
+
+  it('remaining capacity after arrival subtracts stops and drives from the same anchor', () => {
+    const window = dayWindowFromTripDay({ date: '2026-10-08', arrival_time: '13:00', day_start: '07:30', day_end: '20:00' });
+    const remaining = remainingMinsOnTripDay(window, [
+      { estimateMins: 60, driveMinsToNext: 20 },
+      { estimateMins: 30, driveMinsToNext: 10 },
+    ], 15);
+    expect(remaining).toBe((20 * 60 - (13 * 60 + 45)) - 60 - 20 - 30 - 10 - 15);
   });
 
   it('remaining mins subtracts stops and drives', () => {

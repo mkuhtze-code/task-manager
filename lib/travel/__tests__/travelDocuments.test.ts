@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { interpretTravelPaste } from '../travelDocuments';
+import { extractFlightSchedule, interpretTravelPaste } from '../travelDocuments';
 
 describe('interpretTravelPaste', () => {
   it('reads a flight number and PNR', () => {
@@ -10,6 +10,18 @@ describe('interpretTravelPaste', () => {
     expect(r.reference_code).toMatch(/ABC12D|NZ512/);
     expect(r.title.toLowerCase()).toMatch(/flight|nz512|air new zealand/);
     expect(r.carrier?.toLowerCase()).toContain('new zealand');
+  });
+
+  it('does not treat a landing-only clock as a departure time', () => {
+    const schedule = extractFlightSchedule('Flight NZ512 AKL to WLG lands 13:00');
+    expect(schedule.arriveTime).toBe('13:00');
+    expect(schedule.departTime).toBeNull();
+  });
+
+  it('keeps the explicit departure clock when both departure and arrival are present', () => {
+    const schedule = extractFlightSchedule('Flight NZ512 departs 09:00 and lands 13:00');
+    expect(schedule.departTime).toBe('09:00');
+    expect(schedule.arriveTime).toBe('13:00');
   });
 
   it('reads a hotel booking', () => {

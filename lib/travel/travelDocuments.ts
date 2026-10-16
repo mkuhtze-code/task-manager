@@ -100,6 +100,14 @@ function normalizeClock(h: number, m: number): string | null {
 
 /** Parse HH:MM or H:MM am/pm from free text. */
 export function extractClockTime(text: string): string | null {
+  // An arrival-only clock is not a departure time. If a departure clock appears
+  // before the arrival marker, the normal explicit/bare-clock parsing below can
+  // still resolve it (e.g. "depart 09:00, lands 13:00").
+  const arrivalLabel = /\b(?:arriv(?:e|es|al)|lands?)\b/i.exec(text);
+  const firstClock = /\b\d{1,2}:\d{2}\b/.exec(text);
+  if (arrivalLabel && (!firstClock || (arrivalLabel.index ?? 0) < (firstClock.index ?? 0))) {
+    return null;
+  }
   const ampm = text.match(
     /\b(?:depart(?:s|ure)?|leaves?|at)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)\b/i
   );
