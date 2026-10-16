@@ -175,3 +175,18 @@ export function buildTravelEngineContext(args: {
     driveFromBaseMins: driveFromBase,
   };
 }
+/**
+ * Choose the day shown when a trip is opened. Today wins when it falls within
+ * the trip; trips wholly in the past open on their final day, future trips on
+ * their first. Sorting here keeps the behavior stable for unsorted callers.
+ */
+export function selectInitialTripDay<T extends { id: string; date: string }>(
+  days: readonly T[],
+  today: string,
+): T | null {
+  if (days.length === 0) return null;
+  const ordered = [...days].sort((a, b) => a.date.localeCompare(b.date));
+  const todayMatch = ordered.find((day) => day.date === today);
+  if (todayMatch) return todayMatch;
+  return today < ordered[0].date ? ordered[0] : ordered[ordered.length - 1];
+}
