@@ -382,7 +382,7 @@ export function interpretTravelPaste(raw: string): Partial<TravelDocumentInsert>
 
   let reference_code: string | null = null;
   const pnr = text.match(
-    /\b(?:PNR|booking\s*(?:ref|reference)|confirmation(?:\s*(?:no|number|#))?|record\s*locator)\s*[:#]?\s*([A-Z0-9]{5,8})\b/i
+    /\b(?:PNR|booking\s*(?:reference|ref)|confirmation(?:\s*(?:no|number|#))?|record\s*locator)\s*[:#]?\s*([A-Z0-9]{5,8})\b/i
   );
   if (pnr?.[1]) reference_code = pnr[1].toUpperCase();
   const flightNo = text.match(/\b([A-Z]{2})\s?(\d{1,4})\b/);

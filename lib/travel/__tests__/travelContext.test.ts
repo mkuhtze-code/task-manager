@@ -5,6 +5,7 @@ import {
   dayWindowFromTripDay,
   remainingMinsOnTripDay,
   buildTravelEngineContext,
+  selectInitialTripDay,
 } from '../travelContext';
 import { processInteraction } from '@/lib/engine';
 import { findFixedTimeConflicts } from '@/lib/travelSort';
@@ -178,5 +179,29 @@ describe('processInteraction with travel context', () => {
     expect(r.outcome).toBe('ANSWER');
     expect(r.answer!.fits).toBe(false);
     expect(r.answer!.text.toLowerCase()).toMatch(/not|tight|push/);
+  });
+});
+
+describe('initial trip day selection', () => {
+  const days = [
+    { id: 'first', date: '2026-10-14' },
+    { id: 'middle', date: '2026-10-15' },
+    { id: 'last', date: '2026-10-16' },
+  ];
+
+  it('opens on today when today is inside the trip', () => {
+    expect(selectInitialTripDay(days, '2026-10-15')?.id).toBe('middle');
+  });
+
+  it('opens on the first day for a trip that has not started', () => {
+    expect(selectInitialTripDay(days, '2026-10-10')?.id).toBe('first');
+  });
+
+  it('opens on the last day for a trip that has ended', () => {
+    expect(selectInitialTripDay(days, '2026-10-20')?.id).toBe('last');
+  });
+
+  it('handles no trip days', () => {
+    expect(selectInitialTripDay([], '2026-10-15')).toBeNull();
   });
 });

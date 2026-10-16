@@ -13,6 +13,8 @@ import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
 import AccommodationSheet from '@/components/AccommodationSheet';
 import TravelVaultSheet from '@/components/TravelVaultSheet';
 import DaySheet from '@/components/DaySheet';
+import TripDayPanel from '@/components/TripDayPanel';
+import TripStopRow from '@/components/TripStopRow';
 import TripDayMeetings from '@/components/TripDayMeetings';
 import MapView from '@/components/MapView';
 import { TravelLeg } from '@/components/TravelLeg';
@@ -20,16 +22,11 @@ import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } fr
 import GearMenu from '@/components/GearMenu';
 import {
   BackIcon,
-  BedIcon,
   CheckIcon,
   ChevronIcon,
   CloseIcon,
   CompassIcon,
-  DragHandleIcon,
   FitCheckIcon,
-  LockIcon,
-  MapPinIcon,
-  PlusIcon,
   TrashIcon,
 } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
@@ -43,8 +40,6 @@ import {
   STOP_KIND_OPTIONS,
   PRESENCE_OPTIONS,
   presenceToSchedule,
-  formatStopGlance,
-  stopKindLabel,
   type StopKind,
   type StopPresence,
 } from '@/lib/travelStopTypes';
@@ -58,7 +53,7 @@ import {
   loadPriorForDock,
   type EngineRequest,
 } from '@/lib/engine';
-import { buildTravelEngineContext, resolveDayAnchor } from '@/lib/travel/travelContext';
+import { buildTravelEngineContext, resolveDayAnchor, selectInitialTripDay } from '@/lib/travel/travelContext';
 
 type Trip = {
   id: string;
@@ -155,6 +150,13 @@ function formatClockMinutes(minutes: number): string {
   const hour24 = Math.floor(normalized / 60);
   const minute = normalized % 60;
   return `${hour24 % 12 || 12}:${String(minute).padStart(2, '0')}${hour24 >= 12 ? 'p' : 'a'}`;
+}
+
+function localDateISO(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function timeStringToMinutes(t: string): number {
@@ -713,9 +715,9 @@ export default function TripDayView() {
     setTripDays(dayRows || []);
 
     if (dayRows && dayRows.length > 0) {
-      const todayStr = now.toISOString().slice(0, 10);
-      const todayMatch = dayRows.find((d: TripDay) => d.date === todayStr);
-      setSelectedDayId(todayMatch ? todayMatch.id : dayRows[0].id);
+      const todayStr = localDateISO();
+      const initialDay = selectInitialTripDay(dayRows as TripDay[], todayStr);
+      setSelectedDayId(initialDay?.id ?? null);
     }
 
     if (session) {
@@ -1388,7 +1390,7 @@ export default function TripDayView() {
   const dayEndMinutes = selectedDay ? dayAnchor.windowEndMins : 0;
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
 
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = localDateISO(now);
   const isToday = selectedDay?.date === todayStr;
   const minutesLeftToday = isToday ? Math.max(dayEndMinutes - Math.max(nowMinutesOfDay, dayStartMinutes), 0) : Math.max(dayEndMinutes - dayStartMinutes, 0);
 
@@ -1520,43 +1522,31 @@ export default function TripDayView() {
       )}
 
       {selectedDay && (
-        <div style={{ padding: '6px 16px 10px', textAlign: 'center' }}>
-          <button type="button" onClick={() => setDaySheetOpen(true)} aria-expanded={daySheetOpen}
-            style={{ display: 'block', width: '100%', border: 'none', background: 'transparent', padding: '0 0 4px', textAlign: 'center', cursor: 'pointer', color: 'var(--ink-soft)', fontSize: 13, lineHeight: 1.35 }}>
-            {(() => {
-              const bits: string[] = [];
-              if (activities.length > 0 && minutesLeftToday > 0) bits.push(overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(spareMins)} spare`);
-              else if (activities.length === 0) bits.push('Nothing planned yet');
-              if (dayMeetingCount > 0) bits.push(dayMeetingCount === 1 ? '1 meeting' : `${dayMeetingCount} meetings`);
-              return bits.length ? bits.join(' · ') : 'Day detail';
-            })()}
-          </button>
-          <div className="mono" style={{ fontSize: 11, color: 'var(--ink-faint)', marginBottom: 5 }}>
-            {dayAnchor.arrivalMins !== null
-              ? `Land ${formatClockMinutes(dayAnchor.arrivalMins)} · opens ${formatClockMinutes(dayAnchor.windowStartMins)} · ~${fmtMins(dayAnchor.usableMins)} usable`
-              : dayAnchor.departureMins !== null
-                ? `Depart ${formatClockMinutes(dayAnchor.departureMins)} · closes ${formatClockMinutes(dayAnchor.windowEndMins)} · ~${fmtMins(dayAnchor.usableMins)} usable`
-                : `Window ${formatClockMinutes(dayAnchor.windowStartMins)}–${formatClockMinutes(dayAnchor.windowEndMins)} · ~${fmtMins(dayAnchor.usableMins)} usable`}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center', fontSize: 11, color: 'var(--ink-faint)' }}>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Land
-              <input aria-label="Arrival time" type="time" defaultValue={selectedDay.arrival_time || ''} onBlur={async (e) => {
-                const value = e.currentTarget.value || null;
-                if (value === (selectedDay.arrival_time || null)) return;
-                const { error } = await supabase.from('trip_days').update({ arrival_time: value }).eq('id', selectedDay.id);
-                if (!error) await refreshSelectedDay();
-              }} style={{ width: 94, fontSize: 11 }} />
-            </label>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Depart
-              <input aria-label="Departure time" type="time" defaultValue={selectedDay.departure_time || ''} onBlur={async (e) => {
-                const value = e.currentTarget.value || null;
-                if (value === (selectedDay.departure_time || null)) return;
-                const { error } = await supabase.from('trip_days').update({ departure_time: value }).eq('id', selectedDay.id);
-                if (!error) await refreshSelectedDay();
-              }} style={{ width: 94, fontSize: 11 }} />
-            </label>
-          </div>
-        </div>
+        <TripDayPanel
+          key={selectedDay.id}
+          day={selectedDay}
+          dayNumber={selectedDayIndex + 1}
+          dayCount={tripDays.length}
+          dayAnchor={dayAnchor}
+          dayLabel={`${fmtDayLabel(selectedDay.date).weekday} ${fmtDayLabel(selectedDay.date).date}`}
+          fitLabel={activities.length > 0 && minutesLeftToday > 0
+            ? overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(spareMins)} spare`
+            : activities.length === 0 ? 'Nothing planned yet' : 'Day detail'}
+          meetingCount={dayMeetingCount}
+          daySheetOpen={daySheetOpen}
+          onOpenDaySheet={() => setDaySheetOpen(true)}
+          onSaveArrival={async (value) => {
+            const { error } = await supabase.from('trip_days').update({ arrival_time: value }).eq('id', selectedDay.id);
+            if (error) setError(error.message);
+            else await refreshSelectedDay();
+          }}
+          onSaveDeparture={async (value) => {
+            const { error } = await supabase.from('trip_days').update({ departure_time: value }).eq('id', selectedDay.id);
+            if (error) setError(error.message);
+            else await refreshSelectedDay();
+          }}
+          onAddStop={() => setCaptureOpen(true)}
+        />
       )}
 
       {recalcError && (
@@ -1584,13 +1574,6 @@ export default function TripDayView() {
             <div className="empty-state-sub">
               Add your first stop — Dokkit works out the route and how the day fits.
             </div>
-            <button
-              className="btn btn-steel"
-              onClick={() => setCaptureOpen(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              <PlusIcon size={16} /> Add stop
-            </button>
           </div>
         )}
 
@@ -1641,106 +1624,33 @@ export default function TripDayView() {
           const conflict = !!fixedTimeConflicts[a.id];
 
           return (
-            <div key={a.id} ref={(el) => { rowElsRef.current[a.id] = el; }} style={rowStyle}>
-              <div className={[
-                a.activity_type === 'stop' ? 'task-row' : 'task-row task-list-item',
-                conflict ? 'conflict' : '',
-              ].join(' ').trim()}>
-                <div className="task-main">
-                  <button
-                    className="check-btn"
-                    onClick={(e) => { e.stopPropagation(); completeActivity(a.id); }}
-                    aria-label="Mark complete"
-                  >
-                    <CheckIcon done={false} />
-                  </button>
-                  <div className="task-body" onClick={() => setOpenActivityId(a.id)}>
-                    <div className="task-text">
-                      {a.stop_kind && a.stop_kind !== 'leisure' && (
-                        <span className="stop-kind-chip">{stopKindLabel(a.stop_kind)}</span>
-                      )}
-                      {a.text}
-                    </div>
-                    {((a.location_text && a.lat == null) || conflict) && (
-                      <div className="activity-meta">
-                        {a.location_text && a.lat == null && (
-                          <span className="activity-meta-loc" title={a.location_text}>
-                            <MapPinIcon size={12} />
-                            <span className="activity-meta-loc-text">{a.location_text}</span>
-                            <span className="activity-meta-hint">· not mapped</span>
-                          </span>
-                        )}
-                        {conflict && <span className="activity-meta-conflict">won't make it</span>}
-                      </div>
-                    )}
-                  </div>
-                  <span className={conflict ? 'activity-glance conflict mono' : 'activity-glance mono'}>
-                    {formatStopGlance({
-                      presence: a.presence,
-                      time_type: a.time_type,
-                      fixed_time: a.fixed_time,
-                      estimate_mins: a.estimate_mins,
-                      fmtMins,
-                      fmtClock,
-                    })}
-                  </span>
-                  {a.time_type === 'flexible' && travelSortMode === 'manual' ? (
-                    <button
-                      className="drag-handle-btn"
-                      onPointerDown={(e) => { e.stopPropagation(); handleDragHandlePointerDown(e, a.id, orderedIds); }}
-                      onPointerMove={(e) => { e.stopPropagation(); handleDragHandlePointerMove(e); }}
-                      onPointerUp={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
-                      onPointerCancel={(e) => { e.stopPropagation(); handleDragHandlePointerUp(); }}
-                      aria-label="Drag to reorder"
-                    >
-                      <DragHandleIcon />
-                    </button>
-                  ) : a.time_type === 'fixed' ? (
-                    <span
-                      className="drag-handle-btn"
-                      style={{ color: 'var(--ink-faint)', cursor: 'default' }}
-                      title="Fixed time — locked in place"
-                      aria-label="Fixed time, locked in place"
-                    >
-                      <LockIcon />
-                    </span>
-                  ) : null}
-                </div>
-                {legAfterThis && legAfterThis.directMins > 0 && (
-                  <TravelLeg
-                    label={fmtMins(legAfterThis.directMins)}
-                    detail={`Drive to ${nextStop?.location_text || nextStop?.text || 'the next stop'}`}
-                    action={
-                      <button onClick={() => findNearby(legAfterThis)} aria-label="Find something nearby on this drive">
-                        <CompassIcon size={12} /> Nearby
-                      </button>
-                    }
-                  />
-                )}
-              </div>
-            </div>
+            <TripStopRow
+              key={a.id}
+              activity={a}
+              rowStyle={rowStyle}
+              conflict={conflict}
+              manualSort={travelSortMode === 'manual'}
+              workLabel={a.job_id
+                ? `Job · ${jobs.find((job) => job.id === a.job_id)?.name || 'Linked job'}`
+                : a.stop_kind === 'work' ? 'Work site' : null}
+              driveGlanceLabel={legAfterThis ? null : a.drive_mins_to_next > 0 ? fmtMins(a.drive_mins_to_next) : idx < sortedActivities.length - 1 ? '?' : null}
+              driveLabel={legAfterThis && legAfterThis.directMins > 0 ? fmtMins(legAfterThis.directMins) : null}
+              driveDetail={legAfterThis && legAfterThis.directMins > 0
+                ? `Drive to ${nextStop?.location_text || nextStop?.text || 'the next stop'}` : null}
+              onComplete={() => completeActivity(a.id)}
+              onOpen={() => setOpenActivityId(a.id)}
+              onNearbyDrive={() => legAfterThis && findNearby(legAfterThis)}
+              onPointerDown={(e) => handleDragHandlePointerDown(e, a.id, orderedIds)}
+              onPointerMove={handleDragHandlePointerMove}
+              onPointerUp={handleDragHandlePointerUp}
+              fmtMins={fmtMins}
+              fmtClock={fmtClock}
+              onRowRef={(el) => { rowElsRef.current[a.id] = el; }}
+            />
           );
         })}
       </div>
 
-
-      <div style={{ padding: '4px 16px 72px', textAlign: 'center' }}>
-        <button
-          type="button"
-          onClick={() => setTripToolsOpen(true)}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            color: 'var(--ink-faint)',
-            fontSize: 13,
-            padding: '8px 12px',
-            cursor: 'pointer',
-            letterSpacing: '0.04em',
-          }}
-        >
-          — Trip tools —
-        </button>
-      </div>
 
       {captureOpen && (
         <div className="sheet-backdrop" onClick={closeCapture}>
