@@ -58,7 +58,7 @@ import {
   loadPriorForDock,
   type EngineRequest,
 } from '@/lib/engine';
-import { buildTravelEngineContext } from '@/lib/travel/travelContext';
+import { buildTravelEngineContext, resolveDayAnchor } from '@/lib/travel/travelContext';
 
 type Trip = {
   id: string;
@@ -148,6 +148,13 @@ function fmtClock(timeStr: string): string {
   h = h % 12;
   if (h === 0) h = 12;
   return m === 0 ? `${h}${ampm}` : `${h}:${String(m).padStart(2, '0')}${ampm}`;
+}
+
+function formatClockMinutes(minutes: number): string {
+  const normalized = ((Math.round(minutes) % 1440) + 1440) % 1440;
+  const hour24 = Math.floor(normalized / 60);
+  const minute = normalized % 60;
+  return `${hour24 % 12 || 12}:${String(minute).padStart(2, '0')}${hour24 >= 12 ? 'p' : 'a'}`;
 }
 
 function timeStringToMinutes(t: string): number {
@@ -881,9 +888,7 @@ export default function TripDayView() {
       }
     }
 
-    const dayStart = selectedDay
-      ? timeStringToMinutes(selectedDay.arrival_time || selectedDay.day_start || '08:00')
-      : 8 * 60;
+    const dayStart = selectedDay ? resolveDayAnchor(selectedDay).windowStartMins : 8 * 60;
     const dayEnd = selectedDay
       ? timeStringToMinutes(selectedDay.departure_time || selectedDay.day_end || '20:00')
       : 20 * 60;
@@ -1082,12 +1087,41 @@ export default function TripDayView() {
   }
 
   async function deleteActivity(id: string) {
+    const activity = activities.find((item) => item.id === id);
+    const clearAnchorPatch: Record<string, null> = {};
+
+    if (activity?.activity_type === 'flight' && selectedDay) {
+      const { data: linkedDocs } = await supabase
+        .from('travel_documents')
+        .select('doc_type,starts_at,ends_at')
+        .eq('activity_id', id);
+      const flightDoc = (linkedDocs || []).find((doc: { doc_type: string }) => doc.doc_type === 'flight');
+      const arrivalClock = flightDoc?.ends_at?.match(/T(\\d{2}:\\d{2})/)?.[1] || null;
+      const departureClock = flightDoc?.starts_at?.match(/T(\\d{2}:\\d{2})/)?.[1] || null;
+
+      if (selectedDay.arrival_time && arrivalClock === selectedDay.arrival_time) {
+        if (confirm('This flight set the arrival anchor for this day. Clear that anchor too? Choose Cancel to keep it as a manual anchor.')) {
+          clearAnchorPatch.arrival_time = null;
+        }
+      }
+      if (selectedDay.departure_time && departureClock === selectedDay.departure_time) {
+        if (confirm('This flight set the departure anchor for this day. Clear that anchor too? Choose Cancel to keep it as a manual anchor.')) {
+          clearAnchorPatch.departure_time = null;
+        }
+      }
+    }
+
     const { error } = await supabase.from('activities').delete().eq('id', id);
     if (error) {
       alert('Could not delete the stop: ' + error.message);
       return;
     }
     setActivities((prev) => prev.filter((a) => a.id !== id));
+    if (selectedDay && Object.keys(clearAnchorPatch).length) {
+      const { error: anchorError } = await supabase.from('trip_days').update(clearAnchorPatch).eq('id', selectedDay.id);
+      if (anchorError) alert('Flight deleted, but the day anchor could not be cleared: ' + anchorError.message);
+      else await refreshSelectedDay();
+    }
     recalculateDay();
   }
 
@@ -1349,16 +1383,14 @@ export default function TripDayView() {
     recalculateDay();
   }
 
-  const effectiveDayStart = selectedDay?.arrival_time || selectedDay?.day_start || '08:00';
-  const effectiveDayEnd = selectedDay?.departure_time || selectedDay?.day_end || '20:00';
-
-  const dayStartMinutes = selectedDay ? timeStringToMinutes(effectiveDayStart) : 0;
-  const dayEndMinutes = selectedDay ? timeStringToMinutes(effectiveDayEnd) : 0;
+  const dayAnchor = resolveDayAnchor(selectedDay ?? {});
+  const dayStartMinutes = selectedDay ? dayAnchor.windowStartMins : 0;
+  const dayEndMinutes = selectedDay ? dayAnchor.windowEndMins : 0;
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
 
   const todayStr = now.toISOString().slice(0, 10);
   const isToday = selectedDay?.date === todayStr;
-  const minutesLeftToday = isToday ? Math.max(dayEndMinutes - nowMinutesOfDay, 0) : Math.max(dayEndMinutes - dayStartMinutes, 0);
+  const minutesLeftToday = isToday ? Math.max(dayEndMinutes - Math.max(nowMinutesOfDay, dayStartMinutes), 0) : Math.max(dayEndMinutes - dayStartMinutes, 0);
 
   const driveFromBase = selectedDay?.drive_from_base_mins || 0;
   const plannedMins = driveFromBase + activities.reduce((sum, a) => sum + a.estimate_mins + a.drive_mins_to_next, 0);
@@ -1367,7 +1399,7 @@ export default function TripDayView() {
 
   const trackSpan = Math.max(dayEndMinutes - dayStartMinutes, 1);
   const nowPercent = isToday ? Math.min(Math.max((nowMinutesOfDay - dayStartMinutes) / trackSpan, 0), 1) : 0;
-  const projectedFinish = (isToday ? nowMinutesOfDay : dayStartMinutes) + plannedMins;
+  const projectedFinish = (isToday ? Math.max(nowMinutesOfDay, dayStartMinutes) : dayStartMinutes) + plannedMins;
   const projectedPercent = (projectedFinish - dayStartMinutes) / trackSpan;
   const planWidthPercent = Math.max(Math.min(projectedPercent, 1) - nowPercent, 0);
 
@@ -1488,42 +1520,43 @@ export default function TripDayView() {
       )}
 
       {selectedDay && (
-        <button
-          type="button"
-          onClick={() => setDaySheetOpen(true)}
-          aria-expanded={daySheetOpen}
-          style={{
-            display: 'block',
-            width: '100%',
-            border: 'none',
-            background: 'transparent',
-            padding: '6px 16px 10px',
-            textAlign: 'center',
-            cursor: 'pointer',
-            color: 'var(--ink-soft)',
-            fontSize: 13,
-            lineHeight: 1.35,
-          }}
-        >
-          {(() => {
-            const bits: string[] = [];
-            if (activities.length > 0 && minutesLeftToday > 0) {
-              bits.push(
-                overloaded
-                  ? `Over by ${fmtMins(-spareMins)}`
-                  : `Fits · ${fmtMins(spareMins)} spare`
-              );
-            } else if (activities.length === 0) {
-              bits.push('Nothing planned yet');
-            }
-            if (dayMeetingCount > 0) {
-              bits.push(
-                dayMeetingCount === 1 ? '1 meeting' : `${dayMeetingCount} meetings`
-              );
-            }
-            return bits.length ? bits.join(' · ') : 'Day detail';
-          })()}
-        </button>
+        <div style={{ padding: '6px 16px 10px', textAlign: 'center' }}>
+          <button type="button" onClick={() => setDaySheetOpen(true)} aria-expanded={daySheetOpen}
+            style={{ display: 'block', width: '100%', border: 'none', background: 'transparent', padding: '0 0 4px', textAlign: 'center', cursor: 'pointer', color: 'var(--ink-soft)', fontSize: 13, lineHeight: 1.35 }}>
+            {(() => {
+              const bits: string[] = [];
+              if (activities.length > 0 && minutesLeftToday > 0) bits.push(overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(spareMins)} spare`);
+              else if (activities.length === 0) bits.push('Nothing planned yet');
+              if (dayMeetingCount > 0) bits.push(dayMeetingCount === 1 ? '1 meeting' : `${dayMeetingCount} meetings`);
+              return bits.length ? bits.join(' · ') : 'Day detail';
+            })()}
+          </button>
+          <div className="mono" style={{ fontSize: 11, color: 'var(--ink-faint)', marginBottom: 5 }}>
+            {dayAnchor.arrivalMins !== null
+              ? `Land ${formatClockMinutes(dayAnchor.arrivalMins)} · opens ${formatClockMinutes(dayAnchor.windowStartMins)} · ~${fmtMins(dayAnchor.usableMins)} usable`
+              : dayAnchor.departureMins !== null
+                ? `Depart ${formatClockMinutes(dayAnchor.departureMins)} · closes ${formatClockMinutes(dayAnchor.windowEndMins)} · ~${fmtMins(dayAnchor.usableMins)} usable`
+                : `Window ${formatClockMinutes(dayAnchor.windowStartMins)}–${formatClockMinutes(dayAnchor.windowEndMins)} · ~${fmtMins(dayAnchor.usableMins)} usable`}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center', fontSize: 11, color: 'var(--ink-faint)' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Land
+              <input aria-label="Arrival time" type="time" defaultValue={selectedDay.arrival_time || ''} onBlur={async (e) => {
+                const value = e.currentTarget.value || null;
+                if (value === (selectedDay.arrival_time || null)) return;
+                const { error } = await supabase.from('trip_days').update({ arrival_time: value }).eq('id', selectedDay.id);
+                if (!error) await refreshSelectedDay();
+              }} style={{ width: 94, fontSize: 11 }} />
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Depart
+              <input aria-label="Departure time" type="time" defaultValue={selectedDay.departure_time || ''} onBlur={async (e) => {
+                const value = e.currentTarget.value || null;
+                if (value === (selectedDay.departure_time || null)) return;
+                const { error } = await supabase.from('trip_days').update({ departure_time: value }).eq('id', selectedDay.id);
+                if (!error) await refreshSelectedDay();
+              }} style={{ width: 94, fontSize: 11 }} />
+            </label>
+          </div>
+        </div>
       )}
 
       {recalcError && (

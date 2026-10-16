@@ -3,6 +3,57 @@
  * Shared by trip Capture and processInteraction / ANSWER paths.
  */
 
+export const DEFAULT_ARRIVAL_BUFFER_MINS = 45;
+
+export type DayAnchor = {
+  arrivalMins: number | null;
+  departureMins: number | null;
+  windowStartMins: number;
+  windowEndMins: number;
+  usableMins: number;
+  source: 'arrival' | 'day_start' | 'default';
+};
+
+function parseClockMinutes(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const match = value.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+export function applyArrivalBuffer(landMins: number, bufferMins: number = DEFAULT_ARRIVAL_BUFFER_MINS): number {
+  const safeBuffer = Math.min(180, Math.max(0, Number.isFinite(bufferMins) ? bufferMins : DEFAULT_ARRIVAL_BUFFER_MINS));
+  return Math.min(24 * 60, Math.max(0, landMins) + safeBuffer);
+}
+
+export function resolveDayAnchor(day: {
+  day_start?: string | null;
+  day_end?: string | null;
+  arrival_time?: string | null;
+  departure_time?: string | null;
+}, arrivalBufferMins: number = DEFAULT_ARRIVAL_BUFFER_MINS): DayAnchor {
+  const arrivalMins = parseClockMinutes(day.arrival_time);
+  const departureMins = parseClockMinutes(day.departure_time);
+  const dayStartMins = parseClockMinutes(day.day_start);
+  const dayEndMins = parseClockMinutes(day.day_end);
+  const source: DayAnchor['source'] = arrivalMins !== null ? 'arrival' : dayStartMins !== null ? 'day_start' : 'default';
+  const windowStartMins = arrivalMins !== null
+    ? applyArrivalBuffer(arrivalMins, arrivalBufferMins)
+    : dayStartMins ?? 8 * 60;
+  const windowEndMins = departureMins ?? dayEndMins ?? 20 * 60;
+  return {
+    arrivalMins,
+    departureMins,
+    windowStartMins,
+    windowEndMins,
+    usableMins: Math.max(0, windowEndMins - windowStartMins),
+    source,
+  };
+}
+
 export type TravelDayWindow = {
   date: string;
   dayStartMins: number;
@@ -46,13 +97,11 @@ export function dayWindowFromTripDay(day: {
   departure_time?: string | null;
   base_location_text?: string | null;
 }): TravelDayWindow {
-  const start =
-    day.arrival_time || day.day_start || '08:00';
-  const end = day.departure_time || day.day_end || '20:00';
+  const anchor = resolveDayAnchor(day);
   return {
     date: day.date,
-    dayStartMins: timeStringToMinutes(start),
-    dayEndMins: timeStringToMinutes(end),
+    dayStartMins: anchor.windowStartMins,
+    dayEndMins: anchor.windowEndMins,
     baseLocationText: day.base_location_text ?? null,
   };
 }
