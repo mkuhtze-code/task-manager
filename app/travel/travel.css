@@ -612,3 +612,85 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .task-list {
 .trip-day-panel-conflicts {
   color: var(--hazard);
 }
+
+
+/* Travel S3: compact contextual place search, not an explore feed. */
+.find-place-sheet {
+  max-height: min(88vh, 760px);
+  overflow-y: auto;
+}
+.find-place-context,
+.find-place-note {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+.find-place-bias,
+.find-place-categories {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  scrollbar-width: none;
+}
+.find-place-bias button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.find-place-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.find-place-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.find-place-result-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.find-place-result-copy strong {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.find-place-result-copy span,
+.find-place-result-copy small {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+}
+.find-place-result-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+.find-place-result-actions .btn {
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+.find-place-directions {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.find-place-error {
+  color: var(--danger-text, var(--danger));
+  font-size: var(--text-xs);
+}
+@media (max-width: 420px) {
+  .find-place-result { align-items: flex-start; }
+  .find-place-result-actions .btn { font-size: 12px; }
+}
