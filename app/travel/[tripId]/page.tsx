@@ -926,10 +926,14 @@ export default function TripDayView() {
       }
     }
 
-    const dayStart = selectedDay ? resolveScheduledDayAnchor(selectedDay, activities.some((activity) => activity.activity_type === 'flight')).windowStartMins : 8 * 60;
-    const dayEnd = selectedDay
-      ? timeStringToMinutes(selectedDay.departure_time || selectedDay.day_end || '20:00')
-      : 20 * 60;
+    const dayAnchor = selectedDay
+      ? resolveScheduledDayAnchor(
+          selectedDay,
+          activities.some((activity) => activity.activity_type === 'flight')
+        )
+      : null;
+    const dayStart = dayAnchor?.windowStartMins ?? 8 * 60;
+    const dayEnd = dayAnchor?.windowEndMins ?? 20 * 60;
 
     const schedule = presenceToSchedule({
       presence: capturePresence,
