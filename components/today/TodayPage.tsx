@@ -2052,8 +2052,9 @@ export function TodayPage() {
         workDays,
         workStart: todayTravelWindow.startClock,
         workEnd: todayTravelWindow.endClock,
+        clampToWorkStart: todayTravelWindow.flightShaped,
       }),
-    [tasks, meetings, calendarEvents, now, workDays, todayTravelWindow.startClock, todayTravelWindow.endClock]
+    [tasks, meetings, calendarEvents, now, workDays, todayTravelWindow.startClock, todayTravelWindow.endClock, todayTravelWindow.flightShaped]
   );
 
   const {
@@ -2391,9 +2392,22 @@ export function TodayPage() {
 
 
 {travelTodayContext && travelRegimeLabel && (
-        <div className="today-travel-regime" role="status">
+        <div
+          className="today-travel-regime"
+          role="status"
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 8,
+            padding: '6px 0',
+            borderBottom: '1px solid var(--line)',
+            color: 'var(--ink-soft)',
+            fontSize: 12,
+            lineHeight: 1.4,
+          }}
+        >
           <span>{travelRegimeLabel}</span>
-          <a href={`/travel/${travelTodayContext.tripId}`} aria-label={`Open trip: ${travelTodayContext.tripName}`}>
+          <a href={`/travel/${travelTodayContext.tripId}`} aria-label={`Open trip: ${travelTodayContext.tripName}`} style={{ color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
             {travelTodayContext.tripName} →
           </a>
         </div>
