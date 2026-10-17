@@ -54,6 +54,7 @@ import {
   type EngineRequest,
 } from '@/lib/engine';
 import { buildTravelEngineContext, resolveDayAnchor, selectInitialTripDay } from '@/lib/travel/travelContext';
+import { buildGoogleMapsDirectionsUrl } from '@/lib/travel/driveLegs';
 
 type Trip = {
   id: string;
@@ -1633,7 +1634,11 @@ export default function TripDayView() {
               workLabel={a.job_id
                 ? `Job · ${jobs.find((job) => job.id === a.job_id)?.name || 'Linked job'}`
                 : a.stop_kind === 'work' ? 'Work site' : null}
-              driveGlanceLabel={legAfterThis ? null : a.drive_mins_to_next > 0 ? fmtMins(a.drive_mins_to_next) : idx < sortedActivities.length - 1 ? '?' : null}
+              driveGlanceLabel={legAfterThis
+                ? legAfterThis.directMins > 0 ? fmtMins(legAfterThis.directMins) : 'unknown'
+                : a.drive_mins_to_next > 0 ? fmtMins(a.drive_mins_to_next)
+                : idx < sortedActivities.length - 1 || (idx === sortedActivities.length - 1 && selectedDay?.base_lat != null && selectedDay?.base_lng != null) ? 'unknown' : null}
+              mapsUrl={buildGoogleMapsDirectionsUrl({ lat: a.lat, lng: a.lng, locationText: a.location_text, label: a.text })}
               driveLabel={legAfterThis && legAfterThis.directMins > 0 ? fmtMins(legAfterThis.directMins) : null}
               driveDetail={legAfterThis && legAfterThis.directMins > 0
                 ? `Drive to ${nextStop?.location_text || nextStop?.text || 'the next stop'}` : null}
