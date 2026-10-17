@@ -40,10 +40,12 @@ function isPending(s: TravelPresenceStop): boolean {
 
 function isWorkRelevant(s: TravelPresenceStop): boolean {
   if (!isPending(s)) return false;
-  const kind = (s.stop_kind || 'leisure') as TravelStopKind;
+  const kind = s.stop_kind as TravelStopKind | null | undefined;
   const presence = (s.presence || 'duration') as TravelStopPresence;
+  // Explicit leisure intent wins over a generic all-day/work-hours presence.
+  // Untyped all-day/work-hours records remain blocking for legacy compatibility.
+  if (kind === 'leisure') return false;
   if (kind === 'work') return true;
-  // All-day / work-hours without kind still consume the work day
   if (presence === 'all_day' || presence === 'work_hours') return true;
   return false;
 }

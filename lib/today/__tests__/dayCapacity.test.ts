@@ -56,6 +56,25 @@ describe('Today capacity integration', () => {
     expect(result.taskCapacity).toBe(360);
   });
 
+
+  it('keeps a flight day at zero capacity before the effective arrival window begins', () => {
+    const now = new Date(2026, 9, 15, 9, 0);
+    const result = deriveTodayCapacity({
+      tasks: [],
+      meetings: [],
+      calendarEvents: [],
+      now,
+      workDays: [now.getDay()],
+      workStart: '13:45',
+      workEnd: '16:00',
+      clampToWorkStart: true,
+    });
+
+    expect(result.minutesLeftToday).toBe(135);
+    expect(result.availability.availableMinutes).toBe(135);
+    expect(result.taskCapacity).toBe(135);
+  });
+
   it('subtracts untimed manual meetings but not duplicate Outlook rows', () => {
     const now = new Date(2026, 9, 15, 9, 0);
     const untimedMeeting = (id: string, source: 'manual' | 'outlook') =>

@@ -23,6 +23,8 @@ type DeriveTodayCapacityInput = {
   workDays: number[];
   workStart: string;
   workEnd: string;
+  /** Flight-shaped trip windows must not count time before arrival as usable. */
+  clampToWorkStart?: boolean;
 };
 
 export function deriveTodayCapacity({
@@ -33,6 +35,7 @@ export function deriveTodayCapacity({
   workDays,
   workStart,
   workEnd,
+  clampToWorkStart = false,
 }: DeriveTodayCapacityInput) {
   const todayStr = localDateStr(now);
 
@@ -50,9 +53,19 @@ export function deriveTodayCapacity({
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
   const workStartMinutes = timeStringToMinutes(workStart);
   const workEndMinutes = timeStringToMinutes(workEnd);
+  const capacityClockMins = clampToWorkStart
+    ? Math.max(nowMinutesOfDay, workStartMinutes)
+    : nowMinutesOfDay;
   const minutesLeftToday = isWorkDay
-    ? Math.max(workEndMinutes - nowMinutesOfDay, 0)
+    ? Math.max(workEndMinutes - capacityClockMins, 0)
     : 0;
+
+  // For a flight-shaped day before arrival, capacity starts at the effective
+  // opening time. Passing that clock to interval-aware availability also excludes
+  // commitments that occurred before landing, without mutating the real clock.
+  const availabilityNow = clampToWorkStart && nowMinutesOfDay < workStartMinutes
+    ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(workStartMinutes / 60), workStartMinutes % 60)
+    : now;
 
   // Timed meetings and calendar events share interval-aware capacity logic.
   const dayCommitments = buildDayCommitments({
@@ -60,7 +73,7 @@ export function deriveTodayCapacity({
     meetings: todayMeetings,
   });
   const availability = computeAvailability({
-    now,
+    now: availabilityNow,
     workStartMins: workStartMinutes,
     workEndMins: workEndMinutes,
     isWorkDay,
