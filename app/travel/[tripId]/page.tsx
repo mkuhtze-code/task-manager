@@ -2122,11 +2122,7 @@ export default function TripDayView() {
         </div>
       )}
 
-      <SurfaceNav
-        active="travel"
-        onAdd={!captureOpen ? () => setCaptureOpen(true) : undefined}
-        addLabel="Add stop"
-      />
+      <SurfaceNav active="travel" />
     </div>
   );
 }
