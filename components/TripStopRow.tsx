@@ -28,6 +28,7 @@ type Props = {
   driveGlanceLabel: string | null;
   driveLabel: string | null;
   driveDetail: string | null;
+  mapsUrl: string | null;
   onComplete: () => void;
   onOpen: () => void;
   onNearbyDrive: () => void;
@@ -51,7 +52,7 @@ function shortKind(kind: StopKind | null | undefined): string {
 
 export default function TripStopRow({
   activity: a, rowStyle, conflict, manualSort, workLabel, driveGlanceLabel,
-  driveLabel, driveDetail, onComplete, onOpen, onNearbyDrive,
+  driveLabel, driveDetail, mapsUrl, onComplete, onOpen, onNearbyDrive,
   onPointerDown, onPointerMove, onPointerUp, fmtMins, fmtClock, onRowRef,
 }: Props) {
   return (
@@ -79,6 +80,7 @@ export default function TripStopRow({
               </div>
             )}
             {workLabel && <div className="trip-stop-work-label">{workLabel}</div>}
+            {mapsUrl && <a href={mapsUrl} target="_blank" rel="noreferrer" className="trip-stop-maps-link" onClick={(e) => e.stopPropagation()}>Open in Maps ↗</a>}
           </div>
           <span className={conflict ? 'activity-glance conflict mono' : 'activity-glance mono'}>
             {formatStopGlance({
