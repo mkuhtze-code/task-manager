@@ -73,7 +73,7 @@ export default function TravelVaultSheet({
   const [saving, setSaving] = useState(false);
   /** Flights stay in the vault unless explicitly connected to the itinerary. */
   const [addToItinerary, setAddToItinerary] = useState(false);
-  const [shapeDay, setShapeDay] = useState(false);
+  const [shapeDay, setShapeDay] = useState(true);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const dialogRef = useDialogA11y(onClose);
   const [file, setFile] = useState<File | null>(null);
