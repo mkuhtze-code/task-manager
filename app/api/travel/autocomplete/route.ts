@@ -13,12 +13,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests, try again shortly.' }, { status: 429 });
   }
 
-  const { input, sessionToken } = await req.json();
+  const { input, sessionToken, biasLat, biasLng, radiusMeters, includedPrimaryTypes } = await req.json();
   if (!input || typeof input !== 'string' || input.trim().length < 2) {
     return NextResponse.json({ predictions: [] });
   }
   if (!sessionToken || typeof sessionToken !== 'string') {
     return NextResponse.json({ error: 'sessionToken is required' }, { status: 400 });
+  }
+
+  const hasBias = Number.isFinite(biasLat) && Number.isFinite(biasLng) && biasLat >= -90 && biasLat <= 90 && biasLng >= -180 && biasLng <= 180;
+  const safeRadius = Number.isFinite(radiusMeters) ? Math.min(50000, Math.max(100, Math.round(radiusMeters))) : 5000;
+  const payload: Record<string, unknown> = { input, sessionToken };
+  if (hasBias) {
+    payload.locationBias = { circle: { center: { latitude: biasLat, longitude: biasLng }, radius: safeRadius } };
+    payload.origin = { latitude: biasLat, longitude: biasLng };
+  }
+  const allowedTypes = new Set(['restaurant', 'cafe', 'bakery', 'hardware_store', 'supermarket', 'gas_station', 'lodging', 'tourist_attraction', 'museum', 'park']);
+  if (Array.isArray(includedPrimaryTypes)) {
+    const types = includedPrimaryTypes.filter((type: unknown) => typeof type === 'string' && allowedTypes.has(type));
+    if (types.length) payload.includedPrimaryTypes = types;
   }
 
   const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
@@ -27,7 +40,7 @@ export async function POST(req: NextRequest) {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY as string,
     },
-    body: JSON.stringify({ input, sessionToken }),
+    body: JSON.stringify(payload),
   });
 
   const data = await res.json();
@@ -41,6 +54,7 @@ export async function POST(req: NextRequest) {
     .map((s: {
       placePrediction: {
         placeId?: string;
+        distanceMeters?: number;
         text?: { text?: string };
         structuredFormat?: {
           mainText?: { text?: string };
@@ -57,6 +71,7 @@ export async function POST(req: NextRequest) {
         text: full || main,
         mainText: main,
         secondaryText: secondary,
+        distanceMeters: typeof pred.distanceMeters === 'number' ? pred.distanceMeters : null,
       };
     })
     .filter((p: { placeId: string }) => p.placeId);

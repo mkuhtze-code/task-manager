@@ -9,7 +9,9 @@ import { authedFetch } from '@/lib/authedFetch';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import ContextLine from '@/components/ContextLine';
 import LibrarySheet from '@/components/LibrarySheet';
-import NearbySheet, { NearbySuggestion } from '@/components/NearbySheet';
+import type { NearbySuggestion } from '@/components/NearbySheet';
+import FindPlaceSheet from '@/components/FindPlaceSheet';
+import { buildInsertionOrder, type PlaceBiasContexts } from '@/lib/travel/placeSearch';
 import AccommodationSheet from '@/components/AccommodationSheet';
 import TravelVaultSheet from '@/components/TravelVaultSheet';
 import DaySheet from '@/components/DaySheet';
@@ -218,6 +220,8 @@ function ActivityDetailSheet(props: {
   dayFitLabel: string | null;
   dayStartMins: number;
   dayEndMins: number;
+  biasLat?: number | null;
+  biasLng?: number | null;
   onClose: () => void;
   onSave: (payload: {
     id: string;
@@ -250,6 +254,8 @@ function ActivityDetailSheet(props: {
     dayFitLabel,
     dayStartMins,
     dayEndMins,
+    biasLat,
+    biasLng,
     onClose,
     onSave,
     onComplete,
@@ -402,6 +408,9 @@ function ActivityDetailSheet(props: {
         />
 
         <LocationAutocomplete
+          biasLat={biasLat}
+          biasLng={biasLng}
+          radiusMeters={5000}
           value={location}
           placeholder="Search for a place"
           onChange={setLocation}
@@ -1371,19 +1380,34 @@ export default function TripDayView() {
     }
   }
 
+  async function addFoundPlace(place: { name: string; address: string; lat: number; lng: number }, insertIndex: number | null) {
+    if (!selectedDayId || !session?.user?.id) return;
+    const slot = insertIndex == null ? activities.length : insertIndex;
+    const order = buildInsertionOrder(activities, slot);
+    const updates = await Promise.all(order.updates.map((item) => supabase.from('activities').update({ order_index: item.order_index }).eq('id', item.id)));
+    if (updates.some((result) => result.error)) { alert('Could not prepare the stop order. Try again.'); return; }
+    const { data: inserted, error: insertError } = await supabase.from('activities').insert({
+      user_id: session.user.id, trip_day_id: selectedDayId, text: place.name, activity_type: 'stop',
+      estimate_mins: 30, drive_mins_to_next: 0, location_text: place.address, lat: place.lat, lng: place.lng,
+      order_index: order.insertOrderIndex, time_type: 'flexible', fixed_time: null, stop_kind: 'leisure', presence: 'duration', job_id: null,
+    }).select().single();
+    if (insertError || !inserted) { alert(insertError?.message || 'Could not add stop'); return; }
+    setNearbyOpen(false);
+    setNearbyLeg(null);
+    await loadActivities();
+    await recalculateDay();
+  }
+
   async function findNearby(leg: Leg) {
     setNearbyLeg(leg);
     setNearbyInsertIndex(leg.insertIndex);
     const fromAct = leg.fromId ? activities.find((x) => x.id === leg.fromId) : null;
     const toAct = activities.find((x) => x.id === leg.toId);
     const toName = toAct?.location_text || toAct?.text || 'the next stop';
-    setNearbyContext(
-      fromAct
-        ? `On the way from ${fromAct.location_text || fromAct.text} to ${toName}`
-        : `On the way from ${selectedDay?.base_location_text || 'your base'} to ${toName}`
-    );
+    setNearbyContext(fromAct
+      ? `On the way from ${fromAct.location_text || fromAct.text} to ${toName}`
+      : `On the way from ${selectedDay?.base_location_text || 'your base'} to ${toName}`);
     setNearbyOpen(true);
-    runNearbySearch(leg, nearbyCategory);
   }
 
   function handleCategoryChange(category: string) {
@@ -1727,6 +1751,9 @@ export default function TripDayView() {
               autoFocus
             />
             <LocationAutocomplete
+              biasLat={selectedDay?.base_lat}
+              biasLng={selectedDay?.base_lng}
+              radiusMeters={5000}
               value={captureLocation}
               placeholder="Add location (optional)"
               onChange={setCaptureLocation}
@@ -1902,6 +1929,8 @@ export default function TripDayView() {
           dayCount={tripDays.length}
           dayStartMins={dayStartMinutes}
           dayEndMins={dayEndMinutes}
+          biasLat={selectedDay?.base_lat}
+          biasLng={selectedDay?.base_lng}
           driveFromPrevMins={(() => {
             const legIn = legs.find((l) => l.toId === openActivity.id);
             return legIn && legIn.directMins > 0 ? legIn.directMins : null;
@@ -1970,15 +1999,24 @@ export default function TripDayView() {
       )}
 
       {nearbyOpen && (
-        <NearbySheet
-          loading={nearbyLoading}
-          error={nearbyError}
-          suggestions={nearbySuggestions}
-          selectedCategory={nearbyCategory}
-          onCategoryChange={handleCategoryChange}
+        <FindPlaceSheet
           onClose={() => setNearbyOpen(false)}
-          onPick={insertNearbySuggestion}
-          context={nearbyContext}
+          onAddStop={addFoundPlace}
+          insertIndex={nearbyInsertIndex}
+          initialBias={nearbyLeg ? 'leg' : 'stay'}
+          contextLabel={nearbyContext || undefined}
+          remainingMins={minutesLeftToday}
+          contexts={(() => {
+            const from = nearbyLeg?.fromId ? activities.find((a) => a.id === nearbyLeg.fromId) : null;
+            const to = nearbyLeg ? activities.find((a) => a.id === nearbyLeg.toId) : null;
+            const focus = openActivity || to || from || activities.find((a) => a.lat != null && a.lng != null);
+            const contexts: PlaceBiasContexts = {};
+            if (selectedDay?.base_lat != null && selectedDay.base_lng != null) contexts.stay = { lat: selectedDay.base_lat, lng: selectedDay.base_lng };
+            if (focus?.lat != null && focus.lng != null) contexts.stop = { lat: focus.lat, lng: focus.lng };
+            if (to?.lat != null && to.lng != null) contexts.next = { lat: to.lat, lng: to.lng };
+            if (nearbyLeg) contexts.leg = { lat: (nearbyLeg.fromLat + nearbyLeg.toLat) / 2, lng: (nearbyLeg.fromLng + nearbyLeg.toLng) / 2 };
+            return contexts;
+          })()}
         />
       )}
 
@@ -2061,6 +2099,18 @@ export default function TripDayView() {
             </div>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 0 }}>
               {[
+                {
+                  key: 'find-place',
+                  label: 'Find place',
+                  sub: 'Search near this day, stay, stop or drive leg',
+                  run: () => {
+                    setTripToolsOpen(false);
+                    setNearbyLeg(null);
+                    setNearbyInsertIndex(null);
+                    setNearbyContext('Find a place to add to this trip day');
+                    setNearbyOpen(true);
+                  },
+                },
                 {
                   key: 'stay',
                   label: 'Stay',

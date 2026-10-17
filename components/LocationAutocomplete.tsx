@@ -8,6 +8,7 @@ type Prediction = {
   text: string;
   mainText?: string;
   secondaryText?: string;
+  distanceMeters?: number | null;
 };
 
 export default function LocationAutocomplete(props: {
@@ -23,6 +24,9 @@ export default function LocationAutocomplete(props: {
   'aria-label'?: string;
   id?: string;
   disabled?: boolean;
+  biasLat?: number | null;
+  biasLng?: number | null;
+  radiusMeters?: number;
 }) {
   const {
     value,
@@ -32,6 +36,9 @@ export default function LocationAutocomplete(props: {
     onPlacePicked,
     hint,
     disabled,
+    biasLat,
+    biasLng,
+    radiusMeters,
   } = props;
   const listId = useId();
   const inputId = props.id ?? listId;
@@ -101,6 +108,7 @@ export default function LocationAutocomplete(props: {
         const json = await authedFetch('/api/travel/autocomplete', {
           input: text,
           sessionToken: ensureSessionToken(),
+          ...(biasLat != null && biasLng != null ? { biasLat, biasLng, radiusMeters } : {}),
         });
         const next: Prediction[] = json.predictions || [];
         setPredictions(next);
