@@ -174,6 +174,21 @@ function fmtDayLabel(dateStr: string): { weekday: string; date: string } {
   };
 }
 
+function formatFlightDetailLabel(detail: { starts_at: string | null; ends_at: string | null } | undefined): string | null {
+  if (!detail) return null;
+  const clock = (value: string | null) => {
+    const match = value?.match(/T(\\d{2}:\\d{2})/);
+    return match?.[1] ? fmtClock(match[1]) : null;
+  };
+  const departure = clock(detail.starts_at);
+  const arrival = clock(detail.ends_at);
+  const parts = [
+    departure ? `Depart ${departure}` : null,
+    arrival ? `Arrive ${arrival}` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
+}
+
 function parseMins(raw: string): number | null {
   const str = raw.trim().toLowerCase();
   if (str.length === 0) return 0;
@@ -617,6 +632,7 @@ export default function TripDayView() {
   const [tripDays, setTripDays] = useState<TripDay[]>([]);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [flightDetailsByActivity, setFlightDetailsByActivity] = useState<Record<string, { starts_at: string | null; ends_at: string | null }>>({});
   const [history, setHistory] = useState<HistoricalTask[]>([]);
   const clusters = useMemo(() => buildClusters(history), [history]);
   const [now, setNow] = useState(new Date());
@@ -753,7 +769,25 @@ export default function TripDayView() {
       .eq('trip_day_id', dayId)
       .neq('status', 'done')
       .order('order_index', { ascending: true });
-    setActivities(data || []);
+    const rows = (data || []) as Activity[];
+    setActivities(rows);
+    const flightIds = rows.filter((activity) => activity.activity_type === 'flight').map((activity) => activity.id);
+    if (flightIds.length === 0) {
+      setFlightDetailsByActivity({});
+    } else {
+      const { data: flightDocs } = await supabase
+        .from('travel_documents')
+        .select('activity_id,starts_at,ends_at')
+        .eq('doc_type', 'flight')
+        .in('activity_id', flightIds);
+      const next: Record<string, { starts_at: string | null; ends_at: string | null }> = {};
+      for (const doc of flightDocs || []) {
+        if (doc.activity_id && !next[doc.activity_id]) {
+          next[doc.activity_id] = { starts_at: doc.starts_at, ends_at: doc.ends_at };
+        }
+      }
+      setFlightDetailsByActivity(next);
+    }
   }
 
   async function refreshSelectedDay() {
@@ -1624,6 +1658,7 @@ export default function TripDayView() {
             <TripStopRow
               key={a.id}
               activity={a}
+              flightDetailLabel={a.activity_type === 'flight' ? formatFlightDetailLabel(flightDetailsByActivity[a.id]) : null}
               rowStyle={rowStyle}
               conflict={conflict}
               routeUnverifiable={!!unverifiableFixedTimes[a.id]}
