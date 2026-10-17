@@ -22,6 +22,11 @@ describe('Today travel regime', () => {
     expect(work.blockedMins).toBe(420);
   });
 
+  it('keeps legacy untyped all-day presence blocking', () => {
+    const legacy = computeTravelPresenceImpact([{ id: 'legacy', presence: 'all_day' }], 420, 480);
+    expect(legacy.blockedMins).toBe(420);
+  });
+
   it('allocates work presence only from capacity left after meetings/calendar', () => {
     expect(composeTravelCapacity(60, 180)).toEqual({ taskCapacity: 0, incrementalBlockedMins: 60 });
   });
