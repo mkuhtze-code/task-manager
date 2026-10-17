@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { computeTravelPresenceImpact } from '@/lib/travelPresence';
 import {
   composeTravelCapacity,
   resolveTodayTravelWindow,
@@ -6,8 +7,19 @@ import {
 } from '@/lib/today/travelRegime';
 
 describe('Today travel regime', () => {
-  it('leaves capacity unchanged when travel presence is leisure-only', () => {
-    expect(composeTravelCapacity(420, 0)).toEqual({ taskCapacity: 420, incrementalBlockedMins: 0 });
+  it('preserves travelPresence leisure-vs-work rules', () => {
+    const leisure = computeTravelPresenceImpact([
+      { id: 'beach', stop_kind: 'leisure', presence: 'all_day' },
+    ], 420, 480);
+    const work = computeTravelPresenceImpact([
+      { id: 'site', stop_kind: 'work', presence: 'all_day' },
+    ], 420, 480);
+    expect(leisure.blockedMins).toBe(0);
+    expect(composeTravelCapacity(420, leisure.blockedMins)).toEqual({
+      taskCapacity: 420,
+      incrementalBlockedMins: 0,
+    });
+    expect(work.blockedMins).toBe(420);
   });
 
   it('allocates work presence only from capacity left after meetings/calendar', () => {
