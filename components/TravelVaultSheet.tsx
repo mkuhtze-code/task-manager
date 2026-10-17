@@ -589,7 +589,11 @@ export default function TravelVaultSheet({
                 <input
                   type="checkbox"
                   checked={addToItinerary}
-                  onChange={(e) => setAddToItinerary(e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setAddToItinerary(checked);
+                    if (!checked) setShapeDay(false);
+                  }}
                 />
                 Connect flight to itinerary
                 {tripDays.length === 0 ? (
