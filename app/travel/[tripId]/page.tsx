@@ -927,14 +927,16 @@ export default function TripDayView() {
       }
     }
 
-    const dayAnchor = selectedDay
-      ? resolveScheduledDayAnchor(
-          selectedDay,
-          activities.some((activity) => activity.activity_type === 'flight')
-        )
-      : null;
-    const dayStart = dayAnchor?.windowStartMins ?? 8 * 60;
-    const dayEnd = dayAnchor?.windowEndMins ?? 20 * 60;
+    if (!selectedDay) {
+      setError('Select a trip day first');
+      return;
+    }
+    const dayAnchor = resolveScheduledDayAnchor(
+      selectedDay,
+      activities.some((activity) => activity.activity_type === 'flight')
+    );
+    const dayStart = dayAnchor.windowStartMins;
+    const dayEnd = dayAnchor.windowEndMins;
 
     const schedule = presenceToSchedule({
       presence: capturePresence,
