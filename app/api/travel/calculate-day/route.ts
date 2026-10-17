@@ -92,6 +92,11 @@ export async function POST(req: NextRequest) {
   let driveFromBaseMins: number | null = null;
   let baseRoutePolyline: string | null = null;
 
+  if (!hasBase && stops.length > 0 && tripDay.base_location_text) {
+    skipped.push(stops[0].text);
+    unknownLegs.push({ from: tripDay.base_location_text, to: stops[0].text, reason: 'base-unmapped' });
+  }
+
   if (hasBase && stops.length > 0) {
     const first = stops[0];
     if (first.lat != null && first.lng != null) {
