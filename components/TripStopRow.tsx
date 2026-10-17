@@ -23,6 +23,7 @@ type Props = {
   activity: TripStopRowActivity;
   rowStyle: CSSProperties;
   conflict: boolean;
+  routeUnverifiable: boolean;
   manualSort: boolean;
   workLabel: string | null;
   driveGlanceLabel: string | null;
@@ -51,7 +52,7 @@ function shortKind(kind: StopKind | null | undefined): string {
 }
 
 export default function TripStopRow({
-  activity: a, rowStyle, conflict, manualSort, workLabel, driveGlanceLabel,
+  activity: a, rowStyle, conflict, routeUnverifiable, manualSort, workLabel, driveGlanceLabel,
   driveLabel, driveDetail, mapsUrl, onComplete, onOpen, onNearbyDrive,
   onPointerDown, onPointerMove, onPointerUp, fmtMins, fmtClock, onRowRef,
 }: Props) {
@@ -67,7 +68,7 @@ export default function TripStopRow({
               <span className="stop-kind-mark">{shortKind(a.stop_kind)}</span>
               {a.text}
             </div>
-            {((a.location_text && a.lat == null) || conflict) && (
+            {((a.location_text && a.lat == null) || conflict || routeUnverifiable) && (
               <div className="activity-meta">
                 {a.location_text && a.lat == null && (
                   <span className="activity-meta-loc" title={a.location_text}>
@@ -77,6 +78,7 @@ export default function TripStopRow({
                   </span>
                 )}
                 {conflict && <span className="activity-meta-conflict">won't make it</span>}
+                {!conflict && routeUnverifiable && <span className="trip-stop-drive-unknown">drive time unverified</span>}
               </div>
             )}
             {workLabel && <div className="trip-stop-work-label">{workLabel}</div>}
