@@ -793,6 +793,7 @@ export default function TripDayView() {
       tripId: trip.id,
       tripName: trip.name,
       intent: trip.intent ?? 'work',
+      flightScheduled: activities.some((activity) => activity.activity_type === 'flight'),
       day: selectedDay
         ? {
             id: selectedDay.id,
