@@ -606,3 +606,9 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .task-list {
   outline-offset: 3px;
   border-radius: 3px;
 }
+
+
+/* Travel S2: keep conflict count secondary to the day-fit summary. */
+.trip-day-panel-conflicts {
+  color: var(--hazard);
+}

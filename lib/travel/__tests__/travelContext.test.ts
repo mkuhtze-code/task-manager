@@ -10,6 +10,7 @@ import {
 } from '../travelContext';
 import { processInteraction } from '@/lib/engine';
 import { findFixedTimeConflicts } from '@/lib/travelSort';
+import { presenceToSchedule } from '@/lib/travelStopTypes';
 
 describe('travel day anchors', () => {
   it('starts usable time 45 minutes after landing, not at the old day start', () => {
@@ -256,5 +257,47 @@ describe('travel engine respects flight-only anchors', () => {
     expect(buildTravelEngineContext({ ...args, flightScheduled: false }).dayEndMins).toBe(20 * 60);
     expect(buildTravelEngineContext({ ...args, flightScheduled: true }).dayStartMins).toBe(13 * 60 + 45);
     expect(buildTravelEngineContext({ ...args, flightScheduled: true }).dayEndMins).toBe(16 * 60);
+  });
+});
+
+
+describe('effective day window drives stop presence scheduling', () => {
+  it('sizes all-day presence from the shortened post-landing window', () => {
+    const day = {
+      day_start: '07:30',
+      day_end: '20:00',
+      arrival_time: '13:00',
+      departure_time: '16:00',
+    };
+    const anchor = resolveScheduledDayAnchor(day, true);
+    const scheduled = presenceToSchedule({
+      presence: 'all_day',
+      durationMins: null,
+      fixedTime: null,
+      dayStartMins: anchor.windowStartMins,
+      dayEndMins: anchor.windowEndMins,
+    });
+
+    expect(anchor.windowStartMins).toBe(13 * 60 + 45);
+    expect(anchor.windowEndMins).toBe(16 * 60);
+    expect(scheduled.estimate_mins).toBe(135);
+  });
+
+  it('keeps ordinary-day presence on the normal day window when stored flight anchors are stale', () => {
+    const anchor = resolveScheduledDayAnchor({
+      day_start: '08:00',
+      day_end: '20:00',
+      arrival_time: '13:00',
+      departure_time: '16:00',
+    }, false);
+    const scheduled = presenceToSchedule({
+      presence: 'all_day',
+      durationMins: null,
+      fixedTime: null,
+      dayStartMins: anchor.windowStartMins,
+      dayEndMins: anchor.windowEndMins,
+    });
+
+    expect(scheduled.estimate_mins).toBe(720);
   });
 });

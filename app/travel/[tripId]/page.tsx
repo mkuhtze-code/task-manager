@@ -216,6 +216,8 @@ function ActivityDetailSheet(props: {
   driveFromPrevLabel: string | null;
   conflict: boolean;
   dayFitLabel: string | null;
+  dayStartMins: number;
+  dayEndMins: number;
   onClose: () => void;
   onSave: (payload: {
     id: string;
@@ -246,6 +248,8 @@ function ActivityDetailSheet(props: {
     driveFromPrevLabel,
     conflict,
     dayFitLabel,
+    dayStartMins,
+    dayEndMins,
     onClose,
     onSave,
     onComplete,
@@ -286,15 +290,12 @@ function ActivityDetailSheet(props: {
       return;
     }
 
-    // Day window defaults when editing without selected day times on hand
-    const dayStart = 8 * 60;
-    const dayEnd = 20 * 60;
     const schedule = presenceToSchedule({
       presence,
       durationMins,
       fixedTime: fixedTime || null,
-      dayStartMins: dayStart,
-      dayEndMins: dayEnd,
+      dayStartMins,
+      dayEndMins,
     });
 
     let loc = location.trim();
@@ -926,14 +927,16 @@ export default function TripDayView() {
       }
     }
 
-    const dayAnchor = selectedDay
-      ? resolveScheduledDayAnchor(
-          selectedDay,
-          activities.some((activity) => activity.activity_type === 'flight')
-        )
-      : null;
-    const dayStart = dayAnchor?.windowStartMins ?? 8 * 60;
-    const dayEnd = dayAnchor?.windowEndMins ?? 20 * 60;
+    if (!selectedDay) {
+      setError('Select a trip day first');
+      return;
+    }
+    const dayAnchor = resolveScheduledDayAnchor(
+      selectedDay,
+      activities.some((activity) => activity.activity_type === 'flight')
+    );
+    const dayStart = dayAnchor.windowStartMins;
+    const dayEnd = dayAnchor.windowEndMins;
 
     const schedule = presenceToSchedule({
       presence: capturePresence,
@@ -1574,9 +1577,10 @@ export default function TripDayView() {
           key={selectedDay.id}
           dayAnchor={dayAnchor}
           flightScheduled={hasScheduledFlight}
-          fitLabel={activities.length > 0 && minutesLeftToday > 0
-            ? overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(spareMins)} spare`
-            : activities.length === 0 ? 'Nothing planned yet' : 'Day detail'}
+          fitLabel={minutesLeftToday > 0
+            ? overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(Math.max(0, spareMins))} spare`
+            : 'Day window passed'}
+          conflictCount={Object.values(fixedTimeConflicts).filter(Boolean).length}
           meetingCount={dayMeetingCount}
           daySheetOpen={daySheetOpen}
           onOpenDaySheet={() => setDaySheetOpen(true)}
@@ -1896,6 +1900,8 @@ export default function TripDayView() {
           }
           dayIndex={selectedDayIndex >= 0 ? selectedDayIndex + 1 : 1}
           dayCount={tripDays.length}
+          dayStartMins={dayStartMinutes}
+          dayEndMins={dayEndMinutes}
           driveFromPrevMins={(() => {
             const legIn = legs.find((l) => l.toId === openActivity.id);
             return legIn && legIn.directMins > 0 ? legIn.directMins : null;
@@ -2118,11 +2124,7 @@ export default function TripDayView() {
         </div>
       )}
 
-      <SurfaceNav
-        active="travel"
-        onAdd={!captureOpen ? () => setCaptureOpen(true) : undefined}
-        addLabel="Add stop"
-      />
+      <SurfaceNav active="travel" />
     </div>
   );
 }
