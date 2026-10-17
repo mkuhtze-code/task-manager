@@ -23,6 +23,8 @@ type DeriveTodayCapacityInput = {
   workDays: number[];
   workStart: string;
   workEnd: string;
+  /** Flight-shaped trip windows must not count time before arrival as usable. */
+  clampToWorkStart?: boolean;
 };
 
 export function deriveTodayCapacity({
@@ -33,6 +35,7 @@ export function deriveTodayCapacity({
   workDays,
   workStart,
   workEnd,
+  clampToWorkStart = false,
 }: DeriveTodayCapacityInput) {
   const todayStr = localDateStr(now);
 
@@ -50,8 +53,11 @@ export function deriveTodayCapacity({
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
   const workStartMinutes = timeStringToMinutes(workStart);
   const workEndMinutes = timeStringToMinutes(workEnd);
+  const capacityClockMins = clampToWorkStart
+    ? Math.max(nowMinutesOfDay, workStartMinutes)
+    : nowMinutesOfDay;
   const minutesLeftToday = isWorkDay
-    ? Math.max(workEndMinutes - nowMinutesOfDay, 0)
+    ? Math.max(workEndMinutes - capacityClockMins, 0)
     : 0;
 
   // Timed meetings and calendar events share interval-aware capacity logic.
