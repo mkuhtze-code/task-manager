@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
   const { data: tripDay, error: dayError } = await supabaseAdmin
     .from('trip_days')
-    .select('id, base_lat, base_lng, trip_id, trips!inner(user_id)')
+    .select('id, base_lat, base_lng, base_location_text, trip_id, trips!inner(user_id)')
     .eq('id', trip_day_id)
     .maybeSingle();
 
