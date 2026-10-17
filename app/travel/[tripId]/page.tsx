@@ -18,7 +18,7 @@ import TripStopRow from '@/components/TripStopRow';
 import TripDayMeetings from '@/components/TripDayMeetings';
 import MapView from '@/components/MapView';
 import { TravelLeg } from '@/components/TravelLeg';
-import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
+import { sortActivities, findFixedTimeConflicts, findUnverifiableFixedTimeStops, SortMode as TravelSortMode } from '@/lib/travelSort';
 import GearMenu from '@/components/GearMenu';
 import {
   BackIcon,
@@ -1419,6 +1419,13 @@ export default function TripDayView() {
     () => findFixedTimeConflicts(sortedActivities as any, dayStartMinutes),
     [sortedActivities, dayStartMinutes]
   );
+  const unverifiableFixedTimes = useMemo(
+    () => findUnverifiableFixedTimeStops(
+      sortedActivities as any,
+      !!selectedDay && selectedDay.base_lat != null && selectedDay.base_lng != null && (selectedDay.drive_from_base_mins || 0) <= 0,
+    ),
+    [sortedActivities, selectedDay],
+  );
 
 
   // Meetings on selected trip day — full rows for capacity ANSWER + count for UI.
@@ -1630,6 +1637,7 @@ export default function TripDayView() {
               activity={a}
               rowStyle={rowStyle}
               conflict={conflict}
+              routeUnverifiable={!!unverifiableFixedTimes[a.id]}
               manualSort={travelSortMode === 'manual'}
               workLabel={a.job_id
                 ? `Job · ${jobs.find((job) => job.id === a.job_id)?.name || 'Linked job'}`
