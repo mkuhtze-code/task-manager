@@ -53,7 +53,7 @@ import {
   loadPriorForDock,
   type EngineRequest,
 } from '@/lib/engine';
-import { buildTravelEngineContext, resolveDayAnchor, selectInitialTripDay } from '@/lib/travel/travelContext';
+import { buildTravelEngineContext, resolveScheduledDayAnchor, selectInitialTripDay } from '@/lib/travel/travelContext';
 import { buildGoogleMapsDirectionsUrl, displayDriveEstimate } from '@/lib/travel/driveLegs';
 
 type Trip = {
@@ -1386,7 +1386,8 @@ export default function TripDayView() {
     recalculateDay();
   }
 
-  const dayAnchor = resolveDayAnchor(selectedDay ?? {});
+  const hasScheduledFlight = activities.some((activity) => activity.activity_type === 'flight');
+  const dayAnchor = resolveScheduledDayAnchor(selectedDay ?? {}, hasScheduledFlight);
   const dayStartMinutes = selectedDay ? dayAnchor.windowStartMins : 0;
   const dayEndMinutes = selectedDay ? dayAnchor.windowEndMins : 0;
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
@@ -1536,6 +1537,7 @@ export default function TripDayView() {
           dayNumber={selectedDayIndex + 1}
           dayCount={tripDays.length}
           dayAnchor={dayAnchor}
+          flightScheduled={hasScheduledFlight}
           dayLabel={`${fmtDayLabel(selectedDay.date).weekday} ${fmtDayLabel(selectedDay.date).date}`}
           fitLabel={activities.length > 0 && minutesLeftToday > 0
             ? overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(spareMins)} spare`
@@ -1543,16 +1545,6 @@ export default function TripDayView() {
           meetingCount={dayMeetingCount}
           daySheetOpen={daySheetOpen}
           onOpenDaySheet={() => setDaySheetOpen(true)}
-          onSaveArrival={async (value) => {
-            const { error } = await supabase.from('trip_days').update({ arrival_time: value }).eq('id', selectedDay.id);
-            if (error) setError(error.message);
-            else await refreshSelectedDay();
-          }}
-          onSaveDeparture={async (value) => {
-            const { error } = await supabase.from('trip_days').update({ departure_time: value }).eq('id', selectedDay.id);
-            if (error) setError(error.message);
-            else await refreshSelectedDay();
-          }}
           onAddStop={() => setCaptureOpen(true)}
         />
       )}
