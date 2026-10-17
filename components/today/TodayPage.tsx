@@ -3,10 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import {
-  computeTravelPresenceImpact,
-} from '@/lib/travelPresence';
+import { computeTravelPresenceImpact } from '@/lib/travelPresence';
 import { localDateStr as travelLocalDateStr } from '@/lib/travelContext';
+import {
+  composeTravelCapacity,
+  resolveTodayTravelWindow,
+  todayTravelRegimeLabel,
+  type TodayTravelDay,
+} from '@/lib/today/travelRegime';
 import ContextLine from '@/components/ContextLine';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { TodayTaskList } from '@/components/today/TodayTaskList';
@@ -204,6 +208,13 @@ export function TodayPage() {
   const [travelStopsToday, setTravelStopsToday] = useState<
     Parameters<typeof computeTravelPresenceImpact>[0]
   >([]);
+  const [travelTodayContext, setTravelTodayContext] = useState<{
+    tripId: string;
+    tripName: string;
+    intent: 'work' | 'personal' | null;
+    day: TodayTravelDay;
+    flightScheduled: boolean;
+  } | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<
     Array<{
       id: string;
@@ -1908,6 +1919,7 @@ export function TodayPage() {
   useEffect(() => {
     if (!session?.user?.id) {
       setTravelStopsToday([]);
+      setTravelTodayContext(null);
       return;
     }
     const uid = session.user.id;
@@ -1916,7 +1928,7 @@ export function TodayPage() {
       const todayStr = travelLocalDateStr();
       const { data: trip } = await supabase
         .from('trips')
-        .select('id')
+        .select('id, name, intent')
         .eq('user_id', uid)
         .lte('start_date', todayStr)
         .gte('end_date', todayStr)
@@ -1926,26 +1938,40 @@ export function TodayPage() {
       if (cancelled) return;
       if (!trip) {
         setTravelStopsToday([]);
+        setTravelTodayContext(null);
         return;
       }
       const { data: dayRow } = await supabase
         .from('trip_days')
-        .select('id')
+        .select('id, day_start, day_end, arrival_time, departure_time')
         .eq('trip_id', trip.id)
         .eq('date', todayStr)
         .maybeSingle();
       if (cancelled) return;
       if (!dayRow) {
         setTravelStopsToday([]);
+        setTravelTodayContext(null);
         return;
       }
       const { data: acts } = await supabase
         .from('activities')
-        .select('id, text, status, stop_kind, presence, estimate_mins, job_id')
+        .select('id, text, status, stop_kind, presence, estimate_mins, job_id, activity_type')
         .eq('trip_day_id', dayRow.id)
         .eq('user_id', uid);
       if (cancelled) return;
       setTravelStopsToday(acts || []);
+      setTravelTodayContext({
+        tripId: trip.id,
+        tripName: trip.name || 'Trip',
+        intent: trip.intent === 'work' || trip.intent === 'personal' ? trip.intent : null,
+        day: {
+          day_start: dayRow.day_start,
+          day_end: dayRow.day_end,
+          arrival_time: dayRow.arrival_time,
+          departure_time: dayRow.departure_time,
+        },
+        flightScheduled: (acts || []).some((activity) => activity.activity_type === 'flight'),
+      });
     })();
     return () => {
       cancelled = true;
@@ -2008,6 +2034,14 @@ export function TodayPage() {
   // Capture draft commits and other unrelated Today state changes should not
   // rerun the calendar/capacity projection. Its inputs are stable while the
   // user types; recompute only when planning inputs or the clock snapshot change.
+  const todayTravelWindow = resolveTodayTravelWindow({
+    tripIntent: travelTodayContext?.intent ?? null,
+    day: travelTodayContext?.day ?? null,
+    flightScheduled: travelTodayContext?.flightScheduled ?? false,
+    workStart,
+    workEnd,
+  });
+
   const todayCapacity = useMemo(
     () =>
       deriveTodayCapacity({
@@ -2016,10 +2050,10 @@ export function TodayPage() {
         calendarEvents,
         now,
         workDays,
-        workStart,
-        workEnd,
+        workStart: todayTravelWindow.startClock,
+        workEnd: todayTravelWindow.endClock,
       }),
-    [tasks, meetings, calendarEvents, now, workDays, workStart, workEnd]
+    [tasks, meetings, calendarEvents, now, workDays, todayTravelWindow.startClock, todayTravelWindow.endClock]
   );
 
   const {
@@ -2036,8 +2070,22 @@ export function TodayPage() {
     dayCommitments,
     availability,
     untimedManualMins,
-    taskCapacity,
+    taskCapacity: baseTaskCapacity,
   } = todayCapacity;
+
+  const travelImpact = computeTravelPresenceImpact(
+    travelStopsToday,
+    minutesLeftToday,
+    Math.max(workEndMinutes - workStartMinutes, 1)
+  );
+  const travelComposition = composeTravelCapacity(baseTaskCapacity, travelImpact.blockedMins);
+  const taskCapacity = travelComposition.taskCapacity;
+  const travelBlockedMins = travelComposition.incrementalBlockedMins;
+  const travelRegimeLabel = todayTravelRegimeLabel({
+    tripName: travelTodayContext?.tripName ?? null,
+    tripIntent: travelTodayContext?.intent ?? null,
+    impactMode: travelImpact.mode,
+  });
 
   // Reality Check: offer while timed Today work is still open and the day is
   // winding down (last 2h of the work window, or any time after work end / off day).
@@ -2129,14 +2177,9 @@ export function TodayPage() {
   });
 
   const remainingTaskMins = ordered.reduce((sum, t) => sum + effectiveRemainingForTask(t), 0);
-  const workWindowMins = Math.max(workEndMinutes - workStartMinutes, 1);
-  const travelImpact = computeTravelPresenceImpact(
-    travelStopsToday,
-    minutesLeftToday,
-    workWindowMins
-  );
-  const travelBlockedMins = travelImpact.blockedMins;
-  // Timed meetings already sit inside availability.blockedMinutes via dayCommitments.
+  // Travel is allocated only from capacity left after calendar/meeting commitments.
+  // The allocated amount is counted once as required work, not as a second
+  // independent calendar subtractor.
   const remainingWorkMins =
     availability.blockedMinutes +
     untimedManualMins +
@@ -2347,7 +2390,16 @@ export function TodayPage() {
 
 
 
-<TodayTaskList
+{travelTodayContext && travelRegimeLabel && (
+        <div className="today-travel-regime" role="status">
+          <span>{travelRegimeLabel}</span>
+          <a href={`/travel/${travelTodayContext.tripId}`} aria-label={`Open trip: ${travelTodayContext.tripName}`}>
+            {travelTodayContext.tripName} →
+          </a>
+        </div>
+      )}
+
+      <TodayTaskList
         taskLoadError={taskLoadError}
         openCount={openVisible.length}
         isDesktop={isDesktop}
