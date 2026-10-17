@@ -190,3 +190,27 @@ export function selectInitialTripDay<T extends { id: string; date: string }>(
   if (todayMatch) return todayMatch;
   return today < ordered[0].date ? ordered[0] : ordered[ordered.length - 1];
 }
+
+
+/**
+ * Flight times only constrain the day when a flight is actually scheduled on
+ * its itinerary. Stale/manual flight anchors in a trip_days row must not make
+ * every ordinary day behave like an airport day.
+ */
+export function resolveScheduledDayAnchor(
+  day: {
+    day_start?: string | null;
+    day_end?: string | null;
+    arrival_time?: string | null;
+    departure_time?: string | null;
+  },
+  flightScheduled: boolean,
+  arrivalBufferMins: number = DEFAULT_ARRIVAL_BUFFER_MINS,
+): DayAnchor {
+  return resolveDayAnchor(
+    flightScheduled
+      ? day
+      : { ...day, arrival_time: null, departure_time: null },
+    arrivalBufferMins,
+  );
+}
