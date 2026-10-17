@@ -235,3 +235,26 @@ describe('flight-only day anchors', () => {
     expect(anchor.windowEndMins).toBe(16 * 60);
   });
 });
+
+
+describe('travel engine respects flight-only anchors', () => {
+  it('uses ordinary day boundaries unless a flight is connected to the itinerary', () => {
+    const args = {
+      tripId: 't1',
+      tripName: 'Trip',
+      day: {
+        id: 'd1',
+        date: '2026-10-08',
+        day_start: '08:00',
+        day_end: '20:00',
+        arrival_time: '13:00',
+        departure_time: '16:00',
+      },
+      activities: [],
+    };
+    expect(buildTravelEngineContext({ ...args, flightScheduled: false }).dayStartMins).toBe(8 * 60);
+    expect(buildTravelEngineContext({ ...args, flightScheduled: false }).dayEndMins).toBe(20 * 60);
+    expect(buildTravelEngineContext({ ...args, flightScheduled: true }).dayStartMins).toBe(13 * 60 + 45);
+    expect(buildTravelEngineContext({ ...args, flightScheduled: true }).dayEndMins).toBe(16 * 60);
+  });
+});
