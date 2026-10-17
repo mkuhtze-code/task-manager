@@ -177,7 +177,7 @@ function fmtDayLabel(dateStr: string): { weekday: string; date: string } {
 function formatFlightDetailLabel(detail: { starts_at: string | null; ends_at: string | null } | undefined): string | null {
   if (!detail) return null;
   const clock = (value: string | null) => {
-    const match = value?.match(/T(\\d{2}:\\d{2})/);
+    const match = value?.match(/T(\d{2}:\d{2})/);
     return match?.[1] ? fmtClock(match[1]) : null;
   };
   const departure = clock(detail.starts_at);
