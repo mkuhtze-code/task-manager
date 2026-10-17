@@ -29,15 +29,13 @@
   - structured phrases → interpret location/job, then insert activity
 - ANSWER uses trip-day remaining capacity (same V3 fit path as work)
 
-## Auto flight → activity
+## Vault → itinerary bridges (T2)
 
-- `extractFlightSchedule` / `buildFlightActivityDraft` in `lib/travel/travelDocuments.ts`
-- On vault **Save** with type **Flight** and “Add as flight on the itinerary” checked:
-  1. Parse flight number, route (AKL→WLG), depart time, date / weekday against trip days
-  2. Insert `activities` row (`activity_type: flight`, fixed time when known)
-  3. Link `travel_documents.activity_id` + `trip_day_id`
-  4. Trip page selects that day and reloads stops
-- Uncheck the box to store evidence only (no itinerary row)
+- Flight evidence can create or update one `activity_type: flight` anchor. A re-save first reuses the document's `activity_id`, then looks for a matching flight across the trip's days before inserting. Moving the flight updates its day rather than leaving a duplicate behind.
+- Flight evidence links `travel_documents.activity_id` + `trip_day_id`; **Shape this day from flight times** updates only the first-day arrival or last-day departure anchor.
+- Booking evidence can optionally be added as one all-day `stop_kind: stay` stop on its check-in day. It is an itinerary place, not a task. The evidence retains the check-in/check-out window and location.
+- The vault list is chronological by event time, falling back to capture time for undated evidence. Linked evidence exposes **View linked itinerary day**; the vault remains the evidence store, not a second itinerary.
+- Unchecking the box to store evidence only does not create an itinerary row.
 
 ## Apply migration
 
@@ -55,3 +53,5 @@ Run in Supabase SQL editor (or your migration pipeline):
 ## Product rule
 
 Vault stores **evidence** of the trip. Itinerary stays in days/activities. Jobs stay the home of work files; vault holds travel artefacts. Flights may bridge both when the user opts in.
+
+T2 acceptance tests for stay drafts, idempotent activity matching, and chronological evidence ordering live in `lib/travel/__tests__/travelDocuments.test.ts` and run through `test:travel-day`.
