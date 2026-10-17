@@ -43,7 +43,10 @@ export default function FindPlaceSheet({ onClose, onAddStop, contexts, initialBi
   const token = useRef('');
   const bias = buildPlaceBias(biasMode, contexts);
   const hasBias = bias.biasLat != null && bias.biasLng != null;
-  const biasKey = `${biasMode}:${bias.biasLat ?? ''}:${bias.biasLng ?? ''}:${category}`;
+  const biasLat = bias.biasLat;
+  const biasLng = bias.biasLng;
+  const radiusMeters = bias.radiusMeters;
+  const biasKey = `${biasMode}:${biasLat ?? ''}:${biasLng ?? ''}:${category}`;
 
   useEffect(() => {
     if (query.trim().length < 2) { setResults([]); setLoading(false); return; }
@@ -52,7 +55,7 @@ export default function FindPlaceSheet({ onClose, onAddStop, contexts, initialBi
       setLoading(true); setError('');
       try {
         if (!token.current) token.current = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-        const json = await authedFetch('/api/travel/autocomplete', buildPlaceAutocompletePayload(query.trim(), token.current, bias, CATEGORIES[category].types));
+        const json = await authedFetch('/api/travel/autocomplete', buildPlaceAutocompletePayload(query.trim(), token.current, { biasLat, biasLng, radiusMeters }, CATEGORIES[category].types));
         if (cancelled) return;
         setResults((json.predictions || []) as Prediction[]);
         if (json.error) setError('Place search unavailable');
@@ -60,7 +63,7 @@ export default function FindPlaceSheet({ onClose, onAddStop, contexts, initialBi
       finally { if (!cancelled) setLoading(false); }
     }, 260);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, biasKey]);
+  }, [query, biasKey, biasLat, biasLng, radiusMeters, category]);
 
   async function addPlace(place: Prediction) {
     setAddingId(place.placeId); setError('');
@@ -95,7 +98,7 @@ export default function FindPlaceSheet({ onClose, onAddStop, contexts, initialBi
       <div className="find-place-results">{results.map((place) => {
         const directions = buildGoogleMapsDirectionsUrl({ lat: null, lng: null, locationText: place.text, label: place.mainText });
         return <article className="find-place-result" key={place.placeId}>
-          <div className="find-place-result-copy"><strong>{place.mainText || place.text}</strong>{place.secondaryText && <span>{place.secondaryText}</span>}{formatDistance(place.distanceMeters) && <small>{formatDistance(place.distanceMeters)}</small>}{remainingMins != null && <small>Day time remaining: {Math.max(0, Math.round(remainingMins))} min</small>}</div>
+          <div className="find-place-result-copy"><strong>{place.mainText || place.text}</strong>{place.secondaryText && <span>{place.secondaryText}</span>}{formatDistance(place.distanceMeters) && <small>{formatDistance(place.distanceMeters)}</small>}{remainingMins != null && <small>Day window remaining: {Math.max(0, Math.round(remainingMins))} min</small>}</div>
           <div className="find-place-result-actions"><button type="button" className="btn btn-steel" disabled={addingId !== null} onClick={() => void addPlace(place)}>{addingId === place.placeId ? 'Adding…' : 'Add stop'}</button>{directions && <a className="find-place-directions" href={directions} target="_blank" rel="noreferrer">Directions</a>}</div>
         </article>;
       })}</div>
