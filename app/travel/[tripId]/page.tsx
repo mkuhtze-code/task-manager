@@ -9,7 +9,7 @@ import { authedFetch } from '@/lib/authedFetch';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import ContextLine from '@/components/ContextLine';
 import LibrarySheet from '@/components/LibrarySheet';
-import { NearbySuggestion } from '@/components/NearbySheet';
+import type { NearbySuggestion } from '@/components/NearbySheet';
 import FindPlaceSheet from '@/components/FindPlaceSheet';
 import { buildInsertionOrder, type PlaceBiasContexts } from '@/lib/travel/placeSearch';
 import AccommodationSheet from '@/components/AccommodationSheet';
