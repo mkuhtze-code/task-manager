@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   applyArrivalBuffer,
   resolveDayAnchor,
+  resolveScheduledDayAnchor,
   dayWindowFromTripDay,
   remainingMinsOnTripDay,
   buildTravelEngineContext,
@@ -203,5 +204,57 @@ describe('initial trip day selection', () => {
 
   it('handles no trip days', () => {
     expect(selectInitialTripDay([], '2026-10-15')).toBeNull();
+  });
+});
+
+
+describe('flight-only day anchors', () => {
+  it('ignores stored flight anchors when no flight is scheduled', () => {
+    const anchor = resolveScheduledDayAnchor({
+      day_start: '08:00',
+      day_end: '20:00',
+      arrival_time: '13:00',
+      departure_time: '16:00',
+    }, false);
+    expect(anchor.arrivalMins).toBeNull();
+    expect(anchor.departureMins).toBeNull();
+    expect(anchor.windowStartMins).toBe(8 * 60);
+    expect(anchor.windowEndMins).toBe(20 * 60);
+  });
+
+  it('uses flight anchors when a flight is scheduled on the itinerary', () => {
+    const anchor = resolveScheduledDayAnchor({
+      day_start: '08:00',
+      day_end: '20:00',
+      arrival_time: '13:00',
+      departure_time: '16:00',
+    }, true);
+    expect(anchor.arrivalMins).toBe(13 * 60);
+    expect(anchor.departureMins).toBe(16 * 60);
+    expect(anchor.windowStartMins).toBe(13 * 60 + 45);
+    expect(anchor.windowEndMins).toBe(16 * 60);
+  });
+});
+
+
+describe('travel engine respects flight-only anchors', () => {
+  it('uses ordinary day boundaries unless a flight is connected to the itinerary', () => {
+    const args = {
+      tripId: 't1',
+      tripName: 'Trip',
+      day: {
+        id: 'd1',
+        date: '2026-10-08',
+        day_start: '08:00',
+        day_end: '20:00',
+        arrival_time: '13:00',
+        departure_time: '16:00',
+      },
+      activities: [],
+    };
+    expect(buildTravelEngineContext({ ...args, flightScheduled: false }).dayStartMins).toBe(8 * 60);
+    expect(buildTravelEngineContext({ ...args, flightScheduled: false }).dayEndMins).toBe(20 * 60);
+    expect(buildTravelEngineContext({ ...args, flightScheduled: true }).dayStartMins).toBe(13 * 60 + 45);
+    expect(buildTravelEngineContext({ ...args, flightScheduled: true }).dayEndMins).toBe(16 * 60);
   });
 });

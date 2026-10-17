@@ -589,3 +589,20 @@ html[data-surface='desktop'] .app-shell.desk-trip-detail > .task-list {
   .trip-day-panel-date { text-align: left; }
   .trip-day-panel-times { gap: 8px 10px; }
 }
+
+
+/* Travel T3: quiet external navigation handoff and honest unknown drive labels. */
+.trip-stop-maps-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.trip-stop-maps-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}

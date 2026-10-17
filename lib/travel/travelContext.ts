@@ -137,6 +137,8 @@ export function buildTravelEngineContext(args: {
     drive_from_base_mins?: number | null;
   } | null;
   activities: TravelActivitySlice[];
+  /** Only a linked itinerary flight may apply stored arrival/departure anchors. */
+  flightScheduled?: boolean;
 }): TravelEngineContext {
   if (!args.day) {
     return {
@@ -154,7 +156,13 @@ export function buildTravelEngineContext(args: {
       driveFromBaseMins: null,
     };
   }
-  const window = dayWindowFromTripDay(args.day);
+  const anchor = resolveScheduledDayAnchor(args.day, args.flightScheduled ?? false);
+  const window: TravelDayWindow = {
+    date: args.day.date,
+    dayStartMins: anchor.windowStartMins,
+    dayEndMins: anchor.windowEndMins,
+    baseLocationText: args.day.base_location_text ?? null,
+  };
   const driveFromBase = args.day.drive_from_base_mins ?? 0;
   const planned = args.activities
     .filter((a) => a.status !== 'done')
@@ -189,4 +197,28 @@ export function selectInitialTripDay<T extends { id: string; date: string }>(
   const todayMatch = ordered.find((day) => day.date === today);
   if (todayMatch) return todayMatch;
   return today < ordered[0].date ? ordered[0] : ordered[ordered.length - 1];
+}
+
+
+/**
+ * Flight times only constrain the day when a flight is actually scheduled on
+ * its itinerary. Stale/manual flight anchors in a trip_days row must not make
+ * every ordinary day behave like an airport day.
+ */
+export function resolveScheduledDayAnchor(
+  day: {
+    day_start?: string | null;
+    day_end?: string | null;
+    arrival_time?: string | null;
+    departure_time?: string | null;
+  },
+  flightScheduled: boolean,
+  arrivalBufferMins: number = DEFAULT_ARRIVAL_BUFFER_MINS,
+): DayAnchor {
+  return resolveDayAnchor(
+    flightScheduled
+      ? day
+      : { ...day, arrival_time: null, departure_time: null },
+    arrivalBufferMins,
+  );
 }

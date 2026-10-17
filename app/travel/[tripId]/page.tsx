@@ -18,7 +18,7 @@ import TripStopRow from '@/components/TripStopRow';
 import TripDayMeetings from '@/components/TripDayMeetings';
 import MapView from '@/components/MapView';
 import { TravelLeg } from '@/components/TravelLeg';
-import { sortActivities, findFixedTimeConflicts, SortMode as TravelSortMode } from '@/lib/travelSort';
+import { sortActivities, findFixedTimeConflicts, findUnverifiableFixedTimeStops, SortMode as TravelSortMode } from '@/lib/travelSort';
 import GearMenu from '@/components/GearMenu';
 import {
   BackIcon,
@@ -53,7 +53,8 @@ import {
   loadPriorForDock,
   type EngineRequest,
 } from '@/lib/engine';
-import { buildTravelEngineContext, resolveDayAnchor, selectInitialTripDay } from '@/lib/travel/travelContext';
+import { buildTravelEngineContext, resolveScheduledDayAnchor, selectInitialTripDay } from '@/lib/travel/travelContext';
+import { buildGoogleMapsDirectionsUrl, displayDriveEstimate } from '@/lib/travel/driveLegs';
 
 type Trip = {
   id: string;
@@ -171,6 +172,21 @@ function fmtDayLabel(dateStr: string): { weekday: string; date: string } {
     weekday: dt.toLocaleDateString(undefined, { weekday: 'short' }),
     date: dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
   };
+}
+
+function formatFlightDetailLabel(detail: { starts_at: string | null; ends_at: string | null } | undefined): string | null {
+  if (!detail) return null;
+  const clock = (value: string | null) => {
+    const match = value?.match(/T(\d{2}:\d{2})/);
+    return match?.[1] ? fmtClock(match[1]) : null;
+  };
+  const departure = clock(detail.starts_at);
+  const arrival = clock(detail.ends_at);
+  const parts = [
+    departure ? `Depart ${departure}` : null,
+    arrival ? `Arrive ${arrival}` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
 }
 
 function parseMins(raw: string): number | null {
@@ -616,6 +632,7 @@ export default function TripDayView() {
   const [tripDays, setTripDays] = useState<TripDay[]>([]);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [flightDetailsByActivity, setFlightDetailsByActivity] = useState<Record<string, { starts_at: string | null; ends_at: string | null }>>({});
   const [history, setHistory] = useState<HistoricalTask[]>([]);
   const clusters = useMemo(() => buildClusters(history), [history]);
   const [now, setNow] = useState(new Date());
@@ -752,7 +769,25 @@ export default function TripDayView() {
       .eq('trip_day_id', dayId)
       .neq('status', 'done')
       .order('order_index', { ascending: true });
-    setActivities(data || []);
+    const rows = (data || []) as Activity[];
+    setActivities(rows);
+    const flightIds = rows.filter((activity) => activity.activity_type === 'flight').map((activity) => activity.id);
+    if (flightIds.length === 0) {
+      setFlightDetailsByActivity({});
+    } else {
+      const { data: flightDocs } = await supabase
+        .from('travel_documents')
+        .select('activity_id,starts_at,ends_at')
+        .eq('doc_type', 'flight')
+        .in('activity_id', flightIds);
+      const next: Record<string, { starts_at: string | null; ends_at: string | null }> = {};
+      for (const doc of flightDocs || []) {
+        if (doc.activity_id && !next[doc.activity_id]) {
+          next[doc.activity_id] = { starts_at: doc.starts_at, ends_at: doc.ends_at };
+        }
+      }
+      setFlightDetailsByActivity(next);
+    }
   }
 
   async function refreshSelectedDay() {
@@ -792,6 +827,7 @@ export default function TripDayView() {
       tripId: trip.id,
       tripName: trip.name,
       intent: trip.intent ?? 'work',
+      flightScheduled: activities.some((activity) => activity.activity_type === 'flight'),
       day: selectedDay
         ? {
             id: selectedDay.id,
@@ -890,10 +926,14 @@ export default function TripDayView() {
       }
     }
 
-    const dayStart = selectedDay ? resolveDayAnchor(selectedDay).windowStartMins : 8 * 60;
-    const dayEnd = selectedDay
-      ? timeStringToMinutes(selectedDay.departure_time || selectedDay.day_end || '20:00')
-      : 20 * 60;
+    const dayAnchor = selectedDay
+      ? resolveScheduledDayAnchor(
+          selectedDay,
+          activities.some((activity) => activity.activity_type === 'flight')
+        )
+      : null;
+    const dayStart = dayAnchor?.windowStartMins ?? 8 * 60;
+    const dayEnd = dayAnchor?.windowEndMins ?? 20 * 60;
 
     const schedule = presenceToSchedule({
       presence: capturePresence,
@@ -1385,7 +1425,8 @@ export default function TripDayView() {
     recalculateDay();
   }
 
-  const dayAnchor = resolveDayAnchor(selectedDay ?? {});
+  const hasScheduledFlight = activities.some((activity) => activity.activity_type === 'flight');
+  const dayAnchor = resolveScheduledDayAnchor(selectedDay ?? {}, hasScheduledFlight);
   const dayStartMinutes = selectedDay ? dayAnchor.windowStartMins : 0;
   const dayEndMinutes = selectedDay ? dayAnchor.windowEndMins : 0;
   const nowMinutesOfDay = now.getHours() * 60 + now.getMinutes();
@@ -1417,6 +1458,13 @@ export default function TripDayView() {
   const fixedTimeConflicts = useMemo(
     () => findFixedTimeConflicts(sortedActivities as any, dayStartMinutes),
     [sortedActivities, dayStartMinutes]
+  );
+  const unverifiableFixedTimes = useMemo(
+    () => findUnverifiableFixedTimeStops(
+      sortedActivities as any,
+      !!selectedDay && selectedDay.base_lat != null && selectedDay.base_lng != null && (selectedDay.drive_from_base_mins || 0) <= 0,
+    ),
+    [sortedActivities, selectedDay],
   );
 
 
@@ -1524,27 +1572,14 @@ export default function TripDayView() {
       {selectedDay && (
         <TripDayPanel
           key={selectedDay.id}
-          day={selectedDay}
-          dayNumber={selectedDayIndex + 1}
-          dayCount={tripDays.length}
           dayAnchor={dayAnchor}
-          dayLabel={`${fmtDayLabel(selectedDay.date).weekday} ${fmtDayLabel(selectedDay.date).date}`}
+          flightScheduled={hasScheduledFlight}
           fitLabel={activities.length > 0 && minutesLeftToday > 0
             ? overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(spareMins)} spare`
             : activities.length === 0 ? 'Nothing planned yet' : 'Day detail'}
           meetingCount={dayMeetingCount}
           daySheetOpen={daySheetOpen}
           onOpenDaySheet={() => setDaySheetOpen(true)}
-          onSaveArrival={async (value) => {
-            const { error } = await supabase.from('trip_days').update({ arrival_time: value }).eq('id', selectedDay.id);
-            if (error) setError(error.message);
-            else await refreshSelectedDay();
-          }}
-          onSaveDeparture={async (value) => {
-            const { error } = await supabase.from('trip_days').update({ departure_time: value }).eq('id', selectedDay.id);
-            if (error) setError(error.message);
-            else await refreshSelectedDay();
-          }}
           onAddStop={() => setCaptureOpen(true)}
         />
       )}
@@ -1577,19 +1612,19 @@ export default function TripDayView() {
           </div>
         )}
 
-        {selectedDay && selectedDay.base_lat != null && activities.length > 0 && (
+        {selectedDay && selectedDay.base_location_text && activities.length > 0 && (
           (() => {
             const startLeg = legs.find((l) => l.insertIndex === 0 && l.fromId === null);
-            if (!startLeg || startLeg.directMins <= 0) return null;
+            const known = !!startLeg && startLeg.directMins > 0;
             return (
               <TravelLeg
-                label={fmtMins(startLeg.directMins)}
-                detail={`Drive from ${selectedDay.base_location_text || 'base'}`}
-                action={
-                  <button onClick={() => findNearby(startLeg)} aria-label="Find something nearby on this drive">
+                label={known ? displayDriveEstimate(startLeg!.directMins) : displayDriveEstimate(null)}
+                detail={`Drive from ${selectedDay.base_location_text}`}
+                action={known ? (
+                  <button onClick={() => findNearby(startLeg!)} aria-label="Find something nearby on this drive">
                     <CompassIcon size={12} /> Nearby
                   </button>
-                }
+                ) : undefined}
               />
             );
           })()
@@ -1627,15 +1662,23 @@ export default function TripDayView() {
             <TripStopRow
               key={a.id}
               activity={a}
+              flightDetailLabel={a.activity_type === 'flight' ? formatFlightDetailLabel(flightDetailsByActivity[a.id]) : null}
               rowStyle={rowStyle}
               conflict={conflict}
+              routeUnverifiable={!!unverifiableFixedTimes[a.id]}
               manualSort={travelSortMode === 'manual'}
               workLabel={a.job_id
                 ? `Job · ${jobs.find((job) => job.id === a.job_id)?.name || 'Linked job'}`
                 : a.stop_kind === 'work' ? 'Work site' : null}
-              driveGlanceLabel={legAfterThis ? null : a.drive_mins_to_next > 0 ? fmtMins(a.drive_mins_to_next) : idx < sortedActivities.length - 1 ? '?' : null}
-              driveLabel={legAfterThis && legAfterThis.directMins > 0 ? fmtMins(legAfterThis.directMins) : null}
-              driveDetail={legAfterThis && legAfterThis.directMins > 0
+              driveGlanceLabel={travelSortMode !== 'manual'
+                ? (idx < sortedActivities.length - 1 || (idx === sortedActivities.length - 1 && !!selectedDay?.base_location_text) ? 'unknown' : null)
+                : legAfterThis
+                  ? legAfterThis.directMins > 0 ? displayDriveEstimate(legAfterThis.directMins) : displayDriveEstimate(null)
+                  : a.drive_mins_to_next > 0 ? displayDriveEstimate(a.drive_mins_to_next)
+                  : idx < sortedActivities.length - 1 || (idx === sortedActivities.length - 1 && !!selectedDay?.base_location_text) ? 'unknown' : null}
+              mapsUrl={buildGoogleMapsDirectionsUrl({ lat: a.lat, lng: a.lng, locationText: a.location_text, label: a.text })}
+              driveLabel={travelSortMode === 'manual' && legAfterThis && legAfterThis.directMins > 0 ? fmtMins(legAfterThis.directMins) : null}
+              driveDetail={travelSortMode === 'manual' && legAfterThis && legAfterThis.directMins > 0
                 ? `Drive to ${nextStop?.location_text || nextStop?.text || 'the next stop'}` : null}
               onComplete={() => completeActivity(a.id)}
               onOpen={() => setOpenActivityId(a.id)}

@@ -71,8 +71,8 @@ export default function TravelVaultSheet({
   const [checkoutDate, setCheckoutDate] = useState('');
   const [addStayToItinerary, setAddStayToItinerary] = useState(false);
   const [saving, setSaving] = useState(false);
-  /** Default on for flights — put a stop on the itinerary */
-  const [addToItinerary, setAddToItinerary] = useState(true);
+  /** Flights stay in the vault unless explicitly connected to the itinerary. */
+  const [addToItinerary, setAddToItinerary] = useState(false);
   const [shapeDay, setShapeDay] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const dialogRef = useDialogA11y(onClose);
@@ -113,9 +113,8 @@ export default function TravelVaultSheet({
     if (parsed.reference_code) setReference(parsed.reference_code);
     if (parsed.carrier) setCarrier(parsed.carrier);
     if (parsed.doc_type === 'flight') {
-      setAddToItinerary(true);
-      const parsedDate = parsed.schedule?.dateYmd || tripDays[0]?.date || '';
-      setShapeDay(Boolean(parsedDate && (parsedDate === tripDays[0]?.date || parsedDate === tripDays[tripDays.length - 1]?.date)));
+      setAddToItinerary(false);
+      setShapeDay(false);
     }
     const sched = extractFlightSchedule(paste, {
       tripDays,
@@ -137,7 +136,7 @@ export default function TravelVaultSheet({
     setCheckoutDate('');
     setAddStayToItinerary(false);
     setDocType('note');
-    setAddToItinerary(true);
+    setAddToItinerary(false);
     setShapeDay(false);
     setFile(null);
     setEventDate('');
@@ -590,19 +589,23 @@ export default function TravelVaultSheet({
                 <input
                   type="checkbox"
                   checked={addToItinerary}
-                  onChange={(e) => setAddToItinerary(e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setAddToItinerary(checked);
+                    if (!checked) setShapeDay(false);
+                  }}
                 />
-                Add as flight on the itinerary
+                Connect flight to itinerary
                 {tripDays.length === 0 ? (
                   <span style={{ color: 'var(--ink-faint)', fontSize: 12 }}>
                     (needs trip days)
                   </span>
                 ) : null}
               </label>
-              {tripDays.length > 0 ? (
+              {tripDays.length > 0 && addToItinerary ? (
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--ink)', cursor: 'pointer' }}>
                   <input type="checkbox" checked={shapeDay} onChange={(e) => setShapeDay(e.target.checked)} />
-                  Shape this day from flight times
+                  Use flight times as this day’s boundaries
                   <span style={{ color: 'var(--ink-faint)', fontSize: 11 }}>(landing opens after 45 min; departure closes the window)</span>
                 </label>
               ) : null}
@@ -642,7 +645,7 @@ export default function TravelVaultSheet({
                   onChange={(e) => {
                     const value = e.target.value;
                     setEventDate(value);
-                    setShapeDay(Boolean(value && (value === tripDays[0]?.date || value === tripDays[tripDays.length - 1]?.date)));
+
                   }}
                   style={{ width: '100%' }}
                 >

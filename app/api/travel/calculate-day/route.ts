@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
   const { data: tripDay, error: dayError } = await supabaseAdmin
     .from('trip_days')
-    .select('id, base_lat, base_lng, trip_id, trips!inner(user_id)')
+    .select('id, base_lat, base_lng, base_location_text, trip_id, trips!inner(user_id)')
     .eq('id', trip_day_id)
     .maybeSingle();
 
@@ -75,9 +75,27 @@ export async function POST(req: NextRequest) {
   const stops = activities || [];
   const hasBase = tripDay.base_lat != null && tripDay.base_lng != null;
   const skipped: string[] = [];
+  const unknownLegs: Array<{ from: string; to: string; reason: string }> = [];
+
+  // Stored route values belong to a specific stop order and coordinate set.
+  // Clear them first so a failed/unmapped leg cannot keep displaying an old estimate.
+  if (stops.length > 0) {
+    const { error: clearError } = await supabaseAdmin
+      .from('activities')
+      .update({ drive_mins_to_next: 0, route_polyline: null })
+      .in('id', stops.map((stop: any) => stop.id));
+    if (clearError) {
+      return NextResponse.json({ error: 'Could not clear stale drive estimates.' }, { status: 500 });
+    }
+  }
   const updates: { id: string; drive_mins_to_next: number; route_polyline: string | null }[] = [];
   let driveFromBaseMins: number | null = null;
   let baseRoutePolyline: string | null = null;
+
+  if (!hasBase && stops.length > 0 && tripDay.base_location_text) {
+    skipped.push(stops[0].text);
+    unknownLegs.push({ from: tripDay.base_location_text, to: stops[0].text, reason: 'base-unmapped' });
+  }
 
   if (hasBase && stops.length > 0) {
     const first = stops[0];
@@ -91,9 +109,11 @@ export async function POST(req: NextRequest) {
         baseRoutePolyline = leg.polyline;
       } else {
         skipped.push(first.text);
+        unknownLegs.push({ from: tripDay.base_location_text || 'base', to: first.text, reason: 'route-unavailable' });
       }
     } else {
       skipped.push(first.text);
+      unknownLegs.push({ from: tripDay.base_location_text || 'base', to: first.text, reason: 'destination-unmapped' });
     }
   }
 
@@ -102,6 +122,7 @@ export async function POST(req: NextRequest) {
     const b = stops[i + 1];
     if (a.lat == null || a.lng == null || b.lat == null || b.lng == null) {
       skipped.push(b.text);
+      unknownLegs.push({ from: a.text, to: b.text, reason: 'stop-unmapped' });
       continue;
     }
     const leg = await computeRouteLeg({ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng });
@@ -109,6 +130,7 @@ export async function POST(req: NextRequest) {
       updates.push({ id: a.id, drive_mins_to_next: leg.mins, route_polyline: leg.polyline });
     } else {
       skipped.push(b.text);
+      unknownLegs.push({ from: a.text, to: b.text, reason: 'route-unavailable' });
     }
   }
 
@@ -119,7 +141,15 @@ export async function POST(req: NextRequest) {
         { lat: last.lat, lng: last.lng },
         { lat: tripDay.base_lat, lng: tripDay.base_lng }
       );
-      updates.push({ id: last.id, drive_mins_to_next: leg?.mins ?? 0, route_polyline: leg?.polyline ?? null });
+      if (leg) {
+        updates.push({ id: last.id, drive_mins_to_next: leg.mins, route_polyline: leg.polyline });
+      } else {
+        skipped.push(last.text);
+        unknownLegs.push({ from: last.text, to: tripDay.base_location_text || 'base', reason: 'route-unavailable' });
+      }
+    } else {
+      skipped.push(last.text);
+      unknownLegs.push({ from: last.text, to: tripDay.base_location_text || 'base', reason: 'stop-unmapped' });
     }
   }
 
@@ -133,8 +163,8 @@ export async function POST(req: NextRequest) {
   );
   await supabaseAdmin
     .from('trip_days')
-    .update({ drive_from_base_mins: driveFromBaseMins, route_polyline: baseRoutePolyline })
+    .update({ drive_from_base_mins: driveFromBaseMins ?? 0, route_polyline: baseRoutePolyline })
     .eq('id', trip_day_id);
 
-  return NextResponse.json({ ok: true, driveFromBaseMins, legsComputed: updates.length, skipped });
+  return NextResponse.json({ ok: true, driveFromBaseMins, legsComputed: updates.length, skipped, unknownLegs });
 }
