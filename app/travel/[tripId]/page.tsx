@@ -1585,19 +1585,19 @@ export default function TripDayView() {
           </div>
         )}
 
-        {selectedDay && selectedDay.base_lat != null && activities.length > 0 && (
+        {selectedDay && selectedDay.base_location_text && activities.length > 0 && (
           (() => {
             const startLeg = legs.find((l) => l.insertIndex === 0 && l.fromId === null);
-            if (!startLeg || startLeg.directMins <= 0) return null;
+            const known = !!startLeg && startLeg.directMins > 0;
             return (
               <TravelLeg
-                label={fmtMins(startLeg.directMins)}
-                detail={`Drive from ${selectedDay.base_location_text || 'base'}`}
-                action={
-                  <button onClick={() => findNearby(startLeg)} aria-label="Find something nearby on this drive">
+                label={known ? fmtMins(startLeg!.directMins) : 'Drive unknown'}
+                detail={`Drive from ${selectedDay.base_location_text}`}
+                action={known ? (
+                  <button onClick={() => findNearby(startLeg!)} aria-label="Find something nearby on this drive">
                     <CompassIcon size={12} /> Nearby
                   </button>
-                }
+                ) : undefined}
               />
             );
           })()
@@ -1643,11 +1643,11 @@ export default function TripDayView() {
                 ? `Job · ${jobs.find((job) => job.id === a.job_id)?.name || 'Linked job'}`
                 : a.stop_kind === 'work' ? 'Work site' : null}
               driveGlanceLabel={travelSortMode !== 'manual'
-                ? (idx < sortedActivities.length - 1 || (idx === sortedActivities.length - 1 && selectedDay?.base_lat != null && selectedDay?.base_lng != null) ? 'unknown' : null)
+                ? (idx < sortedActivities.length - 1 || (idx === sortedActivities.length - 1 && !!selectedDay?.base_location_text) ? 'unknown' : null)
                 : legAfterThis
                   ? legAfterThis.directMins > 0 ? fmtMins(legAfterThis.directMins) : 'unknown'
                   : a.drive_mins_to_next > 0 ? fmtMins(a.drive_mins_to_next)
-                  : idx < sortedActivities.length - 1 || (idx === sortedActivities.length - 1 && selectedDay?.base_lat != null && selectedDay?.base_lng != null) ? 'unknown' : null}
+                  : idx < sortedActivities.length - 1 || (idx === sortedActivities.length - 1 && !!selectedDay?.base_location_text) ? 'unknown' : null}
               mapsUrl={buildGoogleMapsDirectionsUrl({ lat: a.lat, lng: a.lng, locationText: a.location_text, label: a.text })}
               driveLabel={travelSortMode === 'manual' && legAfterThis && legAfterThis.directMins > 0 ? fmtMins(legAfterThis.directMins) : null}
               driveDetail={travelSortMode === 'manual' && legAfterThis && legAfterThis.directMins > 0
