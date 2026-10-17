@@ -82,6 +82,62 @@ export type FlightActivityDraft = {
   status: 'pending';
 };
 
+/** An accommodation bridge is an all-day place, not a timed task. */
+export type StayActivityDraft = {
+  text: string;
+  activity_type: 'stop';
+  estimate_mins: number;
+  drive_mins_to_next: number;
+  location_text: string | null;
+  time_type: 'flexible';
+  fixed_time: null;
+  stop_kind: 'stay';
+  presence: 'all_day';
+  status: 'pending';
+};
+
+export type TravelBridgeActivityRef = {
+  id: string;
+  text: string;
+  activity_type: string;
+  stop_kind?: string | null;
+};
+
+/** Reuse a document-linked flight first, then a matching flight anywhere in this trip. */
+export function findMatchingFlightActivity<T extends TravelBridgeActivityRef>(
+  activities: readonly T[],
+  linkedActivityId: string | null | undefined,
+  flightNumber: string | null | undefined,
+  draftText: string,
+): T | null {
+  const linked = linkedActivityId
+    ? activities.find((activity) => activity.id === linkedActivityId && activity.activity_type === 'flight')
+    : null;
+  if (linked) return linked;
+  return activities.find((activity) => {
+    if (activity.activity_type !== 'flight') return false;
+    if (flightNumber) return activity.text.toUpperCase().includes(flightNumber.toUpperCase());
+    return activity.text.trim().toLowerCase() === draftText.trim().toLowerCase();
+  }) ?? null;
+}
+
+/** Reuse a document-linked stay first, then a same-title stay within the trip. */
+export function findMatchingStayActivity<T extends TravelBridgeActivityRef>(
+  activities: readonly T[],
+  linkedActivityId: string | null | undefined,
+  draftText: string,
+): T | null {
+  const linked = linkedActivityId
+    ? activities.find((activity) => activity.id === linkedActivityId && activity.activity_type === 'stop' && activity.stop_kind === 'stay')
+    : null;
+  if (linked) return linked;
+  return activities.find((activity) =>
+    activity.activity_type === 'stop' &&
+    activity.stop_kind === 'stay' &&
+    activity.text.trim().toLowerCase() === draftText.trim().toLowerCase()
+  ) ?? null;
+}
+
 export const TRAVEL_DOC_TYPE_OPTIONS: Array<{ value: TravelDocType; label: string }> = [
   { value: 'flight', label: 'Flight' },
   { value: 'booking', label: 'Booking' },
@@ -348,6 +404,39 @@ export function buildFlightActivityDraft(
     presence: fixed ? 'fixed' : 'duration',
     status: 'pending',
   };
+}
+
+/** Accommodation evidence can optionally become one all-day stay stop. */
+export function buildStayActivityDraft(
+  title: string,
+  locationText?: string | null
+): StayActivityDraft {
+  const cleanTitle = title.trim() || 'Accommodation';
+  return {
+    text: /^stay\s*[·:–-]/i.test(cleanTitle) ? cleanTitle : `Stay · ${cleanTitle}`,
+    activity_type: 'stop',
+    estimate_mins: 0,
+    drive_mins_to_next: 0,
+    location_text: locationText?.trim() || null,
+    time_type: 'flexible',
+    fixed_time: null,
+    stop_kind: 'stay',
+    presence: 'all_day',
+    status: 'pending',
+  };
+}
+
+/** Sort evidence chronologically; undated evidence uses its capture time. */
+export function sortTravelDocumentsForTimeline<T extends {
+  id: string;
+  starts_at?: string | null;
+  created_at: string;
+}>(documents: readonly T[]): T[] {
+  return [...documents].sort((a, b) => {
+    const aWhen = a.starts_at || a.created_at;
+    const bWhen = b.starts_at || b.created_at;
+    return aWhen.localeCompare(bWhen) || a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id);
+  });
 }
 
 /** Light extraction from pasted confirmation / speech transcript. */

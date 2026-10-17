@@ -14,12 +14,16 @@ import { CloseIcon, PlusIcon, TrashIcon } from '@/components/icons';
 import {
   TRAVEL_DOC_TYPE_OPTIONS,
   buildFlightActivityDraft,
+  buildStayActivityDraft,
   combineLocalDateAndTime,
   docTypeLabel,
   extractFlightSchedule,
   formatVaultWhen,
   interpretTravelPaste,
   matchTripDayForFlight,
+  findMatchingFlightActivity,
+  findMatchingStayActivity,
+  sortTravelDocumentsForTimeline,
   type TravelDocType,
   type TravelDocument,
   type TripDayRef,
@@ -63,6 +67,9 @@ export default function TravelVaultSheet({
   const [body, setBody] = useState('');
   const [reference, setReference] = useState('');
   const [carrier, setCarrier] = useState('');
+  const [place, setPlace] = useState('');
+  const [checkoutDate, setCheckoutDate] = useState('');
+  const [addStayToItinerary, setAddStayToItinerary] = useState(false);
   const [saving, setSaving] = useState(false);
   /** Default on for flights — put a stop on the itinerary */
   const [addToItinerary, setAddToItinerary] = useState(true);
@@ -126,6 +133,9 @@ export default function TravelVaultSheet({
     setBody('');
     setReference('');
     setCarrier('');
+    setPlace('');
+    setCheckoutDate('');
+    setAddStayToItinerary(false);
     setDocType('note');
     setAddToItinerary(true);
     setShapeDay(false);
@@ -158,30 +168,78 @@ export default function TravelVaultSheet({
           })
         : null;
 
-    // Explicit form times win over paste extraction
     const formDate = eventDate.trim() || schedule?.dateYmd || null;
     const formStart = startTime.trim() || schedule?.departTime || null;
     const formEnd = endTime.trim() || schedule?.arriveTime || null;
     if (schedule) {
-      schedule = {
-        ...schedule,
-        dateYmd: formDate,
-        departTime: formStart,
-        arriveTime: formEnd,
-      };
+      schedule = { ...schedule, dateYmd: formDate, departTime: formStart, arriveTime: formEnd };
     }
 
-    const starts_at = combineLocalDateAndTime(formDate, formStart);
-    const ends_at = combineLocalDateAndTime(formDate, formEnd);
+    const starts_at = combineLocalDateAndTime(
+      formDate,
+      formStart || (docType === 'booking' ? '15:00' : null)
+    );
+    const ends_at = combineLocalDateAndTime(
+      docType === 'booking' ? checkoutDate.trim() || formDate : formDate,
+      formEnd || (docType === 'booking' && checkoutDate.trim() ? '11:00' : null)
+    );
+
+    // Resolve existing evidence first so re-saving it can reuse its activity link.
+    const { data: existingDocs, error: docsLookupError } = await supabase
+      .from('travel_documents')
+      .select('id,activity_id,trip_day_id,storage_path,original_filename,reference_code,title,doc_type,location_text')
+      .eq('trip_id', tripId)
+      .eq('doc_type', docType);
+    if (docsLookupError) {
+      setSaving(false);
+      setError(`Could not check existing vault evidence: ${docsLookupError.message}`);
+      return;
+    }
+    const existingDoc = ((existingDocs || []) as Array<{
+      id: string;
+      activity_id: string | null;
+      trip_day_id: string | null;
+      storage_path: string | null;
+      original_filename: string | null;
+      reference_code: string | null;
+      title: string;
+      doc_type: TravelDocType;
+      location_text: string | null;
+    }>).find((doc) =>
+      reference.trim()
+        ? doc.reference_code?.trim().toLowerCase() === reference.trim().toLowerCase()
+        : doc.title.trim().toLowerCase() === t.trim().toLowerCase()
+    ) || null;
 
     const location_text =
-      schedule?.origin && schedule?.destination
+      docType === 'flight' && schedule?.origin && schedule?.destination
         ? `${schedule.origin} → ${schedule.destination}`
-        : null;
+        : place.trim() || existingDoc?.location_text || null;
 
     let activityId: string | null = null;
     let tripDayId: string | null = null;
     let matchedDay: TripDayRef | null = null;
+    const { data: tripActivities, error: activitiesLookupError } = tripDays.length
+      ? await supabase
+          .from('activities')
+          .select('id,text,fixed_time,order_index,trip_day_id,activity_type,stop_kind,status')
+          .in('trip_day_id', tripDays.map((day) => day.id))
+      : { data: [], error: null };
+    if (activitiesLookupError) {
+      setSaving(false);
+      setError(`Could not check existing itinerary links: ${activitiesLookupError.message}`);
+      return;
+    }
+    const existingActs = (tripActivities || []) as Array<{
+      id: string;
+      text: string;
+      fixed_time: string | null;
+      order_index: number;
+      trip_day_id: string;
+      activity_type: string;
+      stop_kind: string | null;
+      status: 'pending' | 'done';
+    }>;
 
     if (docType === 'flight' && (addToItinerary || shapeDay) && tripDays.length > 0) {
       matchedDay = matchTripDayForFlight(tripDays, formDate);
@@ -198,23 +256,17 @@ export default function TravelVaultSheet({
             dateYmd: formDate,
             estimateMins: 150,
           },
-          {
-            carrier: carrier.trim() || null,
-            reference: reference.trim() || null,
-          }
+          { carrier: carrier.trim() || null, reference: reference.trim() || null }
         );
-
-        const { data: existingActs } = await supabase
-          .from('activities')
-          .select('id,text,fixed_time,order_index')
-          .eq('trip_day_id', matchedDay.id)
-          .eq('activity_type', 'flight')
-          .order('order_index', { ascending: true });
-        const existingFlight = (existingActs || []).find((row: { id: string; text: string; fixed_time: string | null }) => {
-          if (schedule?.flightNumber) return row.text.toUpperCase().includes(schedule.flightNumber.toUpperCase());
-          return row.text.trim().toLowerCase() === draft.text.trim().toLowerCase();
-        });
-        const maxOrder = (existingActs || []).reduce((max: number, row: { order_index: number }) => Math.max(max, row.order_index || 0), 0);
+        const existingFlight = findMatchingFlightActivity(
+          existingActs,
+          existingDoc?.activity_id,
+          schedule?.flightNumber,
+          draft.text
+        );
+        const maxOrderForDay = existingActs
+          .filter((row) => row.trip_day_id === matchedDay!.id && row.id !== existingFlight?.id)
+          .reduce((max, row) => Math.max(max, row.order_index || 0), 0);
         const activityPayload = {
           text: draft.text,
           activity_type: draft.activity_type,
@@ -225,16 +277,15 @@ export default function TravelVaultSheet({
           fixed_time: formStart || draft.fixed_time,
           stop_kind: draft.stop_kind,
           presence: formStart ? 'fixed' : draft.presence,
-          status: draft.status,
+          status: existingFlight?.status ?? 'pending',
+          trip_day_id: matchedDay.id,
+          order_index: existingFlight && existingFlight.trip_day_id === matchedDay.id
+            ? existingFlight.order_index
+            : maxOrderForDay + 1,
         };
         const { data: actRow, error: actErr } = existingFlight
           ? await supabase.from('activities').update(activityPayload).eq('id', existingFlight.id).select('id').single()
-          : await supabase.from('activities').insert({
-              ...activityPayload,
-              user_id: userId,
-              trip_day_id: matchedDay.id,
-              order_index: maxOrder + 1,
-            }).select('id').single();
+          : await supabase.from('activities').insert({ ...activityPayload, user_id: userId }).select('id').single();
         if (actErr || !actRow) {
           setSaving(false);
           setError(`Vault save blocked: could not add flight to itinerary — ${actErr?.message || 'unknown error'}`);
@@ -243,20 +294,50 @@ export default function TravelVaultSheet({
         activityId = (actRow as { id: string }).id;
         tripDayId = matchedDay.id;
       }
-    } else if (formDate && tripDays.length > 0) {
-      // Link non-flight timed docs to a day when date is set
-      const day = matchTripDayForFlight(tripDays, formDate);
+    } else if (docType === 'booking') {
+      matchedDay = formDate ? tripDays.find((day) => day.date === formDate) || null : null;
+      if (matchedDay) tripDayId = matchedDay.id;
+      if (addStayToItinerary && matchedDay) {
+        const draft = buildStayActivityDraft(t, location_text);
+        const existingStay = findMatchingStayActivity(existingActs, existingDoc?.activity_id, draft.text);
+        const maxOrderForDay = existingActs
+          .filter((row) => row.trip_day_id === matchedDay!.id && row.id !== existingStay?.id)
+          .reduce((max, row) => Math.max(max, row.order_index || 0), 0);
+        const stayPayload = {
+          text: draft.text,
+          activity_type: draft.activity_type,
+          estimate_mins: draft.estimate_mins,
+          drive_mins_to_next: draft.drive_mins_to_next,
+          location_text: draft.location_text,
+          time_type: draft.time_type,
+          fixed_time: draft.fixed_time,
+          stop_kind: draft.stop_kind,
+          presence: draft.presence,
+          status: existingStay?.status ?? 'pending',
+          trip_day_id: matchedDay.id,
+          order_index: existingStay && existingStay.trip_day_id === matchedDay.id
+            ? existingStay.order_index
+            : maxOrderForDay + 1,
+        };
+        const { data: actRow, error: actErr } = existingStay
+          ? await supabase.from('activities').update(stayPayload).eq('id', existingStay.id).select('id').single()
+          : await supabase.from('activities').insert({ ...stayPayload, user_id: userId }).select('id').single();
+        if (actErr || !actRow) {
+          setSaving(false);
+          setError(`Vault save blocked: could not add stay stop — ${actErr?.message || 'unknown error'}`);
+          return;
+        }
+        activityId = (actRow as { id: string }).id;
+      }
+    } else if (formDate) {
+      const day = tripDays.find((candidate) => candidate.date === formDate);
       if (day) tripDayId = day.id;
     }
 
     let storagePath: string | null = null;
     let originalFilename: string | null = null;
     if (file) {
-      const up = await uploadTravelVaultFile(supabase, {
-        userId,
-        tripId,
-        file,
-      });
+      const up = await uploadTravelVaultFile(supabase, { userId, tripId, file });
       if (!up.ok) {
         setSaving(false);
         setError(up.error);
@@ -266,36 +347,7 @@ export default function TravelVaultSheet({
       originalFilename = up.originalFilename;
     }
 
-    const source = file
-      ? 'upload'
-      : paste.trim()
-        ? 'paste'
-        : 'manual';
-
-    let existingFlightDoc: {
-      id: string;
-      storage_path: string | null;
-      original_filename: string | null;
-      reference_code: string | null;
-      title: string;
-    } | null = null;
-    if (docType === 'flight') {
-      const { data: existingDocs } = await supabase
-        .from('travel_documents')
-        .select('id,storage_path,original_filename,reference_code,title')
-        .eq('trip_id', tripId)
-        .eq('doc_type', 'flight');
-      existingFlightDoc = ((existingDocs || []) as Array<{
-        id: string;
-        storage_path: string | null;
-        original_filename: string | null;
-        reference_code: string | null;
-        title: string;
-      }>).find((doc) => reference.trim()
-        ? doc.reference_code === reference.trim()
-        : doc.title.trim().toLowerCase() === t.trim().toLowerCase()) || null;
-    }
-
+    const source = file ? 'upload' : paste.trim() ? 'paste' : 'manual';
     const documentPayload = {
       user_id: userId,
       trip_id: tripId,
@@ -309,12 +361,13 @@ export default function TravelVaultSheet({
       ends_at,
       trip_day_id: tripDayId,
       activity_id: activityId,
-      storage_path: storagePath ?? existingFlightDoc?.storage_path ?? null,
-      original_filename: originalFilename ?? existingFlightDoc?.original_filename ?? null,
+      storage_path: storagePath ?? existingDoc?.storage_path ?? null,
+      original_filename: originalFilename ?? existingDoc?.original_filename ?? null,
       source,
+      updated_at: new Date().toISOString(),
     };
-    const { error: err } = existingFlightDoc
-      ? await supabase.from('travel_documents').update(documentPayload).eq('id', existingFlightDoc.id)
+    const { error: err } = existingDoc
+      ? await supabase.from('travel_documents').update(documentPayload).eq('id', existingDoc.id)
       : await supabase.from('travel_documents').insert(documentPayload);
 
     setSaving(false);
@@ -323,18 +376,17 @@ export default function TravelVaultSheet({
       setError(err.message);
       return;
     }
-    if (existingFlightDoc?.storage_path && storagePath && existingFlightDoc.storage_path !== storagePath) {
-      await removeTravelVaultFile(supabase, existingFlightDoc.storage_path);
+    if (existingDoc?.storage_path && storagePath && existingDoc.storage_path !== storagePath) {
+      await removeTravelVaultFile(supabase, existingDoc.storage_path);
     }
 
     if (docType === 'flight' && shapeDay && matchedDay) {
-      const isFirstDay = matchedDay.date === tripDays[0]?.date;
-      const isLastDay = matchedDay.date === tripDays[tripDays.length - 1]?.date;
+      const orderedDays = [...tripDays].sort((a, b) => a.date.localeCompare(b.date));
+      const isFirstDay = matchedDay.date === orderedDays[0]?.date;
+      const isLastDay = matchedDay.date === orderedDays[orderedDays.length - 1]?.date;
       const dayPatch: Record<string, string | null> = {};
       if (isFirstDay && formEnd) dayPatch.arrival_time = formEnd;
-      else if (!isLastDay && formEnd) dayPatch.arrival_time = formEnd;
       if (isLastDay && formStart) dayPatch.departure_time = formStart;
-      else if (!isFirstDay && formStart) dayPatch.departure_time = formStart;
       if (Object.keys(dayPatch).length) {
         const { error: anchorError } = await supabase.from('trip_days').update(dayPatch).eq('id', matchedDay.id);
         if (anchorError) setError(`Flight saved, but day window could not be updated: ${anchorError.message}`);
@@ -343,18 +395,12 @@ export default function TravelVaultSheet({
 
     const bits: string[] = [];
     if (activityId && matchedDay) {
-      bits.push(
-        `Flight on itinerary · ${matchedDay.date}${
-          formStart ? ` at ${formStart}` : ''
-        }`
-      );
-      onItineraryChanged?.({
-        activityId,
-        tripDayId: matchedDay.id,
-        dayDate: matchedDay.date,
-      });
+      bits.push(`${docType === 'flight' ? 'Flight' : 'Stay'} on itinerary · ${matchedDay.date}${formStart ? ` at ${formStart}` : ''}`);
+      onItineraryChanged?.({ activityId, tripDayId: matchedDay.id, dayDate: matchedDay.date });
     } else if (docType === 'flight' && addToItinerary && tripDays.length === 0) {
       bits.push('Saved — no trip days yet, so nothing on the itinerary');
+    } else if (docType === 'booking' && addStayToItinerary && !matchedDay) {
+      bits.push('Saved to vault — choose a check-in date within this trip to add a stay stop');
     }
     if (storagePath) bits.push(`File attached: ${originalFilename}`);
     if (bits.length) setStatusMsg(bits.join(' · '));
@@ -363,7 +409,6 @@ export default function TravelVaultSheet({
     resetForm();
     await load();
   }
-
   async function openAttachment(doc: TravelDocument) {
     if (!doc.storage_path) {
       setError('This entry has no file attached');
@@ -512,6 +557,24 @@ export default function TravelVaultSheet({
               ))}
             </div>
 
+            {docType === 'booking' ? (
+              <>
+                <label className="field-label">Place / accommodation</label>
+                <input
+                  className="field-input"
+                  value={place}
+                  onChange={(e) => setPlace(e.target.value)}
+                  placeholder="Hotel, address, or accommodation"
+                />
+                {tripDays.length > 0 ? (
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--ink)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={addStayToItinerary} onChange={(e) => setAddStayToItinerary(e.target.checked)} />
+                    Add as a stay stop on the check-in day
+                  </label>
+                ) : null}
+              </>
+            ) : null}
+
             {docType === 'flight' ? (
               <>
               <label
@@ -598,6 +661,19 @@ export default function TravelVaultSheet({
                   onChange={(e) => setEventDate(e.target.value)}
                 />
               )}
+              {docType === 'booking' ? (
+                <>
+                  <span className="field-label" style={{ fontSize: 11 }}>Check-out (optional)</span>
+                  {tripDays.length > 0 ? (
+                    <select className="field-input" value={checkoutDate} onChange={(e) => setCheckoutDate(e.target.value)} style={{ width: '100%' }}>
+                      <option value="">No check-out date</option>
+                      {tripDays.map((d) => <option key={d.id} value={d.date}>{d.date}</option>)}
+                    </select>
+                  ) : (
+                    <input className="field-input" type="date" value={checkoutDate} onChange={(e) => setCheckoutDate(e.target.value)} />
+                  )}
+                </>
+              ) : null}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
                   <span className="field-label" style={{ fontSize: 11 }}>
@@ -678,7 +754,7 @@ export default function TravelVaultSheet({
               gap: 8,
             }}
           >
-            {docs.map((d) => {
+            {sortTravelDocumentsForTimeline(docs).map((d) => {
               const open = expandedId === d.id;
               return (
               <li
@@ -781,6 +857,26 @@ export default function TravelVaultSheet({
                       >
                         Open file
                         {d.original_filename ? ` · ${d.original_filename}` : ''}
+                      </button>
+                    ) : null}
+                    {d.activity_id && d.trip_day_id ? (
+                      <button
+                        type="button"
+                        className="btn-text"
+                        style={{ fontSize: 13, display: 'block', marginTop: 4 }}
+                        onClick={() => {
+                          const dayDate = tripDays.find((day) => day.id === d.trip_day_id)?.date;
+                          if (dayDate) {
+                            onItineraryChanged?.({
+                              activityId: d.activity_id!,
+                              tripDayId: d.trip_day_id!,
+                              dayDate,
+                            });
+                            onClose();
+                          }
+                        }}
+                      >
+                        View linked itinerary day
                       </button>
                     ) : null}
                   </div>
