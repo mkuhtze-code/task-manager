@@ -46,7 +46,7 @@ export function resolveTodayTravelWindow(args: {
     };
   }
   const anchor = resolveScheduledDayAnchor(args.day, true);
-  const startMins = Math.max(homeStart, anchor.windowStartMins);
+  const startMins = Math.min(homeEnd, Math.max(homeStart, anchor.windowStartMins));
   const endMins = Math.max(startMins, Math.min(homeEnd, anchor.windowEndMins));
   return {
     startClock: clockString(startMins),
