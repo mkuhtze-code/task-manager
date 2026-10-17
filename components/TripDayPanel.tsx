@@ -3,34 +3,15 @@
 import type { DayAnchor } from '@/lib/travel/travelContext';
 import { PlusIcon } from '@/components/icons';
 
-export type TripDayPanelDay = {
-  id: string;
-  date: string;
-  arrival_time: string | null;
-  departure_time: string | null;
-};
-
 type Props = {
-  day: TripDayPanelDay;
-  dayNumber: number;
-  dayCount: number;
   dayAnchor: DayAnchor;
   flightScheduled: boolean;
-  dayLabel: string;
   fitLabel: string;
   meetingCount: number;
   daySheetOpen: boolean;
   onOpenDaySheet: () => void;
   onAddStop: () => void;
 };
-
-function fmtMins(mins: number): string {
-  mins = Math.round(mins);
-  if (mins < 60) return `${mins}m`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m === 0 ? `${h}h` : `${h}h ${m}m`;
-}
 
 function formatClockMinutes(minutes: number): string {
   const normalized = ((Math.round(minutes) % 1440) + 1440) % 1440;
@@ -40,7 +21,7 @@ function formatClockMinutes(minutes: number): string {
 }
 
 export default function TripDayPanel({
-  day, dayNumber, dayCount, dayAnchor, flightScheduled, dayLabel, fitLabel, meetingCount, daySheetOpen,
+  dayAnchor, flightScheduled, fitLabel, meetingCount, daySheetOpen,
   onOpenDaySheet, onAddStop,
 }: Props) {
   const flightWindowLabel = !flightScheduled ? null : [
