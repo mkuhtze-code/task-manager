@@ -103,3 +103,28 @@ export function findFixedTimeConflicts(
   }
   return conflicts;
 }
+
+
+/**
+ * Fixed-time stops after an unknown drive are unverifiable, not automatically
+ * impossible. Keep this separate from hard conflicts so the UI doesn't claim
+ * a plan will fail when the route duration is simply missing.
+ */
+export function findUnverifiableFixedTimeStops(
+  orderedActivities: SortableActivity[],
+  baseDriveUnknown = false,
+): Record<string, boolean> {
+  const result: Record<string, boolean> = {};
+  let unknownDriveBefore = false;
+
+  orderedActivities.forEach((activity, index) => {
+    if (activity.time_type === 'fixed' && activity.fixed_time && (unknownDriveBefore || (index === 0 && baseDriveUnknown))) {
+      result[activity.id] = true;
+    }
+    if (index < orderedActivities.length - 1 && activity.drive_mins_to_next <= 0) {
+      unknownDriveBefore = true;
+    }
+  });
+
+  return result;
+}
