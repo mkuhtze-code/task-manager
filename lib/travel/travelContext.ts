@@ -137,6 +137,8 @@ export function buildTravelEngineContext(args: {
     drive_from_base_mins?: number | null;
   } | null;
   activities: TravelActivitySlice[];
+  /** Only a linked itinerary flight may apply stored arrival/departure anchors. */
+  flightScheduled?: boolean;
 }): TravelEngineContext {
   if (!args.day) {
     return {
@@ -154,7 +156,13 @@ export function buildTravelEngineContext(args: {
       driveFromBaseMins: null,
     };
   }
-  const window = dayWindowFromTripDay(args.day);
+  const anchor = resolveScheduledDayAnchor(args.day, args.flightScheduled ?? false);
+  const window: TravelDayWindow = {
+    date: args.day.date,
+    dayStartMins: anchor.windowStartMins,
+    dayEndMins: anchor.windowEndMins,
+    baseLocationText: args.day.base_location_text ?? null,
+  };
   const driveFromBase = args.day.drive_from_base_mins ?? 0;
   const planned = args.activities
     .filter((a) => a.status !== 'done')
