@@ -60,13 +60,20 @@ export function deriveTodayCapacity({
     ? Math.max(workEndMinutes - capacityClockMins, 0)
     : 0;
 
+  // For a flight-shaped day before arrival, capacity starts at the effective
+  // opening time. Passing that clock to interval-aware availability also excludes
+  // commitments that occurred before landing, without mutating the real clock.
+  const availabilityNow = clampToWorkStart && nowMinutesOfDay < workStartMinutes
+    ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(workStartMinutes / 60), workStartMinutes % 60)
+    : now;
+
   // Timed meetings and calendar events share interval-aware capacity logic.
   const dayCommitments = buildDayCommitments({
     calendarEvents,
     meetings: todayMeetings,
   });
   const availability = computeAvailability({
-    now,
+    now: availabilityNow,
     workStartMins: workStartMinutes,
     workEndMins: workEndMinutes,
     isWorkDay,
