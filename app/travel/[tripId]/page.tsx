@@ -1533,12 +1533,8 @@ export default function TripDayView() {
       {selectedDay && (
         <TripDayPanel
           key={selectedDay.id}
-          day={selectedDay}
-          dayNumber={selectedDayIndex + 1}
-          dayCount={tripDays.length}
           dayAnchor={dayAnchor}
           flightScheduled={hasScheduledFlight}
-          dayLabel={`${fmtDayLabel(selectedDay.date).weekday} ${fmtDayLabel(selectedDay.date).date}`}
           fitLabel={activities.length > 0 && minutesLeftToday > 0
             ? overloaded ? `Over by ${fmtMins(-spareMins)}` : `Fits · ${fmtMins(spareMins)} spare`
             : activities.length === 0 ? 'Nothing planned yet' : 'Day detail'}
