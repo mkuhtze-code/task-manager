@@ -54,7 +54,7 @@ import {
   type EngineRequest,
 } from '@/lib/engine';
 import { buildTravelEngineContext, resolveDayAnchor, selectInitialTripDay } from '@/lib/travel/travelContext';
-import { buildGoogleMapsDirectionsUrl } from '@/lib/travel/driveLegs';
+import { buildGoogleMapsDirectionsUrl, displayDriveEstimate } from '@/lib/travel/driveLegs';
 
 type Trip = {
   id: string;
@@ -1591,7 +1591,7 @@ export default function TripDayView() {
             const known = !!startLeg && startLeg.directMins > 0;
             return (
               <TravelLeg
-                label={known ? fmtMins(startLeg!.directMins) : 'Drive unknown'}
+                label={known ? displayDriveEstimate(startLeg!.directMins) : displayDriveEstimate(null)}
                 detail={`Drive from ${selectedDay.base_location_text}`}
                 action={known ? (
                   <button onClick={() => findNearby(startLeg!)} aria-label="Find something nearby on this drive">
@@ -1645,8 +1645,8 @@ export default function TripDayView() {
               driveGlanceLabel={travelSortMode !== 'manual'
                 ? (idx < sortedActivities.length - 1 || (idx === sortedActivities.length - 1 && !!selectedDay?.base_location_text) ? 'unknown' : null)
                 : legAfterThis
-                  ? legAfterThis.directMins > 0 ? fmtMins(legAfterThis.directMins) : 'unknown'
-                  : a.drive_mins_to_next > 0 ? fmtMins(a.drive_mins_to_next)
+                  ? legAfterThis.directMins > 0 ? displayDriveEstimate(legAfterThis.directMins) : displayDriveEstimate(null)
+                  : a.drive_mins_to_next > 0 ? displayDriveEstimate(a.drive_mins_to_next)
                   : idx < sortedActivities.length - 1 || (idx === sortedActivities.length - 1 && !!selectedDay?.base_location_text) ? 'unknown' : null}
               mapsUrl={buildGoogleMapsDirectionsUrl({ lat: a.lat, lng: a.lng, locationText: a.location_text, label: a.text })}
               driveLabel={travelSortMode === 'manual' && legAfterThis && legAfterThis.directMins > 0 ? fmtMins(legAfterThis.directMins) : null}
