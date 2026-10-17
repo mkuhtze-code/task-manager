@@ -35,5 +35,10 @@ export function buildGoogleMapsDirectionsUrl(destination: DriveDestination, orig
 
 /** A zero stored drive is the legacy representation of an unknown leg. */
 export function displayDriveEstimate(mins: number | null | undefined): string {
-  return mins != null && Number.isFinite(mins) && mins > 0 ? `${Math.round(mins)}m` : 'Drive unknown';
+  if (mins == null || !Number.isFinite(mins) || mins <= 0) return 'Drive unknown';
+  const rounded = Math.round(mins);
+  if (rounded < 60) return `${rounded}m`;
+  const hours = Math.floor(rounded / 60);
+  const remainder = rounded % 60;
+  return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}m`;
 }
