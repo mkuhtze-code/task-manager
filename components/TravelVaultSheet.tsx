@@ -73,7 +73,7 @@ export default function TravelVaultSheet({
   const [saving, setSaving] = useState(false);
   /** Flights stay in the vault unless explicitly connected to the itinerary. */
   const [addToItinerary, setAddToItinerary] = useState(false);
-  const [shapeDay, setShapeDay] = useState(true);
+  const [shapeDay, setShapeDay] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const dialogRef = useDialogA11y(onClose);
   const [file, setFile] = useState<File | null>(null);
@@ -592,7 +592,7 @@ export default function TravelVaultSheet({
                   onChange={(e) => {
                     const checked = e.target.checked;
                     setAddToItinerary(checked);
-                    if (!checked) setShapeDay(false);
+                    setShapeDay(checked);
                   }}
                 />
                 Connect flight to itinerary
