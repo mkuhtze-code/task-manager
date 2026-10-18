@@ -9,7 +9,8 @@ export type OfflineEntityKind =
   | 'meeting'
   | 'collection'
   | 'subtask'
-  | 'settings';
+  | 'settings'
+  | 'travel';
 
 export type SyncOpAction = 'upsert' | 'update' | 'delete';
 
