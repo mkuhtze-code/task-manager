@@ -39,3 +39,19 @@ This contract is deterministic and local to travel day-window arithmetic. It doe
 - The travel snapshot stores the trip, trip days, selected day, and per-day activity lists in the existing offline entity cache. When remote reads fail, the selected cached day is shown; if no selected-day value is available, the latest trip day is selected. A quiet offline status line labels the cached view.
 - Move and reorder invalidate drive estimates and request a fresh day-route calculation when online. A failed route refresh is not allowed to undo or delete the stop mutation.
 - The offline cache is browser local storage, not an encrypted or cross-device database. Offline range edits and offline trip creation remain unsupported; S7 queues stop-level create/update/complete/reorder/move only.
+
+
+## Wall-time and timezone contract (Stage S8)
+
+- `trip_days.date` is a calendar date for the trip itinerary, not a UTC instant. Date-range enumeration may use UTC internally only to step through ISO calendar dates without DST-length-day drift; it must not convert a trip's clock values.
+- `day_start`, `day_end`, `arrival_time`, and `departure_time` are `HH:mm` trip-local wall-clock values. The day-window helpers treat these as already-local values and calculate minute-of-day arithmetic. They must not parse them as timestamps, append a timezone, or round-trip them through `Date.toISOString()`.
+- A UI/API boundary must preserve the trip-local date and clock strings as separate values. It must not silently reinterpret a destination's 13:00 landing as 13:00 in the user's home timezone or shift it by the browser's UTC offset.
+- The current pure day-window helpers do not resolve an IANA timezone or convert instants between zones. Flight/commitment integrations must supply the correct trip-local date and wall-clock values. If a future integration only supplies an absolute instant, timezone conversion must be explicit and tested at that integration boundary before writing these fields.
+- Arrival buffers are applied to the trip-local landing clock on the same itinerary day. If the buffered start is at or after the effective end, usable duration is zero; the helper does not silently roll planning time into the next date.
+- Early departures cap the effective end. Today intersects a work-intent flight-shaped day with configured work hours; a landing after work hours yields a zero-length Today window, not morning capacity.
+
+### S8 automated regression coverage
+
+- `lib/travel/__tests__/travelContext.test.ts`: afternoon/evening arrivals, early departures, same-day zero usable time, and unshifted `HH:mm` arithmetic.
+- `lib/today/__tests__/travelRegime.test.ts`: landing-buffer/work-hours intersection, early departure intersection, zero-length after-hours arrival, and protection against stale/personal flight anchors.
+- CI/build scripts already include `test:travel-day` and `test:today-travel`; S7's `test:travel-plan` remains in the configured build/CI pipeline.

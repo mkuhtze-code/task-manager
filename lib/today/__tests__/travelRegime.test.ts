@@ -72,3 +72,45 @@ describe('Today travel regime', () => {
     expect(todayTravelRegimeLabel({ tripName: 'Personal trip', tripIntent: 'personal', impactMode: 'none' })).toBe('Away today');
   });
 });
+
+
+describe('Today intersection edge cases', () => {
+  it('intersects an early flight departure with work hours', () => {
+    const window = resolveTodayTravelWindow({
+      tripIntent: 'work',
+      day: { day_start: '07:00', day_end: '18:00', departure_time: '09:00' },
+      flightScheduled: true,
+      workStart: '08:00',
+      workEnd: '17:00',
+    });
+    expect(window.startClock).toBe('08:00');
+    expect(window.endClock).toBe('09:00');
+    expect(window.endMins - window.startMins).toBe(60);
+    expect(window.flightShaped).toBe(true);
+  });
+
+  it('exposes zero Today capacity when landing plus buffer is after work hours', () => {
+    const window = resolveTodayTravelWindow({
+      tripIntent: 'work',
+      day: { day_start: '08:00', day_end: '23:00', arrival_time: '18:30' },
+      flightScheduled: true,
+      workStart: '08:00',
+      workEnd: '17:00',
+    });
+    expect(window.startClock).toBe('17:00');
+    expect(window.endClock).toBe('17:00');
+    expect(window.endMins - window.startMins).toBe(0);
+  });
+
+  it('keeps a same-day flight window in trip-local wall time', () => {
+    const window = resolveTodayTravelWindow({
+      tripIntent: 'work',
+      day: { day_start: '08:00', day_end: '20:00', arrival_time: '13:00', departure_time: '16:00' },
+      flightScheduled: true,
+      workStart: '08:00',
+      workEnd: '17:00',
+    });
+    expect(window.startClock).toBe('13:45');
+    expect(window.endClock).toBe('16:00');
+  });
+});
