@@ -101,7 +101,7 @@ export function queueTravelMutation(
 export function registerTravelSyncHandler(): void {
   registerSyncHandler('travel', async (op) => {
     if (!isOnline()) throw new Error('Offline');
-    const payload = { ...op.payload, user_id: op.userId };
+    const payload: Record<string, unknown> = { ...op.payload, user_id: op.userId };
     const id = String(payload.id || op.entityId || '');
     if (!id) throw new Error('Travel mutation missing stable activity id');
     if (op.action === 'upsert') {
