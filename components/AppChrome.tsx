@@ -12,7 +12,8 @@ import DesktopContextStrip from '@/components/DesktopContextStrip';
 import DesktopProductNav from '@/components/DesktopProductNav';
 import DesktopSidebar from '@/components/DesktopSidebar';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
-import SurfaceNav from '@/components/SurfaceNav';
+import AppShell, { type InstrumentLens } from '@/components/instrument/AppShell';
+import SystemDock from '@/components/instrument/SystemDock';
 import { getDesktopPrimaryAction, requestCaptureOpen, subscribeDesktopPrimaryAction } from '@/lib/captureOpen';
 
 const SURFACE_PATHS = ['/', '/jobs', '/meetings', '/travel'] as const;
@@ -170,25 +171,30 @@ export default function AppChrome({
         </div>
       ) : null}
 
-      <main
-        id="main-content"
-        className={`experience-mobile-frame__workspace${enterDirection ? ` surface-page-enter-${enterDirection}` : ''}`}
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={() => {
-          touchStart.current = null;
-        }}
+      <AppShell
+        lens={(['today', 'jobs', 'meetings', 'travel'] as InstrumentLens[])[currentSurfaceIndex(pathname)] ?? 'today'}
+        dock={
+          session?.user?.id && currentSurfaceIndex(pathname) >= 0 ? (
+            <SystemDock
+              lens={(['today', 'jobs', 'meetings', 'travel'] as InstrumentLens[])[currentSurfaceIndex(pathname)]}
+              onAdd={primaryAction ? requestCaptureOpen : undefined}
+              addLabel={primaryAction?.label ?? 'Add'}
+            />
+          ) : null
+        }
       >
-        {children}
-      </main>
-
-      {session?.user?.id && currentSurfaceIndex(pathname) >= 0 ? (
-        <SurfaceNav
-          active={currentSurfaceIndex(pathname) === 0 ? 'today' : currentSurfaceIndex(pathname) === 1 ? 'jobs' : currentSurfaceIndex(pathname) === 2 ? 'meetings' : 'travel'}
-          onAdd={primaryAction ? requestCaptureOpen : undefined}
-          addLabel={primaryAction?.label ?? 'Add'}
-        />
-      ) : null}
+        <main
+          id="main-content"
+          className={`experience-mobile-frame__workspace${enterDirection ? ` surface-page-enter-${enterDirection}` : ''}`}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={() => {
+            touchStart.current = null;
+          }}
+        >
+          {children}
+        </main>
+      </AppShell>
     </div>
   );
 }
