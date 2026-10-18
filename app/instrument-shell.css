@@ -19,12 +19,6 @@
   min-height: 0;
 }
 
-@media (max-width: 767px) {
-  [data-instrument-shell] .instrument-shell__body {
-    padding-bottom: var(--instrument-shell-dock-clearance);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   [data-instrument-shell] *,
   [data-instrument-shell] *::before,
