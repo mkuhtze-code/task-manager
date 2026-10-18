@@ -1445,17 +1445,23 @@ export default function TripDayView() {
     if (!selectedDayId || !session?.user?.id) return;
     const slot = insertIndex == null ? activities.length : insertIndex;
     const order = buildInsertionOrder(activities, slot);
-    const updates = await Promise.all(order.updates.map((item) => supabase.from('activities').update({ order_index: item.order_index }).eq('id', item.id)));
-    if (updates.some((result) => result.error)) { alert('Could not prepare the stop order. Try again.'); return; }
-    const { data: inserted, error: insertError } = await supabase.from('activities').insert({
+    order.updates.forEach((item) => queueTravelMutation(session.user.id, 'update', { id: item.id, order_index: item.order_index }));
+    const created: Activity = {
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `travel-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
       user_id: session.user.id, trip_day_id: selectedDayId, text: place.name, activity_type: 'stop',
       estimate_mins: 30, drive_mins_to_next: 0, location_text: place.address, lat: place.lat, lng: place.lng,
-      order_index: order.insertOrderIndex, time_type: 'flexible', fixed_time: null, stop_kind: 'leisure', presence: 'duration', job_id: null,
-    }).select().single();
-    if (insertError || !inserted) { alert(insertError?.message || 'Could not add stop'); return; }
+      order_index: order.insertOrderIndex, time_type: 'flexible', fixed_time: null, stop_kind: 'leisure',
+      presence: 'duration', job_id: null, status: 'pending', route_polyline: null,
+    } as Activity;
+    queueTravelMutation(session.user.id, 'upsert', created as unknown as Record<string, unknown>);
+    const orderById = new Map(order.updates.map((item) => [item.id, item.order_index]));
+    const nextActivities = [...activities.map((activity) => ({ ...activity, order_index: orderById.get(activity.id) ?? activity.order_index })), created]
+      .sort((a, b) => a.order_index - b.order_index);
+    setActivities(nextActivities);
+    cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
     setNearbyOpen(false);
     setNearbyLeg(null);
-    await loadActivities();
     await recalculateDay();
   }
 
@@ -1480,36 +1486,27 @@ export default function TripDayView() {
     if (!selectedDayId || !session || nearbyInsertIndex === null) return;
     setNearbyOpen(false);
 
-    const { data: inserted, error: insertError } = await supabase
-      .from('activities')
-      .insert({
-        user_id: session.user.id,
-        trip_day_id: selectedDayId,
-        text: s.name,
-        estimate_mins: 30,
-        drive_mins_to_next: 0,
-        location_text: s.address,
-        lat: s.lat,
-        lng: s.lng,
-        order_index: 9999,
-      })
-      .select()
-      .single();
-
-    if (insertError || !inserted) {
-      alert(insertError?.message || 'Could not add stop');
-      return;
-    }
-
-    const currentIds = activities.map((a) => a.id);
+    const created: Activity = {
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `travel-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      user_id: session.user.id, trip_day_id: selectedDayId, text: s.name, activity_type: 'stop',
+      estimate_mins: 30, drive_mins_to_next: 0, location_text: s.address, lat: s.lat, lng: s.lng,
+      order_index: nearbyInsertIndex, status: 'pending', time_type: 'flexible', fixed_time: null,
+      route_polyline: null, stop_kind: 'leisure', presence: 'duration', job_id: null,
+    } as Activity;
+    const currentIds = activities.map((activity) => activity.id);
     const newOrderIds = [...currentIds];
-    newOrderIds.splice(nearbyInsertIndex, 0, inserted.id);
-
-    await Promise.all(
-      newOrderIds.map((id, idx) => supabase.from('activities').update({ order_index: idx }).eq('id', id))
-    );
-
-    await loadActivities();
+    newOrderIds.splice(nearbyInsertIndex, 0, created.id);
+    newOrderIds.forEach((activityId, index) => {
+      if (activityId === created.id) return;
+      queueTravelMutation(session.user.id, 'update', { id: activityId, order_index: index });
+    });
+    created.order_index = newOrderIds.indexOf(created.id);
+    queueTravelMutation(session.user.id, 'upsert', created as unknown as Record<string, unknown>);
+    const byId = new Map(activities.map((activity) => [activity.id, activity]));
+    const nextActivities = newOrderIds.map((activityId, index) => activityId === created.id ? created : { ...byId.get(activityId)!, order_index: index });
+    setActivities(nextActivities);
+    cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
     recalculateDay();
   }
 
