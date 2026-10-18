@@ -15,7 +15,10 @@ export type CachedTravelSnapshot = {
 };
 
 export function cacheTravelSnapshot(userId: string, snapshot: CachedTravelSnapshot): void {
-  setEntityCache(userId, 'travel', [ { ...snapshot, updatedAt: new Date().toISOString() } ]);
+  const { items } = getEntityCache<CachedTravelSnapshot>(userId, 'travel');
+  const next = items.filter((item) => item.id !== snapshot.id);
+  next.push({ ...snapshot, updatedAt: new Date().toISOString() });
+  setEntityCache(userId, 'travel', next);
 }
 
 export function loadCachedTravelSnapshot(userId: string, tripId: string): CachedTravelSnapshot | null {
