@@ -55,6 +55,28 @@ describe('offline queue', () => {
     expect(listPendingOps('u1')).toHaveLength(1);
   });
 
+
+  it('queues a travel create with a stable row id and deduplicates replay by client operation id', () => {
+    const payload = { id: 'stable-activity-uuid', trip_day_id: 'day-1', text: 'Visit site', user_id: 'u1' };
+    const first = enqueueOp('u1', {
+      entity: 'travel',
+      action: 'upsert',
+      entityId: payload.id,
+      payload,
+      clientOpId: 'travel-create-once',
+    });
+    const replay = enqueueOp('u1', {
+      entity: 'travel',
+      action: 'upsert',
+      entityId: payload.id,
+      payload,
+      clientOpId: 'travel-create-once',
+    });
+    expect(replay.id).toBe(first.id);
+    expect(replay.payload.id).toBe('stable-activity-uuid');
+    expect(loadQueue('u1').filter((op) => op.clientOpId === 'travel-create-once')).toHaveLength(1);
+  });
+
   it('marks done', () => {
     const op = enqueueOp('u1', {
       entity: 'task',

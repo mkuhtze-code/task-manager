@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { CloseIcon, TrashIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
+import { cacheTravelDayActivities, queueTravelMutation } from '@/lib/travel/travelOffline';
+import { flushSyncQueue } from '@/lib/offline';
 
 type LibraryItem = {
   id: string;
@@ -184,30 +186,48 @@ export default function LibrarySheet({ tripId, tripName, tripDays, onClose, onSc
     setSaving(true);
     setError('');
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: maxRows } = await supabase
+    if (!user?.id) {
+      setSaving(false);
+      setError('Sign in before scheduling this stop.');
+      return;
+    }
+    const { data: existingRows, error: readError } = await supabase
       .from('activities')
-      .select('order_index')
+      .select('*')
       .eq('trip_day_id', dayId)
-      .order('order_index', { ascending: false })
-      .limit(1);
-    const orderIndex = (maxRows && maxRows.length ? maxRows[0].order_index : 0) + 1;
-    const { error } = await supabase.from('activities').insert({
-      user_id: user?.id,
+      .neq('status', 'done')
+      .order('order_index', { ascending: true });
+    if (readError || !existingRows) {
+      setSaving(false);
+      setError('Could not load this day to schedule the stop.');
+      return;
+    }
+    const orderIndex = existingRows.reduce((max, row) => Math.max(max, row.order_index ?? -1), -1) + 1;
+    const created = {
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => { const value = Math.floor(Math.random() * 16); return (char === 'x' ? value : (value & 0x3) | 0x8).toString(16); }),
+      user_id: user.id,
       trip_day_id: dayId,
       text: item.name,
+      activity_type: 'stop',
       estimate_mins: 30,
       drive_mins_to_next: 0,
       location_text: item.location_text,
       lat: item.lat,
       lng: item.lng,
       order_index: orderIndex,
+      status: 'pending',
       time_type: 'flexible',
       fixed_time: null,
+      route_polyline: null,
       library_item_id: item.id,
-    });
-    if (error) {
+    };
+    queueTravelMutation(user.id, 'upsert', created);
+    cacheTravelDayActivities(user.id, tripId, dayId, [...existingRows, created] as unknown as Array<Record<string, unknown>>);
+    const sync = await flushSyncQueue(user.id);
+    if (sync.failed > 0) {
+      // The local cache and queued create are authoritative until replay succeeds.
       setSaving(false);
-      setError(error.message);
+      onScheduled(dayId);
       return;
     }
     onScheduled(dayId);

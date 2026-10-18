@@ -39,3 +39,5 @@ export {
   localRemoveTask,
   registerTaskSyncHandler,
 } from './taskBridge';
+
+export { cacheTravelSnapshot, loadCachedTravelSnapshot, cacheTravelDayActivities, queueTravelMutation, registerTravelSyncHandler } from '@/lib/travel/travelOffline';
