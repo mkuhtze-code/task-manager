@@ -301,3 +301,39 @@ describe('effective day window drives stop presence scheduling', () => {
     expect(scheduled.estimate_mins).toBe(720);
   });
 });
+
+
+describe('trip-local wall-clock hardening', () => {
+  it('keeps an evening landing inside the same trip-local calendar day', () => {
+    const anchor = resolveScheduledDayAnchor({
+      day_start: '08:00',
+      day_end: '20:00',
+      arrival_time: '18:30',
+    }, true);
+    expect(anchor.windowStartMins).toBe(19 * 60 + 15);
+    expect(anchor.windowEndMins).toBe(20 * 60);
+    expect(anchor.usableMins).toBe(45);
+  });
+
+  it('does not roll a late arrival into another date when no same-day time remains', () => {
+    const anchor = resolveScheduledDayAnchor({
+      day_start: '08:00',
+      day_end: '20:00',
+      arrival_time: '21:30',
+    }, true);
+    expect(anchor.windowStartMins).toBe(22 * 60 + 15);
+    expect(anchor.usableMins).toBe(0);
+  });
+
+  it('interprets HH:mm values as supplied wall-clock minutes without UTC conversion', () => {
+    // The date and timezone belong to the trip/day record. These helpers receive
+    // already-local clock strings and must not shift them through Date/UTC.
+    const anchor = resolveScheduledDayAnchor({
+      day_start: '07:30',
+      day_end: '20:00',
+      arrival_time: '13:00',
+    }, true);
+    expect(anchor.arrivalMins).toBe(13 * 60);
+    expect(anchor.windowStartMins).toBe(13 * 60 + 45);
+  });
+});
