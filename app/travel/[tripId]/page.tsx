@@ -841,6 +841,41 @@ export default function TripDayView() {
     }
   }
 
+  async function saveTripDateRange(startDate: string, endDate: string) {
+    if (!session?.user?.id || !trip) throw new Error('Sign in before changing trip dates.');
+    setSavingDateRange(true);
+    try {
+      let result = await authedFetch(`/api/travel/${tripId}/date-range`, {
+        startDate, endDate, confirmOrphans: false,
+      });
+      if (result?.requiresConfirmation) {
+        const count = Number(result.orphanedCount || 0);
+        const days = Number(result.removedDayCount || 0);
+        const confirmed = window.confirm(
+          `This change removes ${days} day(s) containing ${count} stop(s). Dokkit will move those stops to the nearest remaining day and preserve them; no stop will be deleted. Continue?`
+        );
+        if (!confirmed) return;
+        result = await authedFetch(`/api/travel/${tripId}/date-range`, {
+          startDate, endDate, confirmOrphans: true,
+        });
+      }
+      if (result?.error) throw new Error(result.error);
+      setDateRangeOpen(false);
+      await loadTrip();
+      const dayIds = Array.isArray(result?.recalculateDayIds) ? result.recalculateDayIds as string[] : [];
+      if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+        await Promise.all(dayIds.map((trip_day_id) => authedFetch('/api/travel/calculate-day', { trip_day_id })));
+      }
+      if (result?.movedActivityCount) {
+        alert(`Trip dates saved. ${result.movedActivityCount} stop(s) were preserved on remaining days.`);
+      }
+    } finally {
+      setSavingDateRange(false);
+    }
+  }
+
+
+
   async function recalculateDay(dayIdOverride?: string) {
     const dayId = dayIdOverride || selectedDayId;
     if (!dayId) return;
@@ -1262,17 +1297,20 @@ export default function TripDayView() {
     newOrderIds.splice(originalIndex, 1);
     newOrderIds.splice(currentIndex, 0, id);
 
-    setActivities((prev) => {
-      const byId: Record<string, Activity> = {};
-      prev.forEach((a) => (byId[a.id] = a));
-      const reindexed = newOrderIds.filter((aid) => byId[aid]).map((aid, idx) => ({ ...byId[aid], order_index: idx }));
-      const others = prev.filter((a) => !newOrderIds.includes(a.id));
-      return [...reindexed, ...others];
-    });
-
-    await Promise.all(
-      newOrderIds.map((aid, idx) => supabase.from('activities').update({ order_index: idx }).eq('id', aid))
-    );
+    const byId: Record<string, Activity> = {};
+    activities.forEach((activity) => { byId[activity.id] = activity; });
+    const reindexed = newOrderIds.filter((activityId) => byId[activityId]).map((activityId, index) => ({ ...byId[activityId], order_index: index }));
+    const others = activities.filter((activity) => !newOrderIds.includes(activity.id));
+    const nextActivities = [...reindexed, ...others];
+    setActivities(nextActivities);
+    if (session?.user?.id && selectedDayId) {
+      reindexed.forEach((activity) => queueTravelMutation(session.user.id, 'update', { id: activity.id, order_index: activity.order_index }));
+      cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
+      if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+        const result = await flushSyncQueue(session.user.id);
+        if (result.failed === 0) await authedFetch('/api/travel/calculate-day', { trip_day_id: selectedDayId });
+      }
+    }
     recalculateDay();
   }
 
@@ -1576,6 +1614,9 @@ export default function TripDayView() {
           <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back to travel"><BackIcon /></button>
           <div className="travel-detail-identity">
             <h1 className="app-title travel-detail-title">{trip.name}</h1>
+            <button type="button" className="btn-text" onClick={() => setDateRangeOpen((open) => !open)} aria-expanded={dateRangeOpen}>
+              {dateRangeOpen ? 'Close dates' : 'Edit dates'}
+            </button>
           </div>
         </div>
         <div className="app-header-right" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1590,6 +1631,24 @@ export default function TripDayView() {
           </button>
         </div>
       </div>
+
+      {offlineView && (
+        <div role="status" aria-live="polite" style={{ padding: '6px 16px', color: 'var(--ink-soft)', fontSize: 12, borderBottom: '1px solid var(--line)' }}>
+          Offline · showing the last saved trip plan
+        </div>
+      )}
+
+      {dateRangeOpen && (
+        <div style={{ padding: '8px 16px 12px' }}>
+          <TripDateRangeEditor
+            startDate={trip.start_date}
+            endDate={trip.end_date}
+            saving={savingDateRange}
+            onCancel={() => setDateRangeOpen(false)}
+            onSave={saveTripDateRange}
+          />
+        </div>
+      )}
 
       {tripDays.length > 0 && (
         <div className="trip-day-strip" ref={dayStripRef} role="tablist" aria-label="Trip days">
