@@ -112,7 +112,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Only delete removed days after verifying they contain no activities.
   for (const day of plan.removedDays) {
     const { data: remaining, error } = await supabaseAdmin.from('activities')
-      .select('id').eq('trip_day_id', day.id).eq('user_id', auth.userId).limit(1);
+      .select('id').eq('trip_day_id', day.id).limit(1);
     if (error) return NextResponse.json({ error: 'Could not verify removed days. No remaining activities were deleted.' }, { status: 500 });
     if ((remaining || []).length) {
       return NextResponse.json({ error: 'A removed day still contains activities; they have been preserved. Retry after reviewing the plan.' }, { status: 409 });
