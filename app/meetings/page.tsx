@@ -89,7 +89,7 @@ export default function MeetingsHome() {
 
   useEffect(() => {
     if (!canMeetings) return;
-    return registerDesktopPrimaryAction('Record meeting', () => setNewMeetingOpen(true));
+    return registerDesktopPrimaryAction('Record', () => setNewMeetingOpen(true));
   }, [canMeetings]);
 
   useProRedirect(
@@ -421,6 +421,11 @@ export default function MeetingsHome() {
             </div>
           </div>
           <div className="app-header-right">
+            {canMeetings && (
+              <button type="button" className="btn btn-steel ux-button ux-button--primary" onClick={() => setNewMeetingOpen(true)}>
+                Record
+              </button>
+            )}
             <GearMenu userId={session?.user.id ?? null} />
           </div>
         </div>
@@ -502,16 +507,8 @@ export default function MeetingsHome() {
         <div className="empty-state meetings-empty">
           <div className="empty-state-title">No conversations yet</div>
           <div className="empty-state-sub">
-            Record what was said when it matters. Time, notes, and what it
-            leaves behind stay with the meeting — not lost in the day.
+            Notes, decisions, and follow-up in one place.
           </div>
-          <button
-            type="button"
-            className="btn btn-steel"
-            onClick={() => setNewMeetingOpen(true)}
-          >
-            Record a meeting
-          </button>
         </div>
       ) : totalVisible === 0 ? (
         <div className="empty-state">
