@@ -29,6 +29,27 @@ describe('canonical object visual ownership', () => {
     expect(shared).toContain('.trip-row-top');
   });
 
+
+  it('keeps collapsed context and job evidence to one scan line', () => {
+    expect(shared).toContain('-webkit-line-clamp: 1');
+    expect(shared).toContain('[data-experience-object="job"] [data-experience-part="evidence"]');
+    expect(shared).toContain('[data-experience-object="task"] .task-card-context');
+  });
+
+  it('keeps semantic state available on each canonical object type', () => {
+    for (const type of ['task', 'job', 'meeting', 'trip']) {
+      expect(shared).toContain(`[data-experience-object="${type}"]:focus-visible`);
+    }
+    const task = readFileSync(join(process.cwd(), 'components', 'TaskCard.tsx'), 'utf8');
+    const jobs = readFileSync(join(process.cwd(), 'app', 'jobs', 'page.tsx'), 'utf8');
+    const meetings = readFileSync(join(process.cwd(), 'app', 'meetings', 'page.tsx'), 'utf8');
+    const travel = readFileSync(join(process.cwd(), 'app', 'travel', 'page.tsx'), 'utf8');
+    expect(task).toContain('data-object-state={running ? \'active\' : t.status}');
+    expect(jobs).toContain('data-object-state={done ? \'complete\' : \'open\'}');
+    expect(meetings).toContain('data-object-state=');
+    expect(travel).toContain('data-object-state=');
+  });
+
   it('keeps surface-specific object sheets free of duplicate shared typography and focus rules', () => {
     for (const css of surfaceSheets) {
       expect(css).not.toMatch(/\[data-experience-part="title"\][\s\S]{0,180}font-size:/);
