@@ -1263,6 +1263,7 @@ export default function TripDayView() {
       const result = await flushSyncQueue(session.user.id);
       if (result.failed === 0) {
         await Promise.all([activity.trip_day_id, newTripDayId].map((trip_day_id) => authedFetch('/api/travel/calculate-day', { trip_day_id })));
+        await loadActivities();
       }
     }
   }
