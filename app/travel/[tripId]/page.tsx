@@ -1035,32 +1035,31 @@ export default function TripDayView() {
       }
     }
 
-    const { data, error: insertError } = await supabase
-      .from('activities')
-      .insert({
-        user_id: session.user.id,
-        trip_day_id: selectedDayId,
-        text: stopText,
-        activity_type: 'stop',
-        estimate_mins: schedule.estimate_mins,
-        drive_mins_to_next: 0,
-        location_text: loc,
-        lat,
-        lng,
-        order_index: maxOrder + 1,
-        time_type: schedule.time_type,
-        fixed_time: schedule.fixed_time,
-        stop_kind: captureStopKind,
-        presence: capturePresence,
-        job_id: captureStopKind === 'work' ? effectiveJobId : null,
-      })
-      .select()
-      .single();
-    if (insertError) {
-      alert(insertError.message);
-      return;
-    }
-    setActivities((prev) => [...prev, data as Activity]);
+    const created: Activity = {
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `travel-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      user_id: session.user.id,
+      trip_day_id: selectedDayId,
+      text: stopText,
+      activity_type: 'stop',
+      estimate_mins: schedule.estimate_mins,
+      drive_mins_to_next: 0,
+      location_text: loc,
+      lat,
+      lng,
+      order_index: maxOrder + 1,
+      status: 'pending',
+      time_type: schedule.time_type,
+      fixed_time: schedule.fixed_time,
+      route_polyline: null,
+      stop_kind: captureStopKind,
+      presence: capturePresence,
+      job_id: captureStopKind === 'work' ? effectiveJobId : null,
+    } as Activity;
+    queueTravelMutation(session.user.id, 'upsert', created as unknown as Record<string, unknown>);
+    const nextActivities = [...activities, created];
+    setActivities(nextActivities);
+    cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
     setCaptureText('');
     setCaptureLocation('');
     setCaptureCoords(null);
@@ -1099,55 +1098,27 @@ export default function TripDayView() {
   }) {
     const { id, text, estimateMins, location, lat, lng, timeType, fixedTime, stopKind, presence, jobId } =
       payload;
-    const { error } = await supabase
-      .from('activities')
-      .update({
-        text,
-        estimate_mins: estimateMins,
-        location_text: location || null,
-        lat,
-        lng,
-        time_type: timeType,
-        fixed_time: fixedTime,
-        stop_kind: stopKind,
-        presence,
-        job_id: jobId,
-      })
-      .eq('id', id);
-    if (error) {
-      alert('Could not save the stop: ' + error.message);
-      return;
-    }
-    setActivities((prev) =>
-      prev.map((row) =>
-        row.id === id
-          ? {
-              ...row,
-              text,
-              estimate_mins: estimateMins,
-              location_text: location || null,
-              lat,
-              lng,
-              time_type: timeType,
-              fixed_time: fixedTime,
-              stop_kind: stopKind,
-              presence,
-              job_id: jobId,
-            }
-          : row
-      )
-    );
+    const patch = {
+      id, text, estimate_mins: estimateMins, location_text: location || null, lat, lng,
+      time_type: timeType, fixed_time: fixedTime, stop_kind: stopKind, presence, job_id: jobId,
+    };
+    if (!session?.user?.id) return;
+    queueTravelMutation(session.user.id, 'update', patch);
+    const nextActivities = activities.map((row) => row.id === id ? { ...row, ...patch } as Activity : row);
+    setActivities(nextActivities);
+    if (selectedDayId) cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
     recalculateDay();
   }
 
   async function completeActivity(id: string) {
     const activity = activities.find((a) => a.id === id);
-    const { error } = await supabase.from('activities').update({ status: 'done' }).eq('id', id);
-    if (error) {
-      alert('Could not complete the stop: ' + error.message);
-      return;
-    }
-    setActivities((prev) => prev.filter((a) => a.id !== id));
+    if (!session?.user?.id || !activity) return;
+    queueTravelMutation(session.user.id, 'update', { id, status: 'done' });
+    const nextActivities = activities.filter((a) => a.id !== id);
+    setActivities(nextActivities);
+    if (selectedDayId) cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
     // Ambient reality: duration-style stops contribute when estimate is real.
     // Presence blocks (all_day / work_hours) are capacity signals, not timer actuals.
     if (activity && session?.user?.id) {
@@ -1213,12 +1184,31 @@ export default function TripDayView() {
   }
 
   async function moveActivityToDay(id: string, newTripDayId: string) {
-    const { error } = await supabase.from('activities').update({ trip_day_id: newTripDayId, order_index: 0 }).eq('id', id);
-    if (error) {
-      alert('Could not move the stop: ' + error.message);
-      return;
+    if (!session?.user?.id) return;
+    const activity = activities.find((item) => item.id === id);
+    if (!activity || newTripDayId === activity.trip_day_id) return;
+    const snapshot = loadCachedTravelSnapshot(session.user.id, tripId);
+    let targetActivities = (snapshot?.activitiesByDay?.[newTripDayId] || []) as unknown as Activity[];
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+      const { data } = await supabase.from('activities').select('*').eq('trip_day_id', newTripDayId).neq('status', 'done').order('order_index', { ascending: true });
+      if (data) targetActivities = data as Activity[];
     }
-    setActivities((prev) => prev.filter((a) => a.id !== id));
+    const sourceActivities = activities.filter((item) => item.id !== id).map((item, index) => ({ ...item, order_index: index }));
+    const moved = { ...activity, trip_day_id: newTripDayId, order_index: targetActivities.length, drive_mins_to_next: 0, route_polyline: null };
+    queueTravelMutation(session.user.id, 'update', { id, trip_day_id: newTripDayId, order_index: moved.order_index, drive_mins_to_next: 0, route_polyline: null });
+    sourceActivities.forEach((item) => queueTravelMutation(session.user.id, 'update', { id: item.id, order_index: item.order_index }));
+    targetActivities.forEach((item, index) => {
+      if (item.id !== id && item.order_index !== index) queueTravelMutation(session.user.id, 'update', { id: item.id, order_index: index });
+    });
+    setActivities(sourceActivities);
+    cacheTravelDayActivities(session.user.id, tripId, activity.trip_day_id, sourceActivities as unknown as Array<Record<string, unknown>>);
+    cacheTravelDayActivities(session.user.id, tripId, newTripDayId, [...targetActivities, moved] as unknown as Array<Record<string, unknown>>);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+      const result = await flushSyncQueue(session.user.id);
+      if (result.failed === 0) {
+        await Promise.all([activity.trip_day_id, newTripDayId].map((trip_day_id) => authedFetch('/api/travel/calculate-day', { trip_day_id })));
+      }
+    }
     recalculateDay();
   }
 
