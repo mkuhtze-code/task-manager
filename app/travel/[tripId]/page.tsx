@@ -861,12 +861,13 @@ export default function TripDayView() {
       if (result?.requiresConfirmation) {
         const count = Number(result.orphanedCount || 0);
         const days = Number(result.removedDayCount || 0);
+        const confirmationKey = String(result.confirmationKey || '');
         const confirmed = window.confirm(
           `This change removes ${days} day(s); ${count} stop(s) need a new day. Dokkit will move those stops to the nearest remaining day and preserve them; no stop will be deleted. Continue?`
         );
         if (!confirmed) return;
         result = await authedFetch(`/api/travel/${tripId}/date-range`, {
-          startDate, endDate, confirmOrphans: true,
+          startDate, endDate, confirmOrphans: true, confirmedPlanKey: confirmationKey,
         });
       }
       if (result?.error) throw new Error(result.error);
