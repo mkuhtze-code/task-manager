@@ -851,6 +851,7 @@ export default function TripDayView() {
 
   async function saveTripDateRange(startDate: string, endDate: string) {
     if (!session?.user?.id || !trip) throw new Error('Sign in before changing trip dates.');
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('Trip date changes need a connection. Your saved plan has not been changed.');
     setSavingDateRange(true);
     try {
       let result = await authedFetch(`/api/travel/${tripId}/date-range`, {
@@ -1167,7 +1168,7 @@ export default function TripDayView() {
     if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
     // Ambient reality: duration-style stops contribute when estimate is real.
     // Presence blocks (all_day / work_hours) are capacity signals, not timer actuals.
-    if (activity && session?.user?.id) {
+    if (activity && session?.user?.id && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
       const presence = (activity.presence as string) || 'duration';
       const measured =
         presence === 'duration' || presence === 'fixed'
