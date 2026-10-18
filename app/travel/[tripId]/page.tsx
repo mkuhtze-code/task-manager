@@ -751,7 +751,15 @@ export default function TripDayView() {
     const { data: dayRows, error: daysError } = await supabase
       .from('trip_days').select('*').eq('trip_id', tripId).order('date', { ascending: true });
 
-    if (tripError || daysError || !tripRow || !dayRows) {
+    if (!tripError && !daysError && !tripRow) {
+      setTrip(null);
+      setTripDays([]);
+      setActivities([]);
+      setError('This trip could not be found.');
+      return;
+    }
+
+    if (tripError || daysError || !dayRows) {
       const cached = loadCachedTravelSnapshot(userId, tripId);
       if (cached?.trip && cached.tripDays.length) {
         setTrip(cached.trip as unknown as Trip);
