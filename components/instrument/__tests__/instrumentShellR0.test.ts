@@ -26,7 +26,7 @@ describe('Instrument shell R0 contract', () => {
     const nav = read('components/SurfaceNav.tsx');
     expect(nav).toContain('if (pro && !isPro)');
     expect(nav).toContain('/account/billing?feature=${feature}');
-    expect(nav).toContain('key === \'meetings\' ? \'meetings\'');
+    expect(nav).toContain("key === 'jobs' ? 'jobs' : key === 'meetings' ? 'meetings' : 'travel'");
   });
 
   it('mounts the shell and keeps the dock behind the authenticated boundary', () => {
