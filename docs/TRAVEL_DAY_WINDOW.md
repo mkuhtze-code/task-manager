@@ -30,3 +30,13 @@ This contract is deterministic and local to travel day-window arithmetic. It doe
 - For a work-intent trip day with a scheduled flight, Today intersects `resolveScheduledDayAnchor`'s effective window (including the arrival buffer) with configured work hours. A 13:00 landing plus 45-minute buffer cannot expose morning capacity.
 - Today may show one quiet regime line for the active local trip day, linking directly to `/travel/[tripId]`. It is status/wayfinding only: no map, place search, stop editing, date mutation, or second travel dashboard.
 - S7 offline and date mutations remain out of scope.
+
+## Travel plan mutations and reliability (Stage S7)
+
+- `planTripDateRangeChange` is a pure planner. Extending a trip creates only missing dates. Shrinking explicitly lists removed days and activities that would be orphaned.
+- A shrink that affects activities requires explicit confirmation. Activities are moved to the nearest remaining date, appended after existing stops, and never deleted as part of a date-range change. Empty removed days are deleted only after a fresh query confirms no activities remain.
+- The authenticated date-range endpoint creates destination days before moving stops and updates the trip range after stop preservation. The operation is retryable after partial failure: existing days are reused, moved activities no longer remain on removed days, and removed days are deleted only when empty.
+- Travel create uses a client-generated stable activity UUID and queued `upsert` on that UUID. Update, completion, reorder, and move are queued as idempotent field updates. Replaying an operation therefore updates the same row rather than inserting a second stop.
+- The travel snapshot stores the trip, trip days, selected day, and per-day activity lists in the existing offline entity cache. When remote reads fail, the selected cached day is shown; if no selected-day value is available, the latest trip day is selected. A quiet offline status line labels the cached view.
+- Move and reorder invalidate drive estimates and request a fresh day-route calculation when online. A failed route refresh is not allowed to undo or delete the stop mutation.
+- The offline cache is browser local storage, not an encrypted or cross-device database. Offline range edits and offline trip creation remain unsupported; S7 queues stop-level create/update/complete/reorder/move only.
