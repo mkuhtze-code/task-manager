@@ -24,5 +24,5 @@
 ## Explicit limits
 
 - Date-range edits are online-only; they are not part of the stop mutation queue.
-- Travel creation queueing covers the trip-detail capture and place/nearby stop paths. Vault evidence workflows remain unchanged.
+- Travel creation queueing covers trip-detail capture, place/nearby insertion, and scheduling a Library item onto a day. Vault evidence workflows remain unchanged.
 - This contract does not add background tracking, a Maps clone, multi-user collaboration, or S8 device polish.
