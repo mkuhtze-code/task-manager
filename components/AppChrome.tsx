@@ -172,11 +172,11 @@ export default function AppChrome({
       ) : null}
 
       <AppShell
-        lens={(['today', 'jobs', 'meetings', 'travel'] as InstrumentLens[])[currentSurfaceIndex(pathname)] ?? 'today'}
+        lens={currentSurfaceIndex(pathname) === 1 ? 'jobs' : currentSurfaceIndex(pathname) === 2 ? 'meetings' : currentSurfaceIndex(pathname) === 3 ? 'travel' : 'today'}
         dock={
           session?.user?.id && currentSurfaceIndex(pathname) >= 0 ? (
             <SystemDock
-              lens={(['today', 'jobs', 'meetings', 'travel'] as InstrumentLens[])[currentSurfaceIndex(pathname)]}
+              lens={currentSurfaceIndex(pathname) === 1 ? 'jobs' : currentSurfaceIndex(pathname) === 2 ? 'meetings' : currentSurfaceIndex(pathname) === 3 ? 'travel' : 'today'}
               onAdd={primaryAction ? requestCaptureOpen : undefined}
               addLabel={primaryAction?.label ?? 'Add'}
             />
