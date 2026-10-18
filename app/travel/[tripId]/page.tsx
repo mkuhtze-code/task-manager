@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { authedFetch } from '@/lib/authedFetch';
 import TripDateRangeEditor from '@/components/TripDateRangeEditor';
-import { cacheTravelDayActivities, cacheTravelSnapshot, loadCachedTravelSnapshot, queueTravelMutation, registerTravelSyncHandler } from '@/lib/travel/travelOffline';
+import { cacheTravelDayActivities, cacheTravelSnapshot, loadCachedTravelSnapshot, queueTravelMutation, reconcileCachedTravelDay, registerTravelSyncHandler } from '@/lib/travel/travelOffline';
 import { flushSyncQueue, startSyncOnReconnect, subscribeOnline } from '@/lib/offline';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import ContextLine from '@/components/ContextLine';
@@ -819,9 +819,10 @@ export default function TripDayView() {
       setOfflineView(true);
       return;
     }
-    const rows = data as Activity[];
+    const rows = userId
+      ? reconcileCachedTravelDay(userId, tripId, dayId, data as unknown as Array<Record<string, unknown>>) as unknown as Activity[]
+      : data as Activity[];
     setActivities(rows);
-    if (userId) cacheTravelDayActivities(userId, tripId, dayId, rows as unknown as Array<Record<string, unknown>>);
     const flightIds = rows.filter((activity) => activity.activity_type === 'flight').map((activity) => activity.id);
     if (flightIds.length === 0) {
       setFlightDetailsByActivity({});
