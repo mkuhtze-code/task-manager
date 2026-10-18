@@ -860,7 +860,7 @@ export default function TripDayView() {
         const count = Number(result.orphanedCount || 0);
         const days = Number(result.removedDayCount || 0);
         const confirmed = window.confirm(
-          `This change removes ${days} day(s) containing ${count} stop(s). Dokkit will move those stops to the nearest remaining day and preserve them; no stop will be deleted. Continue?`
+          `This change removes ${days} day(s); ${count} stop(s) need a new day. Dokkit will move those stops to the nearest remaining day and preserve them; no stop will be deleted. Continue?`
         );
         if (!confirmed) return;
         result = await authedFetch(`/api/travel/${tripId}/date-range`, {
