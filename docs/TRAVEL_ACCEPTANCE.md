@@ -8,6 +8,7 @@ This is the acceptance record for the Dokkit Travel movement lens. It is not a t
 
 - [Travel day-window and Today regime contract](./TRAVEL_DAY_WINDOW.md)
 - [S2 day-default surface contract](./phase-s2-day-default-surface.md)
+- [Find place sheet](../components/FindPlaceSheet.tsx) and [Travel page integration](../app/travel/%5BtripId%5D/page.tsx) — S3 place-search entry points (no separate S3 contract document was found).
 - [Travel Vault contract](./TRAVEL_VAULT.md)
 - [Travel Vault bridge contract](./phase-t2-travel-vault-bridges.md) — effective day boundaries, linked-flight shaping, Today work-hours intersection, and trip-local wall time.
 - [Travel plan mutations and offline reliability](./TRAVEL_PLAN_MUTATIONS.md) — date-range preservation, confirmation, idempotent queue, cached plan and route invalidation.
