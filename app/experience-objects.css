@@ -213,6 +213,34 @@
   line-height: var(--experience-object-context-leading);
 }
 
+/* Collapsed rows stay scannable: context/evidence is a single faint line.
+   Full text remains in the DOM and accessible through the existing object/detail. */
+.experience-mobile-frame [data-experience-object="task"] .task-card-context,
+.experience-mobile-frame [data-experience-object="job"] [data-experience-part="context"],
+.experience-mobile-frame [data-experience-object="job"] .desk-job-card-context,
+.experience-mobile-frame [data-experience-object="meeting"] [data-experience-part="context"],
+.experience-mobile-frame [data-experience-object="trip"] [data-experience-part="context"] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+}
+
+.experience-mobile-frame [data-experience-object="job"] [data-experience-part="evidence"] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  font-size: var(--experience-object-context-size);
+  line-height: var(--experience-object-context-leading);
+}
+
+/* State is carried by data-object-state and existing text/landmarks, never
+   by a decorative colour band alone. Keep state markers visually restrained. */
+.experience-mobile-frame [data-experience-object][data-object-state] {
+  min-width: 0;
+}
+
 .experience-mobile-frame [data-experience-object="meeting"] .meeting-row-top,
 .experience-mobile-frame [data-experience-object="trip"] .trip-row-top {
   display: flex;
