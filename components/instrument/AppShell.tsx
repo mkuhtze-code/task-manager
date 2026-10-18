@@ -21,7 +21,7 @@ export default function AppShell({ lens, children, header, dock }: AppShellProps
     <div className="instrument-shell" data-instrument-shell data-lens={lens}>
       {header ? <div className="instrument-shell__header">{header}</div> : null}
       <div className="instrument-shell__body">{children}</div>
-      {dock ?? <SystemDock lens={lens} />}
+      {dock === undefined ? <SystemDock lens={lens} /> : dock}
     </div>
   );
 }
