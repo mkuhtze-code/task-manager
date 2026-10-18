@@ -1114,8 +1114,7 @@ export default function TripDayView() {
     setCaptureEngineMsg(null);
     setCaptureOpen(false);
     if (typeof navigator === 'undefined' || navigator.onLine !== false) {
-      const sync = await flushSyncQueue(session.user.id);
-      if (sync.failed > 0) setOfflineView(true);
+      await flushSyncQueue(session.user.id);
       if (created.lat != null) await recalculateDay();
     }
   }
@@ -1470,7 +1469,7 @@ export default function TripDayView() {
       .sort((a, b) => a.order_index - b.order_index);
     setActivities(nextActivities);
     cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
-    if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) await flushSyncQueue(session.user.id);
     setNearbyOpen(false);
     setNearbyLeg(null);
     await recalculateDay();
@@ -1517,7 +1516,7 @@ export default function TripDayView() {
     const nextActivities = newOrderIds.map((activityId, index) => activityId === created.id ? created : { ...byId.get(activityId)!, order_index: index });
     setActivities(nextActivities);
     cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
-    if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) await flushSyncQueue(session.user.id);
     recalculateDay();
   }
 
