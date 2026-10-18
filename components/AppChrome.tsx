@@ -135,13 +135,18 @@ export default function AppChrome({
             </div>
           )}
 
-          <div
-            className="desk-main-body"
-            id="main-content"
-            role="main"
+          <AppShell
+            lens={currentSurfaceIndex(pathname) === 1 ? 'jobs' : currentSurfaceIndex(pathname) === 2 ? 'meetings' : currentSurfaceIndex(pathname) === 3 ? 'travel' : 'today'}
+            dock={null}
           >
-            {children}
-          </div>
+            <div
+              className="desk-main-body"
+              id="main-content"
+              role="main"
+            >
+              {children}
+            </div>
+          </AppShell>
         </div>
       </div>
     );
