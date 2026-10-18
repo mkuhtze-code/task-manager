@@ -6,6 +6,9 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { authedFetch } from '@/lib/authedFetch';
+import TripDateRangeEditor from '@/components/TripDateRangeEditor';
+import { cacheTravelDayActivities, cacheTravelSnapshot, loadCachedTravelSnapshot, queueTravelMutation, registerTravelSyncHandler } from '@/lib/travel/travelOffline';
+import { flushSyncQueue, startSyncOnReconnect, subscribeOnline } from '@/lib/offline';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import ContextLine from '@/components/ContextLine';
 import LibrarySheet from '@/components/LibrarySheet';
@@ -647,6 +650,9 @@ export default function TripDayView() {
   const clusters = useMemo(() => buildClusters(history), [history]);
   const [now, setNow] = useState(new Date());
   const [recalculating, setRecalculating] = useState(false);
+  const [dateRangeOpen, setDateRangeOpen] = useState(false);
+  const [savingDateRange, setSavingDateRange] = useState(false);
+  const [offlineView, setOfflineView] = useState(false);
 
   const [openActivityId, setOpenActivityId] = useState<string | null>(null);
   const [accommodationSheetOpen, setAccommodationSheetOpen] = useState(false);
@@ -698,7 +704,15 @@ export default function TripDayView() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    setOfflineView(typeof navigator !== 'undefined' && navigator.onLine === false);
+    return subscribeOnline((online) => setOfflineView(!online));
   }, []);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    registerTravelSyncHandler();
+    return startSyncOnReconnect(session.user.id);
+  }, [session?.user?.id]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -731,32 +745,46 @@ export default function TripDayView() {
   }, [session?.user?.id]);
 
   async function loadTrip() {
-    const { data: tripRow } = await supabase.from('trips').select('*').eq('id', tripId).maybeSingle();
-    setTrip(tripRow);
+    const userId = session?.user?.id;
+    if (!userId) return;
+    const { data: tripRow, error: tripError } = await supabase.from('trips').select('*').eq('id', tripId).maybeSingle();
+    const { data: dayRows, error: daysError } = await supabase
+      .from('trip_days').select('*').eq('trip_id', tripId).order('date', { ascending: true });
 
-    const { data: dayRows } = await supabase
-      .from('trip_days')
-      .select('*')
-      .eq('trip_id', tripId)
-      .order('date', { ascending: true });
-    setTripDays(dayRows || []);
-
-    if (dayRows && dayRows.length > 0) {
-      const todayStr = localDateISO();
-      const initialDay = selectInitialTripDay(dayRows as TripDay[], todayStr);
-      setSelectedDayId(initialDay?.id ?? null);
-    }
-
-    if (session) {
-      const { data: settings } = await supabase
-        .from('user_settings')
-        .select('travel_sort_mode')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-      if (settings?.travel_sort_mode) {
-        setTravelSortMode(settings.travel_sort_mode as TravelSortMode);
+    if (tripError || daysError || !tripRow || !dayRows) {
+      const cached = loadCachedTravelSnapshot(userId, tripId);
+      if (cached?.trip && cached.tripDays.length) {
+        setTrip(cached.trip as unknown as Trip);
+        setTripDays(cached.tripDays as unknown as TripDay[]);
+        const cachedSelected = cached.selectedDayId && cached.tripDays.some((day) => day.id === cached.selectedDayId)
+          ? cached.selectedDayId
+          : (cached.tripDays[cached.tripDays.length - 1]?.id as string | undefined) ?? null;
+        setSelectedDayId(cachedSelected);
+        setOfflineView(true);
+        return;
       }
+      if (tripError || daysError) setError('Trip is not reachable and no saved copy is available on this device.');
+      return;
     }
+
+    setTrip(tripRow);
+    setTripDays(dayRows || []);
+    const todayStr = localDateISO();
+    const initialDay = selectInitialTripDay(dayRows as TripDay[], todayStr);
+    const selected = initialDay?.id ?? dayRows[dayRows.length - 1]?.id ?? null;
+    setSelectedDayId(selected);
+    cacheTravelSnapshot(userId, {
+      id: tripId,
+      trip: tripRow as unknown as Record<string, unknown>,
+      tripDays: dayRows as unknown as Array<Record<string, unknown>>,
+      selectedDayId: selected,
+      activitiesByDay: loadCachedTravelSnapshot(userId, tripId)?.activitiesByDay ?? {},
+    });
+    setOfflineView(false);
+
+    const { data: settings } = await supabase
+      .from('user_settings').select('travel_sort_mode').eq('user_id', userId).maybeSingle();
+    if (settings?.travel_sort_mode) setTravelSortMode(settings.travel_sort_mode as TravelSortMode);
   }
 
     useEffect(() => {
@@ -773,14 +801,19 @@ export default function TripDayView() {
   async function loadActivities(dayIdOverride?: string) {
     const dayId = dayIdOverride || selectedDayId;
     if (!dayId) return;
-    const { data } = await supabase
-      .from('activities')
-      .select('*')
-      .eq('trip_day_id', dayId)
-      .neq('status', 'done')
-      .order('order_index', { ascending: true });
-    const rows = (data || []) as Activity[];
+    const userId = session?.user?.id;
+    const { data, error: activitiesError } = await supabase
+      .from('activities').select('*').eq('trip_day_id', dayId).neq('status', 'done').order('order_index', { ascending: true });
+    if (activitiesError || !data) {
+      const cached = userId ? loadCachedTravelSnapshot(userId, tripId) : null;
+      const cachedRows = (cached?.activitiesByDay?.[dayId] || []) as unknown as Activity[];
+      setActivities(cachedRows.filter((activity) => activity.status !== 'done'));
+      setOfflineView(true);
+      return;
+    }
+    const rows = data as Activity[];
     setActivities(rows);
+    if (userId) cacheTravelDayActivities(userId, tripId, dayId, rows as unknown as Array<Record<string, unknown>>);
     const flightIds = rows.filter((activity) => activity.activity_type === 'flight').map((activity) => activity.id);
     if (flightIds.length === 0) {
       setFlightDetailsByActivity({});
