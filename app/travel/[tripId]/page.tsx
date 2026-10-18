@@ -1116,8 +1116,8 @@ export default function TripDayView() {
     setCaptureEngineMsg(null);
     setCaptureOpen(false);
     if (typeof navigator === 'undefined' || navigator.onLine !== false) {
-      await flushSyncQueue(session.user.id);
-      if (created.lat != null) await recalculateDay();
+      const sync = await flushSyncQueue(session.user.id);
+      if (sync.failed === 0 && created.lat != null) await recalculateDay();
     }
   }
 
@@ -1265,7 +1265,6 @@ export default function TripDayView() {
         await Promise.all([activity.trip_day_id, newTripDayId].map((trip_day_id) => authedFetch('/api/travel/calculate-day', { trip_day_id })));
       }
     }
-    recalculateDay();
   }
 
   // A Library item was scheduled into tripDayId by the LibrarySheet, which
@@ -1329,10 +1328,12 @@ export default function TripDayView() {
       cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
       if (typeof navigator === 'undefined' || navigator.onLine !== false) {
         const result = await flushSyncQueue(session.user.id);
-        if (result.failed === 0) await authedFetch('/api/travel/calculate-day', { trip_day_id: selectedDayId });
+        if (result.failed === 0) {
+          await authedFetch('/api/travel/calculate-day', { trip_day_id: selectedDayId });
+          await recalculateDay();
+        }
       }
     }
-    recalculateDay();
   }
 
   async function changeSortMode(mode: TravelSortMode) {
