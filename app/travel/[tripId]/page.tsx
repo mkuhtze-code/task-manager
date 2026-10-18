@@ -1154,8 +1154,12 @@ export default function TripDayView() {
     const nextActivities = activities.map((row) => row.id === id ? { ...row, ...patch } as Activity : row);
     setActivities(nextActivities);
     if (selectedDayId) cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
-    if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
-    recalculateDay();
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+      const sync = await flushSyncQueue(session.user.id);
+      if (sync.failed === 0) await recalculateDay();
+    } else {
+      recalculateDay();
+    }
   }
 
   async function completeActivity(id: string) {
@@ -1165,7 +1169,12 @@ export default function TripDayView() {
     const nextActivities = activities.filter((a) => a.id !== id);
     setActivities(nextActivities);
     if (selectedDayId) cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
-    if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+      const sync = await flushSyncQueue(session.user.id);
+      if (sync.failed === 0) await recalculateDay();
+    } else {
+      recalculateDay();
+    }
     // Ambient reality: duration-style stops contribute when estimate is real.
     // Presence blocks (all_day / work_hours) are capacity signals, not timer actuals.
     if (activity && session?.user?.id && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
@@ -1471,10 +1480,12 @@ export default function TripDayView() {
       .sort((a, b) => a.order_index - b.order_index);
     setActivities(nextActivities);
     cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
-    if (typeof navigator === 'undefined' || navigator.onLine !== false) await flushSyncQueue(session.user.id);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+      const sync = await flushSyncQueue(session.user.id);
+      if (sync.failed === 0) await recalculateDay();
+    }
     setNearbyOpen(false);
     setNearbyLeg(null);
-    await recalculateDay();
   }
 
   async function findNearby(leg: Leg) {
@@ -1518,8 +1529,10 @@ export default function TripDayView() {
     const nextActivities = newOrderIds.map((activityId, index) => activityId === created.id ? created : { ...byId.get(activityId)!, order_index: index });
     setActivities(nextActivities);
     cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
-    if (typeof navigator === 'undefined' || navigator.onLine !== false) await flushSyncQueue(session.user.id);
-    recalculateDay();
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+      const sync = await flushSyncQueue(session.user.id);
+      if (sync.failed === 0) await recalculateDay();
+    }
   }
 
   const hasScheduledFlight = activities.some((activity) => activity.activity_type === 'flight');
