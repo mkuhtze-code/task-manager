@@ -85,7 +85,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     movesByDate.set(targetDayId, group);
   }
 
-  const changedDayIds = new Set<string>();
   for (const [targetDayId, ids] of movesByDate) {
     const existingOnTarget = (activities || []).filter((a) => a.trip_day_id === targetDayId && !ids.includes(a.id));
     let nextOrder = existingOnTarget.reduce((max, activity) => Math.max(max, activity.order_index ?? -1), -1) + 1;
@@ -102,9 +101,6 @@ export async function POST(req: NextRequest, { params }: Params) {
         trip_day_id: targetDayId, order_index: nextOrder++, drive_mins_to_next: 0, route_polyline: null,
       }).eq('id', id).eq('user_id', auth.userId);
       if (error) return NextResponse.json({ error: 'Could not move all stops safely. No stop was intentionally deleted; retry to finish.' }, { status: 500 });
-      changedDayIds.add(targetDayId);
-      const sourceId = activityById.get(id)?.trip_day_id;
-      if (sourceId) changedDayIds.add(sourceId);
     }
     // Stale drive estimates belong to the previous order and must not survive a move.
     const { error: clearError } = await supabaseAdmin.from('activities')
