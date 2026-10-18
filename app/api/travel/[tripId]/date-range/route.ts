@@ -136,6 +136,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     addedDates: plan.addedDates,
     removedDates: plan.removedDays.map((day) => day.date),
     movedActivityCount: plan.activityMoves.length,
-    recalculateDayIds: [...changedDayIds],
+    recalculateDayIds: [...movesByDate.keys()],
   });
 }
