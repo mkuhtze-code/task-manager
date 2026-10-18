@@ -72,11 +72,13 @@ export function planTripDateRangeChange(args: {
   const orphanedActivities = args.activities.filter((activity) => removedIds.has(activity.trip_day_id));
   const retainedDates = nextDates;
   const activityMoves = orphanedActivities.map((activity) => {
+    const sourceDate = removedDays.find((day) => day.id === activity.trip_day_id)?.date || args.currentStartDate;
+    const sourceDistance = dayNumber(sourceDate);
     const target = retainedDates.reduce((best, date) =>
-      Math.abs(dayNumber(date) - dayNumber(removedDays.find((day) => day.id === activity.trip_day_id)!.date)) <
-      Math.abs(dayNumber(best) - dayNumber(removedDays.find((day) => day.id === activity.trip_day_id)!.date)
-        ? date : best
-    , retainedDates[0]);
+      Math.abs(dayNumber(date) - sourceDistance) < Math.abs(dayNumber(best) - sourceDistance)
+        ? date
+        : best,
+    retainedDates[0]);
     return { activityId: activity.id, fromDayId: activity.trip_day_id, toDate: target };
   });
   return { valid: true, error: null, startDate: args.nextStartDate, endDate: args.nextEndDate, addedDates, removedDays, orphanedActivities, activityMoves };
