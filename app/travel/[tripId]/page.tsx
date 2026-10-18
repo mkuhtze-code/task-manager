@@ -1250,16 +1250,15 @@ export default function TripDayView() {
       const { data } = await supabase.from('activities').select('*').eq('trip_day_id', newTripDayId).neq('status', 'done').order('order_index', { ascending: true });
       if (data) targetActivities = data as Activity[];
     }
-    const sourceActivities = activities.filter((item) => item.id !== id).map((item, index) => ({ ...item, order_index: index }));
+    const sourceActivities = activities.filter((item) => item.id !== id).map((item, index) => ({ ...item, order_index: index, drive_mins_to_next: 0, route_polyline: null }));
     const moved = { ...activity, trip_day_id: newTripDayId, order_index: targetActivities.length, drive_mins_to_next: 0, route_polyline: null };
     queueTravelMutation(session.user.id, 'update', { id, trip_day_id: newTripDayId, order_index: moved.order_index, drive_mins_to_next: 0, route_polyline: null });
-    sourceActivities.forEach((item) => queueTravelMutation(session.user.id, 'update', { id: item.id, order_index: item.order_index }));
-    targetActivities.forEach((item, index) => {
-      if (item.id !== id && item.order_index !== index) queueTravelMutation(session.user.id, 'update', { id: item.id, order_index: index });
-    });
+    sourceActivities.forEach((item) => queueTravelMutation(session.user.id, 'update', { id: item.id, order_index: item.order_index, drive_mins_to_next: 0, route_polyline: null }));
+    const reindexedTargetActivities = targetActivities.filter((item) => item.id !== id).map((item, index) => ({ ...item, order_index: index, drive_mins_to_next: 0, route_polyline: null }));
+    reindexedTargetActivities.forEach((item) => queueTravelMutation(session.user.id, 'update', { id: item.id, order_index: item.order_index, drive_mins_to_next: 0, route_polyline: null }));
     setActivities(sourceActivities);
     cacheTravelDayActivities(session.user.id, tripId, activity.trip_day_id, sourceActivities as unknown as Array<Record<string, unknown>>);
-    cacheTravelDayActivities(session.user.id, tripId, newTripDayId, [...targetActivities, moved] as unknown as Array<Record<string, unknown>>);
+    cacheTravelDayActivities(session.user.id, tripId, newTripDayId, [...reindexedTargetActivities, moved] as unknown as Array<Record<string, unknown>>);
     if (typeof navigator === 'undefined' || navigator.onLine !== false) {
       const result = await flushSyncQueue(session.user.id);
       if (result.failed === 0) {
@@ -1320,12 +1319,12 @@ export default function TripDayView() {
 
     const byId: Record<string, Activity> = {};
     activities.forEach((activity) => { byId[activity.id] = activity; });
-    const reindexed = newOrderIds.filter((activityId) => byId[activityId]).map((activityId, index) => ({ ...byId[activityId], order_index: index }));
+    const reindexed = newOrderIds.filter((activityId) => byId[activityId]).map((activityId, index) => ({ ...byId[activityId], order_index: index, drive_mins_to_next: 0, route_polyline: null }));
     const others = activities.filter((activity) => !newOrderIds.includes(activity.id));
     const nextActivities = [...reindexed, ...others];
     setActivities(nextActivities);
     if (session?.user?.id && selectedDayId) {
-      reindexed.forEach((activity) => queueTravelMutation(session.user.id, 'update', { id: activity.id, order_index: activity.order_index }));
+      reindexed.forEach((activity) => queueTravelMutation(session.user.id, 'update', { id: activity.id, order_index: activity.order_index, drive_mins_to_next: 0, route_polyline: null }));
       cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
       if (typeof navigator === 'undefined' || navigator.onLine !== false) {
         const result = await flushSyncQueue(session.user.id);
