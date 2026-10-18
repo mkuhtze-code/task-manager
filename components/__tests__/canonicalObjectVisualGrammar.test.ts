@@ -42,8 +42,8 @@ describe('canonical object visual ownership', () => {
     }
     const task = readFileSync(join(process.cwd(), 'components', 'TaskCard.tsx'), 'utf8');
     const jobs = readFileSync(join(process.cwd(), 'app', 'jobs', 'page.tsx'), 'utf8');
-    const meetings = readFileSync(join(process.cwd(), 'app', 'meetings', 'page.tsx'), 'utf8');
-    const travel = readFileSync(join(process.cwd(), 'app', 'travel', 'page.tsx'), 'utf8');
+    const meetings = readFileSync(join(process.cwd(), 'components', 'MeetingObjectLink.tsx'), 'utf8');
+    const travel = readFileSync(join(process.cwd(), 'components', 'TripObjectLink.tsx'), 'utf8');
     expect(task).toContain('data-object-state={running ? \'active\' : t.status}');
     expect(jobs).toContain('data-object-state={done ? \'complete\' : \'open\'}');
     expect(meetings).toContain('data-object-state=');
