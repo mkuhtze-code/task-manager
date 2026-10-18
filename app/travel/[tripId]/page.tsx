@@ -1102,7 +1102,6 @@ export default function TripDayView() {
     const nextActivities = [...activities, created];
     setActivities(nextActivities);
     cacheTravelDayActivities(session.user.id, tripId, selectedDayId, nextActivities as unknown as Array<Record<string, unknown>>);
-    if (typeof navigator === 'undefined' || navigator.onLine !== false) void flushSyncQueue(session.user.id);
     setCaptureText('');
     setCaptureLocation('');
     setCaptureCoords(null);
@@ -1114,7 +1113,11 @@ export default function TripDayView() {
     setCaptureJobId(null);
     setCaptureEngineMsg(null);
     setCaptureOpen(false);
-    if ((data as Activity).lat != null) recalculateDay();
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+      const sync = await flushSyncQueue(session.user.id);
+      if (sync.failed > 0) setOfflineView(true);
+      if (created.lat != null) await recalculateDay();
+    }
   }
 
   function closeCapture() {
