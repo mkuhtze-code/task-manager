@@ -1079,7 +1079,7 @@ export default function TripDayView() {
     }
 
     const created: Activity = {
-      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `travel-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => { const value = Math.floor(Math.random() * 16); return (char === 'x' ? value : (value & 0x3) | 0x8).toString(16); }),
       user_id: session.user.id,
       trip_day_id: selectedDayId,
       text: stopText,
@@ -1455,7 +1455,7 @@ export default function TripDayView() {
     const order = buildInsertionOrder(activities, slot);
     order.updates.forEach((item) => queueTravelMutation(session.user.id, 'update', { id: item.id, order_index: item.order_index }));
     const created: Activity = {
-      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `travel-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => { const value = Math.floor(Math.random() * 16); return (char === 'x' ? value : (value & 0x3) | 0x8).toString(16); }),
       user_id: session.user.id, trip_day_id: selectedDayId, text: place.name, activity_type: 'stop',
       estimate_mins: 30, drive_mins_to_next: 0, location_text: place.address, lat: place.lat, lng: place.lng,
       order_index: order.insertOrderIndex, time_type: 'flexible', fixed_time: null, stop_kind: 'leisure',
@@ -1495,7 +1495,7 @@ export default function TripDayView() {
     setNearbyOpen(false);
 
     const created: Activity = {
-      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `travel-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => { const value = Math.floor(Math.random() * 16); return (char === 'x' ? value : (value & 0x3) | 0x8).toString(16); }),
       user_id: session.user.id, trip_day_id: selectedDayId, text: s.name, activity_type: 'stop',
       estimate_mins: 30, drive_mins_to_next: 0, location_text: s.address, lat: s.lat, lng: s.lng,
       order_index: nearbyInsertIndex, status: 'pending', time_type: 'flexible', fixed_time: null,
