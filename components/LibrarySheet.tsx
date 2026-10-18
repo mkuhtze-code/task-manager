@@ -226,8 +226,8 @@ export default function LibrarySheet({ tripId, tripName, tripDays, onClose, onSc
     const sync = await flushSyncQueue(user.id);
     if (sync.failed > 0) {
       // The local cache and queued create are authoritative until replay succeeds.
-      onScheduled(dayId);
       setSaving(false);
+      onScheduled(dayId);
       return;
     }
     onScheduled(dayId);
