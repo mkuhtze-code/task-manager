@@ -29,7 +29,6 @@ This contract is deterministic and local to travel day-window arithmetic. It doe
 - Leisure-only presence remains non-blocking. Work-relevant presence is allocated from task capacity left after calendar and meeting commitments; the allocated amount is counted once as required work, not as a second calendar subtractor.
 - For a work-intent trip day with a scheduled flight, Today intersects `resolveScheduledDayAnchor`'s effective window (including the arrival buffer) with configured work hours. A 13:00 landing plus 45-minute buffer cannot expose morning capacity.
 - Today may show one quiet regime line for the active local trip day, linking directly to `/travel/[tripId]`. It is status/wayfinding only: no map, place search, stop editing, date mutation, or second travel dashboard.
-- S7 offline and date mutations remain out of scope.
 
 ## Travel plan mutations and reliability (Stage S7)
 
