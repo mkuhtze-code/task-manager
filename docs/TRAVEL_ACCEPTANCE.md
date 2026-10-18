@@ -6,7 +6,10 @@ This is the acceptance record for the Dokkit Travel movement lens. It is not a t
 
 ## Contract references
 
-- [Travel day-window and Today regime contract](./TRAVEL_DAY_WINDOW.md) — effective day boundaries, linked-flight shaping, Today work-hours intersection, and trip-local wall time.
+- [Travel day-window and Today regime contract](./TRAVEL_DAY_WINDOW.md)
+- [S2 day-default surface contract](./phase-s2-day-default-surface.md)
+- [Travel Vault contract](./TRAVEL_VAULT.md)
+- [Travel Vault bridge contract](./phase-t2-travel-vault-bridges.md) — effective day boundaries, linked-flight shaping, Today work-hours intersection, and trip-local wall time.
 - [Travel plan mutations and offline reliability](./TRAVEL_PLAN_MUTATIONS.md) — date-range preservation, confirmation, idempotent queue, cached plan and route invalidation.
 - [Travel object experience](../components/__tests__/travelObjectExperience.test.tsx) — shared travel object visual/interaction contract.
 - [Travel context tests](../lib/travel/__tests__/travelContext.test.ts) — clock arithmetic, effective windows, capacity and initial-day selection.
