@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const auth = await verifyUser(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  let body: { startDate?: string; endDate?: string; confirmOrphans?: boolean } = {};
+  let body: { startDate?: string; endDate?: string; confirmOrphans?: boolean; confirmedPlanKey?: string } = {};
   try {
     body = await req.json();
   } catch {
@@ -48,10 +48,21 @@ export async function POST(req: NextRequest, { params }: Params) {
     activities: activities || [],
   });
   if (!plan.valid) return NextResponse.json({ error: plan.error }, { status: 400 });
+  const confirmationKey = [
+    ...plan.removedDays.map((day) => day.id).sort(),
+    '|',
+    ...plan.orphanedActivities.map((activity) => activity.id).sort(),
+  ].join(':');
+  if (plan.orphanedActivities.length > 0 && body.confirmOrphans === true && body.confirmedPlanKey !== confirmationKey) {
+    return NextResponse.json({
+      error: 'The trip changed while you were confirming. Save the dates again to review the current stops.',
+    }, { status: 409 });
+  }
   if (plan.orphanedActivities.length > 0 && body.confirmOrphans !== true) {
     return NextResponse.json({
       error: 'Confirmation required before shrinking this trip.',
       requiresConfirmation: true,
+      confirmationKey,
       orphanedCount: plan.orphanedActivities.length,
       removedDayCount: plan.removedDays.length,
       plan,
