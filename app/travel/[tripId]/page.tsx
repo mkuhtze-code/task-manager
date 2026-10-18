@@ -887,6 +887,7 @@ export default function TripDayView() {
   async function recalculateDay(dayIdOverride?: string) {
     const dayId = dayIdOverride || selectedDayId;
     if (!dayId) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { setRecalcError(null); return; }
     setRecalculating(true);
     setRecalcError(null);
     try {
