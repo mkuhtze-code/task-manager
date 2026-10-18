@@ -1,0 +1,68 @@
+/* Instrument shell tokens — deliberately isolated from legacy page tokens. */
+:root {
+  --ins-paper: #f1efe6;
+  --ins-paper-elevated: #f8f7f1;
+  --ins-ink: #1a2933;
+  --ins-ink-soft: #53616a;
+  --ins-ink-faint: #77828a;
+  --ins-line: rgba(26, 41, 51, 0.12);
+  --ins-line-strong: rgba(26, 41, 51, 0.2);
+  --ins-steel: #2451d4;
+  --ins-danger: #b42318;
+  --ins-focus-ring: #2451d4;
+
+  --ins-type-identity: clamp(1.875rem, 7.5vw, 2.375rem);
+  --ins-type-body: 1rem;
+  --ins-type-glance-mono: 0.875rem;
+  --ins-type-context: 0.75rem;
+  --ins-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ins-font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+  --ins-space-1: 4px;
+  --ins-space-2: 8px;
+  --ins-space-3: 12px;
+  --ins-space-4: 16px;
+  --ins-space-5: 20px;
+  --ins-space-6: 24px;
+  --ins-space-8: 32px;
+  --ins-dock-height: 76px;
+  --ins-safe-top: env(safe-area-inset-top, 0px);
+  --ins-safe-right: env(safe-area-inset-right, 0px);
+  --ins-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ins-safe-left: env(safe-area-inset-left, 0px);
+
+  --ins-radius-sm: 8px;
+  --ins-radius-md: 12px;
+  --ins-radius-lg: 16px;
+  --ins-shadow-dock: 0 -4px 18px rgba(26, 41, 51, 0.045);
+
+  --ins-motion-fast: 120ms;
+  --ins-motion-standard: 180ms;
+  --ins-motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  --ins-z-dock: 120;
+  --ins-z-header: 30;
+  --ins-z-sheet: 300;
+  --ins-z-toast: 400;
+}
+
+:root[data-theme="dark"] {
+  --ins-paper: #151b20;
+  --ins-paper-elevated: #1d252c;
+  --ins-ink: #edf1f3;
+  --ins-ink-soft: #bac4ca;
+  --ins-ink-faint: #8f9ba3;
+  --ins-line: rgba(237, 241, 243, 0.12);
+  --ins-line-strong: rgba(237, 241, 243, 0.2);
+  --ins-steel: #8da8ff;
+  --ins-danger: #ff8178;
+  --ins-focus-ring: #a7bcff;
+  --ins-shadow-dock: 0 -4px 18px rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ins-motion-fast: 0ms;
+    --ins-motion-standard: 0ms;
+  }
+}
