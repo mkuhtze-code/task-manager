@@ -527,6 +527,11 @@ export default function JobsHome() {
           </div>
 
           <div className="app-header-right">
+            {canJobs && (
+              <button type="button" className="btn btn-steel ux-button ux-button--primary" onClick={() => setNewJobOpen(true)}>
+                New job
+              </button>
+            )}
             <GearMenu
               context="jobs"
               userId={session?.user.id ?? null}
@@ -590,17 +595,8 @@ export default function JobsHome() {
           </div>
 
           <div className="empty-state-sub">
-            A job is a home for work that spans days — tasks,
-            places, and evidence stay together. Optional until
-            a project needs one.
+            Create a job to keep its work together.
           </div>
-
-          <button
-            className="btn btn-steel"
-            onClick={() => setNewJobOpen(true)}
-          >
-            Create a job
-          </button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="empty-state">
