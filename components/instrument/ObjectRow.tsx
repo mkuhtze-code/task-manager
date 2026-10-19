@@ -24,7 +24,7 @@ export default function ObjectRow({ state, identity, glance, context, leading, t
     {trailing ? <span className="ins-object-row__trailing">{trailing}</span> : null}
   </>;
   const shared = {
-    className: ['ins-object-row', className].filter(Boolean).join(' '),
+    className: ['ins-object-row', children ? 'ins-object-row--bridge' : '', className].filter(Boolean).join(' '),
     'data-instrument-object': 'row',
     'data-object-state': state,
     ...(part ? { 'data-experience-part': part } : {}),
