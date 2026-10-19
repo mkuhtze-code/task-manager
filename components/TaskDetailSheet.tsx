@@ -28,7 +28,6 @@ import {
 } from '@/components/TaskConnections';
 import { TaskJobField } from '@/components/TaskJobField';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
-import DepthSheet from '@/components/instrument/DepthSheet';
 
 type SubtaskFilter = 'all' | 'open' | 'done';
 type SubtaskSort = 'original' | 'alpha' | 'time_asc' | 'time_desc';
@@ -1358,37 +1357,53 @@ export function TaskDetailSheet(props: {
 
   /* ── Mobile sheet ─────────────────────────────────────────────── */
   return (
-    <DepthSheet
-      dialogRef={dialogRef}
-      onDismiss={handleClose}
-      title="Task"
-      identity={task.text}
-      glance={task.estimate_mins > 0 ? fmtMins(task.estimate_mins) : null}
-      className={'capture-sheet task-detail-sheet task-detail-sheet-refined ' + (task.status === 'active' ? 'is-live' : '')}
-      headerContent={(
-        <div className="task-detail-header-meta">
-          <span className="task-detail-kicker">Task</span>
-          {task.status === 'active' ? (
-            <span className="task-detail-status is-live">
-              <span className="status-dot" aria-hidden />
-              Live
-            </span>
-          ) : task.due_today ? (
-            <span className="task-detail-status is-due">
-              <span className="status-dot" aria-hidden />
-              Due
-            </span>
-          ) : null}
-          {taskContextItems.length > 0 ? (
-            <ContextLine
-              className="task-detail-context-line"
-              items={taskContextItems}
-              label="Task context"
-            />
-          ) : null}
-        </div
-      )}
-    >
+    <div className="sheet-backdrop" onClick={handleClose}>
+      <div
+        ref={dialogRef}
+        className={[
+          'capture-sheet',
+          'task-detail-sheet',
+          'task-detail-sheet-refined',
+          task.status === 'active' ? 'is-live' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Task"
+      >
+        <div className="task-detail-header">
+          <div className="task-detail-header-meta">
+            <span className="task-detail-kicker">Task</span>
+            {task.status === 'active' ? (
+              <span className="task-detail-status is-live">
+                <span className="status-dot" aria-hidden />
+                Live
+              </span>
+            ) : task.due_today ? (
+              <span className="task-detail-status is-due">
+                <span className="status-dot" aria-hidden />
+                Due
+              </span>
+            ) : null}
+            {taskContextItems.length > 0 ? (
+              <ContextLine
+                className="task-detail-context-line"
+                items={taskContextItems}
+                label="Task context"
+              />
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className="gear-btn"
+            onClick={handleClose}
+            aria-label="Close"
+          >
+            <CloseIcon />
+          </button>
+        </div>
 
         {task.intended_time ? (
           <div className="task-detail-scheduled-time">Scheduled for {fmtClock(task.intended_time)}</div>
@@ -1605,6 +1620,7 @@ export function TaskDetailSheet(props: {
         </section>
 
         {subtasksBlock}
-    </DepthSheet>
+      </div>
+    </div>
   );
 }
