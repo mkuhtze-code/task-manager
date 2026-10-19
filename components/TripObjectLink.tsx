@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import ObjectRow from '@/components/instrument/ObjectRow';
 import type { TripLike } from '@/lib/travel/travelSurface';
 
 type TripPressure = 'now' | 'soon' | 'later' | 'done';
@@ -33,13 +33,13 @@ export default function TripObjectLink({
     : '';
 
   return (
-    <Link
+    <ObjectRow
       href={'/travel/' + trip.id}
       className="trip-row-link"
-      aria-label={trip.name + ', ' + stateLabel + ', ' + dateRange + stopGlance + (phaseLabel ? ', ' + phaseLabel : '')}
-      data-experience-object="trip"
-      data-object-state={stateLabel}
-      data-trip-id={trip.id}
+      ariaLabel={trip.name + ', ' + stateLabel + ', ' + dateRange + stopGlance + (phaseLabel ? ', ' + phaseLabel : '')}
+      objectType="trip"
+      entityId={trip.id}
+      state={stateLabel}
     >
       <div className="trip-row-main" data-experience-part="summary">
         <div className="trip-row-top">
@@ -60,6 +60,6 @@ export default function TripObjectLink({
           </span>
         ) : null}
       </div>
-    </Link>
+    </ObjectRow>
   );
 }
