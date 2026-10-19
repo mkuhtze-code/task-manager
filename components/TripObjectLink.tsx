@@ -43,6 +43,6 @@ export default function TripObjectLink({
       identity={trip.name}
       glance={<span title={relativeLine || phaseLabel || undefined}>{dateRange}{stopGlance}</span>}
       context={dayCount && dayCount > 1 ? dayCount + ' days' : null}
-    />Row>
+    />
   );
 }
