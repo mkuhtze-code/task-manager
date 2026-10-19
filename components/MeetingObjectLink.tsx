@@ -50,6 +50,6 @@ export default function MeetingObjectLink({
         ...(meeting.location_text ? [{ label: meeting.location_text }] : []),
       ]} /> : null}
       trailing={meeting.source === 'outlook' ? <span className="meeting-source-tag" title="Outlook calendar" aria-label="From Outlook">Outlook</span> : null}
-    />Row>
+    />
   );
 }
