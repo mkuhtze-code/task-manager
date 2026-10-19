@@ -45,7 +45,7 @@ describe('canonical object visual ownership', () => {
     const meetings = readFileSync(join(process.cwd(), 'components', 'MeetingObjectLink.tsx'), 'utf8');
     const travel = readFileSync(join(process.cwd(), 'components', 'TripObjectLink.tsx'), 'utf8');
     expect(task).toContain('data-object-state={running ? \'active\' : t.status}');
-    expect(jobs).toContain('data-object-state={done ? \'complete\' : \'open\'}');
+    expect(jobs).toContain("state={done ? 'complete' : 'open'}");
     expect(meetings).toContain('data-object-state=');
     expect(travel).toContain('data-object-state=');
   });
@@ -119,7 +119,7 @@ describe('canonical object visual ownership', () => {
     const navigationCss = readCss('experience-navigation.css');
 
     expect(jobs).not.toContain('Keep the whole job together.');
-    expect(jobs).toContain('data-experience-object="job"');
+    expect(jobs).toContain('objectType="job"');
     expect(jobs).toContain('data-experience-part="evidence"');
     expect(meetings).not.toContain('Keep the thread, not just the time.');
     expect(travel).not.toContain('Make the movement part of the plan.');
