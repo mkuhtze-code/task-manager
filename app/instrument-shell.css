@@ -1,0 +1,30 @@
+/* Instrument shell owns only its structural regions. Legacy page CSS remains authoritative inside body. */
+[data-instrument-shell] {
+  --instrument-shell-dock-clearance: calc(var(--ins-dock-height) + var(--ins-safe-bottom) + var(--ins-space-4));
+  position: relative;
+  min-width: 0;
+  min-height: 100%;
+  color: var(--ins-ink);
+  font-family: var(--ins-font-sans);
+}
+
+[data-instrument-shell] .instrument-shell__header {
+  position: relative;
+  z-index: var(--ins-z-header);
+  min-width: 0;
+}
+
+[data-instrument-shell] .instrument-shell__body {
+  min-width: 0;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-instrument-shell] *,
+  [data-instrument-shell] *::before,
+  [data-instrument-shell] *::after {
+    scroll-behavior: auto;
+    animation-duration: 0ms;
+    transition-duration: 0ms;
+  }
+}
