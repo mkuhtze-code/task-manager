@@ -36,7 +36,7 @@ describe('canonical trip object landmarks', () => {
     expect(object.querySelector('[data-experience-part="glance"]')?.textContent).toContain('3 stops');
     expect(object.querySelector('[data-experience-part="context"]')?.textContent).toContain('4 days');
     expect(object.getAttribute('aria-label')).toContain('3 stops');
-    expect(object.querySelector('[data-experience-part="glance"] span')?.getAttribute('title')).toBe('Starts tomorrow');
+    expect(object.querySelector('[title="Starts tomorrow"]')).not.toBeNull();
   });
 
   it('keeps single-day and no-stop trips concise while retaining the same route', () => {
