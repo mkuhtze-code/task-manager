@@ -14,13 +14,13 @@ type ObjectRowProps = {
 export default function ObjectRow({ state, identity, glance, context, leading, trailing, children, href, onOpen, className = '', objectType, ariaLabel, id, entityId, part }: ObjectRowProps) {
   const content = children ?? <>
     {leading ? <span className="ins-object-row__leading">{leading}</span> : null}
-    <span className="ins-object-row__main">
-      <span className="ins-object-row__top">
+    <div className="ins-object-row__main">
+      <div className="ins-object-row__top">
         <span className="ins-object-row__identity" data-experience-part="title">{identity}</span>
         {glance != null && glance !== '' ? <span className="ins-object-row__glance" data-experience-part="glance">{glance}</span> : null}
-      </span>
+      </div>
       {context != null && context !== '' ? <div className="ins-object-row__context" data-experience-part="context">{context}</div> : null}
-    </span>
+    </div>
     {trailing ? <span className="ins-object-row__trailing">{trailing}</span> : null}
   </>;
   const shared = {
