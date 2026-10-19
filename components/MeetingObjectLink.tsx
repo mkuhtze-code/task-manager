@@ -44,7 +44,7 @@ export default function MeetingObjectLink({
       entityId={meeting.id}
       state={stateLabel}
       identity={meeting.text}
-      glance={<span title={relativeLine || undefined}>{timeWindow}{openActionCount > 0 ? ' · ' + openActionCount + ' open' : ''}</span>}
+      glance={<span title={relativeLine || undefined}>{timeWindow} · {stateLabel}{openActionCount > 0 ? ' · ' + openActionCount + ' open' : ''}</span>}
       context={jobName || meeting.location_text ? <ContextLine className="meeting-row-context" items={[
         ...(jobName ? [{ label: jobName, href: meeting.job_id ? '/jobs/' + meeting.job_id : undefined }] : []),
         ...(meeting.location_text ? [{ label: meeting.location_text }] : []),
