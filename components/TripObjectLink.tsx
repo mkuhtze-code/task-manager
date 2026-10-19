@@ -41,7 +41,7 @@ export default function TripObjectLink({
       entityId={trip.id}
       state={stateLabel}
       identity={trip.name}
-      glance={<span title={relativeLine || phaseLabel || undefined}>{dateRange}{stopGlance}</span>}
+      glance={<span title={relativeLine || phaseLabel || undefined}>{dateRange}{stopGlance}{phaseLabel ? ' · ' + phaseLabel : ''}</span>}
       context={dayCount && dayCount > 1 ? dayCount + ' days' : null}
     />
   );
