@@ -663,8 +663,8 @@ export default function JobsHome() {
                 entityId={job.id}
                 state={done ? 'complete' : 'open'}
                 identity={job.name}
-                glance={<span data-object-state-label>{done ? 'Complete' : openTasks + ' open' + (onToday > 0 ? ' · ' + (onToday === 1 ? '1 today' : onToday + ' today') : '')}</span>}
-                context={[job.client || job.location_text, !done && nextTask ? 'Next: ' + nextTask.text : null].filter(Boolean).join(' · ') || null}
+                glance={<span data-experience-part="state" data-object-state-label>{done ? 'Complete' : openTasks + ' open' + (onToday > 0 ? ' · ' + (onToday === 1 ? '1 today' : onToday + ' today') : '')}</span>}
+                context={[job.client, job.location_text, !done && nextTask ? 'Next: ' + nextTask.text : null].filter(Boolean).join(' · ') || null}
               />
             );
           })}
