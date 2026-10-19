@@ -10,7 +10,7 @@ type DepthSheetProps = {
   ariaLabel?: string; className?: string;
 };
 
-/** Shared modal chrome. Supply the existing useDialogA11y callback ref for focus, Escape and restoration. */
+/** Shared modal chrome. Reuses useDialogA11y for focus containment, Escape dismissal and focus restoration. */
 export default function DepthSheet({ onDismiss, title, identity, glance, headerContent, sections, secondaryActions, dangerZone, children, ariaLabel, className = '' }: DepthSheetProps) {
   const dialogRef = useDialogA11y(onDismiss);
   return <div className="ins-depth-backdrop" data-instrument-depth onMouseDown={(event) => {
