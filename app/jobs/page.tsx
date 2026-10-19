@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 
 import { supabase } from '@/lib/supabaseClient';
 
@@ -40,6 +39,7 @@ import SurfaceDateCarousel from '@/components/SurfaceDateCarousel';
 import { ExperienceFilterBar } from '@/components/ExperienceFilterBar';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
+import ObjectRow from '@/components/instrument/ObjectRow';
 
 type EvidenceCounts = Record<string, JobEvidenceSummary>;
 
@@ -654,14 +654,14 @@ export default function JobsHome() {
             const openTasks = tasks.filter((task) => task.status !== 'done').length;
 
             return (
-              <Link
+              <ObjectRow
                 key={job.id}
                 href={'/jobs/' + job.id}
-                aria-label={job.name + ', ' + (done ? 'complete' : openTasks + ' open tasks')}
+                ariaLabel={job.name + ', ' + (done ? 'complete' : openTasks + ' open tasks')}
                 className={done ? 'job-row completed experience-job-stream__item' : 'job-row experience-job-stream__item'}
-                data-experience-object="job"
-                data-object-state={done ? 'complete' : 'open'}
-                data-job-id={job.id}
+                objectType="job"
+                entityId={job.id}
+                state={done ? 'complete' : 'open'}
               >
                 <div className="job-row-top" data-experience-part="summary">
                   <span className="job-row-name" data-experience-part="title">{job.name}</span>
@@ -694,7 +694,7 @@ export default function JobsHome() {
                     <span className="mono">NEXT</span> {nextTask.text}
                   </div>
                 ) : null}
-              </Link>
+              </ObjectRow>
             );
           })}
         </div>
