@@ -662,39 +662,10 @@ export default function JobsHome() {
                 objectType="job"
                 entityId={job.id}
                 state={done ? 'complete' : 'open'}
-              >
-                <div className="job-row-top" data-experience-part="summary">
-                  <span className="job-row-name" data-experience-part="title">{job.name}</span>
-                  {done ? (
-                    <span className="job-row-done-mark" data-experience-part="state" aria-label="Complete">
-                      <CheckIcon done />
-                    </span>
-                  ) : (
-                    <span className="job-row-numeral mono" data-experience-part="state" aria-label={openTasks + ' open tasks'}>
-                      {openTasks} open
-                    </span>
-                  )}
-                </div>
-
-                {(job.client || onToday > 0 || job.location_text) && (
-                  <div className="job-row-meta" data-experience-part="glance">
-                    {job.client ? <span>{job.client}</span> : null}
-                    {onToday > 0 ? <span>{onToday === 1 ? '1 today' : onToday + ' today'}</span> : null}
-                    {job.location_text ? (
-                      <span className="job-row-location">
-                        <MapPinIcon size={12} />
-                        <span>{job.location_text}</span>
-                      </span>
-                    ) : null}
-                  </div>
-                )}
-
-                {!done && nextTask ? (
-                  <div className="job-row-next" data-experience-part="evidence" title={nextTask.text}>
-                    <span className="mono">NEXT</span> {nextTask.text}
-                  </div>
-                ) : null}
-              </ObjectRow>
+                identity={job.name}
+                glance={<span data-object-state-label>{done ? 'Complete' : openTasks + ' open' + (onToday > 0 ? ' · ' + (onToday === 1 ? '1 today' : onToday + ' today') : '')}</span>}
+                context={job.client || job.location_text || (!done && nextTask ? 'Next: ' + nextTask.text : null)}
+              />  </ObjectRow>
             );
           })}
         </div>
