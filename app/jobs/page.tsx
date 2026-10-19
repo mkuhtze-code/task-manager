@@ -652,6 +652,14 @@ export default function JobsHome() {
               tasks.find((task) => task.status !== 'done') ||
               null;
             const openTasks = tasks.filter((task) => task.status !== 'done').length;
+            const evidence = evidenceByJob[job.id] || EMPTY_EVIDENCE;
+            const evidenceSummary = [
+              evidence.files > 0 ? evidence.files + (evidence.files === 1 ? ' file' : ' files') : '',
+              evidence.photos > 0 ? evidence.photos + (evidence.photos === 1 ? ' photo' : ' photos') : '',
+              evidence.observations > 0 ? evidence.observations + (evidence.observations === 1 ? ' observation' : ' observations') : '',
+              evidence.meetings > 0 ? evidence.meetings + (evidence.meetings === 1 ? ' meeting' : ' meetings') : '',
+              evidence.siteDays > 0 ? evidence.siteDays + (evidence.siteDays === 1 ? ' site day' : ' site days') : '',
+            ].filter(Boolean).join(' · ');
 
             return (
               <ObjectRow
@@ -665,6 +673,7 @@ export default function JobsHome() {
                 identity={job.name}
                 glance={<span data-experience-part="state" data-object-state-label>{done ? 'Complete' : openTasks + ' open' + (onToday > 0 ? ' · ' + (onToday === 1 ? '1 today' : onToday + ' today') : '')}</span>}
                 context={[job.client, job.location_text, !done && nextTask ? 'Next: ' + nextTask.text : null].filter(Boolean).join(' · ') || null}
+                trailing={evidenceSummary ? <span className="desk-job-card-summary mono" data-experience-part="evidence" title={evidenceSummary} aria-label={'Evidence and activity: ' + evidenceSummary}>{evidenceSummary}</span> : null}
               />
             );
           })}
