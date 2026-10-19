@@ -1,16 +1,18 @@
 'use client';
 
-import type { ReactNode, Ref } from 'react';
+import type { ReactNode } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 type DepthSheetProps = {
-  dialogRef: Ref<HTMLDivElement>; onDismiss: () => void; title: string;
+  onDismiss: () => void; title: string;
   identity?: ReactNode; glance?: ReactNode; headerContent?: ReactNode; sections?: ReactNode;
   secondaryActions?: ReactNode; dangerZone?: ReactNode; children?: ReactNode;
   ariaLabel?: string; className?: string;
 };
 
 /** Shared modal chrome. Supply the existing useDialogA11y callback ref for focus, Escape and restoration. */
-export default function DepthSheet({ dialogRef, onDismiss, title, identity, glance, headerContent, sections, secondaryActions, dangerZone, children, ariaLabel, className = '' }: DepthSheetProps) {
+export default function DepthSheet({ onDismiss, title, identity, glance, headerContent, sections, secondaryActions, dangerZone, children, ariaLabel, className = '' }: DepthSheetProps) {
+  const dialogRef = useDialogA11y(onDismiss);
   return <div className="ins-depth-backdrop" data-instrument-depth onMouseDown={(event) => {
     if (event.target === event.currentTarget) onDismiss();
   }}>
