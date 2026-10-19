@@ -19,7 +19,7 @@ export default function ObjectRow({ state, identity, glance, context, leading, t
         <span className="ins-object-row__identity" data-experience-part="title">{identity}</span>
         {glance != null && glance !== '' ? <span className="ins-object-row__glance" data-experience-part="glance">{glance}</span> : null}
       </span>
-      {context != null && context !== '' ? <span className="ins-object-row__context" data-experience-part="context">{context}</span> : null}
+      {context != null && context !== '' ? <div className="ins-object-row__context" data-experience-part="context">{context}</div> : null}
     </span>
     {trailing ? <span className="ins-object-row__trailing">{trailing}</span> : null}
   </>;
