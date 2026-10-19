@@ -664,7 +664,7 @@ export default function JobsHome() {
                 state={done ? 'complete' : 'open'}
                 identity={job.name}
                 glance={<span data-object-state-label>{done ? 'Complete' : openTasks + ' open' + (onToday > 0 ? ' · ' + (onToday === 1 ? '1 today' : onToday + ' today') : '')}</span>}
-                context={job.client || job.location_text || (!done && nextTask ? 'Next: ' + nextTask.text : null)}
+                context={[job.client || job.location_text, !done && nextTask ? 'Next: ' + nextTask.text : null].filter(Boolean).join(' · ') || null}
               />  </ObjectRow>
             );
           })}
