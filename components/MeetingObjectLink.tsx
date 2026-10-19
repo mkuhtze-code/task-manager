@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import ObjectRow from '@/components/instrument/ObjectRow';
 import type { Meeting } from '@/lib/meetingTypes';
 import ContextLine from '@/components/ContextLine';
 
@@ -36,13 +36,13 @@ export default function MeetingObjectLink({
     : hasNotes || hasSummary ? ', captured' : '';
 
   return (
-    <Link
+    <ObjectRow
       href={'/meetings/' + meeting.id}
-      aria-label={meeting.text + ', ' + stateLabel + ', ' + timeWindow + accessibleState}
+      ariaLabel={meeting.text + ', ' + stateLabel + ', ' + timeWindow + accessibleState}
       className={'meeting-row surface-object pressure-' + pressure}
-      data-experience-object="meeting"
-      data-object-state={stateLabel}
-      data-meeting-id={meeting.id}
+      objectType="meeting"
+      entityId={meeting.id}
+      state={stateLabel}
     >
       <div className="meeting-row-main" data-experience-part="summary">
         <div className="meeting-row-top">
@@ -74,6 +74,6 @@ export default function MeetingObjectLink({
           </div>
         ) : null}
       </div>
-    </Link>
+    </ObjectRow>
   );
 }
