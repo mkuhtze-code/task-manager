@@ -29,7 +29,10 @@ export default function ObjectRow({ state, identity, glance, context, leading, t
     'data-object-state': state,
     ...(part ? { 'data-experience-part': part } : {}),
     ...(objectType ? { 'data-experience-object': objectType } : {}),
-    ...(entityId && objectType ? { ['data-' + objectType + '-id']: entityId } : {}),
+    ...(entityId && objectType === 'task' ? { 'data-task-id': entityId } : {}),
+    ...(entityId && objectType === 'job' ? { 'data-job-id': entityId } : {}),
+    ...(entityId && objectType === 'meeting' ? { 'data-meeting-id': entityId } : {}),
+    ...(entityId && objectType === 'trip' ? { 'data-trip-id': entityId } : {}),
     ...(id ? { id } : {}),
     ...(ariaLabel ? { 'aria-label': ariaLabel } : {}),
   };
