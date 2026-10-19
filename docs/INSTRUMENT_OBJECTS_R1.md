@@ -16,6 +16,6 @@ Shared presentational primitives live in components/instrument/ObjectRow.tsx, co
 - Domain callers retain loading, validation, edits, mutations and confirmation rules.
 
 ## Migration boundary
-TaskDetailSheet remains the task editor and should not be rewritten wholesale; its validation and draft preservation are high-risk. Existing job, meeting and trip detail flows must be migrated individually. R1 does not rewrite all four detail experiences.
+TaskDetailSheet remains the task editor and should not be rewritten wholesale; its validation, draft preservation, inline delete placement, and timer actions make it a high-risk migration. DepthSheet is shipped with a focused contract test harness; migrate a detail flow only when its sections can be placed in the required order without changing existing behavior. Existing job, meeting and trip detail flows must be assessed individually. R1 does not rewrite all four detail experiences.
 - Keep IDs, routes, timer/complete callbacks, entitlement redirects and trip-delete confirmation unchanged.
 - No engine, capacity, offline, travel-window, search/filter/sort or entitlement logic changes.
