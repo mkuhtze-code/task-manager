@@ -2,7 +2,6 @@
 
 import ObjectRow from '@/components/instrument/ObjectRow';
 import type { Meeting } from '@/lib/meetingTypes';
-import ContextLine from '@/components/ContextLine';
 
 type MeetingPressure = 'now' | 'soon' | 'done' | 'later' | 'open';
 
@@ -45,10 +44,7 @@ export default function MeetingObjectLink({
       state={stateLabel}
       identity={meeting.text}
       glance={<span title={relativeLine || undefined}>{timeWindow} · {stateLabel}{openActionCount > 0 ? ' · ' + openActionCount + ' open' : ''}</span>}
-      context={jobName || meeting.location_text ? <ContextLine className="meeting-row-context" items={[
-        ...(jobName ? [{ label: jobName, href: meeting.job_id ? '/jobs/' + meeting.job_id : undefined }] : []),
-        ...(meeting.location_text ? [{ label: meeting.location_text }] : []),
-      ]} /> : null}
+      context={[jobName, meeting.location_text].filter(Boolean).join(' · ') || null}
       trailing={meeting.source === 'outlook' ? <span className="meeting-source-tag" title="Outlook calendar" aria-label="From Outlook">Outlook</span> : null}
     />
   );
