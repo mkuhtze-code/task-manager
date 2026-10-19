@@ -78,7 +78,8 @@ describe('canonical object visual ownership', () => {
     const meetings = readFileSync(join(process.cwd(), 'app', 'meetings', 'page.tsx'), 'utf8');
     const travel = readFileSync(join(process.cwd(), 'app', 'travel', 'page.tsx'), 'utf8');
 
-    expect(frame).toContain('<SurfaceNav');
+    expect(frame).toContain('<AppShell');
+    expect(frame).toContain('<SystemDock');
     expect(frame).toContain('subscribeDesktopPrimaryAction');
     expect(frame).toContain("pathname === '/'");
     expect(nav).toContain('experience-primary-nav__tabs');
