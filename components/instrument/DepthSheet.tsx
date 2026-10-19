@@ -24,6 +24,6 @@ export default function DepthSheet({ dialogRef, onDismiss, title, identity, glan
       {children}
       {secondaryActions != null ? <div className="ins-depth-sheet__actions">{secondaryActions}</div> : null}
       {dangerZone != null ? <footer className="ins-depth-sheet__danger">{dangerZone}</footer> : null}
-    </section>
+    </div>
   </div>;
 }
