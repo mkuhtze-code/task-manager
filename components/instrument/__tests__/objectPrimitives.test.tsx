@@ -21,7 +21,7 @@ describe('Instrument object primitives', () => {
   });
   it('keeps DepthSheet landmarks in fixed order and dismisses from backdrop', () => {
     const dismiss = vi.fn();
-    const { container, getByRole } = render(<div data-instrument-shell><DepthSheet dialogRef={null} onDismiss={dismiss} title="Task" identity="Prepare drawings" glance="25m" sections={<div>Schedule</div>} secondaryActions={<button>Start</button>} dangerZone={<button>Delete</button>} /></div>);
+    const { container, getByRole } = render(<div data-instrument-shell><DepthSheet onDismiss={dismiss} title="Task" identity="Prepare drawings" glance="25m" sections={<div>Schedule</div>} secondaryActions={<button>Start</button>} dangerZone={<button>Delete</button>} /></div>);
     const dialog = getByRole('dialog');
     const selectors = ['.ins-depth-sheet__header','.ins-depth-sheet__identity','.ins-depth-sheet__sections','.ins-depth-sheet__actions','.ins-depth-sheet__danger'];
     const indexes = selectors.map(selector => Array.from(dialog.children).findIndex(node => (node as HTMLElement).matches(selector)));
