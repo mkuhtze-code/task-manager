@@ -11,7 +11,7 @@ Shared presentational primitives live in components/instrument/ObjectRow.tsx, co
 - children is a temporary strangler bridge for complex legacy controls. New adapters should use slots; do not remove the bridge until task timer, drag, completion and accessibility semantics can be preserved.
 
 ## DepthSheet
-- The caller supplies the existing useDialogA11y callback ref and dismiss handler to retain Escape, focus containment, focus restoration, and topmost-modal arbitration.
+- DepthSheet owns a callback ref from the existing useDialogA11y hook, preserving Escape, focus containment, focus restoration, and topmost-modal arbitration.
 - Slot order is header, identity/glance, domain sections, secondary actions, danger zone. Danger zone is last.
 - Domain callers retain loading, validation, edits, mutations and confirmation rules.
 
