@@ -10,6 +10,9 @@
   --ins-steel: #2451d4;
   --ins-danger: #b42318;
   --ins-focus-ring: #2451d4;
+  --ins-scrim: rgba(10, 16, 20, 0.42);
+  --ins-shadow-sheet: 0 16px 56px rgba(0, 0, 0, 0.22);
+  --ins-type-dismiss: 1.5rem;
 
   --ins-type-identity: clamp(1.875rem, 7.5vw, 2.375rem);
   --ins-type-body: 1rem;
@@ -57,6 +60,8 @@
   --ins-steel: #8da8ff;
   --ins-danger: #ff8178;
   --ins-focus-ring: #a7bcff;
+  --ins-scrim: rgba(0, 0, 0, 0.62);
+  --ins-shadow-sheet: 0 16px 56px rgba(0, 0, 0, 0.45);
   --ins-shadow-dock: 0 -4px 18px rgba(0, 0, 0, 0.2);
 }
 
