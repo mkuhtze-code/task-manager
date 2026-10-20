@@ -46,8 +46,10 @@ describe('canonical object visual ownership', () => {
     const travel = readFileSync(join(process.cwd(), 'components', 'TripObjectLink.tsx'), 'utf8');
     expect(task).toContain('data-object-state={running ? \'active\' : t.status}');
     expect(jobs).toContain("state={done ? 'complete' : 'open'}");
-    expect(meetings).toContain('data-object-state=');
-    expect(travel).toContain('data-object-state=');
+    expect(meetings).toContain('objectType="meeting"');
+    expect(meetings).toContain('state={stateLabel}');
+    expect(travel).toContain('objectType="trip"');
+    expect(travel).toContain('state={stateLabel}');
   });
 
   it('keeps surface-specific object sheets free of duplicate shared typography and focus rules', () => {
