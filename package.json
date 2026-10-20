@@ -76,7 +76,7 @@
     "test:capture-phase5": "vitest run lib/engine/__tests__/capturePhase5SequentialRegression.test.ts",
     "test:today-travel": "NODE_ENV=test vitest run lib/today/__tests__/travelRegime.test.ts",
     "test:travel-plan": "NODE_ENV=test vitest run lib/travel/__tests__/planMutations.test.ts lib/travel/__tests__/travelOffline.test.ts",
-    "test:instrument-objects": "vitest run components/instrument/__tests__/objectPrimitives.test.tsx"
+    "test:instrument-objects": "NODE_ENV=test vitest run components/instrument/__tests__/objectPrimitives.test.tsx"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
