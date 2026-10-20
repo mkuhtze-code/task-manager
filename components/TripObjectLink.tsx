@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import ObjectRow from '@/components/instrument/ObjectRow';
 import type { TripLike } from '@/lib/travel/travelSurface';
 
 type TripPressure = 'now' | 'soon' | 'later' | 'done';
@@ -33,33 +33,16 @@ export default function TripObjectLink({
     : '';
 
   return (
-    <Link
+    <ObjectRow
       href={'/travel/' + trip.id}
       className="trip-row-link"
-      aria-label={trip.name + ', ' + stateLabel + ', ' + dateRange + stopGlance + (phaseLabel ? ', ' + phaseLabel : '')}
-      data-experience-object="trip"
-      data-object-state={stateLabel}
-      data-trip-id={trip.id}
-    >
-      <div className="trip-row-main" data-experience-part="summary">
-        <div className="trip-row-top">
-          <span className="trip-row-name surface-object-title" data-experience-part="title">
-            {trip.name}
-          </span>
-          <span
-            className="trip-row-glance surface-object-time mono"
-            data-experience-part="glance"
-            title={relativeLine || phaseLabel || undefined}
-          >
-            {dateRange}{stopGlance}
-          </span>
-        </div>
-        {dayCount && dayCount > 1 ? (
-          <span className="trip-row-context" data-experience-part="context">
-            {dayCount} days
-          </span>
-        ) : null}
-      </div>
-    </Link>
+      ariaLabel={trip.name + ', ' + stateLabel + ', ' + dateRange + stopGlance + (phaseLabel ? ', ' + phaseLabel : '')}
+      objectType="trip"
+      entityId={trip.id}
+      state={stateLabel}
+      identity={trip.name}
+      glance={<span title={relativeLine || phaseLabel || undefined}>{dateRange}{stopGlance}{phaseLabel ? ' · ' + phaseLabel : ''}</span>}
+      context={dayCount && dayCount > 1 ? dayCount + ' days' : null}
+    />
   );
 }

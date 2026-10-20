@@ -24,7 +24,7 @@ const meeting: Meeting = {
 
 describe('canonical meeting object landmarks', () => {
   it('exposes the existing meeting identity, time, source, context and open actions', () => {
-    const { container, getByText, getByLabelText } = render(
+    const { container } = render(
       <MeetingObjectLink
         meeting={meeting}
         jobName="Harbour renovation"
@@ -43,9 +43,10 @@ describe('canonical meeting object landmarks', () => {
     expect(object.getAttribute('href')).toBe('/meetings/meeting-17');
     expect(object.querySelector('[data-experience-part="title"]')?.textContent).toContain('Confirm the handover plan');
     expect(object.querySelector('[data-experience-part="glance"]')?.textContent).toContain('2 open');
-    expect(getByText('Harbour renovation')).toBeTruthy();
-    expect(getByText('Devonport site')).toBeTruthy();
-    expect(getByLabelText('From Outlook')).toBeTruthy();
+    const context = object.querySelector('[data-experience-part="context"]');
+    expect(context?.textContent).toContain('Harbour renovation');
+    expect(context?.textContent).toContain('Devonport site');
+    expect(object.querySelector('[aria-label="From Outlook"]')).not.toBeNull();
     expect(object.getAttribute('aria-label')).toContain('2 open actions');
   });
 

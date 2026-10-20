@@ -17,6 +17,7 @@ import {
 } from '@/components/icons';
 import { TaskInfo } from '@/components/TaskInfo';
 import ContextLine from '@/components/ContextLine';
+import ObjectRow from '@/components/instrument/ObjectRow';
 
 export function TaskCard(props: {
   task: Task;
@@ -171,7 +172,7 @@ export function TaskCard(props: {
       data-expanded={expanded ? 'true' : 'false'}
       title={!expanded && fitLabel ? fitLabel : undefined}
     >
-      <div className="task-main" data-experience-part="summary">
+      <ObjectRow state={running ? 'active' : t.status} className="task-main" part="summary">
         <button
           type="button"
           className="check-btn"
@@ -289,7 +290,7 @@ export function TaskCard(props: {
             <DragHandleIcon />
           </button>
         ) : null}
-      </div>
+      </ObjectRow>
 
       {showCollapsedProgress && !expanded ? (
         <div className="task-card-progress" aria-hidden>

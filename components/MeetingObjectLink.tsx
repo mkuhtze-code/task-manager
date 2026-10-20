@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
+import ObjectRow from '@/components/instrument/ObjectRow';
 import type { Meeting } from '@/lib/meetingTypes';
-import ContextLine from '@/components/ContextLine';
 
 type MeetingPressure = 'now' | 'soon' | 'done' | 'later' | 'open';
 
@@ -36,44 +35,17 @@ export default function MeetingObjectLink({
     : hasNotes || hasSummary ? ', captured' : '';
 
   return (
-    <Link
+    <ObjectRow
       href={'/meetings/' + meeting.id}
-      aria-label={meeting.text + ', ' + stateLabel + ', ' + timeWindow + accessibleState}
+      ariaLabel={meeting.text + ', ' + stateLabel + ', ' + timeWindow + accessibleState}
       className={'meeting-row surface-object pressure-' + pressure}
-      data-experience-object="meeting"
-      data-object-state={stateLabel}
-      data-meeting-id={meeting.id}
-    >
-      <div className="meeting-row-main" data-experience-part="summary">
-        <div className="meeting-row-top">
-          <span className="meeting-row-name surface-object-title" data-experience-part="title">
-            {meeting.text}
-          </span>
-          <span
-            className="meeting-row-glance surface-object-time mono"
-            data-experience-part="glance"
-            title={relativeLine || undefined}
-          >
-            {timeWindow}{openActionCount > 0 ? ' · ' + openActionCount + ' open' : ''}
-          </span>
-          {meeting.source === 'outlook' ? (
-            <span className="meeting-source-tag" title="Outlook calendar" aria-label="From Outlook">
-              Outlook
-            </span>
-          ) : null}
-        </div>
-        {jobName || meeting.location_text ? (
-          <div data-experience-part="context">
-            <ContextLine
-              className="meeting-row-context"
-              items={[
-                ...(jobName ? [{ label: jobName, href: meeting.job_id ? '/jobs/' + meeting.job_id : undefined }] : []),
-                ...(meeting.location_text ? [{ label: meeting.location_text }] : []),
-              ]}
-            />
-          </div>
-        ) : null}
-      </div>
-    </Link>
+      objectType="meeting"
+      entityId={meeting.id}
+      state={stateLabel}
+      identity={meeting.text}
+      glance={<span title={relativeLine || undefined}>{timeWindow} · {stateLabel}{openActionCount > 0 ? ' · ' + openActionCount + ' open' : ''}</span>}
+      context={[jobName, meeting.location_text].filter(Boolean).join(' · ') || null}
+      trailing={meeting.source === 'outlook' ? <span className="meeting-source-tag" title="Outlook calendar" aria-label="From Outlook">Outlook</span> : null}
+    />
   );
 }
