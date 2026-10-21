@@ -1,7 +1,6 @@
 'use client';
 
 import type { ComponentProps } from 'react';
-import { PlusIcon } from '@/components/icons';
 import { PostStopPrompt, type PostStopPromptState } from '@/components/PostStopPrompt';
 import { TodayTaskRows } from '@/components/today/TodayTaskRows';
 
@@ -12,7 +11,6 @@ type TodayTaskListProps = {
   emptyTitle: string;
   emptySub: string;
   showRealityCheck: boolean;
-  onAdd: () => void;
   onRealityCheck: () => void;
   postStopPrompt: PostStopPromptState | null;
   postStopBusy: boolean;
@@ -30,7 +28,6 @@ export function TodayTaskList({
   emptyTitle,
   emptySub,
   showRealityCheck,
-  onAdd,
   onRealityCheck,
   postStopPrompt,
   postStopBusy,
@@ -74,9 +71,6 @@ export function TodayTaskList({
             <div className="empty-state-title">{emptyTitle}</div>
             <div className="empty-state-sub">{emptySub}</div>
             <div className="empty-state-actions">
-              <button type="button" className="btn btn-steel" onClick={onAdd}>
-                <PlusIcon size={16} /> Add
-              </button>
               {showRealityCheck ? (
                 <button type="button" className="btn-text" onClick={onRealityCheck}>
                   Reality check

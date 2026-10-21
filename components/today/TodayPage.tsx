@@ -2377,7 +2377,7 @@ export function TodayPage() {
         showRealityCheck={showRealityCheck}
         realityCheckMessage={realityCheckMessage}
         isDesktop={isDesktop}
-        onDockIt={isDesktop ? () => setCaptureOpen(true) : undefined}
+        onDockIt={() => setCaptureOpen(true)}
         orderHint={dayOrderHint({
           sortMode,
           personalEvidenceCount: history.filter(
@@ -2392,22 +2392,9 @@ export function TodayPage() {
 
 
 {travelTodayContext && travelRegimeLabel && (
-        <div
-          className="today-travel-regime"
-          role="status"
-          style={{
-            display: 'flex',
-            alignItems: 'baseline',
-            gap: 8,
-            padding: '6px 0',
-            borderBottom: '1px solid var(--line)',
-            color: 'var(--ink-soft)',
-            fontSize: 12,
-            lineHeight: 1.4,
-          }}
-        >
+        <div className="today-travel-regime ins-today-instrument__regime" role="status">
           <span>{travelRegimeLabel}</span>
-          <a href={`/travel/${travelTodayContext.tripId}`} aria-label={`Open trip: ${travelTodayContext.tripName}`} style={{ color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+          <a href={`/travel/${travelTodayContext.tripId}`} aria-label={`Open trip: ${travelTodayContext.tripName}`}>
             {travelTodayContext.tripName} →
           </a>
         </div>
@@ -2420,7 +2407,6 @@ export function TodayPage() {
         emptyTitle={todayEmptyCopy(userProfile).title}
         emptySub={todayEmptyCopy(userProfile).sub}
         showRealityCheck={showRealityCheck}
-        onAdd={() => setCaptureOpen(true)}
         onRealityCheck={() => setRealityCheckOpen(true)}
         postStopPrompt={postStopPrompt}
         postStopBusy={postStopBusy}

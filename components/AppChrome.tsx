@@ -6,6 +6,7 @@ import ActiveTimerBar from '@/components/ActiveTimerBar';
 import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 import { OfflineStatusBar } from '@/components/OfflineStatusBar';
 import { TodayHeader } from '@/components/TodayHeader';
+import { TodayInstrument } from '@/components/today/TodayInstrument';
 import { useTodayAuth } from '@/hooks/useTodayAuth';
 import { useTodayHeaderState } from '@/components/today/TodayHeaderState';
 import DesktopContextStrip from '@/components/DesktopContextStrip';
@@ -164,25 +165,36 @@ export default function AppChrome({
         ) : null}
       </div>
 
-      {session?.user?.id && headerProps && pathname === '/' ? (
-        <div className="experience-mobile-frame__day">
-          <TodayHeader
-            {...headerProps}
-            onRecalcRoute={pathname === '/' ? headerProps.onRecalcRoute : () => router.push('/')}
-            onViewMap={pathname === '/' ? headerProps.onViewMap : () => router.push('/')}
-            onRealityCheck={pathname === '/' ? headerProps.onRealityCheck : () => router.push('/')}
-            onDockIt={pathname === '/' ? headerProps.onDockIt : () => router.push('/')}
-          />
-        </div>
-      ) : null}
+
 
       <AppShell
         lens={currentSurfaceIndex(pathname) === 1 ? 'jobs' : currentSurfaceIndex(pathname) === 2 ? 'meetings' : currentSurfaceIndex(pathname) === 3 ? 'travel' : 'today'}
+        header={session?.user?.id && headerProps && pathname === '/' ? (
+          <TodayInstrument
+            weekdayLabel={headerProps.weekdayLabel}
+            dateOnlyLabel={headerProps.dateOnlyLabel}
+            isWorkDay={headerProps.isWorkDay}
+            minutesLeftToday={headerProps.minutesLeftToday}
+            remainingWorkMins={headerProps.remainingWorkMins}
+            overloaded={headerProps.overloaded}
+            fixedLoadMins={headerProps.dayDepth?.fixedMins ?? null}
+            nowPercent={headerProps.nowPercent}
+            planWidthPercent={headerProps.planWidthPercent}
+            onCapture={headerProps.onDockIt ?? (() => {})}
+            secondary={
+              <>
+                <button type="button" className="ins-today-instrument__secondary-action" onClick={headerProps.onViewMap}>Map</button>
+                {headerProps.showRealityCheck ? <button type="button" className="ins-today-instrument__secondary-action" onClick={headerProps.onRealityCheck}>Reality check</button> : null}
+                {headerProps.geoAware ? <button type="button" className="ins-today-instrument__secondary-action" disabled={headerProps.recalculatingRoute} onClick={headerProps.onRecalcRoute}>{headerProps.recalculatingRoute ? 'Updating route…' : 'Update route'}</button> : null}
+              </>
+            }
+          />
+        ) : undefined}
         dock={
           session?.user?.id && currentSurfaceIndex(pathname) >= 0 ? (
             <SystemDock
               lens={currentSurfaceIndex(pathname) === 1 ? 'jobs' : currentSurfaceIndex(pathname) === 2 ? 'meetings' : currentSurfaceIndex(pathname) === 3 ? 'travel' : 'today'}
-              onAdd={primaryAction ? requestCaptureOpen : undefined}
+              onAdd={primaryAction && pathname !== '/' ? requestCaptureOpen : undefined}
               addLabel={primaryAction?.label ?? 'Add'}
             />
           ) : null
