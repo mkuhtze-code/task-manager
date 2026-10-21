@@ -19,7 +19,6 @@ import {
 } from '@/lib/taskIntelligence';
 
 import GearMenu from '@/components/GearMenu';
-import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 import { NewJobSheet } from '@/components/JobSheets';
 import { CheckIcon, MapPinIcon } from '@/components/icons';
 
@@ -40,6 +39,7 @@ import { ExperienceFilterBar } from '@/components/ExperienceFilterBar';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
 import ObjectRow from '@/components/instrument/ObjectRow';
+import { JobsInstrument } from '@/components/jobs/JobsInstrument';
 
 type EvidenceCounts = Record<string, JobEvidenceSummary>;
 
@@ -511,34 +511,7 @@ export default function JobsHome() {
 
   return (
     <div className="app-shell jobs-shell">
-      {!isDesktop && (
-        <div className="app-header">
-          <div className="app-header-left">
-            <div className="jobs-mobile-identity surface-mobile-identity">
-              <SurfaceHeaderIdentity
-                kicker="Work / Field"
-                title="Jobs"
-                signal={activeTodayCount > 0 ? `${activeTodayCount} active` : openCount > 0 ? `${openCount} open` : 'Clear'}
-                meta={spotlightJobName ? `Focus: ${spotlightJobName}` : attentionCount > 0 ? `${attentionCount} need attention` : `${doneCount} completed`}
-                attention={attentionCount > 0}
-                clear={openCount === 0}
-              />
-            </div>
-          </div>
-
-          <div className="app-header-right">
-            {canJobs && (
-              <button type="button" className="btn btn-steel ux-button ux-button--primary" onClick={() => setNewJobOpen(true)}>
-                New job
-              </button>
-            )}
-            <GearMenu
-              context="jobs"
-              userId={session?.user.id ?? null}
-            />
-          </div>
-        </div>
-      )}
+      {!isDesktop && <div className="ins-jm-mobile-frame"><JobsInstrument activeTodayCount={activeTodayCount} openCount={openCount} attentionCount={attentionCount} doneCount={doneCount} spotlightJobName={spotlightJobName} canCreate={canJobs} onCreate={() => setNewJobOpen(true)} /><div className="ins-jm-mobile-tools"><GearMenu context="jobs" userId={session?.user.id ?? null} /></div></div>}
 
       {isDesktop && !loading && (
         <DesktopJobsHeader

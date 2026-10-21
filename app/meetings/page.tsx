@@ -21,7 +21,6 @@ import {
   type NewMeetingPayload,
 } from '@/components/MeetingSheets';
 import GearMenu from '@/components/GearMenu';
-import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { authedFetch } from '@/lib/authedFetch';
 import { useEntitlements } from '@/hooks/useEntitlements';
@@ -33,6 +32,7 @@ import { useNow } from '@/hooks/useNow';
 import MeetingObjectLink from '@/components/MeetingObjectLink';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
 import { registerDesktopPrimaryAction } from '@/lib/captureOpen';
+import { MeetingsInstrument } from '@/components/meetings/MeetingsInstrument';
 
 function fmtDur(mins: number): string {
   if (mins <= 0) return '';
@@ -406,30 +406,7 @@ export default function MeetingsHome() {
 
   return (
     <div className="app-shell meetings-shell">
-      {!isDesktop && (
-        <div className="app-header meetings-mobile-header">
-          <div className="app-header-left">
-            <div className="meetings-mobile-identity surface-mobile-identity">
-              <SurfaceHeaderIdentity
-                kicker="People / Time"
-                title="Meetings"
-                signal={surface.live.length > 0 ? `${surface.live.length} live` : surface.today.length > 0 ? `${surface.today.length} today` : surface.upcoming.length + surface.flexible.length > 0 ? `${surface.upcoming.length + surface.flexible.length} ahead` : 'Clear'}
-                meta={surface.pulseMeta || null}
-                attention={surface.pulseAttention}
-                clear={surface.live.length + surface.today.length + surface.upcoming.length + surface.flexible.length === 0}
-              />
-            </div>
-          </div>
-          <div className="app-header-right">
-            {canMeetings && (
-              <button type="button" className="btn btn-steel ux-button ux-button--primary" onClick={() => setNewMeetingOpen(true)}>
-                Record
-              </button>
-            )}
-            <GearMenu userId={session?.user.id ?? null} />
-          </div>
-        </div>
-      )}
+      {!isDesktop && <div className="ins-jm-mobile-frame"><MeetingsInstrument liveCount={surface.live.length} todayCount={surface.today.length} upcomingCount={surface.upcoming.length} flexibleCount={surface.flexible.length} pulseMeta={surface.pulseMeta || null} pulseAttention={surface.pulseAttention} canRecord={canMeetings} onRecord={() => setNewMeetingOpen(true)} /><div className="ins-jm-mobile-tools"><GearMenu userId={session?.user.id ?? null} /></div></div>}
 
       {isDesktop ? (
         <DesktopMeetingsHeader
