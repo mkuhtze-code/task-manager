@@ -1,0 +1,14 @@
+/* R3 Jobs + Meetings chrome; strictly scoped to Instrument shell and --ins-* tokens. */
+[data-instrument-shell] .ins-jm-mobile-frame{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:var(--ins-space-2);padding:var(--ins-space-2) var(--ins-space-3) 0}
+[data-instrument-shell] .ins-jm-mobile-tools{display:flex;align-items:flex-start;justify-content:center;min-width:44px;min-height:44px;padding-top:var(--ins-space-2)}
+[data-instrument-shell] .ins-jm-instrument{display:grid;gap:var(--ins-space-3);min-width:0;padding:var(--ins-space-3) 0 var(--ins-space-4);color:var(--ins-ink)}
+[data-instrument-shell] .ins-jm-instrument__identity{display:flex;align-items:baseline;justify-content:space-between;gap:var(--ins-space-3);min-width:0}
+[data-instrument-shell] .ins-jm-instrument__eyebrow{margin:0 0 var(--ins-space-1);color:var(--ins-ink-soft);font-size:var(--ins-type-context)}
+[data-instrument-shell] .ins-jm-instrument h1{margin:0;color:var(--ins-ink);font-size:var(--ins-type-identity);line-height:1.05;font-weight:650;letter-spacing:-.035em}
+[data-instrument-shell] .ins-jm-instrument__pulse{display:grid;gap:var(--ins-space-1);text-align:right;min-width:0;margin:0}
+[data-instrument-shell] .ins-jm-instrument__signal{color:var(--ins-ink);font:600 var(--ins-type-glance-mono)/1.2 var(--ins-font-mono);font-variant-numeric:tabular-nums}
+[data-instrument-shell] .ins-jm-instrument__meta{color:var(--ins-ink-faint);font-size:var(--ins-type-context);line-height:1.35}
+[data-instrument-shell] .ins-jm-instrument__primary{display:flex;width:100%;min-width:0}
+[data-instrument-shell] .ins-jm-instrument__action{display:flex;align-items:center;justify-content:center;gap:var(--ins-space-2);width:100%;min-height:48px;padding:var(--ins-space-3) var(--ins-space-4);border:1px solid var(--ins-steel);border-radius:var(--ins-radius-md);background:var(--ins-steel);color:var(--ins-paper-elevated);font:600 var(--ins-type-body)/1.2 var(--ins-font-sans);cursor:pointer}
+[data-instrument-shell] .ins-jm-instrument__action:focus-visible{outline:2px solid var(--ins-focus-ring);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){[data-instrument-shell] .ins-jm-instrument__action{transition:none}}

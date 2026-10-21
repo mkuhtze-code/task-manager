@@ -49,6 +49,7 @@ import './instrument-tokens.css';
 import './instrument-shell.css';
 import './instrument-objects.css';
 import './instrument-today.css';
+import './instrument-jobs-meetings.css';
 import DokkitSplash from '@/components/DokkitSplash';
 import AppChrome from '@/components/AppChrome';
 import AppProviders from '@/components/providers/AppProviders';
