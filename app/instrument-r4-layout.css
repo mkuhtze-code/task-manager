@@ -1,0 +1,29 @@
+/* R4: shell-level tools stay reachable without competing with the lens primary. */
+[data-instrument-shell] .instrument-shell__lens-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  min-height: 48px;
+  padding-inline: var(--ins-space-4);
+}
+[data-instrument-shell] .ins-today-instrument__secondary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ins-space-2);
+  min-width: 0;
+}
+[data-instrument-shell] .ins-today-instrument__secondary :is(button, a) {
+  min-width: 44px;
+  min-height: 44px;
+}
+[data-instrument-shell] .ins-today-instrument__identity {
+  min-width: 0;
+}
+[data-instrument-shell] .ins-today-instrument__identity > :first-child { min-width: 0; }
+[data-instrument-shell] .ins-jm-instrument { width: 100%; max-width: none; min-width: 0; }
+[data-instrument-shell] .ins-jm-instrument__identity { min-width: 0; }
+@media (min-width: 768px) {
+  [data-instrument-shell] .instrument-shell__body { padding-inline: var(--ins-space-4); }
+}
