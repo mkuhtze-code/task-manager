@@ -1,10 +1,14 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import type { DayAnchor } from '@/lib/travel/travelContext';
 import { PlusIcon } from '@/components/icons';
 
 type Props = {
   dayAnchor: DayAnchor;
+  dayLabel?: string;
+  dateLabel?: string;
+  secondary?: ReactNode;
   flightScheduled: boolean;
   fitLabel: string;
   conflictCount: number;
@@ -30,8 +34,8 @@ function formatMins(minutes: number): string {
 }
 
 export default function TripDayPanel({
-  dayAnchor, flightScheduled, fitLabel, conflictCount, meetingCount, daySheetOpen,
-  onOpenDaySheet, onAddStop,
+  dayAnchor, dayLabel = 'Trip day', dateLabel, flightScheduled, fitLabel, conflictCount, meetingCount, daySheetOpen,
+  onOpenDaySheet, onAddStop, secondary,
 }: Props) {
   const windowStart = formatClockMinutes(dayAnchor.windowStartMins);
   const windowEnd = formatClockMinutes(dayAnchor.windowEndMins);
@@ -46,25 +50,36 @@ export default function TripDayPanel({
     : `Day window · ${windowStart}–${windowEnd} · ${formatMins(dayAnchor.usableMins)} usable`;
 
   return (
-    <section className="trip-day-panel" aria-label="Selected trip day">
-      <button type="button" className="btn btn-steel trip-day-add-stop" onClick={onAddStop}>
-        <PlusIcon size={16} /> Add stop
-      </button>
-      <div className="trip-day-window mono">{windowGlance}</div>
+    <section className="trip-day-panel ins-travel-day-instrument" aria-label="Selected trip day" data-testid="travel-trip-day-instrument">
+      <div className="ins-travel-day__identity">
+        <div className="ins-travel-day__name">
+          <p className="ins-travel-eyebrow">Trip day</p>
+          <h2>{dayLabel}</h2>
+          {dateLabel ? <span className="ins-travel-day__date">{dateLabel}</span> : null}
+        </div>
+        <div className="ins-travel-day__pulse" aria-live="polite">
+          <strong className="ins-travel-day__window">{windowGlance}</strong>
+          <span className="ins-travel-day__fit">{fitLabel}</span>
+          <span className="ins-travel-day__meta">
+            {conflictCount > 0 ? `${conflictCount} conflict${conflictCount === 1 ? '' : 's'}` : 'No conflicts'}
+            {meetingCount > 0 ? ` · ${meetingCount} meeting${meetingCount === 1 ? '' : 's'}` : ''}
+          </span>
+        </div>
+      </div>
+      <div className="ins-travel-day__primary">
+        <button type="button" className="btn btn-steel trip-day-add-stop" onClick={onAddStop} data-testid="travel-add-stop-primary">
+          <PlusIcon size={16} /> Add stop
+        </button>
+      </div>
+      {secondary ? <div className="ins-travel-day__tools">{secondary}</div> : null}
       <button
         type="button"
-        className="trip-day-panel-fit"
+        className="trip-day-panel-fit ins-travel-day__details"
         onClick={onOpenDaySheet}
         aria-expanded={daySheetOpen}
       >
-        <span>{fitLabel}</span>
-        {conflictCount > 0 && (
-          <span className="trip-day-panel-conflicts">
-            {conflictCount} conflict{conflictCount === 1 ? '' : 's'}
-          </span>
-        )}
-        {meetingCount > 0 && <span>{meetingCount === 1 ? '1 meeting' : `${meetingCount} meetings`}</span>}
-        <span className="trip-day-panel-details">Day details</span>
+        <span>Day details</span>
+        <span className="trip-day-panel-details">Open schedule and fit</span>
       </button>
     </section>
   );
