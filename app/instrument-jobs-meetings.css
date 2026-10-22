@@ -1,5 +1,5 @@
 /* R3 Jobs + Meetings chrome; strictly scoped to Instrument shell and --ins-* tokens. */
-[data-instrument-shell] .ins-jm-mobile-frame{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:var(--ins-space-2);padding:var(--ins-space-2) var(--ins-space-3) 0}
+[data-instrument-shell] .ins-jm-mobile-frame{position:relative;display:block;width:100%;min-width:0;padding:var(--ins-space-2) var(--ins-space-3) 0}
 [data-instrument-shell] .ins-jm-mobile-tools{display:flex;align-items:flex-start;justify-content:center;min-width:44px;min-height:44px;padding-top:var(--ins-space-2)}
 [data-instrument-shell] .ins-jm-instrument{display:grid;gap:var(--ins-space-3);min-width:0;padding:var(--ins-space-3) 0 var(--ins-space-4);color:var(--ins-ink)}
 [data-instrument-shell] .ins-jm-instrument__identity{display:flex;align-items:baseline;justify-content:space-between;gap:var(--ins-space-3);min-width:0}

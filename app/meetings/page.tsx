@@ -20,7 +20,6 @@ import {
   NewMeetingSheet,
   type NewMeetingPayload,
 } from '@/components/MeetingSheets';
-import GearMenu from '@/components/GearMenu';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { authedFetch } from '@/lib/authedFetch';
 import { useEntitlements } from '@/hooks/useEntitlements';
@@ -406,7 +405,7 @@ export default function MeetingsHome() {
 
   return (
     <div className="app-shell meetings-shell">
-      {!isDesktop && <div className="ins-jm-mobile-frame"><MeetingsInstrument liveCount={surface.live.length} todayCount={surface.today.length} upcomingCount={surface.upcoming.length} flexibleCount={surface.flexible.length} pulseMeta={surface.pulseMeta || null} pulseAttention={surface.pulseAttention} canRecord={canMeetings} onRecord={() => setNewMeetingOpen(true)} /><div className="ins-jm-mobile-tools"><GearMenu userId={session?.user.id ?? null} /></div></div>}
+      {!isDesktop && <div className="ins-jm-mobile-frame"><MeetingsInstrument liveCount={surface.live.length} todayCount={surface.today.length} upcomingCount={surface.upcoming.length} flexibleCount={surface.flexible.length} pulseMeta={surface.pulseMeta || null} pulseAttention={surface.pulseAttention} canRecord={canMeetings} onRecord={() => setNewMeetingOpen(true)} /></div>}
 
       {isDesktop ? (
         <DesktopMeetingsHeader

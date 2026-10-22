@@ -9,7 +9,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import GearMenu from '@/components/GearMenu';
 import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 import { CloseIcon, TrashIcon } from '@/components/icons';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
@@ -436,9 +435,6 @@ export default function TravelHome() {
                 clear={surface.active.length + surface.upcoming.length === 0}
               />
             </div>
-          </div>
-          <div className="app-header-right">
-            <GearMenu userId={session?.user.id ?? null} />
           </div>
         </div>
       )}
