@@ -7,6 +7,7 @@ import TravelAwarenessBanner from '@/components/TravelAwarenessBanner';
 import { OfflineStatusBar } from '@/components/OfflineStatusBar';
 import { TodayHeader } from '@/components/TodayHeader';
 import { TodayInstrument } from '@/components/today/TodayInstrument';
+import GearMenu from '@/components/GearMenu';
 import { useTodayAuth } from '@/hooks/useTodayAuth';
 import { useTodayHeaderState } from '@/components/today/TodayHeaderState';
 import DesktopContextStrip from '@/components/DesktopContextStrip';
@@ -169,7 +170,7 @@ export default function AppChrome({
 
       <AppShell
         lens={currentSurfaceIndex(pathname) === 1 ? 'jobs' : currentSurfaceIndex(pathname) === 2 ? 'meetings' : currentSurfaceIndex(pathname) === 3 ? 'travel' : 'today'}
-        header={session?.user?.id && headerProps && pathname === '/' ? (
+        header={session?.user?.id ? (pathname === '/' && headerProps ? (
           <TodayInstrument
             weekdayLabel={headerProps.weekdayLabel}
             dateOnlyLabel={headerProps.dateOnlyLabel}
@@ -183,13 +184,14 @@ export default function AppChrome({
             onCapture={headerProps.onDockIt ?? (() => {})}
             secondary={
               <>
+                <GearMenu context="work" userId={session.user.id} />
                 <button type="button" className="ins-today-instrument__secondary-action" onClick={headerProps.onViewMap}>Map</button>
                 {headerProps.showRealityCheck ? <button type="button" className="ins-today-instrument__secondary-action" onClick={headerProps.onRealityCheck}>Reality check</button> : null}
                 {headerProps.geoAware ? <button type="button" className="ins-today-instrument__secondary-action" disabled={headerProps.recalculatingRoute} onClick={headerProps.onRecalcRoute}>{headerProps.recalculatingRoute ? 'Updating route…' : 'Update route'}</button> : null}
               </>
             }
           />
-        ) : undefined}
+        ) : <div className="instrument-shell__lens-tools"><GearMenu context={pathname.startsWith('/travel') ? 'travel' : pathname.startsWith('/jobs') ? 'jobs' : 'work'} userId={session.user.id} /></div>) : undefined}
         dock={
           session?.user?.id && currentSurfaceIndex(pathname) >= 0 ? (
             <SystemDock
