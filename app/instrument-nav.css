@@ -1,0 +1,9 @@
+/* Navigation primitives: scoped visual language using Instrument tokens only. */
+.ins-nav-up, .ins-nav-done { display:inline-flex; align-items:center; justify-content:center; gap:var(--ins-space-2); min-height:44px; color:var(--ins-ink); font:600 var(--ins-type-context)/1.2 var(--ins-font-sans); text-decoration:none; border-radius:var(--ins-radius-sm); transition:background-color var(--ins-motion-fast) var(--ins-motion-ease); }
+.ins-nav-up { padding:0 var(--ins-space-2) 0 0; }
+.ins-nav-done { padding:0 var(--ins-space-3); color:var(--ins-steel); }
+.ins-nav-up:hover, .ins-nav-done:hover { background:var(--ins-paper-elevated); }
+.ins-nav-up:focus-visible, .ins-nav-done:focus-visible, .ins-nav-dismiss:focus-visible { outline:2px solid var(--ins-focus-ring); outline-offset:2px; }
+.ins-nav-dismiss { display:inline-grid; place-items:center; width:44px; height:44px; padding:0; color:var(--ins-ink); background:transparent; border:0; border-radius:var(--ins-radius-sm); cursor:pointer; }
+.ins-nav-dismiss:hover { background:var(--ins-paper-elevated); }
+@media (prefers-reduced-motion:reduce) { .ins-nav-up, .ins-nav-done { transition:none; } }

@@ -22,7 +22,8 @@ import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { CaptureSheet } from '@/components/CaptureSheet';
 import { JobEditSheet } from '@/components/JobSheets';
 import SurfaceNav from '@/components/SurfaceNav';
-import { BackIcon, CheckIcon, ChevronIcon, MapPinIcon } from '@/components/icons';
+import UpLink from '@/components/instrument/nav/UpLink';
+import { CheckIcon, ChevronIcon, MapPinIcon } from '@/components/icons';
 import JobFilesPanel from '@/components/JobFilesPanel';
 import JobObservationsPanel from '@/components/JobObservationsPanel';
 import JobSwitcher from '@/components/JobSwitcher';
@@ -809,9 +810,7 @@ export default function JobDetailPage() {
     <div className={`app-shell${isDesktop && openTask ? ' has-desk-detail' : ''}${isDesktop ? ' desk-job-detail' : ''}`}>
       <div className="app-header job-detail-header">
         <div className="app-header-left" style={{ minWidth: 0, flex: 1 }}>
-          <Link href="/jobs" className="back-link" aria-label="Back to jobs">
-            <BackIcon />
-          </Link>
+          <UpLink href="/jobs" label="Jobs" />
           {job && !isDesktop ? (
             <JobSwitcher current={job} jobs={jobs.length ? jobs : [job]} />
           ) : (

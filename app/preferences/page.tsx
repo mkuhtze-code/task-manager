@@ -573,7 +573,7 @@ export default function Preferences() {
   if (!session) {
     return (
       <div className="app-shell">
-        <AppHeader title="Preferences" backHref="/" />
+        <AppHeader title="Preferences" utilityDoneHref="/" />
         <p className="settings-help prefs-signin">Sign in on the main page first.</p>
       </div>
     );
