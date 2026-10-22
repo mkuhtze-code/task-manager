@@ -18,7 +18,6 @@ import {
   type HistoricalTask,
 } from '@/lib/taskIntelligence';
 
-import GearMenu from '@/components/GearMenu';
 import { NewJobSheet } from '@/components/JobSheets';
 import { CheckIcon, MapPinIcon } from '@/components/icons';
 
@@ -511,7 +510,7 @@ export default function JobsHome() {
 
   return (
     <div className="app-shell jobs-shell">
-      {!isDesktop && <div className="ins-jm-mobile-frame"><JobsInstrument activeTodayCount={activeTodayCount} openCount={openCount} attentionCount={attentionCount} doneCount={doneCount} spotlightJobName={spotlightJobName} canCreate={canJobs} onCreate={() => setNewJobOpen(true)} /><div className="ins-jm-mobile-tools"><GearMenu context="jobs" userId={session?.user.id ?? null} /></div></div>}
+      {!isDesktop && <div className="ins-jm-mobile-frame"><JobsInstrument activeTodayCount={activeTodayCount} openCount={openCount} attentionCount={attentionCount} doneCount={doneCount} spotlightJobName={spotlightJobName} canCreate={canJobs} onCreate={() => setNewJobOpen(true)} /></div>}
 
       {isDesktop && !loading && (
         <DesktopJobsHeader
