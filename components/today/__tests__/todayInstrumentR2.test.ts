@@ -17,6 +17,8 @@ describe('R2 Today composition contract', () => {
     expect(instrument).toContain("fmtMins(minutesLeftToday) + ' left'");
     expect(instrument).toContain('remainingWorkMins');
     expect(chrome).toContain('<TodayInstrument');
+    expect(chrome).toContain('<GearMenu context="work" userId={session.user.id} />');
+    expect(instrument).toContain('data-testid="today-instrument"');
     expect(page).toContain('onDockIt={() => setCaptureOpen(true)}');
     expect(list).not.toContain('className="btn btn-steel" onClick={onAdd}');
   });
