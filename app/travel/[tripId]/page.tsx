@@ -972,10 +972,11 @@ export default function TripDayView() {
     });
 
     if (dock.kind === 'answer' || dock.kind === 'defer' || dock.kind === 'clarify') {
+      // Explicit Add stop is write intent: engine commentary remains visible,
+      // but cannot veto the stop. Required travel fields are checked below.
       setCaptureEngineMsg(dock.message);
       setPriorTravelRequest(dock.request);
       setError('');
-      return;
     }
 
     if (dock.kind === 'act_create' || dock.kind === 'act_update') {
@@ -2024,7 +2025,7 @@ export default function TripDayView() {
             )}
             {error && <p className="ins-travel-capture-error" style={{ fontSize: 12, margin: 0 }}>{error}</p>}
             <button className="btn btn-steel" onClick={addActivity} style={{ marginTop: 8, width: '100%' }}>
-              {captureEngineMsg ? 'Add stop anyway' : 'Add stop'}
+              Add stop
             </button>
           </div>
         </div>
