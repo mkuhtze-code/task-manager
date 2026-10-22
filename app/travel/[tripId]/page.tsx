@@ -58,6 +58,7 @@ import {
   loadPriorForDock,
   type EngineRequest,
 } from '@/lib/engine';
+import { allowCreate, classifyCaptureDockOutcome } from '@/lib/engine/dockOutcome';
 import { buildTravelEngineContext, resolveScheduledDayAnchor, selectInitialTripDay } from '@/lib/travel/travelContext';
 import { buildGoogleMapsDirectionsUrl, displayDriveEstimate } from '@/lib/travel/driveLegs';
 
@@ -970,6 +971,13 @@ export default function TripDayView() {
         driveFromBaseMins: travelCtx.driveFromBaseMins,
       },
     });
+
+    const dockOutcome = classifyCaptureDockOutcome(dock);
+    if (!allowCreate('explicit_create', dockOutcome.class)) {
+      setCaptureEngineMsg(dockOutcome.message);
+      setError(dockOutcome.message || 'Resolve this before adding a stop.');
+      return;
+    }
 
     if (dock.kind === 'answer' || dock.kind === 'defer' || dock.kind === 'clarify') {
       // Explicit Add stop is write intent: engine commentary remains visible,
