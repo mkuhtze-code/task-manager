@@ -60,17 +60,17 @@ export default function TripStopRow({
   return (
     <div ref={onRowRef} style={rowStyle} className="ins-travel-stop-row">
       <div className={['task-row', a.activity_type === 'stop' ? '' : 'task-list-item', conflict ? 'conflict' : ''].filter(Boolean).join(' ')}>
-        <div className="task-main">
+        <div className="task-main ins-travel-stop-row__main">
           <button className="check-btn" onClick={(e) => { e.stopPropagation(); onComplete(); }} aria-label="Mark complete">
             <CheckIcon done={false} />
           </button>
-          <div className="task-body" onClick={onOpen}>
-            <div className="task-text">
-              <span className="stop-kind-mark">{shortKind(a.stop_kind)}</span>
+          <div className="task-body ins-travel-stop-row__body" onClick={onOpen}>
+            <div className="task-text ins-travel-stop-row__title">
+              <span className="stop-kind-mark ins-travel-stop-row__kind">{shortKind(a.stop_kind)}</span>
               {a.text}
             </div>
             {((a.location_text && a.lat == null) || conflict || routeUnverifiable) && (
-              <div className="activity-meta">
+              <div className="activity-meta ins-travel-stop-row__meta">
                 {a.location_text && a.lat == null && (
                   <span className="activity-meta-loc" title={a.location_text}>
                     <MapPinIcon size={12} />
@@ -84,9 +84,9 @@ export default function TripStopRow({
             )}
             {a.activity_type === 'flight' && flightDetailLabel && <div className="trip-stop-work-label">{flightDetailLabel}</div>}
             {workLabel && <div className="trip-stop-work-label">{workLabel}</div>}
-            {mapsUrl && <a href={mapsUrl} target="_blank" rel="noreferrer" className="trip-stop-maps-link" onClick={(e) => e.stopPropagation()}>Open in Maps ↗</a>}
+            {mapsUrl && <a href={mapsUrl} target="_blank" rel="noreferrer" className="trip-stop-maps-link ins-travel-stop-row__maps" onClick={(e) => e.stopPropagation()}>Open in Maps ↗</a>}
           </div>
-          <span className={conflict ? 'activity-glance conflict mono' : 'activity-glance mono'}>
+          <span className={conflict ? 'activity-glance conflict mono ins-travel-stop-row__glance' : 'activity-glance mono ins-travel-stop-row__glance'}>
             {formatStopGlance({
               presence: a.presence, time_type: a.time_type, fixed_time: a.fixed_time,
               estimate_mins: a.estimate_mins, fmtMins, fmtClock,
@@ -94,14 +94,14 @@ export default function TripStopRow({
             {driveGlanceLabel && <span className="trip-stop-drive-unknown"> · drive {driveGlanceLabel}</span>}
           </span>
           {a.activity_type !== 'flight' && a.time_type === 'flexible' && manualSort ? (
-            <button className="drag-handle-btn" onPointerDown={(e) => { e.stopPropagation(); onPointerDown(e); }}
+            <button className="drag-handle-btn ins-travel-stop-row__handle" onPointerDown={(e) => { e.stopPropagation(); onPointerDown(e); }}
               onPointerMove={(e) => { e.stopPropagation(); onPointerMove(e); }}
               onPointerUp={(e) => { e.stopPropagation(); onPointerUp(); }}
               onPointerCancel={(e) => { e.stopPropagation(); onPointerUp(); }} aria-label="Drag to reorder">
               <DragHandleIcon />
             </button>
           ) : a.time_type === 'fixed' || a.activity_type === 'flight' ? (
-            <span className="drag-handle-btn" style={{ color: 'var(--ink-faint)', cursor: 'default' }}
+            <span className="drag-handle-btn ins-travel-stop-row__handle"
               title="Fixed time — locked in place" aria-label="Fixed time, locked in place"><LockIcon /></span>
           ) : null}
         </div>

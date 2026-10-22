@@ -1643,13 +1643,13 @@ export default function TripDayView() {
       </div>
 
       {offlineView && (
-        <div role="status" aria-live="polite" style={{ padding: '6px 16px', color: 'var(--ink-soft)', fontSize: 12, borderBottom: '1px solid var(--line)' }}>
+        <div className="ins-travel-status" role="status" aria-live="polite">
           Offline · showing the last saved trip plan
         </div>
       )}
 
       {dateRangeOpen && (
-        <div style={{ padding: '8px 16px 12px' }}>
+        <div className="ins-travel-date-editor">
           <TripDateRangeEditor
             startDate={trip.start_date}
             endDate={trip.end_date}
@@ -1840,10 +1840,10 @@ export default function TripDayView() {
 
 
       {captureOpen && (
-        <div className="sheet-backdrop" onClick={closeCapture}>
+        <div className="sheet-backdrop ins-travel-sheet-backdrop" onClick={closeCapture}>
           <div
             ref={captureDialogRef}
-            className="capture-sheet"
+            className="capture-sheet ins-travel-capture-sheet"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -1855,7 +1855,7 @@ export default function TripDayView() {
                 <CloseIcon />
               </button>
             </div>
-            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px' }}>
+            <p style={{ fontSize: 12, color: 'var(--ins-ink-soft)', margin: '0 0 12px' }}>
               A place you&apos;ll be — not a task list.
             </p>
 
@@ -2011,10 +2011,10 @@ export default function TripDayView() {
               <p
                 style={{
                   fontSize: 13,
-                  color: 'var(--ink)',
+                  color: 'var(--ins-ink)',
                   margin: '8px 0 0',
                   padding: '10px 12px',
-                  background: 'var(--surface-2, rgba(26,41,51,0.06))',
+                  background: 'var(--ins-paper)',
                   borderRadius: 8,
                   lineHeight: 1.4,
                 }}
@@ -2022,7 +2022,7 @@ export default function TripDayView() {
                 {captureEngineMsg}
               </p>
             )}
-            {error && <p style={{ color: 'var(--hazard)', fontSize: 12, margin: 0 }}>{error}</p>}
+            {error && <p className="ins-travel-capture-error" style={{ fontSize: 12, margin: 0 }}>{error}</p>}
             <button className="btn btn-steel" onClick={addActivity} style={{ marginTop: 8, width: '100%' }}>
               {captureEngineMsg ? 'Add stop anyway' : 'Add stop'}
             </button>

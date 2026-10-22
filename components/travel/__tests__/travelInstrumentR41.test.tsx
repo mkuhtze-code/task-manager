@@ -5,10 +5,11 @@ import { join } from 'node:path';
 import TravelInstrument from '@/components/travel/TravelInstrument';
 import TravelToolsStrip from '@/components/travel/TravelToolsStrip';
 import TripDayPanel from '@/components/TripDayPanel';
+import TripStopRow from '@/components/TripStopRow';
 
 afterEach(() => cleanup());
 
-describe('R4.1 Travel Instrument contract', () => {
+describe('R4.2 Travel Instrument visual contract', () => {
   it('renders supplied overview pulse values and one entitled Plan trip primary', () => {
     const onPlanTrip = vi.fn();
     render(<TravelInstrument activeCount={2} upcomingCount={3} pulseMeta="One trip needs attention" attention canCreate onPlanTrip={onPlanTrip} />);
@@ -40,6 +41,32 @@ describe('R4.1 Travel Instrument contract', () => {
     expect(screen.getByTestId('travel-tools-strip')).toBeTruthy();
   });
 
+
+  it('keeps stop completion, detail, Maps and reorder affordances reachable', () => {
+    const onComplete = vi.fn();
+    const onOpen = vi.fn();
+    const onPointerDown = vi.fn();
+    const onPointerMove = vi.fn();
+    const onPointerUp = vi.fn();
+    render(
+      <TripStopRow
+        activity={{ id: 'stop-1', text: 'Supplier pickup', activity_type: 'stop', estimate_mins: 30, drive_mins_to_next: 15, location_text: '12 Test Road', lat: -27.4, stop_kind: 'work', presence: 'duration', time_type: 'flexible', fixed_time: null }}
+        flightDetailLabel={null} rowStyle={{}} conflict={false} routeUnverifiable={false} manualSort workLabel="Job · Site fitout"
+        driveGlanceLabel="15m" driveLabel="15m" driveDetail="Drive to next stop" mapsUrl="https://maps.google.com/"
+        onComplete={onComplete} onOpen={onOpen} onNearbyDrive={() => {}} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
+        fmtMins={(n) => `${n}m`} fmtClock={(t) => t} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Mark complete' }));
+    fireEvent.click(screen.getByText('Supplier pickup'));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Drag to reorder' }));
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onPointerDown).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('link', { name: /Open in Maps/ }).getAttribute('href')).toBe('https://maps.google.com/');
+    expect(screen.getByText('Job · Site fitout')).toBeTruthy();
+    expect(document.querySelector('.ins-travel-stop-row__main')).toBeTruthy();
+  });
+
   it('wires both travel pages through the shared shell menu', () => {
     const overview = readFileSync(join(process.cwd(), 'app/travel/page.tsx'), 'utf8');
     const tripPage = readFileSync(join(process.cwd(), 'app/travel/[tripId]/page.tsx'), 'utf8');
@@ -49,6 +76,8 @@ describe('R4.1 Travel Instrument contract', () => {
     expect(overview).not.toContain('GearMenu');
     expect(tripPage).toContain('<TripDayPanel');
     expect(tripPage).toContain('<TravelToolsStrip');
+    expect(tripPage).toContain('ins-travel-capture-sheet');
+    expect(tripPage).toContain('ins-travel-status');
     expect(tripPage).not.toContain('GearMenu');
     expect(chrome).toContain('className="instrument-shell__global-tools"');
     const emptyState = overview.slice(overview.indexOf('trips.length === 0 ?'), overview.indexOf('totalVisible === 0 ?'));
