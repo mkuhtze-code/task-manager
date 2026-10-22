@@ -250,6 +250,27 @@ describe('Capture Dock UI authorization boundary', () => {
     await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1));
   });
 
+  it.each(['answer', 'defer', 'clarify'] as const)(
+    'persists an explicit Dock when the engine returns %s',
+    async (kind) => {
+      mocks.runCaptureDock.mockReturnValueOnce({
+        kind,
+        message: 'Capacity is strained; consider another time.',
+        request: {},
+      });
+
+      renderCaptureSheet();
+      await waitFor(() => {
+        expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false);
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+
+      await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(1));
+      expect(screen.getByText('Capacity is strained; consider another time.')).toBeTruthy();
+      expect(mocks.executeCpuDecision).not.toHaveBeenCalled();
+    },
+  );
+
   it('passes an explicit parsed payload on ordinary fallthrough', async () => {
     mocks.runCaptureDock.mockReturnValueOnce({ kind: 'fallthrough', message: null });
 
