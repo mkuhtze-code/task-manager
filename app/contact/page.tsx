@@ -198,7 +198,7 @@ export default function ContactPage() {
 
   return (
     <div className="app-shell">
-      <AppHeader title="Contact us" backHref="/" />
+      <AppHeader title="Contact us" utilityDoneHref="/" />
 
       <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
         <div className="settings-panel-title">Contact Dokkit</div>

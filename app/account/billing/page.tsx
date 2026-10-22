@@ -140,7 +140,7 @@ function BillingPageInner() {
   if (loading) {
     return (
       <div className="app-shell account-portal">
-        <AppHeader title="Billing" backHref="/account" />
+        <AppHeader title="Billing" upHref="/account" upLabel="Account" />
         <p className="account-muted">Loading billing…</p>
       </div>
     );
@@ -157,7 +157,7 @@ function BillingPageInner() {
 
   return (
     <div className="app-shell account-portal">
-      <AppHeader title="Billing" backHref="/account" />
+      <AppHeader title="Billing" upHref="/account" upLabel="Account" />
 
       {error && (
         <p className="account-alert" role="alert">
@@ -386,7 +386,7 @@ function BillingPageInner() {
 
       <p className="account-footnote">
         Card details are handled by Stripe. Dokkit does not store full card numbers.{' '}
-        <Link href="/account">Back to account</Link>
+        <Link href="/account">Account settings</Link>
       </p>
     </div>
   );
@@ -398,7 +398,7 @@ export default function BillingPage() {
     <Suspense
       fallback={
         <div className="app-shell account-portal">
-          <AppHeader title="Billing" backHref="/account" />
+          <AppHeader title="Billing" upHref="/account" upLabel="Account" />
           <p className="account-muted">Loading billing…</p>
         </div>
       }

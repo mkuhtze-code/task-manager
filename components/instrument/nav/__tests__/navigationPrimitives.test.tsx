@@ -55,4 +55,27 @@ describe('Instrument navigation primitives', () => {
     fireEvent.click(getByRole('button', { name: 'Close' }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
+
+  it('migrates Billing leave chrome to Up: Account without changing feature-query handling', () => {
+    const page = readFileSync('app/account/billing/page.tsx', 'utf8');
+    expect(page).toContain('upHref="/account" upLabel="Account"');
+    expect(page).not.toContain('backHref="/account"');
+    expect(page).toContain("searchParams.get('feature')");
+    expect(page).toContain('PRO_FEATURE_COPY[highlightFeature]');
+  });
+  it('uses shared Admin Up chrome on sections but preserves the admin hub exit policy', () => {
+    const layout = readFileSync('app/admin/layout.tsx', 'utf8');
+    const hub = readFileSync('app/admin/page.tsx', 'utf8');
+    expect(layout).toContain("pathname !== '/admin' && <UpLink href=\"/admin\" label=\"Admin\" />");
+    expect(layout).toContain("if (!session || loading || isAdmin === null || !isAdmin)");
+    expect(layout).toContain('href="/" className="adm-action-link"');
+    expect(hub).not.toContain('aria-label="Back"');
+  });
+  it('uses Done for app Contact chrome while preserving the legacy Feedback redirect', () => {
+    const contact = readFileSync('app/contact/page.tsx', 'utf8');
+    const feedback = readFileSync('app/feedback/page.tsx', 'utf8');
+    expect(contact).toContain('<AppHeader title="Contact us" utilityDoneHref="/" />');
+    expect(contact).not.toContain('backHref="/"');
+    expect(feedback).toContain("redirect('/contact')");
+  });
 });
