@@ -70,7 +70,7 @@
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: var(--instrument-shell-dock-clearance);
+  padding-bottom: 0;
 }
 .experience-mobile-frame__workspace {
   box-sizing: border-box;
