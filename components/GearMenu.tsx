@@ -74,7 +74,8 @@ export default function GearMenu({
     const above = Math.max(0, r.top - safeTop - 8);
     const menuHeight = Math.min(menuRef.current?.scrollHeight || 320, 320);
     const placeBelow = below >= Math.min(menuHeight, 180) || below >= above;
-    const maxHeight = Math.max(120, Math.min(320, placeBelow ? below : above));
+    const available = placeBelow ? below : above;
+    const maxHeight = Math.max(1, Math.min(320, available));
     const top = placeBelow
       ? Math.min(r.bottom + 8, safeBottom - maxHeight)
       : Math.max(safeTop, r.top - maxHeight - 8);
