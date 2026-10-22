@@ -1084,23 +1084,11 @@ if (line && addTaskWithOverrides) {
       return;
     }
 
-    if (dock.kind === 'answer') {
+    if (dock.kind === 'answer' || dock.kind === 'defer') {
+      // Explicit Dock is a write intent. Capacity/fit commentary is advisory:
+      // surface it, then save the user's wording below instead of soft-vetoing.
       setEngineExplain(dock.message);
       setCollectionFeedback(dock.message);
-      return;
-    }
-
-    if (dock.kind === 'defer') {
-      setEngineExplain(dock.message);
-      setCollectionFeedback(dock.message);
-      confirmSpeechLearning();
-      clearSpeechStatus();
-
-      if (dock.clearLine) {
-        clearDraftText();
-      }
-
-      return;
     }
 
     if (
@@ -1132,9 +1120,10 @@ if (line && addTaskWithOverrides) {
     }
 
     if (dock.kind === 'clarify') {
+      // A clarification question is visible, but explicit Dock can still save
+      // the user's wording when no required-field / one-shot hard gate applies.
       setEngineExplain(dock.message);
       setCollectionFeedback(dock.message);
-      return;
     }
 
     if (dock.kind === 'fallthrough' && dock.message) {
