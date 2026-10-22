@@ -158,8 +158,6 @@ export default function AppChrome({
     <div className="experience-mobile-frame">
       <div className="experience-mobile-frame__signals" aria-label="Current status">
         <ActiveTimerBar />
-        {session?.user?.id ? (
-        ) : null}
       </div>
 
 
