@@ -62,9 +62,6 @@
   min-height: 0;
   overflow: hidden;
 }
-.experience-mobile-frame > [data-instrument-shell] > .instrument-shell__body {
-  padding-bottom: var(--instrument-shell-dock-clearance);
-}
 .instrument-shell__header-stack { width: 100%; min-width: 0; }
 .instrument-shell__global-tools {
   display: flex;
