@@ -158,40 +158,43 @@ export default function AppChrome({
     <div className="experience-mobile-frame">
       <div className="experience-mobile-frame__signals" aria-label="Current status">
         <ActiveTimerBar />
-        {session?.user?.id ? (
-          <>
-            <TravelAwarenessBanner userId={session.user.id} />
-            <OfflineStatusBar userId={session.user.id} />
-          </>
-        ) : null}
       </div>
 
 
 
       <AppShell
         lens={currentSurfaceIndex(pathname) === 1 ? 'jobs' : currentSurfaceIndex(pathname) === 2 ? 'meetings' : currentSurfaceIndex(pathname) === 3 ? 'travel' : 'today'}
-        header={session?.user?.id ? (pathname === '/' && headerProps ? (
-          <TodayInstrument
-            weekdayLabel={headerProps.weekdayLabel}
-            dateOnlyLabel={headerProps.dateOnlyLabel}
-            isWorkDay={headerProps.isWorkDay}
-            minutesLeftToday={headerProps.minutesLeftToday}
-            remainingWorkMins={headerProps.remainingWorkMins}
-            overloaded={headerProps.overloaded}
-            fixedLoadMins={headerProps.dayDepth?.fixedMins ?? null}
-            nowPercent={headerProps.nowPercent}
-            planWidthPercent={headerProps.planWidthPercent}
-            onCapture={headerProps.onDockIt ?? (() => {})}
-            secondary={
-              <>
-                <GearMenu context="work" userId={session.user.id} />
-                <button type="button" className="ins-today-instrument__secondary-action" onClick={headerProps.onViewMap}>Map</button>
-                {headerProps.showRealityCheck ? <button type="button" className="ins-today-instrument__secondary-action" onClick={headerProps.onRealityCheck}>Reality check</button> : null}
-                {headerProps.geoAware ? <button type="button" className="ins-today-instrument__secondary-action" disabled={headerProps.recalculatingRoute} onClick={headerProps.onRecalcRoute}>{headerProps.recalculatingRoute ? 'Updating route…' : 'Update route'}</button> : null}
-              </>
-            }
-          />
-        ) : <div className="instrument-shell__lens-tools"><GearMenu context={pathname.startsWith('/travel') ? 'travel' : pathname.startsWith('/jobs') ? 'jobs' : 'work'} userId={session.user.id} /></div>) : undefined}
+        header={session?.user?.id ? (
+          <div className="instrument-shell__header-stack">
+            <div className="instrument-shell__global-tools">
+              <GearMenu
+                context={pathname.startsWith('/travel') ? 'travel' : pathname.startsWith('/jobs') ? 'jobs' : 'work'}
+                userId={session.user.id}
+              />
+            </div>
+            {pathname === '/' && headerProps ? (
+              <TodayInstrument
+                weekdayLabel={headerProps.weekdayLabel}
+                dateOnlyLabel={headerProps.dateOnlyLabel}
+                isWorkDay={headerProps.isWorkDay}
+                minutesLeftToday={headerProps.minutesLeftToday}
+                remainingWorkMins={headerProps.remainingWorkMins}
+                overloaded={headerProps.overloaded}
+                fixedLoadMins={headerProps.dayDepth?.fixedMins ?? null}
+                nowPercent={headerProps.nowPercent}
+                planWidthPercent={headerProps.planWidthPercent}
+                onCapture={headerProps.onDockIt ?? (() => {})}
+                secondary={
+                  <>
+                    <button type="button" className="ins-today-instrument__secondary-action" onClick={headerProps.onViewMap}>Map</button>
+                    {headerProps.showRealityCheck ? <button type="button" className="ins-today-instrument__secondary-action" onClick={headerProps.onRealityCheck}>Reality check</button> : null}
+                    {headerProps.geoAware ? <button type="button" className="ins-today-instrument__secondary-action" disabled={headerProps.recalculatingRoute} onClick={headerProps.onRecalcRoute}>{headerProps.recalculatingRoute ? 'Updating route…' : 'Update route'}</button> : null}
+                  </>
+                }
+              />
+            ) : null}
+          </div>
+        ) : undefined}
         dock={
           session?.user?.id && currentSurfaceIndex(pathname) >= 0 ? (
             <SystemDock
@@ -211,6 +214,8 @@ export default function AppChrome({
             touchStart.current = null;
           }}
         >
+          {session?.user?.id ? <TravelAwarenessBanner userId={session.user.id} /> : null}
+          {session?.user?.id ? <OfflineStatusBar userId={session.user.id} /> : null}
           {children}
         </main>
       </AppShell>
