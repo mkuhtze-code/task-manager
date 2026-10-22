@@ -972,6 +972,10 @@ export default function TripDayView() {
       },
     });
 
+    const dockAdvisoryMessage =
+      dock.kind === 'answer' || dock.kind === 'defer' || dock.kind === 'clarify'
+        ? dock.message
+        : null;
     const dockOutcome = classifyCaptureDockOutcome(dock);
     if (!allowCreate('explicit_create', dockOutcome.class)) {
       setCaptureEngineMsg(dockOutcome.message);
@@ -1122,8 +1126,10 @@ export default function TripDayView() {
     setCaptureStopKind('leisure');
     setCapturePresence('duration');
     setCaptureJobId(null);
-    setCaptureEngineMsg(null);
-    setCaptureOpen(false);
+    // Keep an advisory visible after the stop is queued; otherwise the same
+    // gesture would create successfully but erase the warning before paint.
+    setCaptureEngineMsg(dockAdvisoryMessage);
+    setCaptureOpen(!!dockAdvisoryMessage);
     if (typeof navigator === 'undefined' || navigator.onLine !== false) {
       const sync = await flushSyncQueue(session.user.id);
       if (sync.failed === 0 && created.lat != null) await recalculateDay();
