@@ -19,12 +19,12 @@ import AccommodationSheet from '@/components/AccommodationSheet';
 import TravelVaultSheet from '@/components/TravelVaultSheet';
 import DaySheet from '@/components/DaySheet';
 import TripDayPanel from '@/components/TripDayPanel';
+import TravelToolsStrip from '@/components/travel/TravelToolsStrip';
 import TripStopRow from '@/components/TripStopRow';
 import TripDayMeetings from '@/components/TripDayMeetings';
 import MapView from '@/components/MapView';
 import { TravelLeg } from '@/components/TravelLeg';
 import { sortActivities, findFixedTimeConflicts, findUnverifiableFixedTimeStops, SortMode as TravelSortMode } from '@/lib/travelSort';
-import GearMenu from '@/components/GearMenu';
 import {
   BackIcon,
   CheckIcon,
@@ -659,8 +659,6 @@ export default function TripDayView() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
-  const [tripToolsOpen, setTripToolsOpen] = useState(false);
-  const tripToolsDialogRef = useDialogA11y(() => setTripToolsOpen(false));
   const [captureMoreOpen, setCaptureMoreOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const captureDialogRef = useDialogA11y<HTMLDivElement>(closeCapture);
@@ -1638,22 +1636,9 @@ export default function TripDayView() {
         <div className="app-header-left">
           <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back to travel"><BackIcon /></button>
           <div className="travel-detail-identity">
+            <p className="ins-travel-eyebrow">Movement / Trip</p>
             <h1 className="app-title travel-detail-title">{trip.name}</h1>
-            <button type="button" className="btn-text" onClick={() => setDateRangeOpen((open) => !open)} aria-expanded={dateRangeOpen}>
-              {dateRangeOpen ? 'Close dates' : 'Edit dates'}
-            </button>
           </div>
-        </div>
-        <div className="app-header-right" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button
-            type="button"
-            className="gear-btn"
-            aria-label="Trip tools"
-            onClick={() => setTripToolsOpen(true)}
-            style={{ fontSize: 22, lineHeight: 1, letterSpacing: 2 }}
-          >
-            ···
-          </button>
         </div>
       </div>
 
@@ -1706,6 +1691,8 @@ export default function TripDayView() {
       {selectedDay && (
         <TripDayPanel
           key={selectedDay.id}
+          dayLabel={fmtDayLabel(selectedDay.date).weekday}
+          dateLabel={fmtDayLabel(selectedDay.date).date}
           dayAnchor={dayAnchor}
           flightScheduled={hasScheduledFlight}
           fitLabel={minutesLeftToday > 0
@@ -1716,6 +1703,28 @@ export default function TripDayView() {
           daySheetOpen={daySheetOpen}
           onOpenDaySheet={() => setDaySheetOpen(true)}
           onAddStop={() => setCaptureOpen(true)}
+          secondary={
+            <TravelToolsStrip
+              onFindPlace={() => {
+                setNearbyLeg(null);
+                setNearbyInsertIndex(null);
+                setNearbyContext('Find a place to add to this trip day');
+                setNearbyOpen(true);
+              }}
+              onOpenVault={() => setVaultOpen(true)}
+              onOpenMap={() => setMapOpen(true)}
+              onOpenStay={() => setAccommodationSheetOpen(true)}
+              onEditDates={() => setDateRangeOpen((open) => !open)}
+              datesOpen={dateRangeOpen}
+              sortLabel={travelSortMode === 'what_fits' ? 'Fit' : travelSortMode === 'close_to_accom' ? 'Near stay' : travelSortMode === 'nearby_me' ? 'Nearby' : 'Manual'}
+              onCycleSort={() => {
+                const modes: TravelSortMode[] = ['what_fits', 'close_to_accom', 'nearby_me', 'manual'];
+                const next = (modes.indexOf(travelSortMode) + 1) % modes.length;
+                void changeSortMode(modes[next]);
+              }}
+              onOpenLibrary={() => setLibraryOpen(true)}
+            />
+          }
         />
       )}
 
@@ -2182,104 +2191,6 @@ export default function TripDayView() {
         />
       )}
 
-
-      {tripToolsOpen && (
-        <div className="sheet-backdrop" onClick={() => setTripToolsOpen(false)}>
-          <div
-            ref={tripToolsDialogRef}
-            className="capture-sheet"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Trip tools"
-          >
-            <div className="task-detail-header">
-              <div className="settings-panel-title">Trip tools</div>
-              <button
-                type="button"
-                className="gear-btn"
-                onClick={() => setTripToolsOpen(false)}
-                aria-label="Close"
-              >
-                <CloseIcon />
-              </button>
-            </div>
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {[
-                {
-                  key: 'find-place',
-                  label: 'Find place',
-                  sub: 'Search near this day, stay, stop or drive leg',
-                  run: () => {
-                    setTripToolsOpen(false);
-                    setNearbyLeg(null);
-                    setNearbyInsertIndex(null);
-                    setNearbyContext('Find a place to add to this trip day');
-                    setNearbyOpen(true);
-                  },
-                },
-                {
-                  key: 'stay',
-                  label: 'Stay',
-                  sub: 'Hotels & where you base the day',
-                  run: () => {
-                    setTripToolsOpen(false);
-                    setAccommodationSheetOpen(true);
-                  },
-                },
-                {
-                  key: 'library',
-                  label: 'Library',
-                  sub: 'Guides, notes & research',
-                  run: () => {
-                    setTripToolsOpen(false);
-                    setLibraryOpen(true);
-                  },
-                },
-                {
-                  key: 'vault',
-                  label: 'Vault',
-                  sub: 'Bookings, tickets & files',
-                  run: () => {
-                    setTripToolsOpen(false);
-                    setVaultOpen(true);
-                  },
-                },
-                {
-                  key: 'map',
-                  label: 'Map',
-                  sub: 'Route & places for this day',
-                  run: () => {
-                    setTripToolsOpen(false);
-                    setMapOpen(true);
-                  },
-                },
-              ].map((item) => (
-                <li key={item.key}>
-                  <button
-                    type="button"
-                    onClick={item.run}
-                    style={{
-                      width: '100%',
-                      textAlign: 'left',
-                      border: 'none',
-                      borderBottom: '1px solid var(--line)',
-                      background: 'transparent',
-                      padding: '14px 4px',
-                      cursor: 'pointer',
-                      color: 'inherit',
-                    }}
-                  >
-                    <div style={{ fontSize: 16, fontWeight: 600 }}>{item.label}</div>
-                    <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 2 }}>{item.sub}</div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-          </div>
-        </div>
-      )}
 
       <SurfaceNav active="travel" />
     </div>

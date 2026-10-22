@@ -7,9 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import SurfaceHeaderIdentity from '@/components/SurfaceHeaderIdentity';
 import { CloseIcon, TrashIcon } from '@/components/icons';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
@@ -29,6 +27,7 @@ import {
   localDateStr,
   type TripLike,
 } from '@/lib/travel/travelSurface';
+import TravelInstrument from '@/components/travel/TravelInstrument';
 
 type Trip = TripLike & { created_at: string };
 
@@ -422,22 +421,16 @@ export default function TravelHome() {
 
   return (
     <div className="app-shell travel-shell">
-      {!isDesktop && (
-        <div className="app-header travel-mobile-header">
-          <div className="app-header-left">
-            <div className="travel-mobile-identity surface-mobile-identity">
-              <SurfaceHeaderIdentity
-                kicker="Place / Motion"
-                title="Travel"
-                signal={surface.active.length > 0 ? `${surface.active.length} active` : surface.upcoming.length > 0 ? `${surface.upcoming.length} upcoming` : 'Clear'}
-                meta={surface.pulseMeta || null}
-                attention={surface.pulseAttention}
-                clear={surface.active.length + surface.upcoming.length === 0}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {!isDesktop ? (
+        <TravelInstrument
+          activeCount={surface.active.length}
+          upcomingCount={surface.upcoming.length}
+          pulseMeta={surface.pulseMeta || null}
+          attention={surface.pulseAttention}
+          canCreate={canTravel}
+          onPlanTrip={openCreate}
+        />
+      ) : null}
 
       {isDesktop ? (
         <DesktopTravelHeader
@@ -469,23 +462,6 @@ export default function TravelHome() {
 
       {!isDesktop ? (
         <div className="travel-mobile-controls">
-          {!selectedDate && featured &&
-          featuredRow &&
-          (featuredRow.pressure === 'now' || featuredRow.pressure === 'soon') ? (
-            <Link
-              href={`/travel/${featured.id}`}
-              className="travel-featured surface-object surface-object-featured travel-featured-mobile"
-            >
-              <div className="travel-featured-body">
-                <span className="travel-featured-title">{featured.name}</span>
-                <span className="travel-featured-time surface-object-time mono">
-                  {fmtDateRange(featured.start_date, featured.end_date)}
-                  <span aria-hidden="true"> · </span>
-                  {featuredRow.phase === 'active' ? 'Now' : 'Next'}
-                </span>
-              </div>
-            </Link>
-          ) : null}
           <ExperienceFilterBar
             ariaLabel="Travel filters"
             value={listFilter}
@@ -505,13 +481,7 @@ export default function TravelHome() {
       ) : trips.length === 0 ? (
         <div className="empty-state travel-empty">
           <div className="empty-state-title">No trips yet</div>
-          <div className="empty-state-sub">
-            Plan movement when the work needs it. Days and stops stay with the trip — Today can
-            respect the regime instead of guessing.
-          </div>
-          <button type="button" className="btn btn-steel" onClick={openCreate}>
-            Plan a trip
-          </button>
+          <div className="empty-state-sub">Your trips and their movement context will appear here.</div>
         </div>
       ) : totalVisible === 0 ? (
         <div className="empty-state">

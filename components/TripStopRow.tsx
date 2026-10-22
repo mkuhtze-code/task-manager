@@ -58,7 +58,7 @@ export default function TripStopRow({
   onPointerDown, onPointerMove, onPointerUp, fmtMins, fmtClock, onRowRef,
 }: Props) {
   return (
-    <div ref={onRowRef} style={rowStyle}>
+    <div ref={onRowRef} style={rowStyle} className="ins-travel-stop-row">
       <div className={['task-row', a.activity_type === 'stop' ? '' : 'task-list-item', conflict ? 'conflict' : ''].filter(Boolean).join(' ')}>
         <div className="task-main">
           <button className="check-btn" onClick={(e) => { e.stopPropagation(); onComplete(); }} aria-label="Mark complete">
