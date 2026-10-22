@@ -74,7 +74,7 @@ export default function GearMenu({
     const below = Math.max(0, safeBottom - r.bottom - 8);
     const above = Math.max(0, r.top - safeTop - 8);
     const placeBelow = below >= Math.min(preferredHeight, 180) || below >= above;
-    const maxHeight = Math.max(120, Math.min(preferredHeight, placeBelow ? below : above));
+    const maxHeight = Math.max(80, Math.min(preferredHeight, placeBelow ? below : above));
     const top = placeBelow ? r.bottom + 8 : Math.max(safeTop, r.top - maxHeight - 8);
     setMenuPos({
       top: Math.round(top),
@@ -92,11 +92,16 @@ export default function GearMenu({
     function onReposition() {
       placeMenu();
     }
+    const viewport = window.visualViewport;
     window.addEventListener('resize', onReposition);
     window.addEventListener('scroll', onReposition, true);
+    viewport?.addEventListener('resize', onReposition);
+    viewport?.addEventListener('scroll', onReposition);
     return () => {
       window.removeEventListener('resize', onReposition);
       window.removeEventListener('scroll', onReposition, true);
+      viewport?.removeEventListener('resize', onReposition);
+      viewport?.removeEventListener('scroll', onReposition);
     };
   }, [menuOpen]);
 
