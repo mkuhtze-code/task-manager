@@ -1,30 +1,61 @@
-/* Instrument shell owns only its structural regions. Legacy page CSS remains authoritative inside body. */
+/* Instrument shell owns its viewport, width and dock clearance. Legacy page CSS remains authoritative inside body. */
 [data-instrument-shell] {
   --instrument-shell-dock-clearance: calc(var(--ins-dock-height) + var(--ins-safe-bottom) + var(--ins-space-4));
   position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
   min-width: 0;
   min-height: 100%;
+  padding-inline: var(--ins-safe-left) var(--ins-safe-right);
+  padding-bottom: var(--instrument-shell-dock-clearance);
   color: var(--ins-ink);
   font-family: var(--ins-font-sans);
 }
-
+[data-instrument-shell] *,
+[data-instrument-shell] *::before,
+[data-instrument-shell] *::after { box-sizing: border-box; }
 [data-instrument-shell] .instrument-shell__header {
   position: relative;
   z-index: var(--ins-z-header);
   min-width: 0;
+  width: 100%;
 }
-
 [data-instrument-shell] .instrument-shell__body {
+  display: block;
+  width: 100%;
+  max-width: none;
   min-width: 0;
   min-height: 0;
+  margin-inline: 0;
 }
-
+[data-instrument-shell] :is(main, section, [data-testid="today-instrument"], [data-testid="jobs-instrument"], [data-testid="meetings-instrument"]) {
+  min-width: 0;
+  max-width: 100%;
+}
+.experience-mobile-frame,
+.experience-mobile-frame > [data-instrument-shell] {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+.experience-mobile-frame { min-height: 100dvh; }
+.experience-mobile-frame__workspace {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  padding-bottom: var(--instrument-shell-dock-clearance, calc(76px + env(safe-area-inset-bottom, 0px) + 16px));
+}
+.desk-shell, .desk-main, .desk-main-body,
+.desk-main > [data-instrument-shell], .desk-main-body {
+  min-width: 0;
+  max-width: none;
+}
+.desk-main > [data-instrument-shell] { width: 100%; }
 @media (prefers-reduced-motion: reduce) {
-  [data-instrument-shell] *,
-  [data-instrument-shell] *::before,
-  [data-instrument-shell] *::after {
-    scroll-behavior: auto;
-    animation-duration: 0ms;
-    transition-duration: 0ms;
+  [data-instrument-shell] *, [data-instrument-shell] *::before, [data-instrument-shell] *::after {
+    scroll-behavior: auto; animation-duration: 0ms; transition-duration: 0ms;
   }
 }
