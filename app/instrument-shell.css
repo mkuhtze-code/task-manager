@@ -65,7 +65,7 @@
   max-width: none;
 }
 .desk-main > [data-instrument-shell] { width: 100%; }
-@media (max-width: 767px) {
+@media (max-width: 959px) {
   .experience-mobile-frame {
     display: flex;
     flex-direction: column;
@@ -100,7 +100,7 @@
     padding-bottom: max(var(--instrument-shell-dock-clearance, 92px), env(safe-area-inset-bottom, 0px));
   }
 }
-@media (min-width: 768px) {
+@media (min-width: 960px) {
   .experience-mobile-frame { height: auto; min-height: 100dvh; overflow: visible; }
   .experience-mobile-frame > [data-instrument-shell] { height: auto; min-height: 100%; overflow: visible; }
   .experience-mobile-frame > [data-instrument-shell] > .instrument-shell__body { overflow: visible; }
