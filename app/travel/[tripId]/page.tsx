@@ -2038,7 +2038,7 @@ export default function TripDayView() {
               </p>
             )}
             {error && <p className="ins-travel-capture-error" style={{ fontSize: 12, margin: 0 }}>{error}</p>}
-            <button className="btn btn-steel" onClick={addActivity} style={{ marginTop: 8, width: '100%' }}>
+            <button className="btn btn-steel" onClick={addActivity} disabled={!captureText.trim()} style={{ marginTop: 8, width: '100%' }}>
               Add stop
             </button>
           </div>
