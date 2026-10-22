@@ -57,6 +57,7 @@ type LearningEvidence,
 type WorkingMemorySnapshot,
 } from '@/lib/engine';
 import { runCaptureDock, loadPriorForDock } from '@/lib/engine/captureDock';
+import { allowCreate, classifyCaptureDockOutcome } from '@/lib/engine/dockOutcome';
 import { canonicalMeaningFromSpeech } from '@/lib/engine/canonicalFromSpeech';
 import { executeCpuDecision } from '@/lib/cpu';
 import { MapPinIcon } from '@/components/icons';
@@ -997,6 +998,13 @@ if (line && addTaskWithOverrides) {
       travelMins,
       visitDurationMins,
     });
+
+    const dockOutcome = classifyCaptureDockOutcome(dock);
+    if (!allowCreate('explicit_create', dockOutcome.class)) {
+      setEngineExplain(dockOutcome.message);
+      setCollectionFeedback(dockOutcome.message || 'This capture needs to be resolved before saving.');
+      return;
+    }
 
     if (dock.request) {
       setEnginePriorRequest(dock.request);
