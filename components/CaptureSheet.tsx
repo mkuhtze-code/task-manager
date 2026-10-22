@@ -959,9 +959,10 @@ if (unresolvedCurrentResolution) {
   // lets Today render the existing Yes/Skip UI without parsing every Dock.
   if (draftChanged) setTaskText(currentText);
   setCollectionFeedback(
-    currentResolution.state === 'choose'
-      ? 'Pick which place, or skip'
-      : 'Confirm or skip the place first'
+    currentGate.blockReason ||
+      (currentResolution.state === 'choose'
+        ? 'Pick which place, or skip'
+        : 'Confirm or skip the place first')
   );
   return;
 }
