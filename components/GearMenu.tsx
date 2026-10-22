@@ -67,9 +67,19 @@ export default function GearMenu({
     const btn = btnRef.current;
     if (!btn) return;
     const r = btn.getBoundingClientRect();
+    const safeTop = 8 + (window.visualViewport?.offsetTop ?? 0);
+    const safeBottom = (window.visualViewport?.height ?? window.innerHeight) - 8;
+    const menuHeight = Math.min(menuRef.current?.getBoundingClientRect().height || 300, 320);
+    const below = safeBottom - r.bottom - 8;
+    const above = r.top - safeTop - 8;
+    const top = below >= Math.min(menuHeight, 240)
+      ? r.bottom + 8
+      : above >= Math.min(menuHeight, 240)
+        ? r.top - menuHeight - 8
+        : Math.max(safeTop, Math.min(r.bottom + 8, safeBottom - Math.min(menuHeight, 240)));
     setMenuPos({
-      top: Math.round(r.bottom + 8),
-      right: Math.round(window.innerWidth - r.right),
+      top: Math.round(top),
+      right: Math.max(8, Math.round(window.innerWidth - r.right)),
     });
   }
 
@@ -151,6 +161,10 @@ export default function GearMenu({
               left: 'auto',
               margin: 0,
               zIndex: 2147483647,
+              maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px)',
+              maxWidth: 'calc(100vw - 16px)',
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
             }}
           >
             {pathname !== '/analytics' && pathname !== '/preferences' && (
