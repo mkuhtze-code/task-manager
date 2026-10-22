@@ -1,6 +1,6 @@
-# Instrument Navigation Contract (N0–N1)
+# Instrument Navigation Contract (N0–N4)
 
-Status: N0 inventory + N1 primitives and first migrations. This is a staged contract, not a claim that every legacy route has already migrated.
+Status: N0 inventory + N1 primitives + N2 peer/core utilities + N3 remaining utility/admin chrome + N4 transient dismiss consistency. This remains a staged contract; see residuals and backlog below.
 
 ## Four navigation kinds
 
@@ -44,43 +44,43 @@ Routes below are grouped by navigation class; dynamic segments are route pattern
 | /travel/[tripId] | Peer push | **Migrated in N2:** Up → Travel → /travel; R4.2 content and delete placement retained |
 | /preferences | Utility hub (GearMenu destination) | **Migrated:** Done → /; settings behavior unchanged |
 | /account | Utility hub | **Migrated in N2:** Done → / in signed-in and signed-out render branches |
-| /account/billing | Utility / plan flow | Deferred; preserve ?feature= redirects |
+| /account/billing | Utility / plan flow | **Migrated in N3:** Up: Account → `/account`; `?feature=` and Pro redirect/checkout behavior preserved |
 | /account/change-password | Utility section | **Migrated in N2:** Up: Account → /account in both render branches |
 | /analytics | Utility hub | **Migrated in N2:** Done → / in both render branches |
-| /feedback | Utility flow | Deferred |
-| /contact | Public support | Public route; unchanged |
+| /feedback | Legacy utility path | Redirects to `/contact`; redirect unchanged |
+| /contact | App support utility | **Migrated in N3:** Done → `/`; public marketing site remains separate and unchanged |
 | /welcome | Auth/onboarding | Auth flow; unchanged |
 | /reset-password | Auth recovery | Signed-out-safe; unchanged |
-| /admin | Privileged utility hub | Admin-gated; deferred |
-| /admin/[section] | Privileged utility section | Parent should be Admin; deferred |
-| /admin/activity | Privileged utility section | Parent Admin; deferred |
-| /admin/admin-access | Privileged utility section | Parent Admin; deferred |
-| /admin/alerts | Privileged utility section | Parent Admin; deferred |
-| /admin/announcements | Privileged utility section | Parent Admin; deferred |
-| /admin/audit-log | Privileged utility section | Parent Admin; deferred |
-| /admin/database | Privileged utility section | Parent Admin; deferred |
-| /admin/errors | Privileged utility section | Parent Admin; deferred |
-| /admin/feature-flags | Privileged utility section | Parent Admin; deferred |
-| /admin/feedback | Privileged utility section | Parent Admin; deferred |
-| /admin/infrastructure | Privileged utility section | Parent Admin; deferred |
-| /admin/integrations | Privileged utility section | Parent Admin; deferred |
-| /admin/jobs | Privileged utility section | Parent Admin; deferred |
-| /admin/meetings | Privileged utility section | Parent Admin; deferred |
-| /admin/notifications | Privileged utility section | Parent Admin; deferred |
-| /admin/oauth | Privileged utility section | Parent Admin; deferred |
-| /admin/patterns | Privileged utility section | Parent Admin; deferred |
-| /admin/revenue | Privileged utility section | Parent Admin; deferred |
-| /admin/sessions | Privileged utility section | Parent Admin; deferred |
-| /admin/stripe | Privileged utility section | Parent Admin; deferred |
-| /admin/subscriptions | Privileged utility section | Parent Admin; deferred |
-| /admin/support | Privileged utility section | Parent Admin; deferred |
-| /admin/system-settings | Privileged utility section | Parent Admin; deferred |
-| /admin/thinking | Privileged utility section | Parent Admin; deferred |
-| /admin/today | Privileged utility section | Parent Admin; deferred |
-| /admin/travel | Privileged utility section | Parent Admin; deferred |
-| /admin/trials | Privileged utility section | Parent Admin; deferred |
-| /admin/usage | Privileged utility section | Parent Admin; deferred |
-| /admin/users | Privileged utility section | Parent Admin; deferred |
+| /admin | Privileged utility hub | Existing **Open app** → `/` exit retained; no generic Back was present |
+| /admin/[section] | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/activity | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/admin-access | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/alerts | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/announcements | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/audit-log | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/database | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/errors | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/feature-flags | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/feedback | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/infrastructure | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/integrations | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/jobs | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/meetings | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/notifications | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/oauth | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/patterns | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/revenue | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/sessions | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/stripe | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/subscriptions | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/support | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/system-settings | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/thinking | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/today | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/travel | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/trials | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/usage | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
+| /admin/users | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; gate unchanged |
 
 **Route count:** 46 route patterns in the tree at inventory time (including dynamic admin and auth/public routes); patterns are not a count of runtime URLs.
 
@@ -88,23 +88,23 @@ Routes below are grouped by navigation class; dynamic segments are route pattern
 
 Inventory is based on named app components and the instrument shell references visible on main. This is a routing-contract inventory, not a behavioral rewrite.
 
-| Surface / component | Kind | N1 treatment |
+| Surface / component | Kind | N4 disposition |
 |---|---|---|
-| CaptureSheet / capture composer | Transient | Existing open/close contract retained; standardize in later sheet pass |
-| TaskDetailSheet | Transient depth | Deferred; retain existing dismissal/focus behavior |
-| DepthSheet | Transient depth | Existing backdrop dismissal retained; adopt SheetDismiss incrementally |
-| JobEditSheet | Transient edit | Deferred |
-| FindPlaceSheet | Transient travel tool | Deferred to N4 |
-| TravelToolsStrip tool panels | Transient travel tools | Individual tool migration deferred to N4 |
-| AccommodationSheet | Transient travel tool | Deferred to N4 |
-| TravelVaultSheet | Transient travel tool | Deferred to N4 |
-| DaySheet | Transient day detail | Deferred to N4 |
-| LibrarySheet | Transient library | Deferred to N4 |
-| NearbySheet | Transient place results | Deferred to N4 |
-| Meeting capture / observation draft | Transient capture | Existing draft cancel/save semantics retained |
-| GearMenu dropdown panel | Utility entry panel | Shared owner is GearMenu; no per-page duplicate introduced |
+| CaptureSheet / capture composer | Transient | **Migrated in N4:** SheetDismiss label Close; existing `useDialogA11y`, scrim and capture callbacks retained |
+| TaskDetailSheet | Transient depth | **Migrated in N4:** outer sheet header uses SheetDismiss label Close; nested sub-form close remains local |
+| DepthSheet | Transient depth | **Migrated in N4:** SheetDismiss label Close; existing backdrop and `useDialogA11y` retained |
+| JobEditSheet | Transient edit | **Migrated in N4:** JobSheets edit header uses SheetDismiss; commit-before-close behavior preserved |
+| FindPlaceSheet | Transient travel tool | **Migrated in N4:** SheetDismiss label Close; existing backdrop/Escape owner retained |
+| TravelToolsStrip tool panels | Transient travel tools | Primary sheet headers migrated where the component exposes them; see rows below |
+| AccommodationSheet | Transient travel tool | **Migrated in N4:** SheetDismiss label Close |
+| TravelVaultSheet | Transient travel tool | **Migrated in N4:** SheetDismiss label Close |
+| DaySheet | Transient day detail | **Migrated in N4:** SheetDismiss label Close |
+| LibrarySheet | Transient library | **Migrated in N4:** outer sheet exit uses SheetDismiss; inner Close controls intentionally switch internal Library modes |
+| NearbySheet | Transient place results | **Migrated in N4:** SheetDismiss label Close |
+| Meeting capture / observation draft | Transient capture | Custom close remains: separate meeting-capture form with existing draft/save semantics; already labelled Close |
+| GearMenu dropdown panel | Utility entry panel | Shared owner is GearMenu; not a modal sheet; unchanged |
 | ProPlanGate / MeetingsPlanGate | Entitlement gate | Not navigation chrome; redirect behavior unchanged |
-| Confirmation dialogs and delete confirms | Transient confirmation | Existing mutation and confirmation semantics retained |
+| Confirmation dialogs and delete confirms | Transient confirmation | Custom controls retained where they express confirm/cancel choices; no misleading Back label found in this scoped pass |
 
 ## Source-pattern inventory and anti-patterns
 
@@ -134,18 +134,17 @@ N0–N2 inventory combines the route tree (46 route patterns as recorded in N0),
 | `app/analytics/page.tsx` | Icon-only Back / “Back to Today” | **Fixed in N2:** Done → `/` in both render branches |
 | `components/AppHeader.tsx` | Legacy generic Back fallback | **Retained intentionally** for un-migrated callers; N2 adds explicit `upHref` + `upLabel` support |
 
-### Residual generic Back audit after N2
+### Residual generic Back audit after N4
 
 The migrated day-to-day peer and utility surfaces above no longer use generic Back as their primary leave control. Remaining known legacy callers of AppHeader's generic fallback are:
 
-- `app/account/billing/page.tsx`: Back to Account. Deferred because billing query/return semantics (including `?feature=` redirects) require a separate safe review.
-- `app/contact/page.tsx`: Back to `/`. Public support route; not part of the core utility migration.
-- `components/AppHeader.tsx`: generic fallback remains for callers not yet migrated.
-- Admin and lower-traffic utility routes remain a later inventory/migration pass; do not bulk-rewrite them in N2.
+- `components/AppHeader.tsx`: generic fallback remains for legacy callers outside the migrated N2/N3 routes.
+- N4 leaves internal Library mode controls and domain-specific close/save actions intact; they are not route-level Back controls.
+- The inventory is scoped to the named major sheet hosts; this is not a claim that every modal-like surface in the repository has been migrated.
 
 The indexed pre-N2 source queries returned zero `router.back` / `history.back` matches. The Travel navigation previously used explicit `router.push('/travel')`; it is now an explicit `UpLink` href. No browser-history back was introduced.
 
-**Counts:** 6 core primary-leave patterns identified in the N0–N1 inventory; all 6 now use their intended navigation language (Jobs, Preferences, Meetings, Travel, Account, Analytics). N2 also migrates Change Password → Account and closes the remaining Preferences render-branch gap. Three known legacy generic-fallback locations remain (Billing, Contact, shared AppHeader fallback); Admin/lower-traffic utilities are deferred. These are inspected findings, not a claim that every literal “Back” in the repository is navigation chrome.
+**Counts through N4:** N2 peer/core utilities and N3 Billing, Contact, and Admin chrome are migrated on the shipping branch. N4 standardizes major sheet header dismiss controls while retaining host-owned dialog behavior. These are scoped source findings, not a claim that every literal “Back” in the repository is navigation chrome.
 
 GearMenu ownership and SystemDock remain unchanged. Root order remains Today → Jobs → Meetings → Travel; Pro redirects and billing destination semantics remain untouched. Trip deletion remains a domain control, separate from the Travel Up link.
 ## Primitive API
@@ -156,11 +155,15 @@ GearMenu ownership and SystemDock remain unchanged. Root order remains Today →
 
 CSS lives in app/instrument-nav.css and uses --ins-* tokens. It is loaded from the root layout. No dock visual, engine, entitlement, or mutation behavior changes in this phase.
 
-## N3+ backlog
+## N4 completion
 
-1. Audit Admin hub/section routes and lower-traffic utility surfaces without bulk-changing shared headers.
-2. Review Billing leave semantics and preserve all `?feature=` redirect/return behavior before replacing its legacy Back control.
-3. Decide whether Contact should use UtilityDone or retain its public-route Back-to-home treatment.
-4. Adopt SheetDismiss consistently across Capture, DepthSheet, Find place, Travel tools, vault, and confirmation surfaces; verify Escape and invoker focus restoration.
-5. Consider utility dock dimming and root-switch opacity-only transition only after dedicated design review; N2 does not restyle SystemDock.
-6. Browser/device QA: focus order, screen-reader labels, scrim dismissal, Escape, scroll restoration, signed-out routes, and 320–390px widths.
+N4 applies `SheetDismiss` to Capture, DepthSheet, TaskDetailSheet's outer header, Find place, Travel Vault, Accommodation/Stay, Library's outer sheet, Nearby, DaySheet, and the New/Edit Job sheet headers. The component's accessible name is **Close**.
+
+The shared dismiss primitive only invokes the existing host callback. Each sheet continues to own `useDialogA11y`, Escape topmost arbitration, scrim handling, focus return, and any local state transitions. No capture-engine, travel math, offline queue, save, or mutation semantics were changed. Job edit's existing commit-before-close callback is preserved. Library's nested Close controls remain custom because they return from an internal mode to the Library list rather than dismissing the host sheet.
+
+## N5+ backlog
+
+1. SystemDock visual and root-lens transition review (N5); no dock changes in N4.
+2. Return-state engine and restoration policy (N6).
+3. Continue a full modal inventory for other custom dialogs and confirmation surfaces; retain custom controls when they represent explicit save/cancel choices or local mode navigation.
+4. Browser/device QA: focus order, screen-reader labels, scrim dismissal, Escape arbitration, scroll restoration, and 320–390px widths.

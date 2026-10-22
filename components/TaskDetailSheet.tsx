@@ -1,4 +1,5 @@
 'use client';
+import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Subtask, Task, TaskContext } from '@/lib/taskTypes';
@@ -1395,14 +1396,7 @@ export function TaskDetailSheet(props: {
               />
             ) : null}
           </div>
-          <button
-            type="button"
-            className="gear-btn"
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            <CloseIcon />
-          </button>
+          <SheetDismiss onDismiss={handleClose} label="Close" />
         </div>
 
         {task.intended_time ? (

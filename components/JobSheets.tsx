@@ -1,10 +1,11 @@
 'use client';
+import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Job } from '@/lib/jobTypes';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
-import { CloseIcon, TrashIcon } from '@/components/icons';
+import { TrashIcon } from '@/components/icons';
 import { supabase } from '@/lib/supabaseClient';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import {
@@ -92,9 +93,7 @@ export function NewJobSheet(props: {
       <div ref={dialogRef} className="capture-sheet new-job-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="New job">
         <div className="task-detail-header" style={{ marginBottom: 0 }}>
           <div className="settings-panel-title">New job</div>
-          <button className="gear-btn" onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </button>
+          <SheetDismiss onDismiss={onClose} label="Close" />
         </div>
 
         <p className="job-detail-kicker">Job</p>
@@ -260,16 +259,7 @@ export function JobEditSheet(props: {
         aria-label="Job"
       >
         <div className="task-detail-header" style={{ justifyContent: 'flex-end' }}>
-          <button
-            className="gear-btn"
-            onClick={() => {
-              commit();
-              onClose();
-            }}
-            aria-label="Close"
-          >
-            <CloseIcon />
-          </button>
+          <SheetDismiss onDismiss={() => { commit(); onClose(); }} label="Close" />
         </div>
 
         <p className="job-detail-kicker">Job</p>

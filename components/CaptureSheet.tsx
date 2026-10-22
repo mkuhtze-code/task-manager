@@ -1,4 +1,5 @@
 'use client';
+import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
 /**
 
@@ -1207,13 +1208,7 @@ onClick={(e) => e.stopPropagation()}
       </h2>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <button
-          type="button"
-          className="btn-text capture-sheet-close ux-button ux-button--quiet"
-          onClick={onClose}
-        >
-          Close
-        </button>
+        <SheetDismiss onDismiss={onClose} label="Close" />
       </div>
     </div>
 

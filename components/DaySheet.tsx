@@ -1,6 +1,7 @@
 'use client';
+import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
-import { CloseIcon, ChevronIcon, BedIcon, MapPinIcon, CompassIcon } from '@/components/icons';
+import { ChevronIcon, BedIcon, MapPinIcon, CompassIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 function fmtMins(mins: number): string {
@@ -104,9 +105,7 @@ export default function DaySheet(props: DaySheetProps) {
               · Day {dayIndex + 1} of {tripDays.length}
             </span>
           </div>
-          <button className="gear-btn" onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </button>
+          <SheetDismiss onDismiss={onClose} label="Close" />
         </div>
 
         <p className="job-detail-kicker">Day shape</p>

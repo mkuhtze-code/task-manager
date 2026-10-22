@@ -55,4 +55,47 @@ describe('Instrument navigation primitives', () => {
     fireEvent.click(getByRole('button', { name: 'Close' }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
+
+  it('migrates Billing leave chrome without changing feature-query behavior', () => {
+    const page = readFileSync('app/account/billing/page.tsx', 'utf8');
+    expect(page).toContain('upHref="/account" upLabel="Account"');
+    expect(page).not.toContain('backHref="/account"');
+    expect(page).toContain("searchParams.get('feature')");
+    expect(page).toContain('PRO_FEATURE_COPY[highlightFeature]');
+  });
+  it('uses shared Admin Up chrome on sections while preserving the hub exit and auth gate', () => {
+    const layout = readFileSync('app/admin/layout.tsx', 'utf8');
+    const hub = readFileSync('app/admin/page.tsx', 'utf8');
+    expect(layout).toContain("pathname !== '/admin' && <UpLink href=\"/admin\" label=\"Admin\" />");
+    expect(layout).toContain("if (!session || loading || isAdmin === null || !isAdmin)");
+    expect(layout).toContain('href="/" className="adm-action-link"');
+    expect(hub).not.toContain('aria-label="Back"');
+  });
+  it('uses Done for app Contact while preserving Feedback redirect', () => {
+    const contact = readFileSync('app/contact/page.tsx', 'utf8');
+    const feedback = readFileSync('app/feedback/page.tsx', 'utf8');
+    expect(contact).toContain('<AppHeader title="Contact us" utilityDoneHref="/" />');
+    expect(contact).not.toContain('backHref="/"');
+    expect(feedback).toContain("redirect('/contact')");
+  });
+  it('uses the shared dismiss primitive for Capture, Depth, Task detail, and Find place headers', () => {
+    const capture = readFileSync('components/CaptureSheet.tsx', 'utf8');
+    const depth = readFileSync('components/instrument/DepthSheet.tsx', 'utf8');
+    const task = readFileSync('components/TaskDetailSheet.tsx', 'utf8');
+    const findPlace = readFileSync('components/FindPlaceSheet.tsx', 'utf8');
+    expect(capture).toContain('<SheetDismiss onDismiss={onClose} label="Close" />');
+    expect(depth).toContain('<SheetDismiss onDismiss={onDismiss} label="Close" />');
+    expect(task).toContain('<SheetDismiss onDismiss={handleClose} label="Close" />');
+    expect(findPlace).toContain('<SheetDismiss onDismiss={onClose} label="Close" />');
+    expect(capture).not.toContain('aria-label="Back"');
+    expect(depth).not.toContain('aria-label="Back"');
+    expect(findPlace).not.toContain('aria-label="Back"');
+  });
+  it('keeps SheetDismiss independently tested and preserves dialog-owner arbitration', () => {
+    const test = readFileSync('components/instrument/nav/__tests__/navigationPrimitives.test.tsx', 'utf8');
+    const dialogA11y = readFileSync('hooks/useDialogA11y.ts', 'utf8');
+    expect(test).toContain("it('provides an accessible transient dismiss control'");
+    expect(dialogA11y).toContain('activeDialogStack');
+    expect(dialogA11y).toContain('onCloseRef.current()');
+  });
 });

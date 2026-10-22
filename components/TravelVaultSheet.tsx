@@ -1,4 +1,5 @@
 'use client';
+import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
 /**
  * Trip vault — store flights, bookings, tickets, emails, notes on a trip.
@@ -10,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
-import { CloseIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import { PlusIcon, TrashIcon } from '@/components/icons';
 import {
   TRAVEL_DOC_TYPE_OPTIONS,
   buildFlightActivityDraft,
@@ -453,9 +454,7 @@ export default function TravelVaultSheet({
       >
         <div className="task-detail-header">
           <div className="settings-panel-title">Vault</div>
-          <button type="button" className="gear-btn" onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </button>
+          <SheetDismiss onDismiss={onClose} label="Close" />
         </div>
 
         <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.4 }}>
