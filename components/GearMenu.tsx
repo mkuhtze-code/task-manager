@@ -32,7 +32,7 @@ export default function GearMenu({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number; maxHeight: number } | null>(
     null
   );
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -67,9 +67,21 @@ export default function GearMenu({
     const btn = btnRef.current;
     if (!btn) return;
     const r = btn.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const safeTop = Math.max(8, (viewport?.offsetTop ?? 0) + 8);
+    const safeBottom = (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight) - 8;
+    const below = Math.max(0, safeBottom - r.bottom - 8);
+    const above = Math.max(0, r.top - safeTop - 8);
+    const menuHeight = Math.min(menuRef.current?.scrollHeight || 320, 320);
+    const placeBelow = below >= Math.min(menuHeight, 180) || below >= above;
+    const maxHeight = Math.max(120, Math.min(320, placeBelow ? below : above));
+    const top = placeBelow
+      ? Math.min(r.bottom + 8, safeBottom - maxHeight)
+      : Math.max(safeTop, r.top - maxHeight - 8);
     setMenuPos({
-      top: Math.round(r.bottom + 8),
-      right: Math.round(window.innerWidth - r.right),
+      top: Math.round(top),
+      right: Math.max(8, Math.round(window.innerWidth - r.right)),
+      maxHeight: Math.round(maxHeight),
     });
   }
 
@@ -84,9 +96,13 @@ export default function GearMenu({
     }
     window.addEventListener('resize', onReposition);
     window.addEventListener('scroll', onReposition, true);
+    window.visualViewport?.addEventListener('resize', onReposition);
+    window.visualViewport?.addEventListener('scroll', onReposition);
     return () => {
       window.removeEventListener('resize', onReposition);
       window.removeEventListener('scroll', onReposition, true);
+      window.visualViewport?.removeEventListener('resize', onReposition);
+      window.visualViewport?.removeEventListener('scroll', onReposition);
     };
   }, [menuOpen]);
 
@@ -151,6 +167,10 @@ export default function GearMenu({
               left: 'auto',
               margin: 0,
               zIndex: 2147483647,
+              maxHeight: menuPos.maxHeight,
+              maxWidth: 'calc(100vw - 16px)',
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
             }}
           >
             {pathname !== '/analytics' && pathname !== '/preferences' && (
