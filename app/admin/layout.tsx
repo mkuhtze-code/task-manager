@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { AdminContext } from './AdminContext';
 import AdminSidebar from '@/components/admin/AdminSidebar';
+import UpLink from '@/components/instrument/nav/UpLink';
 
 // Admin shell: persistent left navigation + top chrome around an untouched
 // main workspace. Authorization is enforced here (UI gate) and independently
@@ -77,6 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               <MenuIcon />
             </button>
+            {pathname !== '/admin' && <UpLink href="/admin" label="Admin" />}
             <Link href="/admin" className="adm-brand">
               DOKKIT <span className="adm-brand-dim">ADMIN</span>
             </Link>

@@ -1,6 +1,6 @@
 # Instrument Navigation Contract (N0–N1)
 
-Status: N0 inventory + N1 primitives and first migrations. This is a staged contract, not a claim that every legacy route has already migrated.
+Status: N0 inventory + N1 primitives + N2 peer/core utility migrations + N3 remaining utility/admin chrome. This is a staged contract; the N4 transient-sheet backlog remains open.
 
 ## Four navigation kinds
 
@@ -44,43 +44,43 @@ Routes below are grouped by navigation class; dynamic segments are route pattern
 | /travel/[tripId] | Peer push | **Migrated in N2:** Up → Travel → /travel; R4.2 content and delete placement retained |
 | /preferences | Utility hub (GearMenu destination) | **Migrated:** Done → /; settings behavior unchanged |
 | /account | Utility hub | **Migrated in N2:** Done → / in signed-in and signed-out render branches |
-| /account/billing | Utility / plan flow | Deferred; preserve ?feature= redirects |
+| /account/billing | Utility / plan flow | **Migrated in N3:** Up: Account → `/account`; `?feature=` display and Pro redirect/checkout behavior unchanged |
 | /account/change-password | Utility section | **Migrated in N2:** Up: Account → /account in both render branches |
 | /analytics | Utility hub | **Migrated in N2:** Done → / in both render branches |
-| /feedback | Utility flow | Deferred |
-| /contact | Public support | Public route; unchanged |
+| /feedback | Legacy utility path | Redirects to `/contact`; redirect unchanged |
+| /contact | App support utility | **Migrated in N3:** Done → `/`; shared app chrome remains; public marketing site is separate and unchanged |
 | /welcome | Auth/onboarding | Auth flow; unchanged |
 | /reset-password | Auth recovery | Signed-out-safe; unchanged |
-| /admin | Privileged utility hub | Admin-gated; deferred |
-| /admin/[section] | Privileged utility section | Parent should be Admin; deferred |
-| /admin/activity | Privileged utility section | Parent Admin; deferred |
-| /admin/admin-access | Privileged utility section | Parent Admin; deferred |
-| /admin/alerts | Privileged utility section | Parent Admin; deferred |
-| /admin/announcements | Privileged utility section | Parent Admin; deferred |
-| /admin/audit-log | Privileged utility section | Parent Admin; deferred |
-| /admin/database | Privileged utility section | Parent Admin; deferred |
-| /admin/errors | Privileged utility section | Parent Admin; deferred |
-| /admin/feature-flags | Privileged utility section | Parent Admin; deferred |
-| /admin/feedback | Privileged utility section | Parent Admin; deferred |
-| /admin/infrastructure | Privileged utility section | Parent Admin; deferred |
-| /admin/integrations | Privileged utility section | Parent Admin; deferred |
-| /admin/jobs | Privileged utility section | Parent Admin; deferred |
-| /admin/meetings | Privileged utility section | Parent Admin; deferred |
-| /admin/notifications | Privileged utility section | Parent Admin; deferred |
-| /admin/oauth | Privileged utility section | Parent Admin; deferred |
-| /admin/patterns | Privileged utility section | Parent Admin; deferred |
-| /admin/revenue | Privileged utility section | Parent Admin; deferred |
-| /admin/sessions | Privileged utility section | Parent Admin; deferred |
-| /admin/stripe | Privileged utility section | Parent Admin; deferred |
-| /admin/subscriptions | Privileged utility section | Parent Admin; deferred |
-| /admin/support | Privileged utility section | Parent Admin; deferred |
-| /admin/system-settings | Privileged utility section | Parent Admin; deferred |
-| /admin/thinking | Privileged utility section | Parent Admin; deferred |
-| /admin/today | Privileged utility section | Parent Admin; deferred |
-| /admin/travel | Privileged utility section | Parent Admin; deferred |
-| /admin/trials | Privileged utility section | Parent Admin; deferred |
-| /admin/usage | Privileged utility section | Parent Admin; deferred |
-| /admin/users | Privileged utility section | Parent Admin; deferred |
+| /admin | Privileged utility hub | Admin-gated; existing **Open app** → `/` exit retained; no generic Back to replace |
+| /admin/[section] | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/activity | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/admin-access | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/alerts | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/announcements | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/audit-log | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/database | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/errors | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/feature-flags | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/feedback | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/infrastructure | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/integrations | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/jobs | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/meetings | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/notifications | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/oauth | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/patterns | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/revenue | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/sessions | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/stripe | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/subscriptions | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/support | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/system-settings | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/thinking | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/today | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/travel | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/trials | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/usage | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
+| /admin/users | Privileged utility section | **Migrated in N3:** shared AdminLayout Up → Admin → `/admin`; admin gate unchanged |
 
 **Route count:** 46 route patterns in the tree at inventory time (including dynamic admin and auth/public routes); patterns are not a count of runtime URLs.
 
@@ -138,14 +138,13 @@ N0–N2 inventory combines the route tree (46 route patterns as recorded in N0),
 
 The migrated day-to-day peer and utility surfaces above no longer use generic Back as their primary leave control. Remaining known legacy callers of AppHeader's generic fallback are:
 
-- `app/account/billing/page.tsx`: Back to Account. Deferred because billing query/return semantics (including `?feature=` redirects) require a separate safe review.
-- `app/contact/page.tsx`: Back to `/`. Public support route; not part of the core utility migration.
-- `components/AppHeader.tsx`: generic fallback remains for callers not yet migrated.
-- Admin and lower-traffic utility routes remain a later inventory/migration pass; do not bulk-rewrite them in N2.
+- `components/AppHeader.tsx`: generic fallback remains for legacy callers outside this phase; migrated Billing and Contact no longer use it.
+- `/admin` itself has no generic Back control; its existing `Open app → /` exit remains the hub policy.
+- Remaining fallback call sites outside the N3 scope require a future route-specific review.
 
 The indexed pre-N2 source queries returned zero `router.back` / `history.back` matches. The Travel navigation previously used explicit `router.push('/travel')`; it is now an explicit `UpLink` href. No browser-history back was introduced.
 
-**Counts:** 6 core primary-leave patterns identified in the N0–N1 inventory; all 6 now use their intended navigation language (Jobs, Preferences, Meetings, Travel, Account, Analytics). N2 also migrates Change Password → Account and closes the remaining Preferences render-branch gap. Three known legacy generic-fallback locations remain (Billing, Contact, shared AppHeader fallback); Admin/lower-traffic utilities are deferred. These are inspected findings, not a claim that every literal “Back” in the repository is navigation chrome.
+**Counts through N3:** core peer/utility exits now use their contract labels; Billing and Contact have migrated, and Admin sections share one layout-level Up control. The shared AppHeader fallback remains for unmigrated callers outside this scope. These are inspected primary-control findings, not a claim that every literal “Back” in the repository is navigation chrome.
 
 GearMenu ownership and SystemDock remain unchanged. Root order remains Today → Jobs → Meetings → Travel; Pro redirects and billing destination semantics remain untouched. Trip deletion remains a domain control, separate from the Travel Up link.
 ## Primitive API
@@ -156,11 +155,22 @@ GearMenu ownership and SystemDock remain unchanged. Root order remains Today →
 
 CSS lives in app/instrument-nav.css and uses --ins-* tokens. It is loaded from the root layout. No dock visual, engine, entitlement, or mutation behavior changes in this phase.
 
-## N3+ backlog
+## N3 completion
 
-1. Audit Admin hub/section routes and lower-traffic utility surfaces without bulk-changing shared headers.
-2. Review Billing leave semantics and preserve all `?feature=` redirect/return behavior before replacing its legacy Back control.
-3. Decide whether Contact should use UtilityDone or retain its public-route Back-to-home treatment.
-4. Adopt SheetDismiss consistently across Capture, DepthSheet, Find place, Travel tools, vault, and confirmation surfaces; verify Escape and invoker focus restoration.
-5. Consider utility dock dimming and root-switch opacity-only transition only after dedicated design review; N2 does not restyle SystemDock.
-6. Browser/device QA: focus order, screen-reader labels, scrim dismissal, Escape, scroll restoration, signed-out routes, and 320–390px widths.
+| Route / surface | Leave control | Destination | Status / invariant |
+|---|---|---|---|
+| `/account/billing` | **Up: Account** | `/account` | Shared AppHeader props only; `?feature=` reading/highlighting, Stripe checkout/portal logic, and Pro redirects unchanged |
+| `/contact` (app support chrome) | **Done** | `/` | AppHeader utility exit; public marketing site untouched |
+| `/feedback` | Redirect | `/contact` | Legacy redirect unchanged |
+| `/admin` | **Open app** | `/` | Existing admin hub exit retained; no generic Back was present |
+| `/admin/*` sections | **Up: Admin** | `/admin` | One shared AdminLayout control; existing admin session/authorization gate unchanged |
+
+Admin strategy: `app/admin/layout.tsx` renders `UpLink` only when `pathname !== '/admin'`. This covers the section routes in the inventory without per-page edits. The signed-out/loading/unauthorized AdminGate branch is unchanged. The Admin overview has no generic Back control; its explicit Open app link remains the existing exit policy.
+
+N3 source guards cover Billing's parent link and `?feature=` handling, shared Admin section Up/hub exit/auth gate, and Contact Done plus the Feedback redirect. CI is the acceptance gate; source inspection alone does not establish test/build success.
+
+## N4+ backlog
+
+1. Adopt `SheetDismiss` consistently across Capture, DepthSheet, Find place, Travel tools, vault, and confirmation surfaces; verify Escape and invoker focus restoration.
+2. Consider utility dock dimming and root-switch opacity-only transition only after dedicated design review; no SystemDock visual changes in N3.
+3. Browser/device QA: focus order, screen-reader labels, scrim dismissal, Escape, scroll restoration, signed-out routes, and 320–390px widths.
