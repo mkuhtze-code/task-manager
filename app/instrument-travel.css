@@ -124,3 +124,109 @@
   [data-instrument-shell] .desk-trip-detail .ins-travel-stop-row { padding-inline: var(--ins-space-5); }
 }
 @media (prefers-reduced-motion: reduce) { [data-instrument-shell] .ins-travel-instrument__primary button { transition: none; } }
+
+
+/* R4.2 — refine the Travel day into a continuous Instrument surface. */
+[data-instrument-shell] .ins-travel-instrument { gap:var(--ins-space-3); padding:var(--ins-space-3) 0 var(--ins-space-4); }
+[data-instrument-shell] .ins-travel-instrument__identity { align-items:center; }
+[data-instrument-shell] .ins-travel-instrument__pulse { max-width:46%; }
+[data-instrument-shell] .ins-travel-instrument__primary button { min-height:48px; }
+[data-instrument-shell] .ins-travel-day-instrument { gap:var(--ins-space-3); padding:var(--ins-space-4) 0; background:transparent; border-bottom:1px solid var(--ins-line); }
+[data-instrument-shell] .ins-travel-day__identity { align-items:center; }
+[data-instrument-shell] .ins-travel-day__name h2 { font-size:var(--ins-type-identity); line-height:1.08; letter-spacing:-.035em; }
+[data-instrument-shell] .ins-travel-day__pulse { max-width:52%; }
+[data-instrument-shell] .ins-travel-day__window { font-size:var(--ins-type-glance-mono); line-height:1.3; }
+[data-instrument-shell] .ins-travel-day__fit { color:var(--ins-ink-soft); }
+[data-instrument-shell] .ins-travel-day__meta { color:var(--ins-ink-faint); }
+[data-instrument-shell] .ins-travel-day__tools { min-width:0; padding-top:var(--ins-space-1); border-top:1px solid var(--ins-line); }
+[data-instrument-shell] .ins-travel-tools { align-items:center; gap:0; margin:0; padding:0; overscroll-behavior-x:contain; scroll-snap-type:x proximity; }
+[data-instrument-shell] .ins-travel-tools button { position:relative; min-width:44px; min-height:44px; padding:0 var(--ins-space-3); border:0; border-radius:var(--ins-radius-sm); background:transparent; color:var(--ins-ink-soft); font-weight:500; scroll-snap-align:start; }
+[data-instrument-shell] .ins-travel-tools button + button { border-left:1px solid var(--ins-line); border-radius:0; }
+[data-instrument-shell] .ins-travel-tools button:hover,
+[data-instrument-shell] .ins-travel-tools button:active { background:var(--ins-paper-elevated); color:var(--ins-ink); }
+[data-instrument-shell] .ins-travel-tools button:focus-visible { position:relative; z-index:1; outline:2px solid var(--ins-focus-ring); outline-offset:-2px; }
+[data-instrument-shell] .ins-travel-day__details { min-height:44px; padding-top:var(--ins-space-2); color:var(--ins-ink-soft); }
+[data-instrument-shell] .trip-day-strip { padding:var(--ins-space-2) 0; background:transparent; }
+[data-instrument-shell] .trip-day-chip { flex:0 0 auto; }
+[data-instrument-shell] .ins-travel-stop-row { box-sizing:border-box; min-width:0; padding:0; border-bottom:1px solid var(--ins-line); }
+[data-instrument-shell] .ins-travel-stop-row .task-row { box-sizing:border-box; overflow:visible; padding:var(--ins-space-3) 0; background:transparent; }
+[data-instrument-shell] .ins-travel-stop-row .task-row.task-list-item { background:transparent; }
+[data-instrument-shell] .ins-travel-stop-row .task-main { display:grid; grid-template-columns:44px minmax(0,1fr) auto 44px; align-items:center; gap:var(--ins-space-2); min-width:0; }
+[data-instrument-shell] .ins-travel-stop-row .check-btn,
+[data-instrument-shell] .ins-travel-stop-row .drag-handle-btn { box-sizing:border-box; width:44px; min-width:44px; min-height:44px; height:44px; justify-self:center; }
+[data-instrument-shell] .ins-travel-stop-row .task-body { min-width:0; align-self:center; }
+[data-instrument-shell] .ins-travel-stop-row .task-text { font-size:var(--ins-type-body); font-weight:600; line-height:1.35; overflow-wrap:anywhere; }
+[data-instrument-shell] .ins-travel-stop-row .stop-kind-mark { display:inline; margin-right:var(--ins-space-1); color:var(--ins-ink-faint); font-size:var(--ins-type-context); font-weight:500; letter-spacing:.025em; }
+[data-instrument-shell] .ins-travel-stop-row .activity-meta { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--ins-space-1) var(--ins-space-2); margin-top:var(--ins-space-1); color:var(--ins-ink-faint); font-size:var(--ins-type-context); font-weight:400; line-height:1.35; }
+[data-instrument-shell] .ins-travel-stop-row .activity-meta-loc { min-width:0; max-width:100%; }
+[data-instrument-shell] .ins-travel-stop-row .activity-meta-hint { color:var(--ins-ink-faint); }
+[data-instrument-shell] .ins-travel-stop-row .activity-glance { max-width:10.5rem; color:var(--ins-ink-soft); font:500 var(--ins-type-glance-mono)/1.35 var(--ins-font-mono); font-variant-numeric:tabular-nums; white-space:normal; text-align:right; overflow-wrap:anywhere; }
+[data-instrument-shell] .ins-travel-stop-row .activity-glance.conflict { color:var(--ins-danger); }
+[data-instrument-shell] .ins-travel-stop-row .trip-stop-drive-unknown { color:var(--ins-ink-faint); font:inherit; }
+[data-instrument-shell] .ins-travel-stop-row .trip-stop-maps-link { display:inline-flex; align-items:center; min-height:44px; margin-top:var(--ins-space-1); color:var(--ins-ink-soft); font-size:var(--ins-type-context); text-underline-offset:2px; }
+[data-instrument-shell] .ins-travel-stop-row .task-row.conflict::before { background:var(--ins-danger); opacity:.75; }
+[data-instrument-shell] .ins-travel-stop-row .leg-wrap { margin-top:var(--ins-space-2); margin-left:calc(44px + var(--ins-space-2)); padding-top:var(--ins-space-2); border-top:1px solid var(--ins-line); }
+[data-instrument-shell] .ins-travel-stop-row .leg-connector-toggle,
+[data-instrument-shell] .ins-travel-stop-row .leg-wrap button { min-height:44px; }
+[data-instrument-shell] .ins-travel-status { padding:var(--ins-space-2) var(--ins-space-4); border-bottom:1px solid var(--ins-line); color:var(--ins-ink-faint); background:transparent; font-size:var(--ins-type-context); line-height:1.4; }
+[data-instrument-shell] .ins-travel-date-editor { padding:var(--ins-space-2) var(--ins-space-4) var(--ins-space-3); border-bottom:1px solid var(--ins-line); }
+[data-instrument-shell] .ins-travel-sheet-backdrop { position:fixed; inset:0; z-index:var(--ins-z-sheet); display:flex; align-items:flex-end; justify-content:center; padding:var(--ins-safe-top) 0 0; background:var(--ins-scrim); animation:ins-travel-sheet-fade var(--ins-motion-standard) var(--ins-motion-ease) both; }
+[data-instrument-shell] .ins-travel-capture-sheet { box-sizing:border-box; position:relative; inset:auto; width:min(100%,720px); max-height:calc(100dvh - var(--ins-safe-top) - var(--ins-space-3)); overflow-y:auto; gap:var(--ins-space-3); padding:var(--ins-space-4); padding-bottom:max(var(--ins-space-4),var(--ins-safe-bottom)); border:1px solid var(--ins-line); border-bottom:0; border-radius:var(--ins-radius-lg) var(--ins-radius-lg) 0 0; background:var(--ins-paper-elevated); color:var(--ins-ink); box-shadow:var(--ins-shadow-sheet); animation:ins-travel-sheet-rise var(--ins-motion-standard) var(--ins-motion-ease) both; }
+[data-instrument-shell] .ins-travel-capture-sheet .task-detail-header { margin-bottom:0; padding-bottom:var(--ins-space-3); border-color:var(--ins-line); }
+[data-instrument-shell] .ins-travel-capture-sheet .settings-panel-title { color:var(--ins-ink); font-size:var(--ins-type-body); font-weight:650; }
+[data-instrument-shell] .ins-travel-capture-sheet input,
+[data-instrument-shell] .ins-travel-capture-sheet select { box-sizing:border-box; min-height:44px; border:1px solid var(--ins-line-strong); border-radius:var(--ins-radius-sm); background:var(--ins-paper); color:var(--ins-ink); font:var(--ins-type-body)/1.3 var(--ins-font-sans); }
+[data-instrument-shell] .ins-travel-capture-sheet input:focus-visible,
+[data-instrument-shell] .ins-travel-capture-sheet select:focus-visible { outline:2px solid var(--ins-focus-ring); outline-offset:2px; }
+[data-instrument-shell] .ins-travel-capture-sheet button:focus-visible { outline:2px solid var(--ins-focus-ring); outline-offset:2px; }
+@keyframes ins-travel-sheet-fade { from {opacity:0} to {opacity:1} }
+@keyframes ins-travel-sheet-rise { from {transform:translateY(12px);opacity:.8} to {transform:translateY(0);opacity:1} }
+@media (max-width:479px) {
+  [data-instrument-shell] .ins-travel-instrument__identity,
+  [data-instrument-shell] .ins-travel-day__identity { align-items:flex-start; flex-direction:column; gap:var(--ins-space-2); }
+  [data-instrument-shell] .ins-travel-instrument__pulse,
+  [data-instrument-shell] .ins-travel-day__pulse { max-width:none; text-align:left; }
+  [data-instrument-shell] .ins-travel-tools { margin-inline:calc(-1 * var(--ins-space-1)); }
+  [data-instrument-shell] .ins-travel-stop-row .task-main { grid-template-columns:44px minmax(0,1fr) 44px; }
+  [data-instrument-shell] .ins-travel-stop-row .activity-glance { grid-column:2; grid-row:2; justify-self:start; max-width:100%; padding-top:var(--ins-space-1); text-align:left; }
+  [data-instrument-shell] .ins-travel-stop-row .drag-handle-btn { grid-column:3; grid-row:1 / span 2; }
+  [data-instrument-shell] .ins-travel-stop-row .task-body { grid-column:2; grid-row:1; }
+  [data-instrument-shell] .ins-travel-stop-row .check-btn { grid-column:1; grid-row:1 / span 2; }
+}
+@media (prefers-reduced-motion:reduce) {
+  [data-instrument-shell] .ins-travel-sheet-backdrop,
+  [data-instrument-shell] .ins-travel-capture-sheet { animation:none; transition:none; }
+  [data-instrument-shell] .ins-travel-tools button { scroll-behavior:auto; transition:none; }
+}
+
+[data-instrument-shell] .ins-travel-capture-sheet .btn-steel {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:48px;
+  border:1px solid var(--ins-steel);
+  border-radius:var(--ins-radius-md);
+  background:var(--ins-steel);
+  color:var(--ins-paper-elevated);
+  font:600 var(--ins-type-body)/1.2 var(--ins-font-sans);
+}
+[data-instrument-shell] .ins-travel-capture-sheet .btn-steel:hover,
+[data-instrument-shell] .ins-travel-capture-sheet .btn-steel:active {
+  background:var(--ins-steel);
+  color:var(--ins-paper-elevated);
+}
+[data-instrument-shell] .ins-travel-capture-sheet p {
+  color:var(--ins-ink-soft);
+}
+[data-instrument-shell] .ins-travel-capture-sheet .ins-travel-capture-error {
+  color:var(--ins-danger);
+}
+[data-instrument-shell] .ins-travel-stop-row .trip-stop-work-label {
+  color:var(--ins-ink-soft);
+  font-size:var(--ins-type-context);
+  line-height:1.35;
+}
+[data-instrument-shell] .ins-travel-stop-row .ins-travel-stop-row__handle[aria-label="Fixed time, locked in place"] {
+  color:var(--ins-ink-faint);
+  cursor:default;
+}
