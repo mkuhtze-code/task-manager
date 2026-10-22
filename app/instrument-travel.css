@@ -146,7 +146,17 @@
 [data-instrument-shell] .ins-travel-tools button:active { background:var(--ins-paper-elevated); color:var(--ins-ink); }
 [data-instrument-shell] .ins-travel-tools button:focus-visible { position:relative; z-index:1; outline:2px solid var(--ins-focus-ring); outline-offset:-2px; }
 [data-instrument-shell] .ins-travel-day__details { min-height:44px; padding-top:var(--ins-space-2); color:var(--ins-ink-soft); }
-[data-instrument-shell] .trip-day-strip { padding:var(--ins-space-2) 0; background:transparent; }
+/* Keep the day selector above scrolling trip content with an opaque surface. */
+[data-instrument-shell] .trip-day-strip {
+  position:sticky;
+  top:0;
+  z-index:30;
+  isolation:isolate;
+  padding:var(--ins-space-2) var(--ins-space-4);
+  background:var(--ins-paper);
+  border-bottom:1px solid var(--ins-line);
+  box-shadow:0 4px 10px rgb(26 41 51 / 6%);
+}
 [data-instrument-shell] .trip-day-chip { flex:0 0 auto; }
 [data-instrument-shell] .ins-travel-stop-row { box-sizing:border-box; min-width:0; padding:0; border-bottom:1px solid var(--ins-line); }
 [data-instrument-shell] .ins-travel-stop-row .task-row { box-sizing:border-box; overflow:visible; padding:var(--ins-space-3) 0; background:transparent; }
@@ -176,6 +186,22 @@
 [data-instrument-shell] .ins-travel-capture-sheet .settings-panel-title { color:var(--ins-ink); font-size:var(--ins-type-body); font-weight:650; }
 [data-instrument-shell] .ins-travel-capture-sheet input,
 [data-instrument-shell] .ins-travel-capture-sheet select { box-sizing:border-box; min-height:44px; border:1px solid var(--ins-line-strong); border-radius:var(--ins-radius-sm); background:var(--ins-paper); color:var(--ins-ink); font:var(--ins-type-body)/1.3 var(--ins-font-sans); }
+[data-instrument-shell] .ins-travel-capture-sheet input[type="time"] {
+  appearance:auto;
+  -webkit-appearance:auto;
+  color-scheme:light;
+  width:100%;
+  min-width:0;
+  padding:var(--ins-space-2) var(--ins-space-3);
+  font-variant-numeric:tabular-nums;
+  accent-color:var(--ins-steel);
+  cursor:pointer;
+}
+[data-instrument-shell] .ins-travel-capture-sheet input[type="time"]::-webkit-calendar-picker-indicator {
+  display:block;
+  opacity:1;
+  cursor:pointer;
+}
 [data-instrument-shell] .ins-travel-capture-sheet input:focus-visible,
 [data-instrument-shell] .ins-travel-capture-sheet select:focus-visible { outline:2px solid var(--ins-focus-ring); outline-offset:2px; }
 [data-instrument-shell] .ins-travel-capture-sheet button:focus-visible { outline:2px solid var(--ins-focus-ring); outline-offset:2px; }

@@ -278,7 +278,8 @@
 .trip-day-strip {
   position: sticky;
   top: 0;
-  z-index: 18;
+  z-index: 30;
+  isolation: isolate;
   background: var(--bg);
   margin-left: calc(-1 * var(--space-page, 16px));
   margin-right: calc(-1 * var(--space-page, 16px));
