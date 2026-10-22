@@ -70,12 +70,15 @@ export default function GearMenu({
     const viewport = window.visualViewport;
     const safeTop = Math.max(8, (viewport?.offsetTop ?? 0) + 8);
     const safeBottom = (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight) - 8;
-    const preferredHeight = 320;
     const below = Math.max(0, safeBottom - r.bottom - 8);
     const above = Math.max(0, r.top - safeTop - 8);
-    const placeBelow = below >= Math.min(preferredHeight, 180) || below >= above;
-    const maxHeight = Math.max(80, Math.min(preferredHeight, placeBelow ? below : above));
-    const top = placeBelow ? r.bottom + 8 : Math.max(safeTop, r.top - maxHeight - 8);
+    const menuHeight = Math.min(menuRef.current?.scrollHeight || 320, 320);
+    const placeBelow = below >= Math.min(menuHeight, 180) || below >= above;
+    const available = placeBelow ? below : above;
+    const maxHeight = Math.max(1, Math.min(320, available));
+    const top = placeBelow
+      ? Math.min(r.bottom + 8, safeBottom - maxHeight)
+      : Math.max(safeTop, r.top - maxHeight - 8);
     setMenuPos({
       top: Math.round(top),
       right: Math.max(8, Math.round(window.innerWidth - r.right)),
@@ -92,16 +95,15 @@ export default function GearMenu({
     function onReposition() {
       placeMenu();
     }
-    const viewport = window.visualViewport;
     window.addEventListener('resize', onReposition);
     window.addEventListener('scroll', onReposition, true);
-    viewport?.addEventListener('resize', onReposition);
-    viewport?.addEventListener('scroll', onReposition);
+    window.visualViewport?.addEventListener('resize', onReposition);
+    window.visualViewport?.addEventListener('scroll', onReposition);
     return () => {
       window.removeEventListener('resize', onReposition);
       window.removeEventListener('scroll', onReposition, true);
-      viewport?.removeEventListener('resize', onReposition);
-      viewport?.removeEventListener('scroll', onReposition);
+      window.visualViewport?.removeEventListener('resize', onReposition);
+      window.visualViewport?.removeEventListener('scroll', onReposition);
     };
   }, [menuOpen]);
 

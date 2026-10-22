@@ -167,7 +167,10 @@ export default function AppChrome({
         header={session?.user?.id ? (
           <div className="instrument-shell__header-stack">
             <div className="instrument-shell__global-tools">
-              <GearMenu context={pathname.startsWith('/travel') ? 'travel' : pathname.startsWith('/jobs') ? 'jobs' : 'work'} userId={session.user.id} />
+              <GearMenu
+                context={pathname.startsWith('/travel') ? 'travel' : pathname.startsWith('/jobs') ? 'jobs' : 'work'}
+                userId={session.user.id}
+              />
             </div>
             {pathname === '/' && headerProps ? (
               <TodayInstrument
