@@ -2,10 +2,9 @@
 
 import './patterns.css';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import GearMenu from '@/components/GearMenu';
-import { BackIcon } from '@/components/icons';
+import UtilityDone from '@/components/instrument/nav/UtilityDone';
 import {
   runObservationPipeline,
   topActionableObservations,
@@ -481,7 +480,6 @@ function ModelHealth({ model }: { model: ReturnType<typeof buildPatternSurfaceMo
 }
 
 export default function Analytics() {
-  const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -642,9 +640,7 @@ export default function Analytics() {
       <div className="app-shell patterns-shell">
         <div className="app-header">
           <div className="app-header-left">
-            <button className="back-link" onClick={() => router.push('/')} aria-label="Back">
-              <BackIcon />
-            </button>
+            <UtilityDone href="/" />
             <h1 className="app-title">Patterns</h1>
           </div>
         </div>
@@ -662,14 +658,7 @@ export default function Analytics() {
     <div className="app-shell patterns-shell">
       <header className="pk-header">
         <div className="pk-header-row">
-          <button
-            type="button"
-            className="back-link pk-back"
-            onClick={() => router.push('/')}
-            aria-label="Back to Today"
-          >
-            <BackIcon />
-          </button>
+          <UtilityDone href="/" />
           <div className="pk-title-block">
             <span className="pk-kicker">Understanding</span>
             <h1 className="pk-title">Patterns</h1>
