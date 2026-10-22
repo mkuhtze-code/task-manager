@@ -30,7 +30,8 @@ import MeetingCaptureDock from '@/components/MeetingCaptureDock';
 import MeetingExport from '@/components/MeetingExport';
 import GearMenu from '@/components/GearMenu';
 import SurfaceNav from '@/components/SurfaceNav';
-import { BackIcon, TrashIcon } from '@/components/icons';
+import UpLink from '@/components/instrument/nav/UpLink';
+import { TrashIcon } from '@/components/icons';
 import { checkStorageQuota, STORAGE_FULL_MESSAGE, isQuotaErrorMessage } from '@/lib/assertStorageQuota';
 import { MeetingConnections } from '@/components/MeetingConnections';
 import PillReveal from '@/components/PillReveal';
@@ -537,9 +538,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     return (
       <div className="app-shell">
         <div className="app-header">
-          <Link href="/meetings" className="gear-btn" aria-label="Back">
-            <BackIcon />
-          </Link>
+          <UpLink href="/meetings" label="Meetings" />
           <div className="app-title">Meeting</div>
           <GearMenu />
         </div>
@@ -559,9 +558,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
     return (
       <div className="app-shell">
         <div className="app-header">
-          <Link href="/meetings" className="gear-btn" aria-label="Back">
-            <BackIcon />
-          </Link>
+          <UpLink href="/meetings" label="Meetings" />
           <div className="app-title">Meeting</div>
           <GearMenu />
         </div>
@@ -578,9 +575,7 @@ export default function MeetingDetail({ params }: { params: { meetingId: string 
   return (
     <div className="app-shell">
       <div className="app-header meeting-detail-header">
-        <Link href="/meetings" className="gear-btn" aria-label="Back to meetings">
-          <BackIcon />
-        </Link>
+        <UpLink href="/meetings" label="Meetings" />
         <div className="meeting-detail-header-identity">
           <h1 className="app-title meeting-detail-title">{meeting.text || 'Meeting'}</h1>
           <ContextLine

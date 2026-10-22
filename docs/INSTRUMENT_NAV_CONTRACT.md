@@ -40,13 +40,13 @@ Routes below are grouped by navigation class; dynamic segments are route pattern
 | /meetings | Root lens | SystemDock root; Pro behavior unchanged |
 | /travel | Root lens | SystemDock root; Pro behavior unchanged |
 | /jobs/[jobId] | Peer push | **Migrated:** explicit Up → /jobs, label **Jobs** |
-| /meetings/[meetingId] | Peer push | Deferred to N2; legacy header retained |
-| /travel/[tripId] | Peer push | Deferred to N2; trip-delete placement unchanged |
+| /meetings/[meetingId] | Peer push | **Migrated in N2:** Up → Meetings → /meetings; dock retained |
+| /travel/[tripId] | Peer push | **Migrated in N2:** Up → Travel → /travel; R4.2 content and delete placement retained |
 | /preferences | Utility hub (GearMenu destination) | **Migrated:** Done → /; settings behavior unchanged |
-| /account | Utility hub | Deferred |
+| /account | Utility hub | **Migrated in N2:** Done → / in signed-in and signed-out render branches |
 | /account/billing | Utility / plan flow | Deferred; preserve ?feature= redirects |
-| /account/change-password | Utility section | Deferred; intended Up → Account |
-| /analytics | Utility hub | Deferred |
+| /account/change-password | Utility section | **Migrated in N2:** Up: Account → /account in both render branches |
+| /analytics | Utility hub | **Migrated in N2:** Done → / in both render branches |
 | /feedback | Utility flow | Deferred |
 | /contact | Public support | Public route; unchanged |
 | /welcome | Auth/onboarding | Auth flow; unchanged |
@@ -108,35 +108,46 @@ Inventory is based on named app components and the instrument shell references v
 
 ## Source-pattern inventory and anti-patterns
 
-N0 inventoried all 46 app page route patterns and reviewed the shared shell/header, GearMenu, AppChrome, SystemDock/SurfaceNav, peer detail headers, Preferences, and named sheet/panel components. GitHub code-search queries against main returned the following indexed matches. These are search-result counts, not raw occurrence counts: code search can return one file for multiple matches and common words such as “Back” include prose and non-navigation controls.
+N0–N2 inventory combines the route tree (46 route patterns as recorded in N0), focused source inspection of the migrated pages, and GitHub code-search queries against main before the N2 patch. GitHub search counts are indexed result counts, not raw occurrence totals; indexing can lag merged commits and common words match prose as well as controls.
+
+### Search snapshot before N2 migrations
 
 | Search pattern | Indexed results | Interpretation |
 |---|---:|---|
-| router.back | 0 | No indexed result returned; use explicit href by default |
-| history.back | 0 | No indexed result returned; use explicit href by default |
-| literal Back | 100 returned (query limit reached) | Very noisy: docs, comments, onboarding and UI text; inspect navigation-specific hits rather than treating this as a primary-control count |
-| ‹ | 0 | No indexed result returned |
-| leading back links / back-link | 8 | Includes JSX controls plus CSS selectors; relevant route controls are itemized below |
-| BackIcon | 7 | Icon definition, shared AppHeader, Analytics, Meeting detail, Job detail, Travel detail, and Android icon source |
-| back-link | 8 | Shared header, Analytics, Job detail, Travel detail, plus matching style rules |
-| aria-label Back | 48 | Noisy query: includes generic icon controls, “Back to Today”, and non-navigation copy; inspect file context before classifying |
+| `router.back` | 0 | No indexed matches; explicit href remains the default |
+| `history.back` | 0 | No indexed matches |
+| `BackIcon` | 7 | Shared header, Analytics, Meeting, Job, Travel, icon source and Android icon source |
+| `back-link` | 7 | Shared header, Analytics, Job, Travel and CSS selectors |
+| `aria-label Back` | 47 | Noisy: generic primary controls and unrelated UI controls |
+| `UpLink` / `UtilityDone` | 0 | Search index had not yet reflected the merged N1 implementation |
 
-### Confirmed primary leave-control findings
+### Confirmed primary leave-control findings and disposition
 
-| Location | Finding | Disposition |
+| Location | Finding before N2 | Disposition |
 |---|---|---|
-| app/jobs/[jobId]/page.tsx | Icon-only parent link labelled “Back to jobs” | **Fixed:** visible UpLink label **Jobs**, explicit /jobs |
-| app/preferences/page.tsx | Preferences used shared AppHeader generic “Back” icon to / | **Fixed:** utility **Done** → / |
-| app/meetings/[meetingId]/page.tsx | Parent route link /meetings still exposes generic “Back” accessible label | Deferred to N2: Up → /meetings |
-| app/travel/[tripId]/page.tsx | Explicit parent navigation to /travel is still labelled generic “Back to travel” | Deferred to N2: Up → /travel |
-| app/analytics/page.tsx | Utility-like Analytics surface uses icon-only “Back” to / | Deferred to N2 utility audit |
-| app/account/page.tsx + components/AppHeader.tsx | Account uses shared AppHeader with backHref="/" and generic “Back” | Deferred to N2 utility audit |
-| components/AppHeader.tsx | Generic icon-only aria-label="Back" fallback remains for legacy callers | Retained only to avoid a broad navigation-tree rewrite in N1; migrate callers by class |
+| `app/jobs/[jobId]/page.tsx` | Icon-only “Back to jobs” | **Fixed in N1:** Up → Jobs → `/jobs` |
+| `app/preferences/page.tsx` | Generic Back in utility header; one render branch remained after N1 | **Fixed:** Done → `/` in both render branches |
+| `app/meetings/[meetingId]/page.tsx` | Generic Back in loading, error and populated detail headers | **Fixed in N2:** Up → Meetings → `/meetings` in all three branches |
+| `app/travel/[tripId]/page.tsx` | “Back to travel” icon button | **Fixed in N2:** Up → Travel → `/travel`; trip content, day strip, tools and domain delete controls unchanged |
+| `app/account/page.tsx` | Generic Back via AppHeader | **Fixed in N2:** Done → `/` in both render branches |
+| `app/account/change-password/page.tsx` | Generic Back via AppHeader | **Fixed in N2:** Up: Account → `/account` in both render branches |
+| `app/analytics/page.tsx` | Icon-only Back / “Back to Today” | **Fixed in N2:** Done → `/` in both render branches |
+| `components/AppHeader.tsx` | Legacy generic Back fallback | **Retained intentionally** for un-migrated callers; N2 adds explicit `upHref` + `upLabel` support |
 
-GearMenu is implemented in components/GearMenu.tsx and is available through shared chrome/header ownership. N1 does not add any page-level gear menu or change its destinations. SystemDock continues delegating to SurfaceNav, preserving Today → Jobs → Meetings → Travel and existing Pro-to-billing behavior.
+### Residual generic Back audit after N2
 
-**Counts for this phase:** 6 route/header primary-leave patterns explicitly identified in app JSX/shared chrome; 2 fixed in N1 (Jobs and Preferences); 4 deferred (Meeting, Travel, Analytics, Account). The source search found 0 indexed router.back/history.back matches. This is the recorded N0 code/search inventory. The N2 gate should repeat these queries against the checked-out source and inspect any newly indexed matches before expanding migrations.
+The migrated day-to-day peer and utility surfaces above no longer use generic Back as their primary leave control. Remaining known legacy callers of AppHeader's generic fallback are:
 
+- `app/account/billing/page.tsx`: Back to Account. Deferred because billing query/return semantics (including `?feature=` redirects) require a separate safe review.
+- `app/contact/page.tsx`: Back to `/`. Public support route; not part of the core utility migration.
+- `components/AppHeader.tsx`: generic fallback remains for callers not yet migrated.
+- Admin and lower-traffic utility routes remain a later inventory/migration pass; do not bulk-rewrite them in N2.
+
+The indexed pre-N2 source queries returned zero `router.back` / `history.back` matches. The Travel navigation previously used explicit `router.push('/travel')`; it is now an explicit `UpLink` href. No browser-history back was introduced.
+
+**Counts:** 6 core primary-leave patterns identified in the N0–N1 inventory; all 6 now use their intended navigation language (Jobs, Preferences, Meetings, Travel, Account, Analytics). N2 also migrates Change Password → Account and closes the remaining Preferences render-branch gap. Three known legacy generic-fallback locations remain (Billing, Contact, shared AppHeader fallback); Admin/lower-traffic utilities are deferred. These are inspected findings, not a claim that every literal “Back” in the repository is navigation chrome.
+
+GearMenu ownership and SystemDock remain unchanged. Root order remains Today → Jobs → Meetings → Travel; Pro redirects and billing destination semantics remain untouched. Trip deletion remains a domain control, separate from the Travel Up link.
 ## Primitive API
 
 - UpLink({ href, label }): explicit parent route; visible parent name; accessible name equals parent name.
@@ -145,11 +156,11 @@ GearMenu is implemented in components/GearMenu.tsx and is available through shar
 
 CSS lives in app/instrument-nav.css and uses --ins-* tokens. It is loaded from the root layout. No dock visual, engine, entitlement, or mutation behavior changes in this phase.
 
-## N2+ backlog
+## N3+ backlog
 
-1. Complete checked-out-repository grep for router.back(), history.back(), generic Back, ‹, and icon-only leading links; record exact counts and owner paths.
-2. Migrate meeting detail Up → /meetings and trip detail Up → /travel, preserving existing selected-day/filter return state.
-3. Audit Account, Billing, Change Password, Analytics, Feedback, and Admin hub/section navigation.
+1. Audit Admin hub/section routes and lower-traffic utility surfaces without bulk-changing shared headers.
+2. Review Billing leave semantics and preserve all `?feature=` redirect/return behavior before replacing its legacy Back control.
+3. Decide whether Contact should use UtilityDone or retain its public-route Back-to-home treatment.
 4. Adopt SheetDismiss consistently across Capture, DepthSheet, Find place, Travel tools, vault, and confirmation surfaces; verify Escape and invoker focus restoration.
-5. Decide dock dimming on utilities and add opacity-only root switching only after visual QA; preserve root order and Pro redirects.
-6. Browser/device QA: focus order, screen reader labels, scrim dismissal, Escape, scroll restoration, signed-out routes, and 320–390px widths.
+5. Consider utility dock dimming and root-switch opacity-only transition only after dedicated design review; N2 does not restyle SystemDock.
+6. Browser/device QA: focus order, screen-reader labels, scrim dismissal, Escape, scroll restoration, signed-out routes, and 320–390px widths.

@@ -2,7 +2,7 @@
 
 import '../travel.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { authedFetch } from '@/lib/authedFetch';
@@ -26,7 +26,6 @@ import MapView from '@/components/MapView';
 import { TravelLeg } from '@/components/TravelLeg';
 import { sortActivities, findFixedTimeConflicts, findUnverifiableFixedTimeStops, SortMode as TravelSortMode } from '@/lib/travelSort';
 import {
-  BackIcon,
   CheckIcon,
   ChevronIcon,
   CloseIcon,
@@ -35,6 +34,7 @@ import {
   TrashIcon,
 } from '@/components/icons';
 import SurfaceNav from '@/components/SurfaceNav';
+import UpLink from '@/components/instrument/nav/UpLink';
 import { useSurfaceMode } from '@/hooks/useSurfaceMode';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useProRedirect } from '@/hooks/useProRedirect';
@@ -633,7 +633,6 @@ function ActivityDetailSheet(props: {
 }
 
 export default function TripDayView() {
-  const router = useRouter();
   const params = useParams();
   const tripId = params.tripId as string;
   const { isDesktop } = useSurfaceMode();
@@ -1649,7 +1648,7 @@ export default function TripDayView() {
     <div className={`app-shell${isDesktop ? ' desk-trip-detail' : ''}`}>
       <div className="app-header travel-detail-header">
         <div className="app-header-left">
-          <button className="back-link" onClick={() => router.push('/travel')} aria-label="Back to travel"><BackIcon /></button>
+          <UpLink href="/travel" label="Travel" />
           <div className="travel-detail-identity">
             <p className="ins-travel-eyebrow">Movement / Trip</p>
             <h1 className="app-title travel-detail-title">{trip.name}</h1>

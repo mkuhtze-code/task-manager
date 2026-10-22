@@ -99,7 +99,7 @@ export default function ChangePassword() {
   if (!session) {
     return (
       <div className="app-shell">
-        <AppHeader title="Change Password" backHref="/account" />
+        <AppHeader title="Change Password" upHref="/account" upLabel="Account" />
         <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 20 }}>Sign in on the main page first.</p>
       </div>
     );
@@ -107,7 +107,7 @@ export default function ChangePassword() {
 
   return (
     <div className="app-shell">
-      <AppHeader title={hasPassword ? 'Change Password' : 'Set a Password'} backHref="/account" />
+      <AppHeader title={hasPassword ? 'Change Password' : 'Set a Password'} upHref="/account" upLabel="Account" />
 
       <div className="settings-panel" style={{ marginTop: 'var(--space-5)' }}>
         {!hasPassword && (

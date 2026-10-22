@@ -183,7 +183,7 @@ export default function AccountPage() {
   if (!session) {
     return (
       <div className="app-shell account-portal">
-        <AppHeader title="Account" backHref="/" />
+        <AppHeader title="Account" utilityDoneHref="/" />
         <p className="account-muted">Sign in on the main page first.</p>
       </div>
     );
@@ -210,7 +210,7 @@ export default function AccountPage() {
 
   return (
     <div className="app-shell account-portal">
-      <AppHeader title="Account" backHref="/" />
+      <AppHeader title="Account" utilityDoneHref="/" />
 
       <div className="account-layout">
         <nav className="account-subnav" aria-label="Account sections">

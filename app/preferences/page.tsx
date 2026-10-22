@@ -581,7 +581,7 @@ export default function Preferences() {
 
   return (
     <div className="app-shell prefs-page">
-      <AppHeader title="Preferences" backHref="/" />
+      <AppHeader title="Preferences" utilityDoneHref="/" />
 
       <div className="prefs-body">
         <p className="prefs-intro">

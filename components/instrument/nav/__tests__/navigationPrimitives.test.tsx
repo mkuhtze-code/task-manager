@@ -20,6 +20,31 @@ describe('Instrument navigation primitives', () => {
     expect(page).toContain('<UpLink href="/jobs" label="Jobs" />');
     expect(page).not.toContain('aria-label="Back to jobs"');
   });
+  it('migrates Meetings detail to its parent lens without generic Back labels', () => {
+    const page = readFileSync('app/meetings/[meetingId]/page.tsx', 'utf8');
+    expect(page).toContain('<UpLink href="/meetings" label="Meetings" />');
+    expect(page).not.toContain('aria-label="Back"');
+    expect(page).not.toContain('aria-label="Back to meetings"');
+  });
+  it('migrates Travel detail to its parent lens without generic Back labels', () => {
+    const page = readFileSync('app/travel/[tripId]/page.tsx', 'utf8');
+    expect(page).toContain('<UpLink href="/travel" label="Travel" />');
+    expect(page).not.toContain('aria-label="Back to travel"');
+    expect(page).not.toContain("router.push('/travel')");
+  });
+  it('migrates Account and Analytics utility exits to Done', () => {
+    const account = readFileSync('app/account/page.tsx', 'utf8');
+    const analytics = readFileSync('app/analytics/page.tsx', 'utf8');
+    expect(account).toContain('utilityDoneHref="/"');
+    expect(account).not.toContain('backHref="/"');
+    expect(analytics).toContain('<UtilityDone href="/" />');
+    expect(analytics).not.toContain('aria-label="Back"');
+  });
+  it('uses Up: Account on the change-password section', () => {
+    const page = readFileSync('app/account/change-password/page.tsx', 'utf8');
+    expect(page).toContain('upHref="/account" upLabel="Account"');
+    expect(page).not.toContain('backHref="/account"');
+  });
   it('completes a utility surface to its explicit destination', () => {
     const { getByRole } = render(<UtilityDone href="/" />);
     expect(getByRole('link', { name: 'Done' }).getAttribute('href')).toBe('/');
