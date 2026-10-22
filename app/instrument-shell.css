@@ -1,17 +1,14 @@
-/* Instrument shell owns its viewport, width and dock clearance. Legacy page CSS remains authoritative inside body. */
+/* Shared Instrument sizing. Desktop retains document flow; mobile owns one viewport. */
 [data-instrument-shell] {
   --instrument-shell-dock-clearance: calc(var(--ins-dock-height) + var(--ins-safe-bottom) + var(--ins-space-4));
   position: relative;
-  display: flex;
-  flex-direction: column;
   box-sizing: border-box;
   width: 100%;
   max-width: none;
   min-width: 0;
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
   padding-inline: var(--ins-safe-left) var(--ins-safe-right);
+  padding-bottom: var(--instrument-shell-dock-clearance);
   color: var(--ins-ink);
   font-family: var(--ins-font-sans);
 }
@@ -21,21 +18,15 @@
 [data-instrument-shell] .instrument-shell__header {
   position: relative;
   z-index: var(--ins-z-header);
-  flex: 0 0 auto;
   min-width: 0;
   width: 100%;
 }
 [data-instrument-shell] .instrument-shell__body {
   display: block;
-  flex: 1 1 auto;
   width: 100%;
   max-width: none;
   min-width: 0;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  -webkit-overflow-scrolling: touch;
   margin-inline: 0;
 }
 [data-instrument-shell] :is(main, section, [data-testid="today-instrument"], [data-testid="jobs-instrument"], [data-testid="meetings-instrument"]) {
@@ -49,18 +40,14 @@
   max-width: none;
   min-width: 0;
 }
-.experience-mobile-frame {
-  height: 100vh;
-  height: 100dvh;
-  min-height: 0;
-  overflow: hidden;
-}
-.experience-mobile-frame__signals { flex: 0 0 auto; min-width: 0; }
-.experience-mobile-frame > [data-instrument-shell] {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
+.experience-mobile-frame { min-height: 100dvh; }
+.experience-mobile-frame__signals { min-width: 0; }
+.experience-mobile-frame__workspace {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  padding-bottom: max(var(--instrument-shell-dock-clearance, 92px), env(safe-area-inset-bottom, 0px));
 }
 .instrument-shell__header-stack { width: 100%; min-width: 0; }
 .instrument-shell__global-tools {
@@ -72,19 +59,47 @@
   padding: 4px max(16px, env(safe-area-inset-right, 0px)) 4px max(16px, env(safe-area-inset-left, 0px));
   border-bottom: 1px solid var(--ins-line);
 }
-.experience-mobile-frame__workspace {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-  padding-bottom: var(--instrument-shell-dock-clearance, calc(76px + env(safe-area-inset-bottom, 0px) + 16px));
-}
 .desk-shell, .desk-main, .desk-main-body,
 .desk-main > [data-instrument-shell], .desk-main-body {
   min-width: 0;
   max-width: none;
 }
 .desk-main > [data-instrument-shell] { width: 100%; }
+@media (max-width: 767px) {
+  .experience-mobile-frame {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .experience-mobile-frame__signals { flex: 0 0 auto; }
+  .experience-mobile-frame > [data-instrument-shell] {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  [data-instrument-shell] .instrument-shell__header { flex: 0 0 auto; }
+  [data-instrument-shell] .instrument-shell__body {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0;
+  }
+  .experience-mobile-frame__workspace {
+    flex: 1 0 auto;
+    padding-bottom: max(var(--instrument-shell-dock-clearance, 92px), env(safe-area-inset-bottom, 0px));
+  }
+}
 @media (min-width: 768px) {
   .experience-mobile-frame { height: auto; min-height: 100dvh; overflow: visible; }
   .experience-mobile-frame > [data-instrument-shell] { height: auto; min-height: 100%; overflow: visible; }
