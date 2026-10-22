@@ -84,7 +84,7 @@ describe('Instrument navigation primitives', () => {
     const task = readFileSync('components/TaskDetailSheet.tsx', 'utf8');
     const findPlace = readFileSync('components/FindPlaceSheet.tsx', 'utf8');
     expect(capture).toContain('<SheetDismiss onDismiss={onClose} label="Close" />');
-    expect(depth).toContain('<SheetDismiss onDismiss={onDismiss} label="Close" />');
+    expect(depth).toContain('<SheetDismiss onDismiss={onDismiss} label="Close" autoFocus />');
     expect(task).toContain('<SheetDismiss onDismiss={handleClose} label="Close" />');
     expect(findPlace).toContain('<SheetDismiss onDismiss={onClose} label="Close" />');
     expect(capture).not.toContain('aria-label="Back"');

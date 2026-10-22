@@ -18,7 +18,7 @@ export default function DepthSheet({ onDismiss, title, identity, glance, headerC
     if (event.target === event.currentTarget) onDismiss();
   }}>
     <div ref={dialogRef} className={['ins-depth-sheet', className].filter(Boolean).join(' ')} role="dialog" aria-modal="true" aria-label={ariaLabel ?? title} data-instrument-depth-dialog>
-      <header className="ins-depth-sheet__header"><h2>{title}</h2>{headerContent}<SheetDismiss onDismiss={onDismiss} label="Close" /></header>
+      <header className="ins-depth-sheet__header"><h2>{title}</h2>{headerContent}<SheetDismiss onDismiss={onDismiss} label="Close" autoFocus /></header>
       {identity != null || glance != null ? <section className="ins-depth-sheet__identity">
         {identity != null ? <div className="ins-depth-sheet__title">{identity}</div> : null}
         {glance != null ? <div className="ins-depth-sheet__glance">{glance}</div> : null}
