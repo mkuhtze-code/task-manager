@@ -58,6 +58,7 @@ import {
   loadPriorForDock,
   type EngineRequest,
 } from '@/lib/engine';
+import { allowCreate, classifyCaptureDockOutcome } from '@/lib/engine/dockOutcome';
 import { buildTravelEngineContext, resolveScheduledDayAnchor, selectInitialTripDay } from '@/lib/travel/travelContext';
 import { buildGoogleMapsDirectionsUrl, displayDriveEstimate } from '@/lib/travel/driveLegs';
 
@@ -971,11 +972,23 @@ export default function TripDayView() {
       },
     });
 
+    const dockAdvisoryMessage =
+      dock.kind === 'answer' || dock.kind === 'defer' || dock.kind === 'clarify'
+        ? dock.message
+        : null;
+    const dockOutcome = classifyCaptureDockOutcome(dock);
+    if (!allowCreate('explicit_create', dockOutcome.class)) {
+      setCaptureEngineMsg(dockOutcome.message);
+      setError(dockOutcome.message || 'Resolve this before adding a stop.');
+      return;
+    }
+
     if (dock.kind === 'answer' || dock.kind === 'defer' || dock.kind === 'clarify') {
+      // Explicit Add stop is write intent: engine commentary remains visible,
+      // but cannot veto the stop. Required travel fields are checked below.
       setCaptureEngineMsg(dock.message);
       setPriorTravelRequest(dock.request);
       setError('');
-      return;
     }
 
     if (dock.kind === 'act_create' || dock.kind === 'act_update') {
@@ -1113,8 +1126,10 @@ export default function TripDayView() {
     setCaptureStopKind('leisure');
     setCapturePresence('duration');
     setCaptureJobId(null);
-    setCaptureEngineMsg(null);
-    setCaptureOpen(false);
+    // Keep an advisory visible after the stop is queued; otherwise the same
+    // gesture would create successfully but erase the warning before paint.
+    setCaptureEngineMsg(dockAdvisoryMessage);
+    setCaptureOpen(!!dockAdvisoryMessage);
     if (typeof navigator === 'undefined' || navigator.onLine !== false) {
       const sync = await flushSyncQueue(session.user.id);
       if (sync.failed === 0 && created.lat != null) await recalculateDay();
@@ -2023,8 +2038,8 @@ export default function TripDayView() {
               </p>
             )}
             {error && <p className="ins-travel-capture-error" style={{ fontSize: 12, margin: 0 }}>{error}</p>}
-            <button className="btn btn-steel" onClick={addActivity} style={{ marginTop: 8, width: '100%' }}>
-              {captureEngineMsg ? 'Add stop anyway' : 'Add stop'}
+            <button className="btn btn-steel" onClick={addActivity} disabled={!captureText.trim()} style={{ marginTop: 8, width: '100%' }}>
+              Add stop
             </button>
           </div>
         </div>

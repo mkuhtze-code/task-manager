@@ -57,6 +57,7 @@ type LearningEvidence,
 type WorkingMemorySnapshot,
 } from '@/lib/engine';
 import { runCaptureDock, loadPriorForDock } from '@/lib/engine/captureDock';
+import { allowCreate, classifyCaptureDockOutcome } from '@/lib/engine/dockOutcome';
 import { canonicalMeaningFromSpeech } from '@/lib/engine/canonicalFromSpeech';
 import { executeCpuDecision } from '@/lib/cpu';
 import { MapPinIcon } from '@/components/icons';
@@ -958,9 +959,10 @@ if (unresolvedCurrentResolution) {
   // lets Today render the existing Yes/Skip UI without parsing every Dock.
   if (draftChanged) setTaskText(currentText);
   setCollectionFeedback(
-    currentResolution.state === 'choose'
-      ? 'Pick which place, or skip'
-      : 'Confirm or skip the place first'
+    currentGate.blockReason ||
+      (currentResolution.state === 'choose'
+        ? 'Pick which place, or skip'
+        : 'Confirm or skip the place first')
   );
   return;
 }
@@ -997,6 +999,13 @@ if (line && addTaskWithOverrides) {
       travelMins,
       visitDurationMins,
     });
+
+    const dockOutcome = classifyCaptureDockOutcome(dock);
+    if (!allowCreate('explicit_create', dockOutcome.class)) {
+      setEngineExplain(dockOutcome.message);
+      setCollectionFeedback(dockOutcome.message || 'This capture needs to be resolved before saving.');
+      return;
+    }
 
     if (dock.request) {
       setEnginePriorRequest(dock.request);
@@ -1084,23 +1093,11 @@ if (line && addTaskWithOverrides) {
       return;
     }
 
-    if (dock.kind === 'answer') {
+    if (dock.kind === 'answer' || dock.kind === 'defer') {
+      // Explicit Dock is a write intent. Capacity/fit commentary is advisory:
+      // surface it, then save the user's wording below instead of soft-vetoing.
       setEngineExplain(dock.message);
       setCollectionFeedback(dock.message);
-      return;
-    }
-
-    if (dock.kind === 'defer') {
-      setEngineExplain(dock.message);
-      setCollectionFeedback(dock.message);
-      confirmSpeechLearning();
-      clearSpeechStatus();
-
-      if (dock.clearLine) {
-        clearDraftText();
-      }
-
-      return;
     }
 
     if (
@@ -1132,9 +1129,10 @@ if (line && addTaskWithOverrides) {
     }
 
     if (dock.kind === 'clarify') {
+      // A clarification question is visible, but explicit Dock can still save
+      // the user's wording when no required-field / one-shot hard gate applies.
       setEngineExplain(dock.message);
       setCollectionFeedback(dock.message);
-      return;
     }
 
     if (dock.kind === 'fallthrough' && dock.message) {
