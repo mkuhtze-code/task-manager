@@ -53,6 +53,7 @@ import './instrument-today.css';
 import './instrument-jobs-meetings.css';
 import './instrument-travel.css';
 import './instrument-nav.css';
+import './instrument-system-dock.css';
 import DokkitSplash from '@/components/DokkitSplash';
 import AppChrome from '@/components/AppChrome';
 import AppProviders from '@/components/providers/AppProviders';

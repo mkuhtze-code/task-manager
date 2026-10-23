@@ -16,5 +16,9 @@ export default function SystemDock({
   onAdd?: () => void;
   addLabel?: string;
 }) {
-  return <SurfaceNav active={lens as NavSurface} onAdd={onAdd} addLabel={addLabel} />;
+  return (
+    <div className="instrument-system-dock" data-instrument-system-dock data-active-lens={lens}>
+      <SurfaceNav active={lens as NavSurface} onAdd={onAdd} addLabel={addLabel} />
+    </div>
+  );
 }

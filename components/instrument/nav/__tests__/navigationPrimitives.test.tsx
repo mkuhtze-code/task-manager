@@ -98,4 +98,37 @@ describe('Instrument navigation primitives', () => {
     expect(dialogA11y).toContain('activeDialogStack');
     expect(dialogA11y).toContain('onCloseRef.current()');
   });
+
+  it('keeps SystemDock as the Instrument presentation owner for exactly four root lenses', () => {
+    const dock = readFileSync('components/instrument/SystemDock.tsx', 'utf8');
+    const nav = readFileSync('components/SurfaceNav.tsx', 'utf8');
+    const css = readFileSync('app/instrument-system-dock.css', 'utf8');
+    expect(dock).toContain('data-instrument-system-dock data-active-lens={lens}');
+    expect(dock).toContain('<SurfaceNav active={lens as NavSurface} onAdd={onAdd} addLabel={addLabel} />');
+    expect(nav).toContain("{ key: 'today', label: 'Today', path: '/' }");
+    expect(nav).toContain("{ key: 'jobs', label: 'Jobs', path: '/jobs', pro: true }");
+    expect(nav).toContain("{ key: 'meetings', label: 'Meetings', path: '/meetings', pro: true }");
+    expect(nav).toContain("{ key: 'travel', label: 'Travel', path: '/travel', pro: true }");
+    expect(nav).toContain('aria-current={isCurrent ? \'page\' : undefined}');
+    expect(nav).toContain('role="tablist"');
+    expect(nav).toContain('router.push(path)');
+    expect(nav).not.toContain('router.back(');
+    expect(css).toContain('var(--ins-paper)');
+    expect(css).toContain('var(--ins-ink)');
+    expect(css).toContain('var(--ins-steel)');
+    expect(css).toContain('min-height: 52px');
+    expect(css).toContain('min-height: 48px');
+    expect(css).toContain('prefers-reduced-motion: reduce');
+    expect(css).toContain('transition: opacity var(--ins-motion-standard)');
+    expect(css).not.toContain('translateX(');
+  });
+  it('preserves SurfaceNav Pro-gate destinations and contextual Add outside the four-tab list', () => {
+    const nav = readFileSync('components/SurfaceNav.tsx', 'utf8');
+    expect(nav).toContain("key === 'jobs' ? 'jobs' : key === 'meetings' ? 'meetings' : 'travel'");
+    expect(nav).toContain('go(`/account/billing?feature=${feature}`)');
+    expect(nav).toContain('{onAdd && (');
+    expect(nav).toContain('className="experience-primary-nav__add"');
+    expect(nav).toContain('aria-label={addLabel ?? \'Add\'}');
+    expect(nav).toContain('role="tablist"');
+  });
 });

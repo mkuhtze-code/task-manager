@@ -1,6 +1,6 @@
-# Instrument Navigation Contract (N0–N4)
+# Instrument Navigation Contract (N0–N5)
 
-Status: N0 inventory + N1 primitives + N2 peer/core utilities + N3 remaining utility/admin chrome + N4 transient dismiss consistency. This remains a staged contract; see residuals and backlog below.
+Status: N0 inventory + N1 primitives + N2 peer/core utilities + N3 remaining utility/admin chrome + N4 transient dismiss consistency + N5 Instrument-native dock ownership. This remains a staged contract; see residuals and backlog below.
 
 ## Four navigation kinds
 
@@ -25,7 +25,7 @@ Status: N0 inventory + N1 primitives + N2 peer/core utilities + N3 remaining uti
 
 - Use --ins-motion-fast, --ins-motion-standard, and --ins-motion-ease for Instrument chrome.
 - prefers-reduced-motion: reduce disables transformative movement; current tokens resolve durations to zero. New nav primitives must not introduce horizontal transitions.
-- Root dock changes may use a short opacity-only cross-fade in a later phase. N1 does not restyle the dock.
+- N5 root dock uses an Instrument-native active indicator and opacity-only icon emphasis (bounded by `--ins-motion-standard`); it does not animate page position. `prefers-reduced-motion` disables transitions.
 - Peer horizontal transition is deferred until scroll restoration and route transitions can be validated.
 - Sheets retain existing rise/scrim behavior. N1 unifies the dismiss primitive only; no sheet behavior is replaced.
 
@@ -146,14 +146,14 @@ The indexed pre-N2 source queries returned zero `router.back` / `history.back` m
 
 **Counts through N4:** N2 peer/core utilities and N3 Billing, Contact, and Admin chrome are migrated on the shipping branch. N4 standardizes major sheet header dismiss controls while retaining host-owned dialog behavior. These are scoped source findings, not a claim that every literal “Back” in the repository is navigation chrome.
 
-GearMenu ownership and SystemDock remain unchanged. Root order remains Today → Jobs → Meetings → Travel; Pro redirects and billing destination semantics remain untouched. Trip deletion remains a domain control, separate from the Travel Up link.
+GearMenu remains owned by shared chrome and stays out of the dock. SystemDock owns the dock presentation; SurfaceNav retains root destinations, entitlement checks, visit tracking, and contextual Add behavior. Root order remains Today → Jobs → Meetings → Travel; Pro redirects and billing destination semantics remain untouched. Trip deletion remains a domain control, separate from the Travel Up link.
 ## Primitive API
 
 - UpLink({ href, label }): explicit parent route; visible parent name; accessible name equals parent name.
 - UtilityDone({ href = '/', label = 'Done' }): explicit utility completion destination; default is lens-safe Today root.
 - SheetDismiss({ onDismiss, label = 'Dismiss' }): button-only wrapper for sheet headers; use **Close** or **Dismiss** as accessible name. Existing scrim, Escape, and focus restoration remain the sheet owner's responsibility.
 
-CSS lives in app/instrument-nav.css and uses --ins-* tokens. It is loaded from the root layout. No dock visual, engine, entitlement, or mutation behavior changes in this phase.
+Navigation primitives live in app/instrument-nav.css; SystemDock presentation lives in app/instrument-system-dock.css. Both are loaded from the root layout. Dock changes are presentation-only; route, entitlement, visit-tracking, and domain mutation behavior remain owned by existing code.
 
 ## N4 completion
 
@@ -161,9 +161,16 @@ N4 applies `SheetDismiss` to Capture, DepthSheet, TaskDetailSheet's outer header
 
 The shared dismiss primitive only invokes the existing host callback. Each sheet continues to own `useDialogA11y`, Escape topmost arbitration, scrim handling, focus return, and any local state transitions. No capture-engine, travel math, offline queue, save, or mutation semantics were changed. Job edit's existing commit-before-close callback is preserved. Library's nested Close controls remain custom because they return from an internal mode to the Library list rather than dismissing the host sheet.
 
-## N5+ backlog
+## N5 completion
 
-1. SystemDock visual and root-lens transition review (N5); no dock changes in N4.
-2. Return-state engine and restoration policy (N6).
-3. Continue a full modal inventory for other custom dialogs and confirmation surfaces; retain custom controls when they represent explicit save/cancel choices or local mode navigation.
-4. Browser/device QA: focus order, screen-reader labels, scrim dismissal, Escape arbitration, scroll restoration, and 320–390px widths.
+SystemDock now owns the mobile root dock presentation through an Instrument-scoped wrapper and `app/instrument-system-dock.css`; SurfaceNav remains the behavior owner for the four root destinations, Pro entitlement redirects, quiet visit tracking, and contextual Add action. The dock order and hrefs remain Today (`/`) → Jobs (`/jobs`) → Meetings (`/meetings`) → Travel (`/travel`). The contextual primary remains outside the four-tab tablist, and GearMenu remains outside the dock.
+
+The active lens uses `aria-current="page"` / `aria-selected`, stronger ink, and a small steel top indicator. Inactive icons are quietly dimmed; lens-change motion is opacity-only and uses `--ins-motion-standard`. No page translation, route-transition library, router history navigation, clearance token, or desktop sidebar IA was changed. Utility pages retain the existing default dock visibility policy; N5 introduces no hide/dim policy.
+
+Automated source guards cover the four routes/order, SurfaceNav Pro→billing feature mapping, contextual Add separation, Instrument token styling, 44px target minimum, and reduced-motion behavior. Device QA remains a manual checklist: 390px viewport, safe-area insets, dark mode, focus-visible contrast, and Android browser/device rendering.
+
+## N6+ backlog
+
+1. Return-state engine and restoration policy (N6).
+2. Continue a full modal inventory for other custom dialogs and confirmation surfaces; retain custom controls when they represent explicit save/cancel choices or local mode navigation.
+3. Browser/device QA: focus order, screen-reader labels, scrim dismissal, Escape arbitration, scroll restoration, and 320–390px widths.
