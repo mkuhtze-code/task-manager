@@ -1,0 +1,161 @@
+/* N5: SystemDock owns mobile root navigation presentation; all values use Instrument tokens. */
+@media (max-width: 767px) {
+  .ins-system-dock {
+    position: fixed;
+    z-index: var(--ins-z-dock, 120);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 48px;
+    align-items: center;
+    gap: var(--ins-space-2, 8px);
+    min-height: var(--ins-dock-height, 76px);
+    padding: var(--ins-space-2, 8px)
+      max(var(--ins-space-3, 12px), var(--ins-safe-right, env(safe-area-inset-right, 0px)))
+      calc(var(--ins-space-2, 8px) + var(--ins-safe-bottom, env(safe-area-inset-bottom, 0px)))
+      max(var(--ins-space-3, 12px), var(--ins-safe-left, env(safe-area-inset-left, 0px)));
+    border: 0;
+    border-top: 1px solid var(--ins-line-strong);
+    border-radius: 0;
+    background: var(--ins-paper);
+    color: var(--ins-ink);
+    box-shadow: var(--ins-shadow-dock);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+  }
+
+  .ins-system-dock:not([data-has-primary="true"]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ins-system-dock__tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .ins-system-dock__tab {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 0;
+    min-height: 52px;
+    padding: 4px 2px;
+    border: 0;
+    border-radius: var(--ins-radius-md);
+    background: transparent;
+    color: var(--ins-ink-faint);
+    font: 500 11px/1.15 var(--ins-font-sans);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ins-system-dock__tab.is-active {
+    background: var(--ins-paper-elevated);
+    color: var(--ins-ink);
+    font-weight: 650;
+  }
+
+  .ins-system-dock__tab.is-active::before {
+    position: absolute;
+    top: 0;
+    left: calc(50% - 9px);
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--ins-steel);
+    content: "";
+  }
+
+  .ins-system-dock__tab.is-locked {
+    opacity: 0.62;
+  }
+
+  .ins-system-dock__icon {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    color: inherit;
+    opacity: 0.72;
+    transition: opacity var(--ins-motion-standard) var(--ins-motion-ease);
+  }
+
+  .ins-system-dock__tab.is-active .ins-system-dock__icon {
+    opacity: 1;
+  }
+
+  .ins-system-dock__icon svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .ins-system-dock__label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    color: inherit;
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: inherit;
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ins-system-dock__primary {
+    display: grid;
+    place-items: center;
+    justify-self: end;
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+    padding: 0;
+    border: 1px solid var(--ins-line-strong);
+    border-radius: var(--ins-radius-md);
+    background: var(--ins-ink);
+    color: var(--ins-paper);
+    box-shadow: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ins-system-dock__tab:focus-visible,
+  .ins-system-dock__primary:focus-visible {
+    outline: 2px solid var(--ins-focus-ring);
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+
+  .ins-system-dock__tab:active {
+    background-color: var(--ins-paper-elevated);
+  }
+
+  .ins-system-dock__primary:active {
+    background-color: var(--ins-ink-soft);
+  }
+
+  /* Peer pages retain SurfaceNav's visit-tracking effect, but only the shell dock is visible. */
+  .experience-mobile-frame__workspace .experience-primary-nav {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .ins-system-dock {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ins-system-dock__icon {
+    transition: none;
+  }
+}

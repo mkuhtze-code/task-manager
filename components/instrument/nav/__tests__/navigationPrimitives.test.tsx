@@ -98,4 +98,53 @@ describe('Instrument navigation primitives', () => {
     expect(dialogA11y).toContain('activeDialogStack');
     expect(dialogA11y).toContain('onCloseRef.current()');
   });
+
+  it('gives SystemDock ownership of the four Instrument root destinations and active state', () => {
+    const dock = readFileSync('components/instrument/SystemDock.tsx', 'utf8');
+    const nav = readFileSync('components/SurfaceNav.tsx', 'utf8');
+    const css = readFileSync('app/instrument-system-dock.css', 'utf8');
+    expect(dock).toContain('data-instrument-dock');
+    expect(dock).toContain('data-active-lens={lens}');
+    expect(dock).toContain("data-active={isCurrent ? 'true' : undefined}");
+    expect(dock).toContain("isCurrent ? 'is-active' : ''");
+    expect(dock).toContain('<div className="ins-system-dock__tabs" role="tablist"');
+    expect(dock).not.toContain('<SurfaceNav');
+    expect(nav).toContain("{ key: 'today', label: 'Today', path: '/' }");
+    expect(nav).toContain("{ key: 'jobs', label: 'Jobs', path: '/jobs', pro: true }");
+    expect(nav).toContain("{ key: 'meetings', label: 'Meetings', path: '/meetings', pro: true }");
+    expect(nav).toContain("{ key: 'travel', label: 'Travel', path: '/travel', pro: true }");
+    expect(nav).toContain("aria-current={isCurrent ? 'page' : undefined}");
+    expect(nav).toContain('router.push(path)');
+    expect(nav).not.toContain('router.back(');
+    expect(css).toContain('var(--ins-paper)');
+    expect(css).toContain('var(--ins-ink)');
+    expect(css).toContain('var(--ins-steel)');
+    expect(css).toContain('min-height: 52px');
+    expect(css).toContain('min-height: 48px');
+    expect(css).toContain('env(safe-area-inset-bottom');
+    expect(css).toContain('transition: opacity var(--ins-motion-standard)');
+    expect(css).toContain('prefers-reduced-motion: reduce');
+    expect(css).not.toContain('translateX(');
+    expect(css).not.toContain('transform:');
+  });
+  it('preserves Pro redirects, visit tracking, and contextual primary outside the four tabs', () => {
+    const nav = readFileSync('components/SurfaceNav.tsx', 'utf8');
+    const dock = readFileSync('components/instrument/SystemDock.tsx', 'utf8');
+    const css = readFileSync('app/instrument-system-dock.css', 'utf8');
+    expect(nav).toContain("key === 'jobs' ? 'jobs' : key === 'meetings' ? 'meetings' : 'travel'");
+    expect(nav).toContain('go(`/account/billing?feature=${feature}`)');
+    expect(nav).toContain('recordSurfaceVisitQuiet(active)');
+    expect(dock).toContain('{onAdd ? (');
+    expect(dock).toContain('className="ins-system-dock__primary"');
+    expect(dock.indexOf('</div>')).toBeLessThan(dock.indexOf('{onAdd ? ('));
+    expect(css).toContain('.experience-mobile-frame__workspace .experience-primary-nav');
+    expect(css).toContain('display: none;');
+  });
+  it('keeps dock clearance authoritative and utility visibility unchanged', () => {
+    const shell = readFileSync('app/instrument-shell.css', 'utf8');
+    const chrome = readFileSync('components/AppChrome.tsx', 'utf8');
+    expect(shell).toContain('--instrument-shell-dock-clearance: calc(var(--ins-dock-height');
+    expect(chrome).toContain('currentSurfaceIndex(pathname) >= 0');
+    expect(chrome).not.toContain('router.back(');
+  });
 });

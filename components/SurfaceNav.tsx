@@ -27,7 +27,7 @@ function recordSurfaceVisitQuiet(surface: string) {
 
 export type NavSurface = Surface | 'meetings';
 
-const ALL_ITEMS: {
+export const SURFACE_NAV_ITEMS: {
   key: NavSurface;
   label: string;
   path: string;
@@ -39,7 +39,7 @@ const ALL_ITEMS: {
   { key: 'travel', label: 'Travel', path: '/travel', pro: true },
 ];
 
-function SectionGlyph({ surface }: { surface: NavSurface }) {
+export function SectionGlyph({ surface }: { surface: NavSurface }) {
   switch (surface) {
     case 'today':
       return (
@@ -107,26 +107,13 @@ function SectionGlyph({ surface }: { surface: NavSurface }) {
   }
 }
 
-export default function SurfaceNav({
-  active,
-  onNavigate,
-  onAdd,
-  addLabel,
-  sectionOrder,
-}: {
-  active: NavSurface;
-  onNavigate?: (s: Surface) => void;
-  onAdd?: () => void;
-  addLabel?: string;
-  sectionOrder?: NavSurface[];
-}) {
+export function useSurfaceNavController(
+  active: NavSurface,
+  onNavigate?: (surface: Surface) => void,
+) {
   const router = useRouter();
   const { entitlements } = useEntitlements();
   const isPro = entitlements.isPro;
-
-  // The four lenses are Dokkit's stable map. Personalisation may change
-  // emphasis elsewhere, but must not move the user's landmarks.
-  const ordered = ALL_ITEMS;
 
   useEffect(() => {
     recordSurfaceVisitQuiet(active);
@@ -151,6 +138,24 @@ export default function SurfaceNav({
 
     go(path, key === 'meetings' ? undefined : (key as Surface));
   }
+
+  return { ordered: SURFACE_NAV_ITEMS, isPro, onTab };
+}
+
+export default function SurfaceNav({
+  active,
+  onNavigate,
+  onAdd,
+  addLabel,
+  sectionOrder,
+}: {
+  active: NavSurface;
+  onNavigate?: (s: Surface) => void;
+  onAdd?: () => void;
+  addLabel?: string;
+  sectionOrder?: NavSurface[];
+}) {
+  const { ordered, isPro, onTab } = useSurfaceNavController(active, onNavigate);
 
   return (
     <nav className="experience-primary-nav" aria-label="Surface navigation">
