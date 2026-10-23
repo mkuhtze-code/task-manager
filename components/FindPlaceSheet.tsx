@@ -1,6 +1,5 @@
 'use client';
 import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
-import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
 import { useEffect, useRef, useState } from 'react';
 import { authedFetch } from '@/lib/authedFetch';
