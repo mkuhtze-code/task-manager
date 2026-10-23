@@ -163,11 +163,11 @@ The shared dismiss primitive only invokes the existing host callback. Each sheet
 
 ## N5 completion
 
-SystemDock now owns the mobile root dock presentation through an Instrument-scoped wrapper and `app/instrument-system-dock.css`; SurfaceNav remains the behavior owner for the four root destinations, Pro entitlement redirects, quiet visit tracking, and contextual Add action. The dock order and hrefs remain Today (`/`) → Jobs (`/jobs`) → Meetings (`/meetings`) → Travel (`/travel`). The contextual primary remains outside the four-tab tablist, and GearMenu remains outside the dock.
+SystemDock owns the mobile root dock markup and presentation in `components/instrument/SystemDock.tsx` and `app/instrument-system-dock.css`. SurfaceNav supplies the shared four-destination configuration, routing/entitlement controller, quiet visit tracking, and contextual Add behavior; its legacy dock markup remains for peer-page compatibility but is hidden inside the mobile workspace so the shell dock is the only visible dock. The dock order and hrefs remain Today (`/`) → Jobs (`/jobs`) → Meetings (`/meetings`) → Travel (`/travel`). The contextual primary remains outside the four-tab tablist, and GearMenu remains outside the dock.
 
 The active lens uses `aria-current="page"` / `aria-selected`, stronger ink, and a small steel top indicator. Inactive icons are quietly dimmed; lens-change motion is opacity-only and uses `--ins-motion-standard`. No page translation, route-transition library, router history navigation, clearance token, or desktop sidebar IA was changed. Utility pages retain the existing default dock visibility policy; N5 introduces no hide/dim policy.
 
-Automated source guards cover the four routes/order, SurfaceNav Pro→billing feature mapping, contextual Add separation, Instrument token styling, 44px target minimum, and reduced-motion behavior. Device QA remains a manual checklist: 390px viewport, safe-area insets, dark mode, focus-visible contrast, and Android browser/device rendering.
+Automated source guards cover the four routes/order, active lens semantics, SurfaceNav Pro→billing feature mapping, visit tracking, contextual Add separation, Instrument token styling, safe-area padding, minimum 44px hit targets, reduced-motion behavior, and unchanged dock-clearance ownership. Device QA remains a manual checklist: 390px viewport, safe-area insets, dark mode, focus-visible contrast, no duplicate dock on peer detail, and Android browser/device rendering.
 
 ## N6+ backlog
 

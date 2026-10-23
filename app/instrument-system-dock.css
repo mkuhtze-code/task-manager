@@ -1,6 +1,6 @@
-/* N5: SystemDock owns the mobile dock presentation; SurfaceNav remains the behavior owner. */
+/* N5: SystemDock owns mobile root navigation presentation; all values use Instrument tokens. */
 @media (max-width: 767px) {
-  .instrument-system-dock .experience-primary-nav {
+  .ins-system-dock {
     position: fixed;
     z-index: var(--ins-z-dock, 120);
     right: 0;
@@ -25,7 +25,11 @@
     backdrop-filter: blur(18px);
   }
 
-  .instrument-system-dock .experience-primary-nav__tabs {
+  .ins-system-dock:not([data-has-primary="true"]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ins-system-dock__tabs {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: stretch;
@@ -33,7 +37,7 @@
     min-width: 0;
   }
 
-  .instrument-system-dock .experience-primary-nav__tab {
+  .ins-system-dock__tab {
     position: relative;
     display: flex;
     flex-direction: column;
@@ -50,17 +54,15 @@
     font: 500 11px/1.15 var(--ins-font-sans);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    transition: none;
   }
 
-  .instrument-system-dock .experience-primary-nav__tab.current {
+  .ins-system-dock__tab.is-active {
     background: var(--ins-paper-elevated);
     color: var(--ins-ink);
     font-weight: 650;
-    box-shadow: none;
   }
 
-  .instrument-system-dock .experience-primary-nav__tab.current::before {
+  .ins-system-dock__tab.is-active::before {
     position: absolute;
     top: 0;
     left: calc(50% - 9px);
@@ -71,11 +73,11 @@
     content: "";
   }
 
-  .instrument-system-dock .experience-primary-nav__tab.locked {
+  .ins-system-dock__tab.is-locked {
     opacity: 0.62;
   }
 
-  .instrument-system-dock .experience-primary-nav__icon {
+  .ins-system-dock__icon {
     display: grid;
     place-items: center;
     width: 24px;
@@ -85,16 +87,16 @@
     transition: opacity var(--ins-motion-standard) var(--ins-motion-ease);
   }
 
-  .instrument-system-dock .experience-primary-nav__tab.current .experience-primary-nav__icon {
+  .ins-system-dock__tab.is-active .ins-system-dock__icon {
     opacity: 1;
   }
 
-  .instrument-system-dock .experience-primary-nav__icon svg {
+  .ins-system-dock__icon svg {
     width: 21px;
     height: 21px;
   }
 
-  .instrument-system-dock .experience-primary-nav__label {
+  .ins-system-dock__label {
     display: block;
     max-width: 100%;
     overflow: hidden;
@@ -107,7 +109,7 @@
     white-space: nowrap;
   }
 
-  .instrument-system-dock .experience-primary-nav__add {
+  .ins-system-dock__primary {
     display: grid;
     place-items: center;
     justify-self: end;
@@ -123,40 +125,37 @@
     box-shadow: none;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    transition: none;
   }
 
-  .instrument-system-dock .experience-primary-nav__add svg {
-    width: 22px;
-    height: 22px;
-  }
-
-  .instrument-system-dock .experience-primary-nav__tab:focus-visible,
-  .instrument-system-dock .experience-primary-nav__add:focus-visible {
+  .ins-system-dock__tab:focus-visible,
+  .ins-system-dock__primary:focus-visible {
     outline: 2px solid var(--ins-focus-ring);
     outline-offset: 2px;
     box-shadow: none;
   }
 
-  .instrument-system-dock .experience-primary-nav__tab:active,
-  .instrument-system-dock .experience-primary-nav__add:active {
-    transform: none;
+  .ins-system-dock__tab:active {
     background-color: var(--ins-paper-elevated);
   }
 
-  .instrument-system-dock .experience-primary-nav__add:active {
+  .ins-system-dock__primary:active {
     background-color: var(--ins-ink-soft);
+  }
+
+  /* Peer pages retain SurfaceNav's visit-tracking effect, but only the shell dock is visible. */
+  .experience-mobile-frame__workspace .experience-primary-nav {
+    display: none;
   }
 }
 
 @media (min-width: 768px) {
-  .instrument-system-dock .experience-primary-nav {
+  .ins-system-dock {
     display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .instrument-system-dock .experience-primary-nav__icon {
+  .ins-system-dock__icon {
     transition: none;
   }
 }
