@@ -1,4 +1,5 @@
 'use client';
+import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -275,9 +276,7 @@ export default function LibrarySheet({ tripId, tripName, tripDays, onClose, onSc
           <>
             <div className="task-detail-header">
               <div className="settings-panel-title">Library</div>
-              <button className="gear-btn" onClick={onClose} aria-label="Close">
-                <CloseIcon />
-              </button>
+              <SheetDismiss onDismiss={onClose} label="Close" />
             </div>
             <p className="settings-help">Ideas for {tripName}.</p>
 

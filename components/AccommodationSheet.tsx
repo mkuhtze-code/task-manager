@@ -1,9 +1,10 @@
 'use client';
+import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
-import { ChevronIcon, CloseIcon, TrashIcon } from '@/components/icons';
+import { ChevronIcon, TrashIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 type Accommodation = {
@@ -175,9 +176,7 @@ export default function AccommodationSheet(props: {
       <div ref={dialogRef} className="capture-sheet task-detail-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Stay">
         <div className="task-detail-header">
           <div className="settings-panel-title">Where you're staying</div>
-          <button className="gear-btn" onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </button>
+          <SheetDismiss onDismiss={onClose} label="Close" />
         </div>
 
         {stays.length === 0 && !adding && (

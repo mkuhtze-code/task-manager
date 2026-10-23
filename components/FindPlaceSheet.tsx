@@ -1,10 +1,10 @@
 'use client';
+import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
 import { useEffect, useRef, useState } from 'react';
 import { authedFetch } from '@/lib/authedFetch';
 import { buildGoogleMapsDirectionsUrl } from '@/lib/travel/driveLegs';
 import { buildPlaceAutocompletePayload, buildPlaceBias, type PlaceBiasContexts, type PlaceBiasMode } from '@/lib/travel/placeSearch';
-import { CloseIcon } from '@/components/icons';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 type Prediction = { placeId: string; text: string; mainText?: string; secondaryText?: string; distanceMeters?: number | null };
@@ -78,7 +78,7 @@ export default function FindPlaceSheet({ onClose, onAddStop, contexts, initialBi
 
   return <div className="sheet-backdrop" onClick={onClose}>
     <section ref={dialogRef} className="capture-sheet task-detail-sheet find-place-sheet" role="dialog" aria-modal="true" aria-label="Find a place" onClick={(e) => e.stopPropagation()}>
-      <div className="task-detail-header"><div className="settings-panel-title">Find place</div><button type="button" className="gear-btn" onClick={onClose} aria-label="Close"><CloseIcon /></button></div>
+      <div className="task-detail-header"><div className="settings-panel-title">Find place</div><SheetDismiss onDismiss={onClose} label="Close" /></div>
       {contextLabel && <p className="find-place-context">{contextLabel}</p>}
       <label className="settings-label" htmlFor="find-place-query">Place or address</label>
       <input id="find-place-query" className="task-detail-name" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search near your trip context" autoComplete="off" />

@@ -1,4 +1,5 @@
 'use client';
+import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
 import type { ReactNode } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
@@ -17,7 +18,7 @@ export default function DepthSheet({ onDismiss, title, identity, glance, headerC
     if (event.target === event.currentTarget) onDismiss();
   }}>
     <div ref={dialogRef} className={['ins-depth-sheet', className].filter(Boolean).join(' ')} role="dialog" aria-modal="true" aria-label={ariaLabel ?? title} data-instrument-depth-dialog>
-      <header className="ins-depth-sheet__header"><h2>{title}</h2>{headerContent}<button type="button" className="ins-depth-sheet__dismiss" onClick={onDismiss} aria-label="Close details" data-autofocus>×</button></header>
+      <header className="ins-depth-sheet__header"><h2>{title}</h2>{headerContent}<SheetDismiss onDismiss={onDismiss} label="Close" autoFocus /></header>
       {identity != null || glance != null ? <section className="ins-depth-sheet__identity">
         {identity != null ? <div className="ins-depth-sheet__title">{identity}</div> : null}
         {glance != null ? <div className="ins-depth-sheet__glance">{glance}</div> : null}
