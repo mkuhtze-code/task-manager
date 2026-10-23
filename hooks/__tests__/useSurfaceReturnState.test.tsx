@@ -2,6 +2,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSurfaceReturnState } from '@/hooks/useSurfaceReturnState';
+import { clearLensState, deserializeLensState, loadLensState, saveLensState, serializeLensState } from '@/lib/nav/returnState';
 
 const KEY = 'dokkit.surface-return.test.v1';
 
@@ -114,5 +115,29 @@ describe('useSurfaceReturnState', () => {
     renderHook(() => useSurfaceReturnState(KEY, { filter: 'all' }, restore, true));
 
     await waitFor(() => expect(restore).not.toHaveBeenCalled());
+  });
+});
+
+
+describe('lens return-state helpers', () => {
+  it('serializes and restores a valid state snapshot', () => {
+    const raw = serializeLensState({ filter: 'past', search: 'invoice' }, 320);
+    expect(deserializeLensState<{ filter: string; search: string }>(raw)).toEqual({
+      version: 1, state: { filter: 'past', search: 'invoice' }, scrollY: 320,
+    });
+  });
+  it('saves, loads, and clears only the requested session key', () => {
+    saveLensState('return.a', { selectedDayId: 'day-2' }, 0);
+    saveLensState('return.b', { selectedDayId: 'day-4' }, 0);
+    expect(loadLensState<{ selectedDayId: string }>('return.a')?.state.selectedDayId).toBe('day-2');
+    clearLensState('return.a');
+    expect(loadLensState('return.a')).toBeNull();
+    expect(loadLensState<{ selectedDayId: string }>('return.b')?.state.selectedDayId).toBe('day-4');
+  });
+  it('normalizes negative scroll and rejects malformed snapshots', () => {
+    expect(deserializeLensState(serializeLensState({ ok: true }, -12))?.scrollY).toBe(0);
+    expect(deserializeLensState('not-json')).toBeNull();
+    expect(deserializeLensState(JSON.stringify({ version: 2, state: {}, scrollY: 0 }))).toBeNull();
+    expect(deserializeLensState(JSON.stringify({ version: 1, state: {}, scrollY: -1 }))).toBeNull();
   });
 });

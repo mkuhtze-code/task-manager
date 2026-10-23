@@ -1,6 +1,6 @@
-# Instrument Navigation Contract (N0–N5)
+# Instrument Navigation Contract (N0–N6)
 
-Status: N0 inventory + N1 primitives + N2 peer/core utilities + N3 remaining utility/admin chrome + N4 transient dismiss consistency + N5 Instrument-native dock ownership. This remains a staged contract; see residuals and backlog below.
+Status: **N0–N6 complete** — inventory, navigation primitives, peer/core utilities, remaining utility/admin chrome, transient dismiss consistency, Instrument-native dock ownership, and local return-state hardening. The navigation program is complete; remaining device QA is verification, not a planned navigation phase.
 
 ## Four navigation kinds
 
@@ -169,8 +169,21 @@ The active lens uses `aria-current="page"` / `aria-selected`, stronger ink, and 
 
 Automated source guards cover the four routes/order, active lens semantics, SurfaceNav Pro→billing feature mapping, visit tracking, contextual Add separation, Instrument token styling, safe-area padding, minimum 44px hit targets, reduced-motion behavior, and unchanged dock-clearance ownership. Device QA remains a manual checklist: 390px viewport, safe-area insets, dark mode, focus-visible contrast, no duplicate dock on peer detail, and Android browser/device rendering.
 
-## N6+ backlog
+## N6 completion — return-state hardening
 
-1. Return-state engine and restoration policy (N6).
-2. Continue a full modal inventory for other custom dialogs and confirmation surfaces; retain custom controls when they represent explicit save/cancel choices or local mode navigation.
-3. Browser/device QA: focus order, screen-reader labels, scrim dismissal, Escape arbitration, scroll restoration, and 320–390px widths.
+Overview return state uses sessionStorage only, keyed by lens and authenticated user:
+- Jobs: `dokkit.surface-return.{userId}.jobs.v1` stores filter, search, selected date, and overview scrollY.
+- Meetings: `dokkit.surface-return.{userId}.meetings.v1` stores filter, search, selected date, and overview scrollY.
+- Travel overview: `dokkit.surface-return.{userId}.travel.v1` stores filter, search, selected date, and overview scrollY.
+- Trip detail: `dokkit.surface-return.{userId}.travel-trip.{tripId}.v1` stores the selected day id. A saved day is restored only if it still belongs to the loaded trip; stale ids fall back to the existing initial-day policy. The existing offline trip snapshot remains authoritative for offline data and is not rewritten by this UI-state layer.
+
+The shared helper API in `lib/nav/returnState.ts` provides `serializeLensState`, `deserializeLensState`, `saveLensState`, `loadLensState`, and `clearLensState`. Writes are best-effort and local to the current browser session. The overview hook restores state only when the page is ready and restores scroll on the next animation frame. Mutations may invalidate the saved view; refreshed data takes precedence.
+
+Cross-lens history is intentionally not implemented. UpLink continues to target explicit parent hrefs, so a job opened from Today returns to the Jobs root rather than creating a cross-lens stack. Auth and utility flows do not preserve a hidden return stack. No server-side or Supabase UI state was added.
+
+## Remaining verification (not a new phase)
+
+- Continue a full modal inventory for custom dialogs and confirmation surfaces; retain custom controls when they represent explicit save/cancel choices or local mode navigation.
+- Browser/device QA: focus order, screen-reader labels, scrim dismissal, Escape arbitration, scroll restoration, and 320–390px widths.
+
+**Navigation program status: N0–N6 complete. Stop after N6 unless a concrete regression is found.**

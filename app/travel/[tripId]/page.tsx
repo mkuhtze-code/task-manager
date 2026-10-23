@@ -60,6 +60,7 @@ import {
 } from '@/lib/engine';
 import { allowCreate, classifyCaptureDockOutcome } from '@/lib/engine/dockOutcome';
 import { buildTravelEngineContext, resolveScheduledDayAnchor, selectInitialTripDay } from '@/lib/travel/travelContext';
+import { loadLensState, saveLensState } from '@/lib/nav/returnState';
 import { buildGoogleMapsDirectionsUrl, displayDriveEstimate } from '@/lib/travel/driveLegs';
 
 type Trip = {
@@ -133,6 +134,10 @@ type Leg = {
 };
 
 const ROW_GAP = 8;
+
+function tripDayReturnStateKey(userId: string, tripId: string): string {
+  return `dokkit.surface-return.${userId}.travel-trip.${tripId}.v1`;
+}
 
 function fmtMins(mins: number): string {
   mins = Math.round(mins);
@@ -745,6 +750,7 @@ export default function TripDayView() {
   async function loadTrip() {
     const userId = session?.user?.id;
     if (!userId) return;
+    const savedDayId = loadLensState<{ selectedDayId?: unknown }>(tripDayReturnStateKey(userId, tripId))?.state.selectedDayId;
     const { data: tripRow, error: tripError } = await supabase.from('trips').select('*').eq('id', tripId).maybeSingle();
     const { data: dayRows, error: daysError } = await supabase
       .from('trip_days').select('*').eq('trip_id', tripId).order('date', { ascending: true });
@@ -762,9 +768,12 @@ export default function TripDayView() {
       if (cached?.trip && cached.tripDays.length) {
         setTrip(cached.trip as unknown as Trip);
         setTripDays(cached.tripDays as unknown as TripDay[]);
-        const cachedSelected = cached.selectedDayId && cached.tripDays.some((day) => day.id === cached.selectedDayId)
-          ? cached.selectedDayId
-          : (cached.tripDays[cached.tripDays.length - 1]?.id as string | undefined) ?? null;
+        const savedValid = typeof savedDayId === 'string' && cached.tripDays.some((day) => day.id === savedDayId);
+        const cachedSelected = savedValid
+          ? savedDayId as string
+          : cached.selectedDayId && cached.tripDays.some((day) => day.id === cached.selectedDayId)
+            ? cached.selectedDayId
+            : (cached.tripDays[cached.tripDays.length - 1]?.id as string | undefined) ?? null;
         setSelectedDayId(cachedSelected);
         setOfflineView(true);
         return;
@@ -777,7 +786,10 @@ export default function TripDayView() {
     setTripDays(dayRows || []);
     const todayStr = localDateISO();
     const initialDay = selectInitialTripDay(dayRows as TripDay[], todayStr);
-    const selected = initialDay?.id ?? dayRows[dayRows.length - 1]?.id ?? null;
+    const savedDayIsValid = typeof savedDayId === 'string' && dayRows.some((day) => day.id === savedDayId);
+    const selected = savedDayIsValid
+      ? savedDayId as string
+      : initialDay?.id ?? dayRows[dayRows.length - 1]?.id ?? null;
     setSelectedDayId(selected);
     cacheTravelSnapshot(userId, {
       id: tripId,
@@ -794,6 +806,13 @@ export default function TripDayView() {
   }
 
     useEffect(() => {
+    // Only persist a day once the currently loaded trip owns it; this prevents
+    // a route-param change from writing the previous trip's day into the new key.
+    if (!session?.user?.id || trip?.id !== tripId || !selectedDayId || !tripDays.some((day) => day.id === selectedDayId)) return;
+    saveLensState(tripDayReturnStateKey(session.user.id, tripId), { selectedDayId }, 0);
+  }, [session?.user?.id, trip?.id, tripId, tripDays, selectedDayId]);
+
+  useEffect(() => {
     if (selectedDayId) loadActivities();
   }, [selectedDayId]);
 
