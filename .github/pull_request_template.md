@@ -21,3 +21,17 @@
 **Exceptions / follow-up work / N/A rationale:**
 
 <!-- Required if any checkbox above is unchecked or the section is N/A. -->
+
+
+## Dokkit non-negotiables
+
+- [ ] No autonomous mutation of the user plan without an explicit confirm path.
+- [ ] No first-person / agent / copilot voice in UI or copy.
+- [ ] No streaks, scores, badges, confetti, or guilt language.
+- [ ] No “saved” / success claim before persistence is confirmed.
+- [ ] Unfinished / carry language is neutral (“still needs doing” / “carried”), not failure.
+- [ ] If adaptive / insight UI: rare, overridable, impersonal, evidence-based.
+- [ ] Corpus is not used as runtime lookup; draft labels are not quality claims.
+- [ ] Feature test: helps “what fits”, reduces friction, avoids unnecessary metadata, and does not feel like conventional productivity software or an agent.
+
+**Exceptions / evidence:** <!-- Explain any unchecked item; N/A requires a reason. -->

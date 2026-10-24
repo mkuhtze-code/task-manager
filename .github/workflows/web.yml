@@ -23,6 +23,9 @@ jobs:
 
       # npm 10.8.2 can crash in Arborist peer-set resolution ("edgesOut")
       # with this dependency graph. npm 11.6.0+ includes the upstream fix.
+      - name: Enforce Dokkit non-negotiables copy guard
+        run: node scripts/check-non-negotiables.mjs
+
       - name: Update npm to a fixed Arborist release
         run: npm install --global npm@11.19.1
 
