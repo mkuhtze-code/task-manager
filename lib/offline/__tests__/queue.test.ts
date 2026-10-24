@@ -39,6 +39,26 @@ describe('offline queue', () => {
     expect(pendingCount('u1')).toBe(1);
   });
 
+  it('does not accept an operation when local storage refuses to persist it', () => {
+    const originalSetItem = localStorage.setItem;
+    localStorage.setItem = () => {
+      throw new Error('quota exceeded');
+    };
+
+    expect(() =>
+      enqueueOp('u1', {
+        entity: 'task',
+        action: 'update',
+        entityId: 't1',
+        payload: { id: 't1', status: 'done' },
+        clientOpId: 'storage-failure',
+      })
+    ).toThrow(/could not save this change locally/i);
+
+    localStorage.setItem = originalSetItem;
+    expect(loadQueue('u1')).toHaveLength(0);
+  });
+
   it('dedupes by clientOpId', () => {
     enqueueOp('u1', {
       entity: 'task',
