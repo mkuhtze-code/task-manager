@@ -1744,22 +1744,34 @@ export function TodayPage() {
     const userId = session?.user?.id;
     if (!userId) return false;
     const existing = tasks.find((task) => task.id === id);
-    const next = localPatchTask(userId, id, patch);
-    if (!next && existing) {
-      localUpsertTask(userId, { ...existing, ...patch } as Task);
-    } else if (!next) {
+    try {
+      const next = localPatchTask(userId, id, patch);
+      if (!next && existing) {
+        localUpsertTask(userId, { ...existing, ...patch } as Task);
+      } else if (!next) {
+        return false;
+      }
+      void flushSyncQueue(userId);
+      return true;
+    } catch (error) {
+      // Let the action attempt its direct online path if local durability fails.
+      // Never publish an optimistic state change when the queue was not saved.
+      console.error('Could not queue task update locally:', error);
       return false;
     }
-    void flushSyncQueue(userId);
-    return true;
   }
 
   function queueTaskDelete(id: string): boolean {
     const userId = session?.user?.id;
     if (!userId) return false;
-    localRemoveTask(userId, id);
-    void flushSyncQueue(userId);
-    return true;
+    try {
+      localRemoveTask(userId, id);
+      void flushSyncQueue(userId);
+      return true;
+    } catch (error) {
+      console.error('Could not queue task deletion locally:', error);
+      return false;
+    }
   }
 
   const {
