@@ -293,12 +293,6 @@
     letter-spacing: 0.015em;
   }
 
-  .today-fixed-commitments__heading > span {
-    color: var(--ink-soft, #5c574f);
-    font-size: 0.75rem;
-    font-variant-numeric: tabular-nums;
-  }
-
   .today-fixed-commitments ol {
     list-style: none;
     margin: 0;
