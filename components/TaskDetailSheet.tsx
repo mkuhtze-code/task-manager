@@ -1,7 +1,7 @@
 'use client';
 import SheetDismiss from '@/components/instrument/nav/SheetDismiss';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Subtask, Task, TaskContext } from '@/lib/taskTypes';
 import type { Job } from '@/lib/jobTypes';
 import { fmtClock, fmtMins, fmtSurfaceDate, parseMins } from '@/lib/timeFormat';
