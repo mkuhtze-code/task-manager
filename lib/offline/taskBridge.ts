@@ -61,7 +61,8 @@ export function localUpsertTask(
   task: Task,
   clientOpId?: string
 ): Task {
-  upsertEntityInCache(userId, 'task', task);
+  // Persist the operation before changing the cache. If local storage fails,
+  // callers can fall back to an online write without claiming offline success.
   enqueueOp(userId, {
     entity: 'task',
     action: 'upsert',
@@ -69,6 +70,7 @@ export function localUpsertTask(
     clientOpId: clientOpId || makeClientOpId('task'),
     payload: { ...task, user_id: userId },
   });
+  upsertEntityInCache(userId, 'task', task);
   return task;
 }
 
@@ -78,16 +80,21 @@ export function localPatchTask(
   patch: Partial<Task>,
   clientOpId?: string
 ): Task | null {
-  const next = patchEntityInCache<Task>(userId, 'task', taskId, patch);
-  if (!next) return null;
-  enqueueOp(userId, {
-    entity: 'task',
-    action: 'update',
-    entityId: taskId,
-    clientOpId: clientOpId || makeClientOpId('task'),
-    payload: { id: taskId, ...patch },
-  });
-  return next;
+  const existing = getEntityCache<Task>(userId, 'task').items.find((task) => task.id === taskId);
+  if (!existing) return null;
+  try {
+    // Queue first: a cache-only mutation is not durable offline acceptance.
+    enqueueOp(userId, {
+      entity: 'task',
+      action: 'update',
+      entityId: taskId,
+      clientOpId: clientOpId || makeClientOpId('task'),
+      payload: { id: taskId, ...patch },
+    });
+  } catch {
+    return null;
+  }
+  return patchEntityInCache<Task>(userId, 'task', taskId, patch) ?? { ...existing, ...patch };
 }
 
 export function localRemoveTask(
@@ -95,7 +102,7 @@ export function localRemoveTask(
   taskId: string,
   clientOpId?: string
 ): void {
-  removeEntityFromCache(userId, 'task', taskId);
+  // Only remove the task after its deletion is durably queued.
   enqueueOp(userId, {
     entity: 'task',
     action: 'delete',
@@ -103,6 +110,7 @@ export function localRemoveTask(
     clientOpId: clientOpId || makeClientOpId('task'),
     payload: { id: taskId },
   });
+  removeEntityFromCache(userId, 'task', taskId);
 }
 
 export function registerTaskSyncHandler(): void {

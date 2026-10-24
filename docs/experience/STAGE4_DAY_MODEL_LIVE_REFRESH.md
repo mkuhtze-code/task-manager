@@ -1,6 +1,6 @@
 # Stage 4 — Primary actions update the day model live
 
-**Status:** Source audit / implementation candidate; device acceptance outstanding  
+**Status:** Implementation candidate updated; CI and device acceptance outstanding  
 **Authority:** `docs/architecture/NON_NEGOTIABLES.md`, `docs/LAYOUT_SYSTEM.md`, Stage 2 Today first-paint contract
 
 ## Shared day-model path
@@ -16,11 +16,11 @@ Primary task actions are assembled in `lib/today/taskActions.ts` and injected fr
 
 ## Findings and residual risks
 
-1. The normal online path awaits Supabase success before updating React task state. A failed direct write returns early with an error alert; no success state is published.
-2. When `queueTaskPatch` accepts a write, the UI applies the local task patch immediately. This is an optimistic/offline path; it is only honest if the offline queue exposes pending/failure state and reconciliation. Verify that behaviour on device and against `lib/offline` before exit.
+1. Task queue acceptance now requires the operation to be written and readable from local storage. If storage rejects the write, task bridge helpers do not mutate the cache first, and Today falls back to the direct online write path; failures there must remain visible and leave React state unchanged.
+2. Accepted offline writes remain optimistic because the local queue is durable. The queue's existing pending/failed states and reconnect reconciliation still need end-to-end verification, including recovery after a rejected remote write.
 3. Capacity should recalculate from the same task array; no parallel capacity cache should be introduced. Do not force a route remount or full app refresh.
 4. The five-second `useNow` clock is used for Today derivation. Active elapsed-time display and capacity freshness are distinct: verify whether the header's capacity meaning requires a per-second tick before changing timer policy.
-5. Stage 3 reshape currently patches local `tasks` state in its outcome branches. The paths should be tested against the same capacity selector; do not add a second optimiser.
+5. The Stage 3 branch now routes Done / Partial / Carry / Skip writes through the same durable task queue before updating local state, with direct Supabase fallback only when queue acceptance fails. Confirm this together with Stage 3 before calling the stages exit-complete.
 
 ## Acceptance still required
 
@@ -28,9 +28,10 @@ Primary task actions are assembled in `lib/today/taskActions.ts` and injected fr
 - [ ] Carry / skip remove work from today's visible set and respect next valid surface date.
 - [ ] Estimate and intended-time changes recompute the same Stage 2 capacity source.
 - [ ] Failed direct writes leave state unchanged and preserve editable input.
+- [x] Local queue writes fail closed when browser storage rejects the write; a regression test covers queue-storage failure.
 - [ ] Offline queued writes show truthful pending and recoverable failure/retry state.
 - [ ] Reality Check Done / Carry and row actions agree on status and surface date.
 - [ ] `scripts/check-non-negotiables.mjs`, typecheck, tests and production build pass.
 - [ ] Device evidence recorded for the actions above, including light/dark and large text.
 
-This audit is not a Stage 4 exit claim. Device acceptance and the offline queue's pending/failure UX remain open.
+This is not a Stage 4 exit claim. CI execution, full action regression coverage, device acceptance, and offline pending/failure/retry UX remain open.

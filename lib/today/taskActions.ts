@@ -55,7 +55,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
     lat: number | null,
     lng: number | null,
     requiresVisit?: boolean | null
-  ) {
+  ): Promise<boolean> {
     const payload: Partial<Task> = {
       text,
       estimate_mins: mins,
@@ -70,9 +70,8 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
     if (!queueTaskPatch(id, payload)) {
       const { error } = await supabase.from('tasks').update(payload).eq('id', id);
       if (error) {
-        console.error(error);
-        alert('Could not save your changes: ' + error.message);
-        return;
+        console.error('[task-detail] save failed', { taskId: id, message: error.message });
+        return false;
       }
     }
     setTasks((prev) =>
@@ -93,6 +92,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
       )
     );
     if (sortMode === 'geo_aware') recalcRoute();
+    return true;
   }
 
   async function setRouteIntent(id: string, requiresVisit: boolean | null) {
@@ -233,9 +233,10 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
     });
   }
 
-  async function completeTask(id: string) {
+  async function completeTask(id: string): Promise<boolean> {
     const task = tasks.find((t) => t.id === id);
-    let finalLogged = task ? task.logged_mins : 0;
+    if (!task) return false;
+    let finalLogged = task.logged_mins;
     if (task && task.status === 'active' && task.started_at) {
       finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
     }
@@ -245,25 +246,25 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
       ? { actualForDb: 0, trainMins: null as number | null, source: 'none' as const }
       : closeCompletionLoop({
           userId: session?.user?.id,
-          taskId: task?.id ?? null,
-          taskText: task?.text || '',
-          estimateMins: task?.estimate_mins || 0,
+          taskId: task.id,
+          taskText: task.text,
+          estimateMins: task.estimate_mins || 0,
           measuredMins: measured,
           history,
           clusters,
           outcomeKind: 'done',
           realityOutcome: 'done',
-          startedAt: task?.started_at ?? null,
+          startedAt: task.started_at ?? null,
           activeMinutes: measured > 0 ? measured : null,
           hints: {
-            estimateMins: task?.estimate_mins,
+            estimateMins: task.estimate_mins,
             loggedMins: measured,
-            jobId: task?.job_id,
-            dueToday: task?.due_today,
-            intendedTime: task?.intended_time,
-            createdAt: task?.created_at,
-            surfaceDate: task?.surface_date,
-            subtaskCount: task ? (subtasksByTask[task.id]?.length ?? 0) : 0,
+            jobId: task.job_id,
+            dueToday: task.due_today,
+            intendedTime: task.intended_time,
+            createdAt: task.created_at,
+            surfaceDate: task.surface_date,
+            subtaskCount: subtasksByTask[task.id]?.length ?? 0,
           },
         });
     const actualForDb = loop.actualForDb;
@@ -279,7 +280,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
       if (error) {
         console.error(error);
         alert('Could not complete the task: ' + error.message);
-        return;
+        return false;
       }
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
@@ -314,14 +315,15 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
     }
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
     notifyTaskActivity({ type: 'completed', taskId: id });
+    return true;
   }
 
   async function confirmPostStopDone() {
     if (!postStopPrompt) return;
     setPostStopBusy(true);
     try {
-      await completeTask(postStopPrompt.taskId);
-      setPostStopPrompt(null);
+      const completed = await completeTask(postStopPrompt.taskId);
+      if (completed) setPostStopPrompt(null);
     } finally {
       setPostStopBusy(false);
     }

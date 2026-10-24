@@ -1359,7 +1359,13 @@ export function TodayPage() {
 
     if (!isOnline()) {
       data = newTask;
-      localUpsertTask(userId, data);
+      try {
+        localUpsertTask(userId, data);
+      } catch (storageError) {
+        console.error('Could not save captured task locally:', storageError);
+        setError('Could not save this task on this device. Check device storage and try again.');
+        return null;
+      }
     } else {
       const { data: created, error } = await supabase
         .from('tasks')
@@ -1389,7 +1395,13 @@ export function TodayPage() {
           // The request may have reached the server even if its response was
           // lost. Reuse the same UUID so a later upsert is idempotent.
           data = newTask;
-          localUpsertTask(userId, data);
+          try {
+            localUpsertTask(userId, data);
+          } catch (storageError) {
+            console.error('Could not save captured task locally:', storageError);
+            setError('Could not save this task on this device. Check device storage and try again.');
+            return null;
+          }
         } else {
           console.error(error);
           alert(error.message);
@@ -1608,20 +1620,23 @@ export function TodayPage() {
             },
           });
           const actualForDb = loop.actualForDb > 0 ? loop.actualForDb : measured;
-          const { error } = await supabase
-            .from('tasks')
-            .update({
-              status: 'done',
-              started_at: null,
-              logged_mins: actualForDb,
-              actual_mins: loop.trainMins ?? (actualForDb > 0 ? actualForDb : null),
-              completed_at: new Date().toISOString(),
-            })
-            .eq('id', u.taskId);
-          if (error) {
-            console.error(error);
-            alert('Could not update a task: ' + error.message);
-            return;
+          const completionPatch: Partial<Task> = {
+            status: 'done',
+            started_at: null,
+            logged_mins: actualForDb,
+            actual_mins: loop.trainMins ?? (actualForDb > 0 ? actualForDb : null),
+            completed_at: new Date().toISOString(),
+          };
+          if (!queueTaskPatch(u.taskId, completionPatch)) {
+            const { error } = await supabase
+              .from('tasks')
+              .update(completionPatch)
+              .eq('id', u.taskId);
+            if (error) {
+              console.error(error);
+              alert('Could not update a task: ' + error.message);
+              return;
+            }
           }
           setTasks((prev) => prev.filter((t) => t.id !== u.taskId));
         } else if (u.outcome === 'partial') {
@@ -1633,21 +1648,24 @@ export function TodayPage() {
           const remaining = u.remainingMins ?? Math.max(5, Math.round(task.estimate_mins / 2));
           const totalObserved = spent + remaining;
 
-          const { error } = await supabase
-            .from('tasks')
-            .update({
-              status: 'pending',
-              started_at: null,
-              logged_mins: spent,
-              estimate_mins: remaining,
-              surface_date: carryDate,
-              due_today: false,
-            })
-            .eq('id', u.taskId);
-          if (error) {
-            console.error(error);
-            alert('Could not update a task: ' + error.message);
-            return;
+          const partialPatch: Partial<Task> = {
+            status: 'pending',
+            started_at: null,
+            logged_mins: spent,
+            estimate_mins: remaining,
+            surface_date: carryDate,
+            due_today: false,
+          };
+          if (!queueTaskPatch(u.taskId, partialPatch)) {
+            const { error } = await supabase
+              .from('tasks')
+              .update(partialPatch)
+              .eq('id', u.taskId);
+            if (error) {
+              console.error(error);
+              alert('Could not update a task: ' + error.message);
+              return;
+            }
           }
           setTasks((prev) =>
             prev.map((t) =>
@@ -1691,19 +1709,22 @@ export function TodayPage() {
             });
           }
         } else if (u.outcome === 'carried' || u.outcome === 'skipped') {
-          const { error } = await supabase
-            .from('tasks')
-            .update({
-              status: 'pending',
-              started_at: null,
-              surface_date: carryDate,
-              due_today: false,
-            })
-            .eq('id', u.taskId);
-          if (error) {
-            console.error(error);
-            alert('Could not update a task: ' + error.message);
-            return;
+          const carryPatch: Partial<Task> = {
+            status: 'pending',
+            started_at: null,
+            surface_date: carryDate,
+            due_today: false,
+          };
+          if (!queueTaskPatch(u.taskId, carryPatch)) {
+            const { error } = await supabase
+              .from('tasks')
+              .update(carryPatch)
+              .eq('id', u.taskId);
+            if (error) {
+              console.error(error);
+              alert('Could not update a task: ' + error.message);
+              return;
+            }
           }
           setTasks((prev) =>
             prev.map((t) =>
@@ -1744,22 +1765,34 @@ export function TodayPage() {
     const userId = session?.user?.id;
     if (!userId) return false;
     const existing = tasks.find((task) => task.id === id);
-    const next = localPatchTask(userId, id, patch);
-    if (!next && existing) {
-      localUpsertTask(userId, { ...existing, ...patch } as Task);
-    } else if (!next) {
+    try {
+      const next = localPatchTask(userId, id, patch);
+      if (!next && existing) {
+        localUpsertTask(userId, { ...existing, ...patch } as Task);
+      } else if (!next) {
+        return false;
+      }
+      void flushSyncQueue(userId);
+      return true;
+    } catch (error) {
+      // Let the action attempt its direct online path if local durability fails.
+      // Never publish an optimistic state change when the queue was not saved.
+      console.error('Could not queue task update locally:', error);
       return false;
     }
-    void flushSyncQueue(userId);
-    return true;
   }
 
   function queueTaskDelete(id: string): boolean {
     const userId = session?.user?.id;
     if (!userId) return false;
-    localRemoveTask(userId, id);
-    void flushSyncQueue(userId);
-    return true;
+    try {
+      localRemoveTask(userId, id);
+      void flushSyncQueue(userId);
+      return true;
+    } catch (error) {
+      console.error('Could not queue task deletion locally:', error);
+      return false;
+    }
   }
 
   const {
