@@ -1,5 +1,6 @@
 /**
  * Structured Request + constraint refinement.
+ * NON-NEGOTIABLE: interpretation may propose; only explicit user confirm may mutate plan.
  *
  * The request layer converts understood natural language into the stable
  * EngineRequest contract consumed by the Personal Operating Engine.

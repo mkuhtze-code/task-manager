@@ -1,4 +1,5 @@
 // lib/unifiedInput/resolve.ts
+// NON-NEGOTIABLE: interpretation may propose; only explicit user confirm may mutate plan.
 //
 // Resolves a unified thought's location/job facet against the user's EXISTING
 // jobs. Purely deterministic fuzzy matching over the jobs the user already

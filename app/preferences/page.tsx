@@ -567,7 +567,7 @@ export default function Preferences() {
       body: JSON.stringify({}),
     });
     const data = await res.json();
-    setNotifStatus(res.ok ? 'Sent — check your phone.' : 'Failed: ' + (data.error || 'unknown error'));
+    setNotifStatus(res.ok ? 'Test notification sent — check your phone.' : 'Couldn’t send the test notification: ' + (data.error || 'unknown error'));
   }
 
   if (!session) {

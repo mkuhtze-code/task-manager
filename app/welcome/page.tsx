@@ -83,7 +83,7 @@ export default function Welcome() {
           </div>
           <p className="w-compare-caption">
             Works the same whether it's client work, a two-person shop, or a farm's
-            morning list. You do these, I'll do those.
+            morning list. Each person keeps their own work in view.
           </p>
         </RevealSection>
 
@@ -104,7 +104,7 @@ export default function Welcome() {
               </span>
             </div>
             <div className="w-reframe-row">
-              <span className="w-reframe-old">Overdue</span>
+              <span className="w-reframe-old">Fixed-date pressure</span>
               <span className="w-reframe-arrow">→</span>
               <span className="w-reframe-new-block">
                 <span className="w-reframe-new">Carrying forward</span>
@@ -112,7 +112,7 @@ export default function Welcome() {
               </span>
             </div>
             <div className="w-reframe-row">
-              <span className="w-reframe-old">Productivity score</span>
+              <span className="w-reframe-old">Completion ranking</span>
               <span className="w-reframe-arrow">→</span>
               <span className="w-reframe-new-block">
                 <span className="w-reframe-new">Capacity awareness</span>
@@ -154,8 +154,8 @@ export default function Welcome() {
             <span>Capacity over completion</span>
             <span>Patterns over scores</span>
             <span>Personal data over comparison</span>
-            <span>No streaks</span>
-            <span>No leaderboards</span>
+            <span>No artificial pressure</span>
+            <span>No public rankings</span>
             <span>No guilt</span>
           </div>
           </div>
