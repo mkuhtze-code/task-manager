@@ -22,6 +22,7 @@ describe('Today task detail persistence result', () => {
       job_id: null,
     } as unknown as Task;
     const setTasks = vi.fn();
+    const onDayModelChanged = vi.fn();
     const update = vi.fn(() => ({
       eq: vi.fn().mockResolvedValue({
         error: { message: 'network unavailable' },
@@ -37,6 +38,7 @@ describe('Today task detail persistence result', () => {
       tasks: [task],
       tasksRef: { current: [task] },
       setTasks,
+      onDayModelChanged,
       sortMode: 'manual',
       recalcRoute: vi.fn(async () => {}),
       queueTaskPatch: vi.fn(() => false),
@@ -69,6 +71,7 @@ describe('Today task detail persistence result', () => {
     expect(saved).toBe(false);
     expect(update).toHaveBeenCalledTimes(1);
     expect(setTasks).not.toHaveBeenCalled();
+    expect(onDayModelChanged).not.toHaveBeenCalled();
     expect(consoleError).toHaveBeenCalled();
   });
 });

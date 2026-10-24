@@ -196,6 +196,12 @@ export function TodayPage() {
 
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  // Explicit invalidation for the shared Stage 2 day-model projection. Task state
+  // remains authoritative; this closes memoized projections after accepted actions.
+  const [dayModelRevision, setDayModelRevision] = useState(0);
+  function refreshDayModel() {
+    setDayModelRevision((revision) => revision + 1);
+  }
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
@@ -1457,6 +1463,7 @@ export function TodayPage() {
     }
 
     setTasks((prev) => [...prev, data]);
+    refreshDayModel();
     setTaskText('');
     setTaskTime('');
     setShowReminderField(false);
@@ -1509,6 +1516,8 @@ export function TodayPage() {
     });
     if (overflowPlan.carryIds.length > 0) {
       const carryDate = nextWorkSurfaceDate(new Date(), workDays);
+      const acceptedCarryIds: string[] = [];
+      const failedCarryIds: string[] = [];
       for (const id of overflowPlan.carryIds) {
         const carryPatch: Partial<Task> = {
           status: 'pending',
@@ -1516,28 +1525,44 @@ export function TodayPage() {
           surface_date: carryDate,
           due_today: false,
         };
-        if (!queueTaskPatch(id, carryPatch)) {
-          const { error: carryErr } = await supabase
-            .from('tasks')
-            .update(carryPatch)
-            .eq('id', id);
-          if (carryErr) console.error(carryErr);
+        if (queueTaskPatch(id, carryPatch)) {
+          acceptedCarryIds.push(id);
+          continue;
+        }
+        const { error: carryErr } = await supabase
+          .from('tasks')
+          .update(carryPatch)
+          .eq('id', id);
+        if (carryErr) {
+          console.error('Could not carry overflow task:', { taskId: id, error: carryErr.message });
+          failedCarryIds.push(id);
+        } else {
+          acceptedCarryIds.push(id);
         }
       }
-      setTasks((prev) =>
-        prev.map((t) =>
-          overflowPlan.carryIds.includes(t.id)
-            ? {
-                ...t,
-                status: 'pending' as const,
-                started_at: null,
-                surface_date: carryDate,
-                due_today: false,
-              }
-            : t
-        )
-      );
-      if (overflowPlan.message) setRealityCheckMessage(overflowPlan.message);
+      if (acceptedCarryIds.length > 0) {
+        setTasks((prev) =>
+          prev.map((t) =>
+            acceptedCarryIds.includes(t.id)
+              ? {
+                  ...t,
+                  status: 'pending' as const,
+                  started_at: null,
+                  surface_date: carryDate,
+                  due_today: false,
+                }
+              : t
+          )
+        );
+        refreshDayModel();
+      }
+      if (failedCarryIds.length > 0) {
+        setRealityCheckMessage(
+          'Some tasks could not be moved to a later day. They remain here so you can retry.'
+        );
+      } else if (overflowPlan.message) {
+        setRealityCheckMessage(overflowPlan.message);
+      }
     }
 
     if (data.lat != null && sortMode === 'geo_aware') recalcRoute();
@@ -1585,9 +1610,6 @@ export function TodayPage() {
 
         // Reality → history (Done only for duration). Partial/Carry/Skip never train duration (FP-0).
         const observation = historyObservationForUpdate(task, u);
-        if (observation) {
-          pendingObservations.push(observation);
-        }
 
         if (u.outcome === 'done') {
           let finalLogged = task.logged_mins;
@@ -1639,6 +1661,7 @@ export function TodayPage() {
             }
           }
           setTasks((prev) => prev.filter((t) => t.id !== u.taskId));
+          refreshDayModel();
         } else if (u.outcome === 'partial') {
           let spent = task.logged_mins;
           if (task.status === 'active' && task.started_at) {
@@ -1682,6 +1705,7 @@ export function TodayPage() {
                 : t
             )
           );
+          refreshDayModel();
           if (spent > 0) {
             // Train on time actually spent — not spent+remaining (remaining is still plan).
             closeCompletionLoop({
@@ -1739,12 +1763,12 @@ export function TodayPage() {
                 : t
             )
           );
+          refreshDayModel();
         }
-      }
-      // Task persistence completed for the batch; only now publish its learning evidence
-      // and close the confirmation surface.
-      if (pendingObservations.length) {
-        setHistory((prev) => [...pendingObservations, ...prev]);
+
+        // Only record evidence after this task's mutation was accepted. If a later
+        // write fails, finally still publishes evidence for earlier accepted writes.
+        if (observation) pendingObservations.push(observation);
       }
       setRealityCheckOpen(false);
       setRealityCheckMessage(summary.message);
@@ -1756,6 +1780,9 @@ export function TodayPage() {
       message: summary.message,
     });
     } finally {
+      if (pendingObservations.length) {
+        setHistory((prev) => [...pendingObservations, ...prev]);
+      }
       setRealityCheckBusy(false);
     }
   }
@@ -1816,6 +1843,7 @@ export function TodayPage() {
     tasks,
     tasksRef,
     setTasks,
+    onDayModelChanged: refreshDayModel,
     sortMode,
     recalcRoute,
     queueTaskPatch,
@@ -1869,6 +1897,7 @@ export function TodayPage() {
             return null;
           }
           setTasks((prev) => [...prev, data]);
+          refreshDayModel();
           if (itemTexts.length > 0) {
             const rows = itemTexts.map((text, i) => ({
               user_id: userId,
@@ -2096,7 +2125,7 @@ export function TodayPage() {
         workEnd: todayTravelWindow.endClock,
         clampToWorkStart: todayTravelWindow.flightShaped,
       }),
-    [tasks, meetings, calendarEvents, now, workDays, todayTravelWindow.startClock, todayTravelWindow.endClock, todayTravelWindow.flightShaped]
+    [tasks, meetings, calendarEvents, now, workDays, dayModelRevision, todayTravelWindow.startClock, todayTravelWindow.endClock, todayTravelWindow.flightShaped]
   );
 
   const {
@@ -2527,7 +2556,7 @@ export function TodayPage() {
         <RealityCheckSheet
           tasks={tasksForRealityCheck(tasks)}
           busy={realityCheckBusy}
-          onClose={() => setRealityCheckOpen(false)}
+          onClose={() => { if (!realityCheckBusy) setRealityCheckOpen(false); }}
           onReshape={applyRealityUpdates}
         />
       )}
