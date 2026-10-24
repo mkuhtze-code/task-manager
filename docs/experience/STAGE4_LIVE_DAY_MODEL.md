@@ -34,9 +34,9 @@
 ## Residuals — Stage 4 remains open
 
 1. **Device evidence missing.** Start, stop, complete, carry, estimate and schedule changes still need recorded real-device evidence for immediate capacity/list refresh, light/dark, large text and safe area.
-2. **Queued remote failure visibility.** The durable queue tracks pending/failed operations and `offlineStatusLabel` can describe them, but this pass has not verified that every remote sync failure is visibly presented at the Today action point. A durable local queue acceptance is pending intent, not server-confirmed completion.
+2. **Queued remote failure visibility.** The app chrome already renders `OfflineStatusBar` on mobile and desktop; it reports pending/failed queue state and offers Retry sync when online. Device verification is still required to prove that forced remote failure is noticed and recovered in the real interaction. Durable local queue acceptance is pending intent, not server-confirmed completion.
 3. **Carry overflow failure fixed in this pass.** The UI now applies carry state only for durable queue acceptance or a successful direct write. Failed rows remain on Today and receive neutral recovery copy.
-4. **Reality Check partial batch.** If a later write fails, earlier accepted writes remain applied while the sheet stays open. Device verification must confirm that retry is understandable and does not duplicate learning observations.
+4. **Reality Check partial batch.** If a later write fails, earlier accepted writes remain applied while the sheet stays open. Learning observations are now committed in `finally` only for task writes that were accepted, so a later failure does not discard earlier evidence or train on the failed row. Device verification must confirm retry remains understandable.
 5. **Intended-time mapping.** Confirm the intended-time editor persists the field consumed by Today scheduling instead of assuming the estimate/date editor covers it.
 
 ## Acceptance record

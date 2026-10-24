@@ -1610,9 +1610,6 @@ export function TodayPage() {
 
         // Reality → history (Done only for duration). Partial/Carry/Skip never train duration (FP-0).
         const observation = historyObservationForUpdate(task, u);
-        if (observation) {
-          pendingObservations.push(observation);
-        }
 
         if (u.outcome === 'done') {
           let finalLogged = task.logged_mins;
@@ -1768,11 +1765,10 @@ export function TodayPage() {
           );
           refreshDayModel();
         }
-      }
-      // Task persistence completed for the batch; only now publish its learning evidence
-      // and close the confirmation surface.
-      if (pendingObservations.length) {
-        setHistory((prev) => [...pendingObservations, ...prev]);
+
+        // Only record evidence after this task's mutation was accepted. If a later
+        // write fails, finally still publishes evidence for earlier accepted writes.
+        if (observation) pendingObservations.push(observation);
       }
       setRealityCheckOpen(false);
       setRealityCheckMessage(summary.message);
@@ -1784,6 +1780,9 @@ export function TodayPage() {
       message: summary.message,
     });
     } finally {
+      if (pendingObservations.length) {
+        setHistory((prev) => [...pendingObservations, ...prev]);
+      }
       setRealityCheckBusy(false);
     }
   }
