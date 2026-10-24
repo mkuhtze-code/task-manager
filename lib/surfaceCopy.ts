@@ -7,11 +7,11 @@ import type { UserProfile } from '@/lib/userProfile';
 export type SurfaceKey = 'today' | 'jobs' | 'travel' | 'meetings';
 
 export function todayEmptyCopy(profile: UserProfile): { title: string; sub: string } {
-  if (profile.role === 'student') return { title: 'Clear day.', sub: 'Add study or admin when it shows up.' };
-  if (profile.role === 'personal') return { title: 'Clear day.', sub: 'Capture only what needs remembering.' };
-  if (profile.travelEmphasis) return { title: 'Clear day.', sub: 'Add work as it lands. Places count when you set them.' };
-  if (profile.jobsEmphasis === 'heavy' || profile.jobsEmphasis === 'medium') return { title: 'Clear day.', sub: 'Capture a task, or open a job when a project needs a home.' };
-  return { title: 'Clear day.', sub: 'Add what needs doing when it lands.' };
+  if (profile.role === 'student') return { title: 'Your day is clear.', sub: 'Add study or admin when it shows up.' };
+  if (profile.role === 'personal') return { title: 'Your day is clear.', sub: 'Capture only what needs remembering.' };
+  if (profile.travelEmphasis) return { title: 'Your day is clear.', sub: 'Add work as it lands. Places count when you set them.' };
+  if (profile.jobsEmphasis === 'heavy' || profile.jobsEmphasis === 'medium') return { title: 'Your day is clear.', sub: 'Capture a task, or open a job when a project needs a home.' };
+  return { title: 'Your day is clear.', sub: 'Add what needs doing when it lands.' };
 }
 
 export function jobsEmptyCopy(profile: UserProfile): { title: string; sub: string } {
