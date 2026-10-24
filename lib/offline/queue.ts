@@ -3,7 +3,7 @@
  * Idempotent via clientOpId — same op never applied twice upstream when used correctly.
  */
 
-import { readJson, writeJson } from './storage';
+import { readJson } from './storage';
 import type { OfflineEntityKind, SyncOp, SyncOpAction } from './types';
 import { makeClientOpId, makeSyncOpId } from './types';
 
@@ -18,14 +18,21 @@ export function loadQueue(userId: string): SyncOp[] {
   return Array.isArray(list) ? list : [];
 }
 
-function saveQueue(userId: string, ops: SyncOp[]): void {
+function saveQueue(userId: string, ops: SyncOp[]): boolean {
   // Never truncate unacknowledged work: silently dropping an offline mutation
   // is worse than retaining a longer queue. Bound only completed history.
   const pending = ops.filter(
     (o) => o.status === 'pending' || o.status === 'syncing' || o.status === 'failed'
   );
   const done = ops.filter((o) => o.status === 'done').slice(-50);
-  writeJson(key(userId), [...pending, ...done]);
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return false;
+  try {
+    localStorage.setItem(key(userId), JSON.stringify([...pending, ...done]));
+    return true;
+  } catch {
+    // Do not report an offline write as accepted if local storage rejected it.
+    return false;
+  }
 }
 
 export function enqueueOp(
@@ -59,7 +66,12 @@ export function enqueueOp(
     status: 'pending',
   };
   existing.push(op);
-  saveQueue(userId, existing);
+  if (!saveQueue(userId, existing)) {
+    throw new Error('Dokkit could not save this change locally. Check device storage and try again.');
+  }
+  if (!loadQueue(userId).some((saved) => saved.id === op.id)) {
+    throw new Error('Dokkit could not confirm this change was saved locally. Try again.');
+  }
   return op;
 }
 
