@@ -147,6 +147,18 @@ describe('TaskDetailSheet validation recovery', () => {
     expect(props.onClose).not.toHaveBeenCalled();
   });
 
+  it('keeps the detail open when completion persistence fails', async () => {
+    const { props } = renderTaskDetail();
+    props.onSave.mockResolvedValue(true);
+    props.onComplete.mockResolvedValue(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(await screen.findByText('Could not complete this task. It is still here; try again.')).toBeTruthy();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(props.onComplete).toHaveBeenCalledTimes(1);
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+
   it('does not complete or close a task while its estimate is invalid', () => {
     const { props } = renderTaskDetail();
     fireEvent.click(screen.getByRole('button', { name: 'Time, place, job' }));
