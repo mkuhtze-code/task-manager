@@ -1608,20 +1608,23 @@ export function TodayPage() {
             },
           });
           const actualForDb = loop.actualForDb > 0 ? loop.actualForDb : measured;
-          const { error } = await supabase
-            .from('tasks')
-            .update({
-              status: 'done',
-              started_at: null,
-              logged_mins: actualForDb,
-              actual_mins: loop.trainMins ?? (actualForDb > 0 ? actualForDb : null),
-              completed_at: new Date().toISOString(),
-            })
-            .eq('id', u.taskId);
-          if (error) {
-            console.error(error);
-            alert('Could not update a task: ' + error.message);
-            return;
+          const completionPatch: Partial<Task> = {
+            status: 'done',
+            started_at: null,
+            logged_mins: actualForDb,
+            actual_mins: loop.trainMins ?? (actualForDb > 0 ? actualForDb : null),
+            completed_at: new Date().toISOString(),
+          };
+          if (!queueTaskPatch(u.taskId, completionPatch)) {
+            const { error } = await supabase
+              .from('tasks')
+              .update(completionPatch)
+              .eq('id', u.taskId);
+            if (error) {
+              console.error(error);
+              alert('Could not update a task: ' + error.message);
+              return;
+            }
           }
           setTasks((prev) => prev.filter((t) => t.id !== u.taskId));
         } else if (u.outcome === 'partial') {
@@ -1633,21 +1636,24 @@ export function TodayPage() {
           const remaining = u.remainingMins ?? Math.max(5, Math.round(task.estimate_mins / 2));
           const totalObserved = spent + remaining;
 
-          const { error } = await supabase
-            .from('tasks')
-            .update({
-              status: 'pending',
-              started_at: null,
-              logged_mins: spent,
-              estimate_mins: remaining,
-              surface_date: carryDate,
-              due_today: false,
-            })
-            .eq('id', u.taskId);
-          if (error) {
-            console.error(error);
-            alert('Could not update a task: ' + error.message);
-            return;
+          const partialPatch: Partial<Task> = {
+            status: 'pending',
+            started_at: null,
+            logged_mins: spent,
+            estimate_mins: remaining,
+            surface_date: carryDate,
+            due_today: false,
+          };
+          if (!queueTaskPatch(u.taskId, partialPatch)) {
+            const { error } = await supabase
+              .from('tasks')
+              .update(partialPatch)
+              .eq('id', u.taskId);
+            if (error) {
+              console.error(error);
+              alert('Could not update a task: ' + error.message);
+              return;
+            }
           }
           setTasks((prev) =>
             prev.map((t) =>
@@ -1691,19 +1697,22 @@ export function TodayPage() {
             });
           }
         } else if (u.outcome === 'carried' || u.outcome === 'skipped') {
-          const { error } = await supabase
-            .from('tasks')
-            .update({
-              status: 'pending',
-              started_at: null,
-              surface_date: carryDate,
-              due_today: false,
-            })
-            .eq('id', u.taskId);
-          if (error) {
-            console.error(error);
-            alert('Could not update a task: ' + error.message);
-            return;
+          const carryPatch: Partial<Task> = {
+            status: 'pending',
+            started_at: null,
+            surface_date: carryDate,
+            due_today: false,
+          };
+          if (!queueTaskPatch(u.taskId, carryPatch)) {
+            const { error } = await supabase
+              .from('tasks')
+              .update(carryPatch)
+              .eq('id', u.taskId);
+            if (error) {
+              console.error(error);
+              alert('Could not update a task: ' + error.message);
+              return;
+            }
           }
           setTasks((prev) =>
             prev.map((t) =>
