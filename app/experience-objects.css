@@ -267,3 +267,105 @@
     gap: 8px;
   }
 }
+
+
+/* Stage 2 — Today fixed commitments are visible before flexible work. */
+@media (max-width: 767px) {
+  .today-fixed-commitments {
+    margin: 0;
+    padding: 12px 16px 8px;
+    color: var(--ink, #1a1814);
+    background: var(--paper, #f6f3ed);
+  }
+
+  .today-fixed-commitments__heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 4px;
+  }
+
+  .today-fixed-commitments__heading h2 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 650;
+    letter-spacing: 0.015em;
+  }
+
+  .today-fixed-commitments ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .today-fixed-commitments li {
+    border-bottom: 1px solid var(--line, rgba(26, 24, 20, 0.1));
+  }
+
+  .today-fixed-commitments li > a,
+  .today-fixed-commitments li > div {
+    display: grid;
+    grid-template-columns: minmax(4.2rem, auto) minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 10px;
+    min-height: 44px;
+    padding: 10px 0;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .today-fixed-commitments time,
+  .today-fixed-commitments__duration {
+    color: var(--ink-soft, #5c574f);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .today-fixed-commitments__title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.875rem;
+    line-height: 1.35;
+  }
+
+  .today-fixed-commitments__duration {
+    text-align: end;
+  }
+
+  .experience-capacity-remaining strong {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .experience-capacity-warning {
+    margin: 4px 0 0;
+    color: var(--ink-soft, #5c574f);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .experience-day-header .experience-day-actions {
+    gap: 4px;
+  }
+
+  .experience-day-header .experience-capacity {
+    padding-top: 8px;
+  }
+
+  .experience-day-header .experience-capacity-top {
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .experience-day-header .experience-capacity-remaining strong {
+    font-size: clamp(1.25rem, 5vw, 1.65rem);
+    line-height: 1.2;
+  }
+}
+
+@media (min-width: 768px) {
+  .today-fixed-commitments {
+    display: none;
+  }
+}

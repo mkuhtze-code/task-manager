@@ -14,6 +14,7 @@ import {
 import ContextLine from '@/components/ContextLine';
 import { TaskDetailSheet } from '@/components/TaskDetailSheet';
 import { TodayTaskList } from '@/components/today/TodayTaskList';
+import { TodayFixedCommitments } from '@/components/today/TodayFixedCommitments';
 import { TodayStatusCards } from '@/components/today/TodayStatusCards';
 import { deriveActiveCommitments, deriveTodayCapacity } from '@/lib/today/dayCapacity';
 import { deriveTodayRoute } from '@/lib/today/dayRoute';
@@ -2399,6 +2400,8 @@ export function TodayPage() {
           </a>
         </div>
       )}
+
+      <TodayFixedCommitments commitments={activeCommitments} />
 
       <TodayTaskList
         taskLoadError={taskLoadError}
