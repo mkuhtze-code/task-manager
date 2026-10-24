@@ -40,7 +40,6 @@ export function TodayFixedCommitments({ commitments }: { commitments: Commitment
     <section className="today-fixed-commitments" aria-labelledby="today-fixed-commitments-title" data-testid="today-fixed-commitments">
       <div className="today-fixed-commitments__heading">
         <h2 id="today-fixed-commitments-title">Fixed commitments</h2>
-        <span>{ordered.length}</span>
       </div>
       <ol>
         {ordered.map((commitment) => {
