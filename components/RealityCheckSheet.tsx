@@ -136,6 +136,7 @@ export function RealityCheckSheet({
                           key={key}
                           type="button"
                           className={selected ? 'segmented-btn active' : 'segmented-btn'}
+                          style={{ minHeight: 44, minWidth: 44 }}
                           aria-pressed={selected}
                           onClick={() => setOutcome(task.id, key)}
                         >
@@ -217,10 +218,11 @@ export function RealityCheckSheet({
           <button
             type="button"
             className="btn btn-steel"
+            style={{ minHeight: 44 }}
             disabled={busy || tasks.length === 0}
             onClick={handleReshape}
           >
-            {busy ? 'Updating…' : 'Apply what happened'}
+            {busy ? 'Updating…' : 'Reshape the plan'}
           </button>
           <button type="button" className="btn-text" onClick={onClose}>
             Not now
