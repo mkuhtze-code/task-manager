@@ -1563,7 +1563,10 @@ export function TodayPage() {
     setRealityCheckBusy(true);
     const carryDate = nextWorkSurfaceDate(new Date(), workDays);
     const summary = summarizeReshape(updates);
-        try {
+    // Keep learning observations pending until the corresponding task write succeeds.
+    // React state updates are asynchronous; use this explicit batch for the close operation.
+    const pendingObservations: typeof history = [];
+    try {
       for (const u of updates) {
         const task = tasks.find((t) => t.id === u.taskId);
         if (!task) continue;
@@ -1571,7 +1574,7 @@ export function TodayPage() {
         // Reality → history (Done only for duration). Partial/Carry/Skip never train duration (FP-0).
         const observation = historyObservationForUpdate(task, u);
         if (observation) {
-          setHistory((prev) => [observation, ...prev]);
+          pendingObservations.push(observation);
         }
 
         if (u.outcome === 'done') {
@@ -1717,9 +1720,14 @@ export function TodayPage() {
           );
         }
       }
-          setRealityCheckOpen(false);
-    setRealityCheckMessage(summary.message);
-    saveDayClose({
+      // Task persistence completed for the batch; only now publish its learning evidence
+      // and close the confirmation surface.
+      if (pendingObservations.length) {
+        setHistory((prev) => [...pendingObservations, ...prev]);
+      }
+      setRealityCheckOpen(false);
+      setRealityCheckMessage(summary.message);
+      saveDayClose({
       date: localDateStr(new Date()),
       doneCount: summary.doneCount,
       carriedCount: summary.carriedCount,
