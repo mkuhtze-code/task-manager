@@ -486,6 +486,59 @@ describe('Capture Dock UI authorization boundary', () => {
     }));
   });
 
+
+  it('uses the edited proposal text when committing a reviewed batch', async () => {
+    mocks.processCaptureSpeech.mockReturnValueOnce({
+      outcome: 'CREATE_MULTIPLE_TASKS',
+      rawText: 'Call John and email Sarah',
+      collection: null,
+      proposals: [
+        {
+          actId: 'act-john',
+          kind: 'action',
+          summary: 'Call John',
+          objectText: 'John',
+          temporalRaw: undefined,
+          temporalResolvedDate: null,
+          temporalRelation: undefined,
+          entityLinks: [],
+          polarity: 'positive',
+          actionConfidence: 'medium',
+          blocked: false,
+          reason: 'positive_action',
+        },
+        {
+          actId: 'act-sarah',
+          kind: 'action',
+          summary: 'Email Sarah',
+          objectText: 'Sarah',
+          temporalRaw: undefined,
+          temporalResolvedDate: null,
+          temporalRelation: undefined,
+          entityLinks: [],
+          polarity: 'positive',
+          actionConfidence: 'medium',
+          blocked: false,
+          reason: 'positive_action',
+        },
+      ],
+    } as never);
+
+    renderCaptureSheet();
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Dock' }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole('button', { name: 'Dock' }));
+
+    const editAction = await screen.findByRole('textbox', { name: 'Edit action: Call John' });
+    fireEvent.change(editAction, { target: { value: 'Call John about the revised quote' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create selected (2)' }));
+    await waitFor(() => expect(mocks.addTaskWithOverrides).toHaveBeenCalledTimes(2));
+    expect(mocks.addTaskWithOverrides).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      text: 'Call John about the revised quote',
+    }));
+  });
+
+
   it('retries only failed batch items and never resubmits a created item in the same review', async () => {
     mocks.processCaptureSpeech.mockReturnValueOnce({
       outcome: 'CREATE_MULTIPLE_TASKS',
