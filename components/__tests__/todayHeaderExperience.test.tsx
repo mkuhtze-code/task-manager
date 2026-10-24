@@ -59,10 +59,10 @@ describe('replacement mobile Today instrument', () => {
     renderMobileTodayHeader();
 
     expect(screen.getByRole('heading', { name: /Thursday Oct 15/ })).toBeTruthy();
-    expect(screen.getByText('Work time remaining')).toBeTruthy();
-    expect(screen.getByText('4h')).toBeTruthy();
-    expect(screen.getByText('Planned')).toBeTruthy();
-    expect(screen.getByText('Fixed')).toBeTruthy();
+    expect(screen.getByText('Flexible time left')).toBeTruthy();
+    expect(screen.getByText('About 1h left')).toBeTruthy();
+    expect(screen.queryByText('Planned')).toBeNull();
+    expect(screen.queryByText('Fixed')).toBeNull();
     expect(screen.queryByText('YOUR DAY, IN VIEW')).toBeNull();
     expect(screen.queryByText('DAY TIMELINE')).toBeNull();
   });
@@ -91,13 +91,14 @@ describe('replacement mobile Today instrument', () => {
     expect(scoped.getByText('10a')).toBeTruthy();
   });
 
-  it('exposes learned fit on demand and keeps the map action available', () => {
+  it('exposes learned fit on demand and keeps the map action in secondary tools', () => {
     const { props } = renderMobileTodayHeader();
 
     fireEvent.click(screen.getByRole('button', { name: /Patterns and fit Show/i }));
     expect(screen.getByRole('region', { name: 'Patterns and fit' })).toBeTruthy();
     expect(screen.getByText('Send the invoice')).toBeTruthy();
 
+    fireEvent.click(screen.getByRole('button', { name: 'Today tools' }));
     fireEvent.click(screen.getByRole('button', { name: 'Open map' }));
     expect(props.onViewMap).toHaveBeenCalledTimes(1);
   });
