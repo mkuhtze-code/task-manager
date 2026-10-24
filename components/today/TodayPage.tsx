@@ -1359,7 +1359,13 @@ export function TodayPage() {
 
     if (!isOnline()) {
       data = newTask;
-      localUpsertTask(userId, data);
+      try {
+        localUpsertTask(userId, data);
+      } catch (storageError) {
+        console.error('Could not save captured task locally:', storageError);
+        setError('Could not save this task on this device. Check device storage and try again.');
+        return null;
+      }
     } else {
       const { data: created, error } = await supabase
         .from('tasks')
@@ -1389,7 +1395,13 @@ export function TodayPage() {
           // The request may have reached the server even if its response was
           // lost. Reuse the same UUID so a later upsert is idempotent.
           data = newTask;
-          localUpsertTask(userId, data);
+          try {
+            localUpsertTask(userId, data);
+          } catch (storageError) {
+            console.error('Could not save captured task locally:', storageError);
+            setError('Could not save this task on this device. Check device storage and try again.');
+            return null;
+          }
         } else {
           console.error(error);
           alert(error.message);
