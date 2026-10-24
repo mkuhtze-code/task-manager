@@ -18,6 +18,7 @@ type TodayTaskActionsDependencies = {
   tasks: Task[];
   tasksRef: MutableRefObject<Task[]>;
   setTasks: Dispatch<SetStateAction<Task[]>>;
+  onDayModelChanged?: () => void;
   sortMode: SortMode;
   recalcRoute: () => Promise<void>;
   queueTaskPatch: (id: string, patch: Partial<Task>) => boolean;
@@ -39,7 +40,8 @@ type TodayTaskActionsDependencies = {
 /** Existing Today task lifecycle and metadata actions, moved without changing their rules. */
 export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
   const {
-    supabase, session, tasks, tasksRef, setTasks, sortMode, recalcRoute,
+    supabase, session, tasks, tasksRef, setTasks,
+    onDayModelChanged = () => {}, sortMode, recalcRoute,
     queueTaskPatch, queueTaskDelete, history, setHistory, clusters,
     subtasksByTask, postStopPrompt, setPostStopPrompt, setPostStopBusy,
     subDraftText, setSubDraftText, subDraftTime, setSubDraftTime,
@@ -91,6 +93,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
           : t
       )
     );
+    onDayModelChanged();
     if (sortMode === 'geo_aware') recalcRoute();
     return true;
   }
@@ -190,6 +193,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
       }
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    onDayModelChanged();
     if (task) {
       void showActiveTimerNotification({
         taskId: id,
@@ -225,6 +229,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
       }
     }
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    onDayModelChanged();
     notifyTaskActivity({
       type: 'stopped',
       taskId: id,
@@ -284,6 +289,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
       }
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    onDayModelChanged();
 
     // Completion closes the task's refinement chain. Keep historical memory,
     // but do not let the next standalone capture inherit this completed task.
@@ -344,6 +350,7 @@ export function createTodayTaskActions(deps: TodayTaskActionsDependencies) {
       }
     }
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    onDayModelChanged();
     if (task?.lat != null && sortMode === 'geo_aware') recalcRoute();
   }
 

@@ -196,6 +196,12 @@ export function TodayPage() {
 
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  // Explicit invalidation for the shared Stage 2 day-model projection. Task state
+  // remains authoritative; this closes memoized projections after accepted actions.
+  const [dayModelRevision, setDayModelRevision] = useState(0);
+  function refreshDayModel() {
+    setDayModelRevision((revision) => revision + 1);
+  }
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
   const [subtasksByTask, setSubtasksByTask] = useState<Record<string, Subtask[]>>({});
@@ -1639,6 +1645,7 @@ export function TodayPage() {
             }
           }
           setTasks((prev) => prev.filter((t) => t.id !== u.taskId));
+          refreshDayModel();
         } else if (u.outcome === 'partial') {
           let spent = task.logged_mins;
           if (task.status === 'active' && task.started_at) {
@@ -1682,6 +1689,7 @@ export function TodayPage() {
                 : t
             )
           );
+          refreshDayModel();
           if (spent > 0) {
             // Train on time actually spent — not spent+remaining (remaining is still plan).
             closeCompletionLoop({
@@ -1739,6 +1747,7 @@ export function TodayPage() {
                 : t
             )
           );
+          refreshDayModel();
         }
       }
       // Task persistence completed for the batch; only now publish its learning evidence
@@ -1816,6 +1825,7 @@ export function TodayPage() {
     tasks,
     tasksRef,
     setTasks,
+    onDayModelChanged: refreshDayModel,
     sortMode,
     recalcRoute,
     queueTaskPatch,
@@ -2096,7 +2106,7 @@ export function TodayPage() {
         workEnd: todayTravelWindow.endClock,
         clampToWorkStart: todayTravelWindow.flightShaped,
       }),
-    [tasks, meetings, calendarEvents, now, workDays, todayTravelWindow.startClock, todayTravelWindow.endClock, todayTravelWindow.flightShaped]
+    [tasks, meetings, calendarEvents, now, workDays, dayModelRevision, todayTravelWindow.startClock, todayTravelWindow.endClock, todayTravelWindow.flightShaped]
   );
 
   const {
@@ -2527,7 +2537,7 @@ export function TodayPage() {
         <RealityCheckSheet
           tasks={tasksForRealityCheck(tasks)}
           busy={realityCheckBusy}
-          onClose={() => setRealityCheckOpen(false)}
+          onClose={() => { if (!realityCheckBusy) setRealityCheckOpen(false); }}
           onReshape={applyRealityUpdates}
         />
       )}
