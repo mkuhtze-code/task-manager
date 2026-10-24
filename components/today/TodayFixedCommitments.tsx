@@ -14,7 +14,7 @@ type Commitment = {
 };
 
 function durationLabel(commitment: Commitment): string {
-  if (commitment.all_day) return 'All day';
+  if (commitment.all_day) return '';
   const minutes = Math.max(
     0,
     Math.round((new Date(commitment.end_at).getTime() - new Date(commitment.start_at).getTime()) / 60000),
