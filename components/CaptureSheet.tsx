@@ -1288,8 +1288,25 @@ onClick={(e) => e.stopPropagation()}
                   }) : current)}
                 />
                 <span>
-                  <strong>{proposal.summary || proposal.objectText || 'Unclear action'}</strong>
-                  {proposal.temporalRaw ? <span> · {proposal.temporalRaw}</span> : null}
+                  <input
+                    type="text"
+                    className="capture-batch-review-edit"
+                    aria-label={`Edit action: ${proposal.summary || proposal.objectText || 'Unclear action'}`}
+                    value={proposal.summary || proposal.objectText || ''}
+                    disabled={proposal.status === 'created' || proposal.status === 'excluded'}
+                    onChange={(event) => {
+                      const summary = event.target.value;
+                      setPendingCaptureBatch((current) => current ? ({
+                        ...current,
+                        proposals: current.proposals.map((item) =>
+                          item.actId === proposal.actId
+                            ? { ...item, summary }
+                            : item
+                        ),
+                      }) : current);
+                    }}
+                  />
+                  {proposal.temporalRaw ? <span> · Time phrase: {proposal.temporalRaw}</span> : null}
                   {proposal.temporalResolvedDate ? <span> · {proposal.temporalResolvedDate}</span> : null}
                   {proposal.status === 'created' ? <span> · Created</span> : null}
                   {proposal.status === 'excluded' ? <span> · Needs individual review</span> : null}
