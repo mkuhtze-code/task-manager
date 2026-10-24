@@ -1273,9 +1273,10 @@ onClick={(e) => e.stopPropagation()}
         <ul className="capture-batch-review-list">
           {pendingCaptureBatch.proposals.map((proposal) => (
             <li key={proposal.actId} className="capture-batch-review-item">
-              <label>
+              <div className="capture-batch-review-choice">
                 <input
                   type="checkbox"
+                  aria-label={`Select action: ${proposal.summary || proposal.objectText || 'Unclear action'}`}
                   checked={proposal.selected}
                   disabled={proposal.status === 'created' || proposal.status === 'excluded'}
                   onChange={(event) => setPendingCaptureBatch((current) => current ? ({
@@ -1312,7 +1313,7 @@ onClick={(e) => e.stopPropagation()}
                   {proposal.status === 'excluded' ? <span> · Needs individual review</span> : null}
                   {proposal.status === 'failed' ? <span role="alert"> · {proposal.error || 'Failed; select to retry'}</span> : null}
                 </span>
-              </label>
+              </div>
             </li>
           ))}
         </ul>
