@@ -400,19 +400,19 @@ export default function JobDetailPage() {
     );
   }
 
-  async function updateTask(id: string, text: string, mins: number, surfaceDate: string | null, locationText: string | null, lat: number | null, lng: number | null) {
+  async function updateTask(id: string, text: string, mins: number, surfaceDate: string | null, locationText: string | null, lat: number | null, lng: number | null): Promise<boolean> {
     const { error } = await supabase
       .from('tasks')
       .update({ text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng })
       .eq('id', id);
     if (error) {
-      console.error(error);
-      alert('Could not save your changes: ' + error.message);
-      return;
+      console.error('[job-task] save failed', { taskId: id, message: error.message });
+      return false;
     }
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, text, estimate_mins: mins, surface_date: surfaceDate, location_text: locationText, lat, lng } : t))
     );
+    return true;
   }
 
   async function saveTaskInfo(id: string, info: string) {
@@ -462,9 +462,10 @@ export default function JobDetailPage() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'pending', started_at: null, logged_mins: newLogged } : t)));
   }
 
-  async function completeTask(id: string) {
+  async function completeTask(id: string): Promise<boolean> {
     const task = tasks.find((t) => t.id === id);
-    let finalLogged = task ? task.logged_mins : 0;
+    if (!task) return false;
+    let finalLogged = task.logged_mins;
     if (task && task.status === 'active' && task.started_at) {
       finalLogged += (Date.now() - new Date(task.started_at).getTime()) / 60000;
     }
@@ -506,7 +507,7 @@ export default function JobDetailPage() {
     if (error) {
       console.error(error);
       alert('Could not complete the task: ' + error.message);
-      return;
+      return false;
     }
     setTasks((prev) =>
       prev.map((t) =>
@@ -520,7 +521,7 @@ export default function JobDetailPage() {
           : t
       )
     );
-    if (task && loop.trainMins != null) {
+    if (loop.trainMins != null) {
       setHistory((prev) => [
         historyRowFromCompletion(
           task,
@@ -531,6 +532,7 @@ export default function JobDetailPage() {
         ...prev,
       ]);
     }
+    return true;
   }
 
   async function deleteTask(id: string) {
