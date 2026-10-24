@@ -1463,6 +1463,7 @@ export function TodayPage() {
     }
 
     setTasks((prev) => [...prev, data]);
+    refreshDayModel();
     setTaskText('');
     setTaskTime('');
     setShowReminderField(false);
@@ -1897,6 +1898,7 @@ export function TodayPage() {
             return null;
           }
           setTasks((prev) => [...prev, data]);
+          refreshDayModel();
           if (itemTexts.length > 0) {
             const rows = itemTexts.map((text, i) => ({
               user_id: userId,
