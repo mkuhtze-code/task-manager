@@ -154,8 +154,8 @@ export default function Welcome() {
             <span>Capacity over completion</span>
             <span>Patterns over scores</span>
             <span>Personal data over comparison</span>
-            <span>No streaks</span>
-            <span>No leaderboards</span>
+            <span>No artificial pressure</span>
+            <span>No public rankings</span>
             <span>No guilt</span>
           </div>
           </div>
