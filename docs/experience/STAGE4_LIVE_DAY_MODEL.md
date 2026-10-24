@@ -16,7 +16,7 @@
 | Start task | `TodayTaskRows` → `TodayPage` → `taskActions.startTask` | `status=active`, `started_at`; durable queue or Supabase update | Yes, after accepted local apply | Same task array patched immediately | Alert on direct write failure; state unchanged | **OK** source-level |
 | Stop task | Row / active-task controls → `taskActions.stopTask` | `status=pending`, clear `started_at`, accumulate `logged_mins` | Yes, after accepted local apply | Same task array patched immediately | Alert on direct write failure; state unchanged | **OK** source-level |
 | Complete / Done | Row and `TaskDetailSheet` → `completeTask`; Reality Check Done → reshape | `status=done`, logged/actual minutes, completion time; remove from open set | Yes | Removed from open set immediately after acceptance | Direct write failure returns false and retains task; Reality Check stays open on failure | **OK** source-level |
-| Carry | Reality Check Carry; capture overflow carry | `status=pending`, clear active timer, next work `surface_date`, `due_today=false` | Yes for Reality Check; overflow mutates same task state | Same task array patched immediately | Reality Check alerts on direct write failure; overflow direct-write failure only logs | **Residual**: overflow carry failure needs recoverable UI; capture path is not expanded here |
+| Carry | Reality Check Carry; capture overflow carry | `status=pending`, clear active timer, next work `surface_date`, `due_today=false` | Yes for Reality Check; overflow mutates same task state | Same task array patched immediately | Reality Check alerts on direct write failure; overflow direct-write failure only logs **OK**: only locally queued or remotely persisted carries leave Today; failed writes stay visible with neutral recovery copy |
 | Skip / remove from today | Reality Check Skip | Same pending + next-work-date patch as Carry; outcome label retained in close summary | Yes | Same task array patched immediately | Alert on direct write failure | **OK** source-level; Skip does not mark task done |
 | Estimate change | `TaskDetailSheet` → `updateTask` | `estimate_mins` and task metadata | Yes | Same task array patched immediately | Save returns false; state unchanged on direct write failure | **OK** source-level |
 | Schedule / intended time | `TaskDetailSheet` → `updateTask` | `surface_date` plus task metadata; intended-time UI needs verification | Yes for `surface_date` / estimate changes | Same task array patched immediately | Save returns false on direct write failure | **Partial**: confirm intended-time editor maps to the field used by Today |
@@ -35,7 +35,7 @@
 
 1. **Device evidence missing.** Start, stop, complete, carry, estimate and schedule changes still need recorded real-device evidence for immediate capacity/list refresh, light/dark, large text and safe area.
 2. **Queued remote failure visibility.** The durable queue tracks pending/failed operations and `offlineStatusLabel` can describe them, but this pass has not verified that every remote sync failure is visibly presented at the Today action point. A durable local queue acceptance is pending intent, not server-confirmed completion.
-3. **Carry overflow failure.** Capture overflow carry currently logs a direct write failure and still updates local state. That is a false-success risk; fix in Stage 5 capture wiring or a narrowly scoped follow-up before the full primary-action inventory is green.
+3. **Carry overflow failure fixed in this pass.** The UI now applies carry state only for durable queue acceptance or a successful direct write. Failed rows remain on Today and receive neutral recovery copy.
 4. **Reality Check partial batch.** If a later write fails, earlier accepted writes remain applied while the sheet stays open. Device verification must confirm that retry is understandable and does not duplicate learning observations.
 5. **Intended-time mapping.** Confirm the intended-time editor persists the field consumed by Today scheduling instead of assuming the estimate/date editor covers it.
 
@@ -47,7 +47,7 @@
 - [ ] Start / stop / complete / carry update visible capacity + list without reload on device.
 - [ ] Estimate and intended-time edits reflect the Stage 2 capacity source on device.
 - [ ] Forced network failure and failed queued sync are visible and recoverable.
-- [ ] Carry overflow false-success path fixed.
+- [x] Carry overflow false-success path fixed: failed writes do not mutate local task state.
 - [ ] Reality Check partial-batch retry tested on device.
 - [ ] Non-negotiables guard, focused tests, typecheck and production build pass on this head.
 - [ ] Record device screenshots or short recording.

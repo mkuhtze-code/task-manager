@@ -1515,6 +1515,8 @@ export function TodayPage() {
     });
     if (overflowPlan.carryIds.length > 0) {
       const carryDate = nextWorkSurfaceDate(new Date(), workDays);
+      const acceptedCarryIds: string[] = [];
+      const failedCarryIds: string[] = [];
       for (const id of overflowPlan.carryIds) {
         const carryPatch: Partial<Task> = {
           status: 'pending',
@@ -1522,28 +1524,44 @@ export function TodayPage() {
           surface_date: carryDate,
           due_today: false,
         };
-        if (!queueTaskPatch(id, carryPatch)) {
-          const { error: carryErr } = await supabase
-            .from('tasks')
-            .update(carryPatch)
-            .eq('id', id);
-          if (carryErr) console.error(carryErr);
+        if (queueTaskPatch(id, carryPatch)) {
+          acceptedCarryIds.push(id);
+          continue;
+        }
+        const { error: carryErr } = await supabase
+          .from('tasks')
+          .update(carryPatch)
+          .eq('id', id);
+        if (carryErr) {
+          console.error('Could not carry overflow task:', { taskId: id, error: carryErr.message });
+          failedCarryIds.push(id);
+        } else {
+          acceptedCarryIds.push(id);
         }
       }
-      setTasks((prev) =>
-        prev.map((t) =>
-          overflowPlan.carryIds.includes(t.id)
-            ? {
-                ...t,
-                status: 'pending' as const,
-                started_at: null,
-                surface_date: carryDate,
-                due_today: false,
-              }
-            : t
-        )
-      );
-      if (overflowPlan.message) setRealityCheckMessage(overflowPlan.message);
+      if (acceptedCarryIds.length > 0) {
+        setTasks((prev) =>
+          prev.map((t) =>
+            acceptedCarryIds.includes(t.id)
+              ? {
+                  ...t,
+                  status: 'pending' as const,
+                  started_at: null,
+                  surface_date: carryDate,
+                  due_today: false,
+                }
+              : t
+          )
+        );
+        refreshDayModel();
+      }
+      if (failedCarryIds.length > 0) {
+        setRealityCheckMessage(
+          'Some tasks could not be moved to a later day. They remain here so you can retry.'
+        );
+      } else if (overflowPlan.message) {
+        setRealityCheckMessage(overflowPlan.message);
+      }
     }
 
     if (data.lat != null && sortMode === 'geo_aware') recalcRoute();
