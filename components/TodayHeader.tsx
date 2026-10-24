@@ -214,15 +214,6 @@ export function TodayHeader(props: {
             <button
               type="button"
               className="experience-icon-action"
-              aria-label="Open map"
-              title="Open map"
-              onClick={onViewMap}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 6.5 5-2 7 2 5-2v13l-5 2-7-2-5 2z" /><path d="M8.5 4.5v13M15.5 6.5v13" /></svg>
-            </button>
-            <button
-              type="button"
-              className="experience-icon-action"
               aria-label="Today tools"
               aria-expanded={toolsOpen}
               onClick={() => setToolsOpen((value) => !value)}
@@ -238,45 +229,20 @@ export function TodayHeader(props: {
             >
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d={headerCollapsed ? 'm6 14 6-6 6 6' : 'm6 10 6 6 6-6'} /></svg>
             </button>
-            <GearMenu userId={userId} />
+
           </div>
         </div>
 
         <div className="experience-capacity" hidden={headerCollapsed}>
           <div className="experience-capacity-top">
             <div className="experience-capacity-remaining">
-              <span>{isWorkDay ? 'Work time remaining' : 'Workday status'}</span>
-              <strong>{isWorkDay ? fmtMins(Math.max(minutesLeftToday, 0)) : 'Outside usual hours'}</strong>
+              <span>Flexible time left</span>
+              <strong>{usable > 0 ? `About ${fmtMins(usable)} left` : 'No flexible time left'}</strong>
             </div>
             {overloaded ? (
-              <p className="experience-capacity-warning">Over by {fmtMins(overBy)}</p>
-            ) : (
-              <p className="experience-capacity-available">{fmtMins(Math.max(usable, 0))} available</p>
-            )}
+              <p className="experience-capacity-warning">Planned work exceeds available time by {fmtMins(overBy)}</p>
+            ) : null}
           </div>
-          {isWorkDay ? (
-            <div
-              className="experience-capacity-track"
-              role="img"
-              aria-label={`Planned work ${fmtMins(planned)}, fixed commitments ${fmtMins(fixed)}, travel ${fmtMins(travel)}, remaining available time ${fmtMins(Math.max(usable, 0))}`}
-            >
-              <span className="experience-capacity-segment planned" style={{ width: `${plannedPct}%` }} />
-              <span className="experience-capacity-segment fixed" style={{ width: `${fixedPct}%` }} />
-              <span className="experience-capacity-segment travel" style={{ width: `${travelPct}%` }} />
-              <span className="experience-capacity-segment available" style={{ width: `${freePct}%` }} />
-            </div>
-          ) : null}
-          <div className="experience-capacity-legend">
-            <span><i className="planned" />Planned <strong>{planned > 0 ? fmtMins(planned) : '—'}</strong></span>
-            <span><i className="fixed" />Fixed <strong>{fmtMins(fixed)}</strong></span>
-            {travel > 0 ? <span><i className="travel" />Travel <strong>{fmtMins(travel)}</strong></span> : null}
-            <span><i className="available" />Free <strong>{fmtMins(Math.max(usable, 0))}</strong></span>
-          </div>
-          {nextCommitment ? (
-            <p className="experience-next-commitment">
-              <span>Next</span><strong>{nextCommitment.title}</strong><time>{nextCommitment.when}</time>
-            </p>
-          ) : null}
         </div>
 
         <div className="experience-day-controls" hidden={headerCollapsed}>
@@ -342,6 +308,14 @@ export function TodayHeader(props: {
         </section>
 
         <section className="experience-day-detail experience-day-tools" aria-label="Today tools" hidden={!toolsOpen || headerCollapsed}>
+            <div className="experience-route-tool">
+              <span>Map and route</span>
+              <div><button type="button" onClick={onViewMap}>Open map</button></div>
+            </div>
+            <div className="experience-route-tool">
+              <span>Settings</span>
+              <div><GearMenu userId={userId} /></div>
+            </div>
             {showRealityCheck && onRealityCheck ? (
               <button type="button" onClick={() => { onRealityCheck(); setToolsOpen(false); }}>
                 Reality check{realityCheckMessage ? <span>{realityCheckMessage}</span> : null}
